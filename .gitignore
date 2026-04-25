@@ -1,5 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# local AI / editor (không đẩy lên remote)
+.claude/
+.cursor/
+
 # dependencies
 /node_modules
 /.pnp
@@ -39,3 +43,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# caches & tooling
+.eslintcache
+.turbo
+
+# OS
+Thumbs.db
