@@ -1,8 +1,8 @@
 /* ===== 1. Import Tailwind v4 ===== */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ===== 2. Plugin thay thế tailwindcss-animate ===== */
-@import "tw-animate-css";
+@import 'tw-animate-css';
 
 /* ===== 3. Dark mode: class-based ===== */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -12,7 +12,7 @@
   /* Fonts */
   --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
   --font-mann: var(--font-nunito), sans-serif;
-  --font-urbanist: "Urbanist", sans-serif;
+  --font-urbanist: 'Urbanist', sans-serif;
 
   /* Radius */
   --radius: 0.5rem;
@@ -72,7 +72,10 @@
 
   /* Background images */
   --background-image-gradient-radial: radial-gradient(var(--tw-gradient-stops));
-  --background-image-gradient-conic: conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops));
+  --background-image-gradient-conic: conic-gradient(
+    from 180deg at 50% 50%,
+    var(--tw-gradient-stops)
+  );
 
   /* Custom animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -80,12 +83,20 @@
 }
 
 @keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
 }
 @keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
 }
 
 /* ===== 5. CSS variables (light + dark) ===== */
@@ -192,15 +203,15 @@
 
   /* iOS: prevent zoom on input focus */
   @supports (-webkit-touch-callout: none) {
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="number"],
-    input[type="tel"],
-    input[type="url"],
-    input[type="date"],
-    input[type="time"],
-    input[type="search"],
+    input[type='text'],
+    input[type='email'],
+    input[type='password'],
+    input[type='number'],
+    input[type='tel'],
+    input[type='url'],
+    input[type='date'],
+    input[type='time'],
+    input[type='search'],
     textarea {
       font-size: max(16px, 1em);
     }
@@ -246,4 +257,8 @@
 
 @utility text-balance {
   text-wrap: balance;
+}
+
+@utility rounded-card {
+  border-radius: 5px;
 }
