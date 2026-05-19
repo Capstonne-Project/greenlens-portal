@@ -2,13 +2,13 @@
 
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
 import { useDeleteAdminUser } from '@/hooks/useAdminUsers';
-import type { AdminUserItem } from '@/lib/api/services/fetchAdmin';
+import type { AdminUser } from '@/lib/api/models/adminUser';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AdminUserDeleteDialogProps {
-  user: AdminUserItem | null;
+  user: AdminUser | null;
   onClose: () => void;
 }
 

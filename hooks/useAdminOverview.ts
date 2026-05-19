@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchPollutionCategories } from '@/lib/api/services/fetchCatalog';
+import { fetchCatalogPollutionCategories } from '@/lib/api/services/fetchPollutionCategory';
 import { fetchAdminAllUsers } from '@/lib/api/services/fetchAdmin';
 import { fetchMapReports } from '@/lib/api/services/fetchMap';
 import { getAdminOverviewMapBounds } from '@/lib/constants/vietnamMapBounds';
@@ -59,7 +59,7 @@ export function useAdminOverview() {
         queryKey: adminOverviewKeys.catalog(),
         queryFn: async () => {
           const started = performance.now();
-          const envelope = await fetchPollutionCategories();
+          const envelope = await fetchCatalogPollutionCategories();
           return {
             count: envelope.data.items.length,
             latencyMs: Math.round(performance.now() - started),

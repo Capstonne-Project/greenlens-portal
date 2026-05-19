@@ -6,7 +6,8 @@ import {
   ADMIN_USER_ASSIGNABLE_ROLES,
   type AdminUserAssignableRole,
 } from '@/lib/constants/adminUsersNav';
-import type { AdminUserItem } from '@/lib/api/services/fetchAdmin';
+import { normalizeApiRole } from '@/lib/constants/systemRoles';
+import type { AdminUser } from '@/lib/api/models/adminUser';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -36,14 +37,14 @@ const editSchema = z.object({
 type EditFormValues = z.infer<typeof editSchema>;
 
 interface AdminUserEditDialogProps {
-  user: AdminUserItem | null;
+  user: AdminUser | null;
   onClose: () => void;
 }
 
 function normalizeAssignableRole(role: string): AdminUserAssignableRole {
-  const compact = role.replace(/\s+/g, '').toLowerCase();
+  const canonical = normalizeApiRole(role);
   const match = ADMIN_USER_ASSIGNABLE_ROLES.find(
-    r => r.value.toLowerCase() === compact || r.value.toLowerCase() === role.trim().toLowerCase()
+    r => r.value.toLowerCase() === canonical.toLowerCase()
   );
   return match?.value ?? 'Citizen';
 }

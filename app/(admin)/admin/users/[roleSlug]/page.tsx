@@ -1,7 +1,12 @@
 import { AdminUsersView } from '@/components/admin/users/AdminUsersView';
 import { getApiRoleFromSlug, isValidUsersRoleSlug } from '@/lib/constants/adminUsersNav';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
+
+const LEGACY_SLUG_REDIRECT: Record<string, string> = {
+  'can-bo-moi-truong': 'thanh-tra',
+  'doi-don-dep': 'don-dep',
+};
 
 interface PageProps {
   params: Promise<{ roleSlug: string }>;
@@ -24,6 +29,11 @@ function UsersFallback() {
 
 export default async function AdminUsersByRolePage({ params }: PageProps) {
   const { roleSlug } = await params;
+
+  const legacyTarget = LEGACY_SLUG_REDIRECT[roleSlug];
+  if (legacyTarget) {
+    redirect(`/admin/users/${legacyTarget}`);
+  }
 
   if (!isValidUsersRoleSlug(roleSlug)) {
     notFound();
