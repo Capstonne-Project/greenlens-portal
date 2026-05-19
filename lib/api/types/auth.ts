@@ -1,5 +1,7 @@
 /** Shared auth API shapes — safe for L1 / refresh client without circular imports. */
 
+export type { ApiEnvelope } from '@/lib/api/types/envelope';
+
 export interface LoginUserDto {
   id: string;
   email: string;
@@ -12,11 +14,4 @@ export interface LoginSuccessData {
   accessToken: string;
   refreshToken: string;
   user: LoginUserDto;
-}
-
-export interface ApiEnvelope<T> {
-  code: string;
-  message: string;
-  status: number;
-  data: T;
 }

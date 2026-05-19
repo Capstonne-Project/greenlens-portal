@@ -1,12 +1,16 @@
-/** Điều hướng Quản lý — slug URL ↔ tham số `role` API. */
+/** Điều hướng Quản lý người dùng — slug URL ↔ `role` API. */
 
-export type AdminUsersRoleSlug = 'quan-tri' | 'nguoi-dan' | 'can-bo-moi-truong' | 'doi-don-dep';
+import type { SystemRole } from '@/lib/constants/systemRoles';
+
+export type AdminUsersRoleSlug = 'quan-tri' | 'nguoi-dan' | 'deo' | 'leo' | 'thanh-tra' | 'don-dep';
 
 export const ADMIN_USERS_VALID_SLUGS: AdminUsersRoleSlug[] = [
   'quan-tri',
   'nguoi-dan',
-  'can-bo-moi-truong',
-  'doi-don-dep',
+  'deo',
+  'leo',
+  'thanh-tra',
+  'don-dep',
 ];
 
 export const ADMIN_USERS_NAV = [
@@ -20,27 +24,37 @@ export const ADMIN_USERS_NAV = [
     slug: 'quan-tri' as const,
     href: '/admin/users/quan-tri',
     label: 'Quản trị',
-    apiRole: 'Admin',
+    apiRole: 'Admin' satisfies SystemRole,
   },
   {
     slug: 'nguoi-dan' as const,
     href: '/admin/users/nguoi-dan',
     label: 'Người dân',
-    apiRole: 'Citizen',
+    apiRole: 'Citizen' satisfies SystemRole,
   },
   {
-    slug: 'can-bo-moi-truong' as const,
-    href: '/admin/users/can-bo-moi-truong',
-    label: 'Cán bộ môi trường',
-    /** Khớp query Swagger: role=Officer */
-    apiRole: 'Officer',
+    slug: 'deo' as const,
+    href: '/admin/users/deo',
+    label: 'DEO (Sở)',
+    apiRole: 'DEO' satisfies SystemRole,
   },
   {
-    slug: 'doi-don-dep' as const,
-    href: '/admin/users/doi-don-dep',
+    slug: 'leo' as const,
+    href: '/admin/users/leo',
+    label: 'LEO (Phường)',
+    apiRole: 'LEO' satisfies SystemRole,
+  },
+  {
+    slug: 'thanh-tra' as const,
+    href: '/admin/users/thanh-tra',
+    label: 'Thanh tra (Inspector)',
+    apiRole: 'Inspector' satisfies SystemRole,
+  },
+  {
+    slug: 'don-dep' as const,
+    href: '/admin/users/don-dep',
     label: 'Đội dọn dẹp',
-    /** Khớp query Swagger: role=CleanupTeam */
-    apiRole: 'CleanupTeam',
+    apiRole: 'Cleanup' satisfies SystemRole,
   },
 ] as const;
 
@@ -53,12 +67,14 @@ export function getApiRoleFromSlug(slug: string): string | undefined {
   return row?.apiRole;
 }
 
-/** Giá trị `role` khi tạo / cập nhật tài khoản (khớp Swagger). */
+/** Giá trị `role` khi tạo / cập nhật tài khoản — khớp Swagger. */
 export const ADMIN_USER_ASSIGNABLE_ROLES = [
-  { value: 'Admin', label: 'Quản trị' },
-  { value: 'Citizen', label: 'Người dân' },
-  { value: 'Officer', label: 'Cán bộ môi trường' },
-  { value: 'CleanupTeam', label: 'Đội dọn dẹp' },
+  { value: 'Admin' as const, label: 'Quản trị' },
+  { value: 'Citizen' as const, label: 'Người dân' },
+  { value: 'DEO' as const, label: 'DEO (Cán bộ sở)' },
+  { value: 'LEO' as const, label: 'LEO (Cán bộ phường)' },
+  { value: 'Inspector' as const, label: 'Thanh tra (Inspector)' },
+  { value: 'Cleanup' as const, label: 'Đội dọn dẹp (Cleanup)' },
 ] as const;
 
 export type AdminUserAssignableRole = (typeof ADMIN_USER_ASSIGNABLE_ROLES)[number]['value'];

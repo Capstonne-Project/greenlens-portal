@@ -1,17 +1,22 @@
 'use client';
 
 import { ADMIN_USERS_NAV } from '@/lib/constants/adminUsersNav';
+import { roleBadgeClasses } from '@/utils/adminUserUi';
+import { useAdminReportsTotal } from '@/hooks/useAdminReports';
 import { useAdminUsersTotalsByRole } from '@/hooks/useAdminUsers';
 import { cn } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
+  Landmark,
   LayoutDashboard,
   Leaf,
   Map,
   Shield,
+  Tags,
   UserCircle,
   Users,
+  UsersRound,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -92,15 +97,9 @@ function AdminUsersNavCollapsible({
                       <span
                         className={cn(
                           'shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold tabular-nums',
-                          index === 0
-                            ? 'bg-emerald-100 text-emerald-900'
-                            : index === 1
-                              ? 'bg-emerald-600/15 text-emerald-900'
-                              : index === 2
-                                ? 'bg-slate-100 text-slate-800'
-                                : index === 3
-                                  ? 'bg-sky-100 text-sky-900'
-                                  : 'bg-amber-100 text-amber-900'
+                          item.apiRole
+                            ? roleBadgeClasses(item.apiRole)
+                            : 'bg-emerald-100 text-emerald-900'
                         )}
                       >
                         {total}
@@ -125,9 +124,22 @@ export function AdminSidebarNav() {
   const roleKeys = useMemo(() => ADMIN_USERS_NAV.map(n => n.apiRole), []);
 
   const countQueries = useAdminUsersTotalsByRole(roleKeys);
+  const { data: reportsTotal, isPending: reportsCountPending } = useAdminReportsTotal();
 
   const dashboardActive = pathname === '/admin';
+  const reportsActive = pathname === '/admin/reports' || pathname.startsWith('/admin/reports/');
+  const officesActive =
+    pathname === '/admin/offices' ||
+    pathname.startsWith('/admin/offices/') ||
+    pathname === '/admin/organization' ||
+    pathname.startsWith('/admin/organization/');
   const profileActive = pathname.startsWith('/admin/profile');
+  const categoriesActive =
+    pathname === '/admin/pollution-categories' ||
+    pathname.startsWith('/admin/pollution-categories/');
+  const departmentsActive =
+    pathname === '/admin/departments' || pathname.startsWith('/admin/departments/');
+  const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
 
   return (
     <>
@@ -164,25 +176,95 @@ export function AdminSidebarNav() {
               </Link>
             </li>
             <li>
-              <span className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground">
+              <Link
+                href="/admin/reports"
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
+                  reportsActive
+                    ? 'bg-emerald-600/10 text-emerald-800'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
                 <Shield className="size-4 shrink-0" />
                 Báo cáo ô nhiễm
-                <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                  42
-                </span>
-              </span>
+                {reportsCountPending ? (
+                  <span className="ml-auto inline-block size-4 animate-pulse rounded bg-muted" />
+                ) : typeof reportsTotal === 'number' ? (
+                  <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums">
+                    {reportsTotal > 999 ? '999+' : reportsTotal}
+                  </span>
+                ) : null}
+              </Link>
             </li>
             <li>
-              <span className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground">
+              <Link
+                href="/admin/departments"
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
+                  departmentsActive
+                    ? 'bg-emerald-600/10 text-emerald-800'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Landmark className="size-4 shrink-0" />
+                Ủy ban (Sở)
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/offices"
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
+                  officesActive
+                    ? 'bg-emerald-600/10 text-emerald-800'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
                 <Users className="size-4 shrink-0" />
-                Phân công
-              </span>
+                Văn phòng địa phương
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/teams"
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
+                  teamsActive
+                    ? 'bg-emerald-600/10 text-emerald-800'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <UsersRound className="size-4 shrink-0" />
+                Đội môi trường
+              </Link>
             </li>
             <li>
               <span className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground">
                 <Map className="size-4 shrink-0" />
                 Bản đồ quản trị
               </span>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Cộng đồng
+          </p>
+          <ul className="space-y-1">
+            <li>
+              <Link
+                href="/admin/pollution-categories"
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
+                  categoriesActive
+                    ? 'bg-emerald-600/10 text-emerald-800'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Tags className="size-4 shrink-0" />
+                Danh mục ô nhiễm
+              </Link>
             </li>
           </ul>
         </div>

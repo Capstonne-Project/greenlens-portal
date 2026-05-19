@@ -4,7 +4,7 @@ import { AdminUserCreateDialog } from '@/components/admin/users/AdminUserCreateD
 import { AdminUserDeleteDialog } from '@/components/admin/users/AdminUserDeleteDialog';
 import { AdminUserEditDialog } from '@/components/admin/users/AdminUserEditDialog';
 import { useAdminUsersList } from '@/hooks/useAdminUsers';
-import type { AdminUserItem } from '@/lib/api/services/fetchAdmin';
+import type { AdminUser } from '@/lib/api/models/adminUser';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
 import { ChevronLeft, ChevronRight, Download, Pencil, Search, Trash2 } from 'lucide-react';
@@ -56,8 +56,8 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
     verifiedParam === 'true' ? true : verifiedParam === 'false' ? false : undefined;
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [editUser, setEditUser] = useState<AdminUserItem | null>(null);
-  const [deleteUser, setDeleteUser] = useState<AdminUserItem | null>(null);
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
 
   const queryParams = useMemo(
     () => ({

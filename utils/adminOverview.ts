@@ -1,4 +1,4 @@
-import type { AdminUserItem } from '@/lib/api/services/fetchAdmin';
+import type { AdminUser } from '@/lib/api/models/adminUser';
 import type { MapReportDetailItem, MapReportStatus } from '@/lib/api/services/fetchMap';
 
 export const OPEN_REPORT_STATUSES: MapReportStatus[] = ['Submitted', 'Verified', 'In Progress'];
@@ -138,7 +138,7 @@ function bucketLabel(key: string, range: OverviewGrowthRange): string {
 
 function buildGrowthSeries(
   reports: MapReportDetailItem[],
-  users: AdminUserItem[],
+  users: AdminUser[],
   range: OverviewGrowthRange
 ): OverviewGrowthPoint[] {
   const reportBuckets = new Map<string, number>();
@@ -204,7 +204,7 @@ function integrationStatus(latencyMs: number | null): OverviewIntegrationItem['s
 }
 
 export function buildAdminOverviewSnapshot(input: {
-  users: AdminUserItem[];
+  users: AdminUser[];
   reports: MapReportDetailItem[];
   categoryCount: number;
   growthRange: OverviewGrowthRange;

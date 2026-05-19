@@ -259,6 +259,19 @@
   text-wrap: balance;
 }
 
+@keyframes office-stepper-shuttle {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+@utility stepper-line-shuttle {
+  animation: office-stepper-shuttle 1.35s ease-in-out infinite alternate;
+}
+
 @utility rounded-card {
   border-radius: 5px;
 }

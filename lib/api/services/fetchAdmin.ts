@@ -1,106 +1,88 @@
-import type { ApiEnvelope } from '@/lib/api/types/auth';
-import apiService from '../core';
+/**
+ * L2 — Admin users service (thin).
+ * HTTP + normalize: adapters. FE contract: models. UI/hooks không import DTO.
+ */
+import {
+  adaptAdminAllUsers,
+  adaptAdminUsersList,
+  adaptChangeAdminUserRole,
+  adaptCreateAdminUser,
+  adaptDeleteAdminUser,
+  adaptUpdateAdminUser,
+  clearAdminAllUsersCache,
+} from '@/lib/api/adapters/adminUsers.adapter';
+import type {
+  AdminUser,
+  AdminUserMutationResult,
+  AdminUsersList,
+  AdminUsersListParams,
+  CreateAdminUserInput,
+  UpdateAdminUserInput,
+} from '@/lib/api/models/adminUser';
+import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
-export interface AdminUserItem {
-  id: string;
+export type {
+  AdminUser,
+  AdminUserMutationResult,
+  AdminUsersList,
+  AdminUsersListParams,
+  CreateAdminUserInput,
+  UpdateAdminUserInput,
+  PaginationMeta,
+} from '@/lib/api/models/adminUser';
+
+/** @deprecated Dùng `AdminUser` từ `@/lib/api/models/adminUser` */
+export type AdminUserItem = AdminUser;
+/** @deprecated Dùng `AdminUsersList` */
+export type AdminUsersPaged = AdminUsersList;
+/** @deprecated Dùng `AdminUsersListParams` */
+export type AdminUsersQueryParams = AdminUsersListParams;
+/** @deprecated Dùng `CreateAdminUserInput` */
+export type CreateAdminUserBody = CreateAdminUserInput;
+/** @deprecated Dùng `UpdateAdminUserInput` */
+export type UpdateAdminUserBody = UpdateAdminUserInput;
+/** @deprecated Dùng `AdminUserMutationResult` */
+export type AdminUserMutationData = AdminUserMutationResult;
+/** @deprecated Dùng `AdminUserMutationResult` */
+export type CreateAdminUserData = AdminUserMutationResult & {
   email: string;
   fullName: string;
-  phoneNumber?: string | null;
-  avatarUrl?: string | null;
   role: string;
-  isEmailVerified: boolean;
-  createdAt: string;
-}
+};
 
-export interface AdminUsersPagination {
-  page: number;
-  pageSize: number;
-  totalItems: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
-export interface AdminUsersPaged {
-  items: AdminUserItem[];
-  pagination: AdminUsersPagination;
-}
-
-export interface AdminUsersQueryParams {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  role?: string;
-  isEmailVerified?: boolean;
-}
+export { clearAdminAllUsersCache };
 
 export async function fetchAdminUsers(
-  params?: AdminUsersQueryParams
-): Promise<ApiEnvelope<AdminUsersPaged>> {
-  const query: Record<string, string | number | boolean> = {};
-  if (params?.page != null) query.page = params.page;
-  if (params?.pageSize != null) query.pageSize = params.pageSize;
-  if (params?.search?.trim()) query.search = params.search.trim();
-  if (params?.role?.trim()) query.role = params.role.trim();
-  if (params?.isEmailVerified !== undefined) query.isEmailVerified = params.isEmailVerified;
-
-  const res = await apiService.get<ApiEnvelope<AdminUsersPaged>>('/v1/admin/users', query);
-  return res.data;
+  params?: AdminUsersListParams
+): Promise<ApiEnvelope<AdminUsersList>> {
+  return adaptAdminUsersList(params);
 }
 
-export async function fetchAdminAllUsers(): Promise<ApiEnvelope<AdminUserItem[]>> {
-  const res = await apiService.get<ApiEnvelope<AdminUserItem[]>>('/v1/admin/users/all');
-  return res.data;
-}
-
-export interface CreateAdminUserBody {
-  email: string;
-  password: string;
-  fullName: string;
-  role: string;
-}
-
-export interface CreateAdminUserData {
-  userId: string;
-  email: string;
-  fullName: string;
-  role: string;
-  message: string;
-}
-
-export interface UpdateAdminUserBody {
-  fullName: string;
-  phoneNumber?: string;
-  role: string;
-  isEmailVerified: boolean;
-}
-
-export interface AdminUserMutationData {
-  userId: string;
-  message: string;
+export async function fetchAdminAllUsers(): Promise<ApiEnvelope<AdminUser[]>> {
+  return adaptAdminAllUsers();
 }
 
 export async function createAdminUser(
-  body: CreateAdminUserBody
-): Promise<ApiEnvelope<CreateAdminUserData>> {
-  const res = await apiService.post<ApiEnvelope<CreateAdminUserData>>('/v1/admin/users', body);
-  return res.data;
+  body: CreateAdminUserInput
+): Promise<
+  ApiEnvelope<AdminUserMutationResult & { email: string; fullName: string; role: string }>
+> {
+  return adaptCreateAdminUser(body);
 }
 
 export async function updateAdminUser(
   id: string,
-  body: UpdateAdminUserBody
-): Promise<ApiEnvelope<AdminUserMutationData>> {
-  const res = await apiService.put<ApiEnvelope<AdminUserMutationData>>(
-    `/v1/admin/users/${id}`,
-    body
-  );
-  return res.data;
+  body: UpdateAdminUserInput
+): Promise<ApiEnvelope<AdminUserMutationResult>> {
+  return adaptUpdateAdminUser(id, body);
 }
 
-export async function deleteAdminUser(id: string): Promise<ApiEnvelope<AdminUserMutationData>> {
-  const res = await apiService.delete<ApiEnvelope<AdminUserMutationData>>(`/v1/admin/users/${id}`);
-  return res.data;
+export async function deleteAdminUser(id: string): Promise<ApiEnvelope<AdminUserMutationResult>> {
+  return adaptDeleteAdminUser(id);
+}
+
+export async function changeAdminUserRole(id: string, newRole: string): Promise<void> {
+  return adaptChangeAdminUserRole(id, newRole);
 }
 
 export default {
@@ -109,4 +91,5 @@ export default {
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
+  changeAdminUserRole,
 };
