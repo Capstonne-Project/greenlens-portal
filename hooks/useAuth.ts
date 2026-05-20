@@ -1,5 +1,6 @@
 'use client';
 
+import { isAxiosError } from '@/lib/api/core';
 import { loginWithEmailPassword } from '@/lib/api/services/fetchAuth';
 import type { ApiErrorEnvelope } from '@/lib/api/services/fetchAuth';
 import { getDashboardPathByRole, mapApiRoleToAuth } from '@/lib/auth/mapUser';
@@ -7,7 +8,6 @@ import { setAuthCookies } from '@/lib/storage/authCookies';
 import { useAuthStore } from '@/lib/store/authStore';
 import type { AuthUser } from '@/lib/store/authStore';
 import { useMutation } from '@tanstack/react-query';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 export const authKeys = {
@@ -41,7 +41,7 @@ export function useLogin() {
 }
 
 export function getLoginErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
+  if (isAxiosError(error)) {
     const status = error.response?.status;
     const body = error.response?.data as ApiErrorEnvelope | undefined;
     if (status === 422) {

@@ -3,7 +3,6 @@ import { Nunito } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { Providers } from '@/lib/providers';
 import './globals.css';
-
 const nunito = Nunito({
   variable: '--font-nunito',
   subsets: ['latin'],

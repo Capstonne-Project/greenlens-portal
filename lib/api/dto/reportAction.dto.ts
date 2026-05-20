@@ -8,3 +8,12 @@ export interface VerifyReportBodyDto {
 export interface RejectReportBodyDto {
   reason: string;
 }
+
+export interface AssignTeamEntryDto {
+  teamId: string;
+  note?: string;
+}
+
+export interface AssignReportBodyDto {
+  teams: AssignTeamEntryDto[];
+}

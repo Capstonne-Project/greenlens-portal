@@ -4,6 +4,10 @@ import {
   setAuthCookies,
 } from '@/lib/storage/authCookies';
 import axios, { AxiosProgressEvent, AxiosRequestConfig, AxiosResponse } from 'axios';
+
+/** Re-export of axios.isAxiosError so layers L2–L6 can type-guard errors
+ *  without importing axios directly. */
+export const isAxiosError = axios.isAxiosError;
 import { getApiBaseUrl } from './getApiBaseUrl';
 import { postRefreshToken } from './refreshSession';
 import type { LoginSuccessData } from './types/auth';
