@@ -8,3 +8,12 @@ export interface VerifyReportInput {
 export interface RejectReportInput {
   reason: string;
 }
+
+export interface AssignTeamEntry {
+  teamId: string;
+  note?: string;
+}
+
+export interface AssignReportInput {
+  teams: AssignTeamEntry[];
+}
