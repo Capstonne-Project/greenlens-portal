@@ -13,6 +13,7 @@ import {
   Leaf,
   Map,
   Shield,
+  Recycle,
   Tags,
   UserCircle,
   Users,
@@ -137,10 +138,11 @@ export function AdminSidebarNav() {
   const categoriesActive =
     pathname === '/admin/pollution-categories' ||
     pathname.startsWith('/admin/pollution-categories/');
+  const wasteTagsActive =
+    pathname === '/admin/waste-tags' || pathname.startsWith('/admin/waste-tags/');
   const departmentsActive =
     pathname === '/admin/departments' || pathname.startsWith('/admin/departments/');
   const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
-
   return (
     <>
       <div className="flex h-16 items-center gap-2 border-b border-border px-5">
@@ -207,7 +209,7 @@ export function AdminSidebarNav() {
                 )}
               >
                 <Landmark className="size-4 shrink-0" />
-                Ủy ban (Sở)
+                Sở TNMT
               </Link>
             </li>
             <li>
@@ -264,6 +266,20 @@ export function AdminSidebarNav() {
               >
                 <Tags className="size-4 shrink-0" />
                 Danh mục ô nhiễm
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/waste-tags"
+                className={cn(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
+                  wasteTagsActive
+                    ? 'bg-emerald-600/10 text-emerald-800'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Recycle className="size-4 shrink-0" />
+                Thẻ rác thải
               </Link>
             </li>
           </ul>

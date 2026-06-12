@@ -3,6 +3,7 @@
 import { OfficeAssignOfficerDialog } from '@/components/admin/offices/OfficeAssignOfficerDialog';
 import { OfficeCreateDialog } from '@/components/admin/offices/OfficeCreateDialog';
 import { OfficeEditDialog } from '@/components/admin/offices/OfficeEditDialog';
+import { OfficeLiveSearch } from '@/components/admin/offices/OfficeLiveSearch';
 import { OfficesHierarchyList } from '@/components/admin/offices/OfficesHierarchyList';
 import { useOfficesList } from '@/hooks/useOffices';
 import {
@@ -14,51 +15,27 @@ import type { OfficeListItem } from '@/lib/api/models/office';
 import { filterDepartmentGroups, groupOfficesByDepartment } from '@/utils/officeHierarchy';
 import {
   Building2,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Layers,
   Loader2,
+  MapPinned,
   Pencil,
   Plus,
-  Search,
   Table2,
   UserPlus,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 
-function OfficeProvinceSearchControls({
-  provinceSearch,
-  onApply,
-}: {
-  provinceSearch: string;
-  onApply: (trimmed: string) => void;
-}) {
-  const [localProvinceSearch, setLocalProvinceSearch] = useState(provinceSearch);
-  return (
-    <div className="flex gap-2">
-      <div className="relative min-w-0 flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          id="office-province-search"
-          type="search"
-          value={localProvinceSearch}
-          onChange={e => setLocalProvinceSearch(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && onApply(localProvinceSearch.trim())}
-          placeholder="HCM, Đồng Nai, Vĩnh Long…"
-          className="h-10 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-        />
-      </div>
-      <button
-        type="button"
-        onClick={() => onApply(localProvinceSearch.trim())}
-        className="h-10 shrink-0 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
-      >
-        Tìm
-      </button>
-    </div>
-  );
-}
+const ONBOARD_FILTERS = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'yes', label: 'Đã onboard' },
+  { value: 'no', label: 'Chưa onboard' },
+] as const;
+
+const EMPTY_ITEMS: OfficeListItem[] = [];
 
 export function AdminOfficesView() {
   const router = useRouter();
@@ -102,9 +79,9 @@ export function AdminOfficesView() {
     },
     [pathname, router, searchParams]
   );
-
-  const items = data?.items ?? [];
   const pagination = data?.pagination;
+  const items = data?.items ?? EMPTY_ITEMS;
+
   const departmentGroups = useMemo(() => groupOfficesByDepartment(items), [items]);
   const filteredGroups = useMemo(
     () => filterDepartmentGroups(departmentGroups, provinceSearch),
@@ -116,113 +93,156 @@ export function AdminOfficesView() {
   const onboardedTotal = items.filter(o => o.isOnboarded).length;
   const filteredWardCount = filteredGroups.reduce((n, g) => n + g.wardCount, 0);
 
+  const handleProvinceSearch = useCallback(
+    (q: string) => setQuery({ q: q || null, page: '1' }),
+    [setQuery]
+  );
+
+  const searchMatchHint =
+    isHierarchy && provinceSearch.trim()
+      ? `${filteredGroups.length} tỉnh · ${filteredWardCount} phường/xã khớp “${provinceSearch.trim()}”`
+      : undefined;
+
   return (
     <div className="w-full min-w-0">
-      {/* Header — một dải, không dùng 3 card */}
-      <header className="mb-6 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Quản lý văn phòng MT cấp phường/xã theo tỉnh
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium tabular-nums">
-              {provinceCount} tỉnh/ủy ban
-            </span>
-            <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium tabular-nums">
-              {wardCount} phường/xã
-            </span>
-            <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-900 tabular-nums">
-              {onboardedTotal} onboard
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
-        >
-          <Plus className="size-4" />
-          Tạo văn phòng mới
-        </button>
-      </header>
+      <section className="overflow-hidden rounded-card border border-border bg-card shadow-sm">
+        <div className="relative overflow-hidden border-b border-border">
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-emerald-50/90 via-background to-background"
+            aria-hidden
+          />
+          <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-600" aria-hidden />
 
-      {/* Một panel duy nhất: filter + danh sách */}
-      <section className="overflow-hidden rounded-xl border border-border bg-card">
-        {/* Thanh lọc */}
-        <div className="border-b border-border bg-muted/20 px-4 py-4 sm:px-6">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_11rem_10rem] lg:items-end lg:gap-6">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="office-province-search" className="text-sm font-medium">
-                Tìm tỉnh / ủy ban
-              </label>
-              <OfficeProvinceSearchControls
-                key={provinceSearch}
-                provinceSearch={provinceSearch}
-                onApply={q => setQuery({ q: q || null, page: '1' })}
-              />
-            </div>
-
-            <div className="flex w-full flex-col gap-2">
-              <label htmlFor="office-filter-onboard" className="text-sm font-medium">
-                Trạng thái onboard
-              </label>
-              <select
-                id="office-filter-onboard"
-                value={onboardedFilter}
-                onChange={e =>
-                  setQuery({
-                    onboarded: e.target.value === 'all' ? null : e.target.value,
-                    page: '1',
-                  })
-                }
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              >
-                <option value="all">Tất cả</option>
-                <option value="yes">Đã onboard</option>
-                <option value="no">Chưa onboard</option>
-              </select>
-            </div>
-
-            <div className="flex w-full flex-col gap-2">
-              <span className="text-sm font-medium">Hiển thị</span>
-              <div className="flex h-10 rounded-lg border border-border bg-background p-1">
-                <button
-                  type="button"
-                  onClick={() => setQuery({ view: null, page: '1' })}
-                  className={`flex flex-1 items-center justify-center gap-1 rounded-md text-xs font-medium sm:text-sm ${
-                    isHierarchy
-                      ? 'bg-emerald-700 text-white'
-                      : 'text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Layers className="size-3.5 shrink-0" />
-                  Cấp
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuery({ view: 'table', page: '1' })}
-                  className={`flex flex-1 items-center justify-center gap-1 rounded-md text-xs font-medium sm:text-sm ${
-                    !isHierarchy
-                      ? 'bg-emerald-700 text-white'
-                      : 'text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Table2 className="size-3.5 shrink-0" />
-                  Bảng
-                </button>
+          <div className="relative px-4 py-5 sm:px-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 pl-2 sm:pl-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-800/75">
+                  Quản lý địa phương
+                </p>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+                  Văn phòng địa phương
+                </h2>
+                <p className="mt-1 max-w-lg text-sm leading-relaxed text-muted-foreground">
+                  MT cấp phường, xã · liên kết theo Sở TNMT từng tỉnh
+                </p>
               </div>
-            </div>
-          </div>
 
-          {isHierarchy && provinceSearch && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              {filteredGroups.length} tỉnh · {filteredWardCount} phường/xã khớp &quot;
-              {provinceSearch}&quot;
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-xl bg-emerald-700 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-800"
+              >
+                <Plus className="size-4" />
+                Tạo văn phòng
+              </button>
+            </div>
+
+            <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 pl-2 text-sm sm:pl-3">
+              <span className="inline-flex items-baseline gap-1.5 text-muted-foreground">
+                <MapPinned
+                  className="size-3.5 shrink-0 translate-y-px text-emerald-700/75"
+                  aria-hidden
+                />
+                <span className="text-lg font-semibold tabular-nums text-foreground">
+                  {provinceCount}
+                </span>
+                tỉnh
+              </span>
+              <span className="text-border select-none" aria-hidden>
+                ·
+              </span>
+              <span className="inline-flex items-baseline gap-1.5 text-muted-foreground">
+                <Building2
+                  className="size-3.5 shrink-0 translate-y-px text-emerald-700/75"
+                  aria-hidden
+                />
+                <span className="text-lg font-semibold tabular-nums text-foreground">
+                  {wardCount}
+                </span>
+                phường/xã
+              </span>
+              <span className="text-border select-none" aria-hidden>
+                ·
+              </span>
+              <span className="inline-flex items-baseline gap-1.5 text-muted-foreground">
+                <CheckCircle2
+                  className="size-3.5 shrink-0 translate-y-px text-emerald-700/75"
+                  aria-hidden
+                />
+                <span className="text-lg font-semibold tabular-nums text-emerald-800">
+                  {onboardedTotal}
+                </span>
+                đã onboard
+              </span>
             </p>
-          )}
+          </div>
         </div>
 
-        {/* Nội dung */}
+        <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:flex-wrap sm:items-end sm:px-5">
+          <OfficeLiveSearch
+            key={provinceSearch}
+            value={provinceSearch}
+            onChange={handleProvinceSearch}
+            matchHint={searchMatchHint}
+            className="w-full sm:min-w-[220px] sm:max-w-lg sm:flex-1"
+          />
+
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <div
+              className="flex rounded-lg border border-border/70 bg-background p-0.5"
+              role="group"
+              aria-label="Lọc onboard"
+            >
+              {ONBOARD_FILTERS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    setQuery({
+                      onboarded: value === 'all' ? null : value,
+                      page: '1',
+                    })
+                  }
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
+                    onboardedFilter === value
+                      ? 'bg-emerald-700 text-white'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div
+              className="flex rounded-lg border border-border/70 bg-background p-0.5"
+              role="group"
+              aria-label="Hiển thị"
+            >
+              <button
+                type="button"
+                onClick={() => setQuery({ view: null, page: '1' })}
+                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
+                  isHierarchy ? 'bg-emerald-700 text-white' : 'text-muted-foreground'
+                }`}
+              >
+                <Layers className="size-3.5" />
+                Phân cấp
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuery({ view: 'table', page: '1' })}
+                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
+                  !isHierarchy ? 'bg-emerald-700 text-white' : 'text-muted-foreground'
+                }`}
+              >
+                <Table2 className="size-3.5" />
+                Bảng
+              </button>
+            </div>
+          </div>
+        </div>
+
         {isPending && (
           <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
             <Loader2 className="size-5 animate-spin" />

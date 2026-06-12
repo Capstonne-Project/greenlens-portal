@@ -1,13 +1,8 @@
 /** DTO khớp Swagger BE — admin reports. */
 
-export type AdminReportStatusDto =
-  | 'Submitted'
-  | 'Verified'
-  | 'In Progress'
-  | 'Resolved'
-  | 'Closed'
-  | 'Rejected'
-  | 'Duplicate';
+import type { ReportStatus } from '@/lib/constants/reportStatus';
+
+export type AdminReportStatusDto = ReportStatus;
 
 export type AdminReportSeverityDto = 'Low' | 'Medium' | 'High' | 'Critical';
 

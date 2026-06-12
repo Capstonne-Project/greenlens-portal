@@ -7,7 +7,8 @@ export function getAdminPageTitle(pathname: string): string {
   if (pathname === '/admin/offices' || pathname === '/admin/organization')
     return 'Văn phòng địa phương';
   if (pathname === '/admin/pollution-categories') return 'Danh mục ô nhiễm';
-  if (pathname === '/admin/departments') return 'Ủy ban (Sở)';
+  if (pathname === '/admin/waste-tags') return 'Thẻ rác thải';
+  if (pathname === '/admin/departments') return 'Sở TNMT · Cấp tỉnh';
   if (pathname === '/admin/teams') return 'Quản lý đội môi trường';
   if (pathname === '/admin/reports') return 'Quản lý báo cáo ô nhiễm';
   if (pathname.startsWith('/admin/reports/')) return 'Chi tiết báo cáo';

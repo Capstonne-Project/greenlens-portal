@@ -15,21 +15,12 @@ import type {
   ReportSeverity,
   ReportStatus,
 } from '@/lib/api/models/adminReport';
-
-const REPORT_STATUSES: ReportStatus[] = [
-  'Submitted',
-  'Verified',
-  'In Progress',
-  'Resolved',
-  'Closed',
-  'Rejected',
-  'Duplicate',
-];
+import { normalizeReportStatus } from '@/lib/constants/reportStatus';
 
 const SEVERITIES: ReportSeverity[] = ['Low', 'Medium', 'High', 'Critical'];
 
 function asReportStatus(value: string): ReportStatus {
-  return (REPORT_STATUSES.includes(value as ReportStatus) ? value : 'Submitted') as ReportStatus;
+  return normalizeReportStatus(value);
 }
 
 function asReportSeverity(value: string): ReportSeverity {

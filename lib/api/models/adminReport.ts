@@ -1,13 +1,8 @@
 /** FE models — admin báo cáo ô nhiễm (ổn định cho L4/L6). */
 
-export type ReportStatus =
-  | 'Submitted'
-  | 'Verified'
-  | 'In Progress'
-  | 'Resolved'
-  | 'Closed'
-  | 'Rejected'
-  | 'Duplicate';
+import type { ReportStatus } from '@/lib/constants/reportStatus';
+
+export type { ReportStatus } from '@/lib/constants/reportStatus';
 
 export type ReportSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
 

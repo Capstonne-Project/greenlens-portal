@@ -2,6 +2,7 @@
  * L2 — Departments (ủy ban / Sở TNMT).
  */
 import {
+  adaptAssignDepartmentOfficer,
   adaptCreateDepartment,
   adaptDeactivateDepartment,
   adaptDepartmentDetail,
@@ -9,6 +10,7 @@ import {
   adaptUpdateDepartment,
 } from '@/lib/api/adapters/departments.adapter';
 import type {
+  AssignDepartmentOfficerInput,
   CreateDepartmentInput,
   Department,
   DepartmentDetail,
@@ -19,8 +21,10 @@ import type {
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
+  AssignDepartmentOfficerInput,
   CreateDepartmentInput,
   Department,
+  DepartmentDeo,
   DepartmentDetail,
   DepartmentListItem,
   DepartmentOfficeSummary,
@@ -53,10 +57,20 @@ export async function deactivateDepartment(id: string): Promise<void> {
   return adaptDeactivateDepartment(id);
 }
 
-export default {
+export async function assignDepartmentOfficer(
+  id: string,
+  body: AssignDepartmentOfficerInput
+): Promise<void> {
+  return adaptAssignDepartmentOfficer(id, body);
+}
+
+const departmentApi = {
   fetchDepartments,
   fetchDepartmentDetail,
   createDepartment,
   updateDepartment,
   deactivateDepartment,
+  assignDepartmentOfficer,
 };
+
+export default departmentApi;

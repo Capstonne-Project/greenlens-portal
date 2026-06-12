@@ -88,9 +88,9 @@ export default function OfficerDashboardPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold text-gray-800">Cảnh báo vận hành</h2>
           <div className="space-y-2.5">
-            <AlertItem label="Report sắp quá SLA xác minh" badge="4" badgeColor="bg-red-500" />
+            <AlertItem label="Báo cáo sắp quá SLA xác minh" badge="4" badgeColor="bg-red-500" />
             <AlertItem
-              label="Report Verified chưa assign quá 24h"
+              label="Đã xác minh, chưa phân công quá 24h"
               badge="6"
               badgeColor="bg-orange-500"
             />
@@ -165,8 +165,8 @@ export default function OfficerDashboardPage() {
           <h2 className="mb-4 text-sm font-semibold text-gray-800">Hiệu suất cá nhân</h2>
           <div className="grid grid-cols-2 gap-3">
             <PerfCard label="Tỷ lệ resolved/closed" value="76%" />
-            <PerfCard label="Report reject" value="18" />
-            <PerfCard label="Duplicate đã merge" value="23" />
+            <PerfCard label="Báo cáo từ chối" value="18" />
+            <PerfCard label="Trùng lặp đã gộp" value="23" />
             <PerfCard label="Override AI severity" value="12" />
           </div>
         </div>

@@ -45,10 +45,21 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = getAccessToken(request);
 
+  if (pathname === '/') {
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    const mapped = await getMappedRole(token);
+    if (mapped && mapped !== 'citizen') {
+      return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
   if (AUTH_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`))) {
     if (token) {
       const mapped = await getMappedRole(token);
-      if (mapped) {
+      if (mapped && mapped !== 'citizen') {
         return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
       }
     }

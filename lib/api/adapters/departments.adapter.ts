@@ -1,4 +1,5 @@
 import type {
+  AssignDepartmentOfficerBodyDto,
   CreateDepartmentBodyDto,
   DepartmentDetailDto,
   DepartmentDto,
@@ -11,6 +12,7 @@ import {
   mapDepartmentsListDataDto,
 } from '@/lib/api/mappers/department.mapper';
 import type {
+  AssignDepartmentOfficerInput,
   CreateDepartmentInput,
   Department,
   DepartmentDetail,
@@ -67,4 +69,12 @@ export async function adaptUpdateDepartment(
 
 export async function adaptDeactivateDepartment(id: string): Promise<void> {
   await apiService.delete(`/v1/departments/${id}`);
+}
+
+export async function adaptAssignDepartmentOfficer(
+  id: string,
+  body: AssignDepartmentOfficerInput
+): Promise<void> {
+  const payload: AssignDepartmentOfficerBodyDto = { userId: body.userId };
+  await apiService.put(`/v1/departments/${id}/officer`, payload);
 }

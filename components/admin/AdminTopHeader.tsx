@@ -56,7 +56,7 @@ export function AdminTopHeader() {
 
 function HeaderBrand({ title }: { title: string }) {
   return (
-    <h1 className="min-w-0 truncate text-sm font-bold uppercase tracking-tight text-black md:text-base">
+    <h1 className="min-w-0 truncate text-sm font-semibold tracking-tight text-foreground md:text-base">
       {title}
     </h1>
   );
