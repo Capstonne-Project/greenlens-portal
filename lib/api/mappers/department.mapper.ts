@@ -1,4 +1,5 @@
 import type {
+  DepartmentDeoDto,
   DepartmentDetailDto,
   DepartmentDto,
   DepartmentListItemDto,
@@ -7,11 +8,22 @@ import type {
 } from '@/lib/api/dto/department.dto';
 import type {
   Department,
+  DepartmentDeo,
   DepartmentDetail,
   DepartmentListItem,
   DepartmentOfficeSummary,
   DepartmentsList,
 } from '@/lib/api/models/department';
+
+function mapDepartmentDeoDto(dto: DepartmentDeoDto): DepartmentDeo {
+  return {
+    id: dto.id,
+    fullName: dto.fullName.trim(),
+    email: dto.email.trim(),
+    phoneNumber: dto.phoneNumber?.trim() ? dto.phoneNumber.trim() : null,
+    avatarUrl: dto.avatarUrl?.trim() ? dto.avatarUrl.trim() : null,
+  };
+}
 
 export function mapDepartmentDto(dto: DepartmentDto): Department {
   return {
@@ -29,6 +41,8 @@ export function mapDepartmentListItemDto(dto: DepartmentListItemDto): Department
     provinceName: dto.provinceName,
     isActive: dto.isActive,
     officeCount: dto.officeCount,
+    officerId: dto.officerId ?? null,
+    officerName: dto.officerName?.trim() ? dto.officerName.trim() : null,
     createdAt: dto.createdAt,
   };
 }
@@ -47,12 +61,19 @@ function mapDepartmentOfficeSummaryDto(dto: DepartmentOfficeSummaryDto): Departm
 }
 
 export function mapDepartmentDetailDto(dto: DepartmentDetailDto): DepartmentDetail {
+  const deo = dto.deo ? mapDepartmentDeoDto(dto.deo) : null;
+  const officerId = deo?.id ?? dto.officerId ?? null;
+  const officerName = deo?.fullName ?? (dto.officerName?.trim() ? dto.officerName.trim() : null);
+
   return {
     id: dto.id,
     name: dto.name,
     provinceCode: dto.provinceCode.trim(),
     provinceName: dto.provinceName,
     isActive: dto.isActive,
+    deo,
+    officerId,
+    officerName,
     offices: (dto.offices ?? []).map(mapDepartmentOfficeSummaryDto),
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt ?? null,

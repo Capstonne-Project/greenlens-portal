@@ -2,6 +2,7 @@
 
 import { useReportQueue } from '@/hooks/useOfficer';
 import type { ReportQueueItem, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,18 +68,6 @@ const SEVERITY_CLASS: Record<ReportSeverity, string> = {
   Low: 'bg-gray-100 text-gray-500',
 };
 
-const STATUS_CLASS: Record<ReportStatus, string> = {
-  Submitted: 'bg-blue-50 text-blue-600',
-  Verified: 'bg-emerald-50 text-emerald-600',
-  InProgress: 'bg-purple-50 text-purple-600',
-  Resolved: 'bg-green-50 text-green-600',
-  Rejected: 'bg-red-50 text-red-600',
-  Duplicate: 'bg-gray-100 text-gray-500',
-  Closed: 'bg-gray-100 text-gray-500',
-  PenaltyIssued: 'bg-orange-50 text-orange-600',
-  ClosedNoViolation: 'bg-slate-100 text-slate-500',
-};
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatSla(isoString: string): { text: string; overdue: boolean } {
@@ -113,9 +102,9 @@ function StatusPill({ status }: { status: ReportStatus }) {
   return (
     <Badge
       variant="secondary"
-      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${STATUS_CLASS[status]}`}
+      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${REPORT_STATUS_BADGE_CLASSES[status]}`}
     >
-      {status}
+      {reportStatusLabelVi(status)}
     </Badge>
   );
 }

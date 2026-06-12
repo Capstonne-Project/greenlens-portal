@@ -1,29 +1,10 @@
 import type { ReportSeverity, ReportStatus } from '@/lib/api/models/adminReport';
-import { REPORT_STATUS_LABEL_VI } from '@/utils/adminOverview';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 
-export function reportStatusLabelVi(status: ReportStatus): string {
-  return REPORT_STATUS_LABEL_VI[status] ?? status;
-}
+export { reportStatusLabelVi };
 
 export function reportStatusBadgeClasses(status: ReportStatus): string {
-  switch (status) {
-    case 'Submitted':
-      return 'bg-slate-100 text-slate-800';
-    case 'Verified':
-      return 'bg-emerald-100 text-emerald-900';
-    case 'In Progress':
-      return 'bg-sky-100 text-sky-900';
-    case 'Resolved':
-      return 'bg-emerald-600/15 text-emerald-900';
-    case 'Closed':
-      return 'bg-zinc-100 text-zinc-700';
-    case 'Rejected':
-      return 'bg-red-100 text-red-900';
-    case 'Duplicate':
-      return 'bg-amber-100 text-amber-900';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
+  return REPORT_STATUS_BADGE_CLASSES[status] ?? 'bg-muted text-muted-foreground';
 }
 
 const SEVERITY_LEVEL: Record<ReportSeverity, number> = {

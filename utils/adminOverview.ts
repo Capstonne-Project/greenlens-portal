@@ -1,28 +1,15 @@
 import type { AdminUser } from '@/lib/api/models/adminUser';
 import type { MapReportDetailItem, MapReportStatus } from '@/lib/api/services/fetchMap';
+import {
+  MODERATION_REPORT_STATUSES,
+  normalizeReportStatus,
+  OPEN_REPORT_STATUSES,
+  REPORT_STATUS_CHART_COLORS,
+  REPORT_STATUS_LABEL_VI,
+} from '@/lib/constants/reportStatus';
 
-export const OPEN_REPORT_STATUSES: MapReportStatus[] = ['Submitted', 'Verified', 'In Progress'];
-export const MODERATION_REPORT_STATUSES: MapReportStatus[] = ['Submitted'];
-
-export const REPORT_STATUS_LABEL_VI: Record<MapReportStatus, string> = {
-  Submitted: 'Đã gửi',
-  Verified: 'Đã xác minh',
-  'In Progress': 'Đang xử lý',
-  Resolved: 'Đã giải quyết',
-  Closed: 'Đã đóng',
-  Rejected: 'Từ chối',
-  Duplicate: 'Trùng lặp',
-};
-
-export const REPORT_STATUS_COLORS: Record<MapReportStatus, string> = {
-  Submitted: '#2e7d32',
-  Verified: '#43a047',
-  'In Progress': '#66bb6a',
-  Resolved: '#1b5e20',
-  Closed: '#9e9e9e',
-  Rejected: '#c62828',
-  Duplicate: '#ef6c00',
-};
+export { MODERATION_REPORT_STATUSES, OPEN_REPORT_STATUSES, REPORT_STATUS_LABEL_VI };
+export const REPORT_STATUS_COLORS: Record<MapReportStatus, string> = REPORT_STATUS_CHART_COLORS;
 
 export type OverviewGrowthRange = 'day' | 'week' | 'month';
 
@@ -214,7 +201,11 @@ export function buildAdminOverviewSnapshot(input: {
     usersMs: number | null;
   };
 }): AdminOverviewSnapshot {
-  const { users, reports, categoryCount, growthRange, integrationLatencies } = input;
+  const { users, categoryCount, growthRange, integrationLatencies } = input;
+  const reports = input.reports.map(r => ({
+    ...r,
+    status: normalizeReportStatus(String(r.status)),
+  }));
   const totalUsers = users.length;
   const verifiedUsers = users.filter(u => u.isEmailVerified).length;
   const openReports = reports.filter(r => OPEN_REPORT_STATUSES.includes(r.status)).length;

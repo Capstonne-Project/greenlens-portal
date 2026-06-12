@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import { useAssignReport, useReportQueue } from '@/hooks/useOfficer';
 import type { ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { MoreHorizontal, UserPlus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
@@ -27,7 +28,13 @@ import { TabToolbar } from './TabToolbar';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ALLOWED_STATUSES = new Set<ReportStatus>(['Verified', 'InProgress', 'PenaltyIssued']);
+const ALLOWED_STATUSES = new Set<ReportStatus>([
+  'Verified',
+  'Dispatched',
+  'Assigned',
+  'InProgress',
+  'PenaltyIssued',
+]);
 
 const SEVERITY_CLASS: Record<ReportSeverity, string> = {
   Critical: 'bg-red-50 text-red-600 ring-1 ring-red-200',
@@ -41,18 +48,6 @@ const SEVERITY_LABEL: Record<ReportSeverity, string> = {
   High: 'Cao',
   Medium: 'Trung bình',
   Low: 'Thấp',
-};
-
-const STATUS_CLASS: Partial<Record<ReportStatus, string>> = {
-  Verified: 'bg-teal-50 text-teal-600',
-  InProgress: 'bg-purple-50 text-purple-600',
-  PenaltyIssued: 'bg-orange-50 text-orange-600',
-};
-
-const STATUS_LABEL: Partial<Record<ReportStatus, string>> = {
-  Verified: 'Đã xác minh',
-  InProgress: 'Đang xử lý',
-  PenaltyIssued: 'Đã phạt',
 };
 
 function formatDate(iso: string) {
@@ -285,9 +280,9 @@ export function ReportTab() {
                   <TableCell className="px-5">
                     <Badge
                       variant="secondary"
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${STATUS_CLASS[report.status] ?? 'bg-gray-100 text-gray-500'}`}
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${REPORT_STATUS_BADGE_CLASSES[report.status] ?? 'bg-gray-100 text-gray-500'}`}
                     >
-                      {STATUS_LABEL[report.status] ?? report.status}
+                      {reportStatusLabelVi(report.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-5 text-muted-foreground">

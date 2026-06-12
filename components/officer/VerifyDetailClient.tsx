@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useRejectReport, useReportDetail, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import {
   Select,
   SelectContent,
@@ -35,18 +36,6 @@ const SEVERITY_LABEL: Record<ReportSeverity, string> = {
   High: 'Cao',
   Medium: 'Trung bình',
   Low: 'Thấp',
-};
-
-const STATUS_CLASS: Record<ReportStatus, string> = {
-  Submitted: 'bg-blue-50 text-blue-600',
-  Verified: 'bg-emerald-50 text-emerald-600',
-  InProgress: 'bg-purple-50 text-purple-600',
-  Resolved: 'bg-green-50 text-green-600',
-  Rejected: 'bg-red-50 text-red-600',
-  Duplicate: 'bg-gray-100 text-gray-500',
-  Closed: 'bg-gray-100 text-gray-500',
-  PenaltyIssued: 'bg-orange-50 text-orange-600',
-  ClosedNoViolation: 'bg-slate-100 text-slate-500',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -96,9 +85,9 @@ function HeaderStrip({
 
         <Badge
           variant="secondary"
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[detail.status]}`}
+          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${REPORT_STATUS_BADGE_CLASSES[detail.status]}`}
         >
-          {detail.status}
+          {reportStatusLabelVi(detail.status)}
         </Badge>
 
         {detail.isAnonymous && (
@@ -708,9 +697,13 @@ function ActionCard({
           <div className="flex size-11 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-emerald-50">
             <CheckCircle2 className="size-6 text-emerald-600" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-emerald-700">Đã xác minh</p>
+          <p className="mt-3 text-sm font-semibold text-emerald-700">
+            {reportStatusLabelVi(status)}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Báo cáo đã được xác nhận hợp lệ và sẵn sàng phân công.
+            {status === 'Verified'
+              ? 'Báo cáo đã được xác nhận hợp lệ và sẵn sàng phân công.'
+              : 'Báo cáo đã qua bước xác minh và đang trong quy trình xử lý.'}
           </p>
         </div>
 

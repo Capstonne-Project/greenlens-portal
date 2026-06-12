@@ -112,13 +112,13 @@ export function AdminReportsView() {
           {
             label: 'Đang mở (trang)',
             value: String(openOnPage),
-            hint: 'Submitted / Verified / In Progress',
+            hint: 'Đã gửi → đang xử lý (chưa đóng)',
             ring: items.length ? Math.round((openOnPage / items.length) * 100) : 0,
           },
           {
             label: 'Chờ xác minh (trang)',
             value: String(submittedOnPage),
-            hint: 'Trạng thái Submitted',
+            hint: 'Trạng thái đã gửi',
             ring: items.length ? Math.round((submittedOnPage / items.length) * 100) : 0,
           },
           {

@@ -1,16 +1,10 @@
 import type { ApiEnvelope } from '@/lib/api/types/auth';
+import type { ReportStatus } from '@/lib/constants/reportStatus';
 import apiService from '../core';
 
 export type MapReportsMode = 'detail' | 'aggregate';
 
-export type MapReportStatus =
-  | 'Submitted'
-  | 'Verified'
-  | 'In Progress'
-  | 'Resolved'
-  | 'Closed'
-  | 'Rejected'
-  | 'Duplicate';
+export type MapReportStatus = ReportStatus;
 
 export interface MapReportDetailItem {
   id: string;
@@ -79,6 +73,8 @@ export async function fetchMapReports(
   return res.data;
 }
 
-export default {
+const mapApi = {
   fetchMapReports,
 };
+
+export default mapApi;
