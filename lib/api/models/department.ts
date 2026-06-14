@@ -13,6 +13,8 @@ export interface DepartmentListItem {
   provinceName: string;
   isActive: boolean;
   officeCount: number;
+  officerId: string | null;
+  officerName: string | null;
   createdAt: string;
 }
 
@@ -27,12 +29,23 @@ export interface DepartmentOfficeSummary {
   teamCount: number;
 }
 
+export interface DepartmentDeo {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+}
+
 export interface DepartmentDetail {
   id: string;
   name: string;
   provinceCode: string;
   provinceName: string;
   isActive: boolean;
+  deo: DepartmentDeo | null;
+  officerId: string | null;
+  officerName: string | null;
   offices: DepartmentOfficeSummary[];
   createdAt: string;
   updatedAt: string | null;
@@ -65,4 +78,8 @@ export interface CreateDepartmentInput {
 
 export interface UpdateDepartmentInput {
   name: string;
+}
+
+export interface AssignDepartmentOfficerInput {
+  userId: string;
 }

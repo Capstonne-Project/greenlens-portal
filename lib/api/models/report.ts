@@ -1,19 +1,8 @@
 import type { ReportSeverity } from '@/lib/api/models/adminReport';
+import type { ReportStatus } from '@/lib/constants/reportStatus';
 
 export type { ReportSeverity } from '@/lib/api/models/adminReport';
-
-export type ReportStatus =
-  | 'Submitted'
-  | 'Verified'
-  | 'Dispatched'
-  | 'Assigned'
-  | 'InProgress'
-  | 'Resolved'
-  | 'Closed'
-  | 'Rejected'
-  | 'Duplicate'
-  | 'PenaltyIssued'
-  | 'ClosedNoViolation';
+export type { ReportStatus } from '@/lib/constants/reportStatus';
 
 export type SeveritySetBy = 'User' | 'AI' | 'Officer';
 export type MediaType = 'Image' | 'Video';

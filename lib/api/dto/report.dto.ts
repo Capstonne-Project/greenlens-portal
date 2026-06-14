@@ -1,13 +1,6 @@
-export type ReportStatusDto =
-  | 'Submitted'
-  | 'Verified'
-  | 'InProgress'
-  | 'Resolved'
-  | 'Closed'
-  | 'Rejected'
-  | 'Duplicate'
-  | 'PenaltyIssued'
-  | 'ClosedNoViolation';
+import type { ReportStatus } from '@/lib/constants/reportStatus';
+
+export type ReportStatusDto = ReportStatus;
 
 export type ReportSeverityDto = 'Low' | 'Medium' | 'High' | 'Critical';
 export type SeveritySetByDto = 'User' | 'AI' | 'Officer';
