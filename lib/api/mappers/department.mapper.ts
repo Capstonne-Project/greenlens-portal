@@ -43,6 +43,7 @@ function mapDepartmentOfficeSummaryDto(dto: DepartmentOfficeSummaryDto): Departm
     officerName: dto.officerName,
     isOnboarded: dto.isOnboarded,
     teamCount: dto.teamCount,
+    // ...(dto.createdAt ? { createdAt: dto.createdAt } : {}),
   };
 }
 

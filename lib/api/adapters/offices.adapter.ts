@@ -1,6 +1,7 @@
 import type {
   AssignOfficeOfficerBodyDto,
   CreateOfficeBodyDto,
+  LeoMyReportsDataDto,
   OfficeDetailDto,
   OfficeDto,
   OfficesListDataDto,
@@ -8,6 +9,7 @@ import type {
   UpdateOfficeBodyDto,
 } from '@/lib/api/dto/office.dto';
 import {
+  mapLeoMyReportsDataDto,
   mapOfficeDetailDto,
   mapOfficeDto,
   mapOfficesListDataDto,
@@ -15,6 +17,8 @@ import {
 import type {
   AssignOfficeOfficerInput,
   CreateOfficeInput,
+  LeoMyReportsData,
+  LeoMyReportsParams,
   Office,
   OfficeDetail,
   OfficesList,
@@ -72,4 +76,32 @@ export async function adaptAssignOfficeOfficer(
 ): Promise<void> {
   const payload: AssignOfficeOfficerBodyDto = { userId: body.userId };
   await apiService.put(`/v1/offices/${officeId}/officer`, payload);
+}
+
+function buildLeoMyReportsQuery(
+  params?: LeoMyReportsParams
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
+  if (params?.page != null) query.page = params.page;
+  if (params?.pageSize != null) query.pageSize = params.pageSize;
+  const search = params?.search?.trim();
+  if (search) query.search = search;
+  if (params?.status) query.status = params.status;
+  if (params?.categoryId?.trim()) query.categoryId = params.categoryId.trim();
+  if (params?.severity) query.severity = params.severity;
+  if (params?.assignmentStatus) query.assignmentStatus = params.assignmentStatus;
+  if (params?.sortBy) query.sortBy = params.sortBy;
+  if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
+  return query;
+}
+
+/** GET /v1/offices/my/reports — LEO: báo cáo thuộc LocalOffice đang quản lý. */
+export async function adaptFetchLeoMyReports(
+  params?: LeoMyReportsParams
+): Promise<ApiEnvelope<LeoMyReportsData>> {
+  const res = await apiService.get<ApiEnvelope<LeoMyReportsDataDto>>(
+    '/v1/offices/my/reports',
+    buildLeoMyReportsQuery(params)
+  );
+  return mapApiEnvelope(res.data, mapLeoMyReportsDataDto);
 }

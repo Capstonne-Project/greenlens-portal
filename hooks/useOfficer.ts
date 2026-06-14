@@ -2,16 +2,21 @@
 
 import {
   assignReport,
+  dispatchReport,
   fetchReportDetail,
   fetchReportQueue,
+  reassignReport,
   rejectReport,
   verifyReport,
 } from '@/lib/api/services/fetchReport';
 import type {
   AssignReportInput,
+  DispatchReportInput,
+  ReassignReportInput,
   RejectReportInput,
   VerifyReportInput,
 } from '@/lib/api/services/fetchReport';
+import type { ReportQueueParams } from '@/lib/api/models/report';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // ── Query key factory ─────────────────────────────────────────────────────────
@@ -19,24 +24,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 export const officerKeys = {
   all: ['officer'] as const,
   queues: () => [...officerKeys.all, 'queue'] as const,
-  queue: (page: number, pageSize: number) => [...officerKeys.queues(), { page, pageSize }] as const,
+  queue: (params: ReportQueueParams) => [...officerKeys.queues(), params] as const,
   details: () => [...officerKeys.all, 'detail'] as const,
   detail: (id: string) => [...officerKeys.details(), id] as const,
 };
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
-interface UseReportQueueParams {
-  page: number;
-  pageSize: number;
-}
-
-/** Danh sách báo cáo chờ xác minh (Officer queue) — phân trang. */
-export function useReportQueue({ page, pageSize }: UseReportQueueParams) {
+/** Officer queue — phân trang; truyền `status` / `excludeStatuses` theo từng màn. */
+export function useReportQueue(params: ReportQueueParams, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: officerKeys.queue(page, pageSize),
-    queryFn: () => fetchReportQueue({ page, pageSize }),
+    queryKey: officerKeys.queue(params),
+    queryFn: () => fetchReportQueue(params),
     staleTime: 3 * 60 * 1000,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -76,12 +77,38 @@ export function useRejectReport() {
   });
 }
 
-/** Phân công đội xử lý — Verified → InProgress (BR-OFF). */
+/** DEO phân công xuống VP — Verified → Dispatched. */
+export function useDispatchReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: DispatchReportInput }) =>
+      dispatchReport(reportId, body),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queues() });
+    },
+  });
+}
+
+/** Phân công đội xử lý — Dispatched → Assigned / InProgress (BR-OFF). */
 export function useAssignReport() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ reportId, body }: { reportId: string; body: AssignReportInput }) =>
       assignReport(reportId, body),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queues() });
+    },
+  });
+}
+
+/** Chuyển giao đội — PUT /reassign (Assigned hoặc thay slot Declined). */
+export function useReassignReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: ReassignReportInput }) =>
+      reassignReport(reportId, body),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: officerKeys.queues() });

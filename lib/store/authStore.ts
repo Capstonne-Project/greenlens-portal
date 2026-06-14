@@ -1,5 +1,6 @@
 'use client';
 
+import type { UserRole } from '@/lib/constants/systemRoles';
 import { clearAuthCookies } from '@/lib/storage/authCookies';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -8,7 +9,10 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  /** Bucket route: admin | officer | cleanup | citizen */
   role: 'citizen' | 'officer' | 'cleanup' | 'admin';
+  /** Role BE (`UserRole`) — DEO, LEO, Inspector, … */
+  systemRole?: UserRole;
   avatarUrl?: string;
 }
 

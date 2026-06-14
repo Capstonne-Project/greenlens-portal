@@ -5,6 +5,8 @@ export type { ReportSeverity } from '@/lib/api/models/adminReport';
 export type ReportStatus =
   | 'Submitted'
   | 'Verified'
+  | 'Dispatched'
+  | 'Assigned'
   | 'InProgress'
   | 'Resolved'
   | 'Closed'
@@ -67,9 +69,19 @@ export interface ReportQueueData {
 export interface ReportDetail {
   id: string;
   code: string;
+  verifiedAt: string;
+  dispatchedAt: string;
+  resolvedAt: string;
+  closedAt: string;
+  slaResolveDueAt: string;
+  slaVerifyDueAt: string;
+  createdAt: string;
+  media: ReportMedia[];
+  assignments: ReportAssignment[];
   isAnonymous: boolean;
   categoryId: string;
   categoryCode: string;
+  reporterId: string;
   categoryName: string;
   severity: ReportSeverity;
   severitySetBy: SeveritySetBy;
@@ -84,8 +96,5 @@ export interface ReportDetail {
   reporterCount: number;
   reopenedCount: number;
   assignedOfficeId: string | null;
-  media: ReportMedia[];
-  assignments: ReportAssignment[];
-  createdAt: string;
-  slaVerifyDueAt: string;
+  updatedAt: string;
 }

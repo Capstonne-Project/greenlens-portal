@@ -1,4 +1,4 @@
-import { mapApiRoleToAuth } from '@/lib/auth/mapUser';
+import { buildAuthUserFromTokenClaims } from '@/lib/auth/buildAuthUser';
 import type { AuthUser } from '@/lib/store/authStore';
 import { decodeJwt } from 'jose';
 
@@ -12,21 +12,19 @@ export function getUserFromAccessToken(token: string): AuthUser | null {
     const roleRaw =
       typeof p[ROLE_CLAIM] === 'string' ? p[ROLE_CLAIM] : typeof p.role === 'string' ? p.role : '';
     const sub = typeof p.sub === 'string' ? p.sub : '';
-    if (!email && !sub) return null;
     const displayName =
       typeof p.unique_name === 'string'
         ? p.unique_name
         : typeof p.name === 'string'
           ? p.name
-          : email
-            ? email.split('@')[0]
-            : 'Người dùng';
-    return {
-      id: sub || email,
-      email: email || sub,
+          : undefined;
+
+    return buildAuthUserFromTokenClaims({
+      sub,
+      email,
       name: displayName,
-      role: mapApiRoleToAuth(roleRaw || 'citizen'),
-    };
+      roleRaw: roleRaw || 'Citizen',
+    });
   } catch {
     return null;
   }

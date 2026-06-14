@@ -1,7 +1,7 @@
 'use client';
 
 import type { LoginSuccessData } from '@/lib/api/types/auth';
-import { mapApiRoleToAuth } from '@/lib/auth/mapUser';
+import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getUserFromAccessToken } from '@/lib/auth/userFromAccessToken';
 import { getAccessTokenFromCookie } from '@/lib/storage/authCookies';
 import type { AuthUser } from '@/lib/store/authStore';
@@ -9,13 +9,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { useEffect } from 'react';
 
 function sessionToAuthUser(data: LoginSuccessData): AuthUser {
-  const u = data.user;
-  return {
-    id: u.id,
-    email: u.email,
-    name: u.fullName,
-    role: mapApiRoleToAuth(u.role),
-  };
+  return buildAuthUserFromApi(data.user);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,7 @@
 import {
   adaptAssignOfficeOfficer,
   adaptCreateOffice,
+  adaptFetchLeoMyReports,
   adaptOfficeDetail,
   adaptOfficesList,
   adaptUpdateOffice,
@@ -8,6 +9,8 @@ import {
 import type {
   AssignOfficeOfficerInput,
   CreateOfficeInput,
+  LeoMyReportsData,
+  LeoMyReportsParams,
   Office,
   OfficeDetail,
   OfficesList,
@@ -19,6 +22,11 @@ import type { ApiEnvelope } from '@/lib/api/types/envelope';
 export type {
   AssignOfficeOfficerInput,
   CreateOfficeInput,
+  LeoMyReportAssignment,
+  LeoMyReportItem,
+  LeoMyReportsData,
+  LeoMyReportsParams,
+  LeoMyReportsSortBy,
   Office,
   OfficeDetail,
   OfficeListItem,
@@ -50,10 +58,18 @@ export async function assignOfficeOfficer(
   return adaptAssignOfficeOfficer(officeId, body);
 }
 
+/** GET /v1/offices/my/reports — LEO theo dõi báo cáo trong LocalOffice. */
+export async function fetchLeoMyReports(
+  params?: LeoMyReportsParams
+): Promise<ApiEnvelope<LeoMyReportsData>> {
+  return adaptFetchLeoMyReports(params);
+}
+
 export default {
   fetchOffices,
   fetchOfficeDetail,
   createOffice,
   updateOffice,
   assignOfficeOfficer,
+  fetchLeoMyReports,
 };

@@ -3,10 +3,10 @@ import { NavigationProgressProvider } from '@/lib/providers/navigationProgressPr
 
 export default function OfficerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-dvh flex-col bg-gray-50">
       <NavigationProgressProvider>
         <OfficerNavbar />
-        <main className="mx-auto max-w-screen-2xl px-6 py-5">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col p-4 sm:p-6">{children}</main>
       </NavigationProgressProvider>
     </div>
   );

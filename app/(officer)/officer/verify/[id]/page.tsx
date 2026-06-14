@@ -1,3 +1,4 @@
+import { VerifyDeoOnly } from '@/components/officer/VerifyDeoOnly';
 import { VerifyDetailClient } from '@/components/officer/VerifyDetailClient';
 
 interface PageProps {
@@ -6,5 +7,9 @@ interface PageProps {
 
 export default async function OfficerVerifyDetailPage({ params }: PageProps) {
   const { id } = await params;
-  return <VerifyDetailClient id={id} />;
+  return (
+    <VerifyDeoOnly>
+      <VerifyDetailClient id={id} />
+    </VerifyDeoOnly>
+  );
 }

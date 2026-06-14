@@ -65,10 +65,17 @@ export interface ReportQueueResponseDto {
 
 export interface ReportDetailDto {
   id: string;
+  updatedAt: string;
   code: string;
   isAnonymous: boolean;
+  verifiedAt: string;
+  dispatchedAt: string;
+  resolvedAt: string;
+  closedAt: string;
+  slaResolveDueAt: string;
   categoryId: string;
   categoryCode: string;
+  reporterId: string;
   categoryName: string;
   severity: ReportSeverityDto;
   severitySetBy: SeveritySetByDto;

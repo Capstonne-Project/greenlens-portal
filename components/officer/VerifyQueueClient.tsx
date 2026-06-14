@@ -70,6 +70,8 @@ const SEVERITY_CLASS: Record<ReportSeverity, string> = {
 const STATUS_CLASS: Record<ReportStatus, string> = {
   Submitted: 'bg-blue-50 text-blue-600',
   Verified: 'bg-emerald-50 text-emerald-600',
+  Dispatched: 'bg-teal-50 text-teal-600',
+  Assigned: 'bg-sky-50 text-sky-600',
   InProgress: 'bg-purple-50 text-purple-600',
   Resolved: 'bg-green-50 text-green-600',
   Rejected: 'bg-red-50 text-red-600',

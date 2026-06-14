@@ -1,7 +1,9 @@
+import { TrackingPageClient } from '@/components/officer/tracking/TrackingPageClient';
+
 export default function OfficerTrackingPage() {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <p className="text-slate-400">Trang Theo dõi xử lý - Đang phát triển</p>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <TrackingPageClient />
     </div>
   );
 }

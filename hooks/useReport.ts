@@ -1,32 +1,25 @@
 'use client';
 
-import { rejectReport, verifyReport } from '@/lib/api/services/fetchReport';
-import type { RejectReportInput, VerifyReportInput } from '@/lib/api/models/reportAction';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+// // import { fetchReportProgress } from '@/lib/api/services/fetchReport';
+// import { useQuery } from '@tanstack/react-query';
 
-/** Query keys cho luồng officer (LEO/DEO) — không dùng trong admin. */
+// const REPORT_STALE_MS = 3 * 60 * 1000;
+
+/** Query keys — GET /v1/reports/{id}/progress (LEO tracking detail). */
 export const reportKeys = {
   all: ['reports'] as const,
-  detail: (id: string) => [...reportKeys.all, 'detail', id] as const,
+  progress: (id: string) => [...reportKeys.all, 'progress', id] as const,
 };
 
-export function useVerifyReport() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body?: VerifyReportInput }) =>
-      verifyReport(id, body ?? {}),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: reportKeys.all });
-    },
-  });
-}
-
-export function useRejectReport() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: RejectReportInput }) => rejectReport(id, body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: reportKeys.all });
-    },
-  });
-}
+/**
+ * GET /v1/reports/{id}/progress — [LEO] tiến trình xử lý báo cáo.
+ * Chi tiết / verify / reject dùng `hooks/useOfficer.ts`.
+ */
+// export function useReportProgress(reportId: string, options?: { enabled?: boolean }) {
+//   return useQuery({
+//     queryKey: reportKeys.progress(reportId),
+//     queryFn: () => fetchReportProgress(reportId),
+//     staleTime: REPORT_STALE_MS,
+//     enabled: (options?.enabled ?? true) && Boolean(reportId),
+//   });
+// }

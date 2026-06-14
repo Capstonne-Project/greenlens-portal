@@ -33,7 +33,12 @@ export function AssignTeamDialog({
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
 
-  const { data, isLoading } = useTeamsList({ page: 1, pageSize: 50, isActive: true });
+  const { data, isLoading } = useTeamsList({
+    page: 1,
+    pageSize: 50,
+    isActive: true,
+    isAvailable: true,
+  });
   const teams: TeamListItem[] = data?.items ?? [];
 
   // Reset state khi dialog đóng
@@ -90,7 +95,7 @@ export function AssignTeamDialog({
         </div>
 
         {/* Teams list */}
-        <div className="max-h-[360px] overflow-y-auto px-5 py-3">
+        <div className="max-h-96 min-h-0 overflow-y-auto px-5 py-3">
           {isLoading && (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />

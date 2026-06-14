@@ -7,8 +7,9 @@ export function mapApiRoleToAuth(role: string): AuthUser['role'] {
   const r = canonical.toLowerCase().replace(/\s+/g, '');
 
   if (r === 'admin') return 'admin';
-  if (r === 'cleanup') return 'cleanup';
+  if (r === 'cleaner' || r === 'cleanup') return 'cleanup';
   if (r === 'deo' || r === 'leo' || r === 'inspector') return 'officer';
+  if (r === 'citizen') return 'citizen';
   return 'citizen';
 }
 

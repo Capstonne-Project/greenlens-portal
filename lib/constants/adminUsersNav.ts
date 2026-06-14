@@ -54,7 +54,7 @@ export const ADMIN_USERS_NAV = [
     slug: 'don-dep' as const,
     href: '/admin/users/don-dep',
     label: 'Đội dọn dẹp',
-    apiRole: 'Cleanup' satisfies SystemRole,
+    apiRole: 'Cleaner' satisfies SystemRole,
   },
 ] as const;
 
@@ -74,7 +74,7 @@ export const ADMIN_USER_ASSIGNABLE_ROLES = [
   { value: 'DEO' as const, label: 'DEO (Cán bộ sở)' },
   { value: 'LEO' as const, label: 'LEO (Cán bộ phường)' },
   { value: 'Inspector' as const, label: 'Thanh tra (Inspector)' },
-  { value: 'Cleanup' as const, label: 'Đội dọn dẹp (Cleanup)' },
+  { value: 'Cleaner' as const, label: 'Đội dọn dẹp (Cleaner)' },
 ] as const;
 
 export type AdminUserAssignableRole = (typeof ADMIN_USER_ASSIGNABLE_ROLES)[number]['value'];

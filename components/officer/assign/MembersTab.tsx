@@ -9,21 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { PaginationSimple } from '@/components/ui/pagination';
 import {
   Table,
   TableBody,
@@ -32,10 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useTeamDetail, useTeamsList } from '@/hooks/useTeams';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { useTeamDetails, useTeamsList } from '@/hooks/useTeams';
+import type { TeamMember } from '@/lib/api/models/team';
+import { ChevronDown, MoreHorizontal, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { TabToolbar } from './TabToolbar';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -51,6 +39,18 @@ const AVATAR_COLORS = [
   'bg-indigo-100 text-indigo-700',
   'bg-amber-100 text-amber-700',
 ];
+
+type RoleFilter = 'all' | 'leader' | 'member';
+
+const ROLE_LABEL: Record<RoleFilter, string> = {
+  all: 'Tất cả vai trò',
+  leader: 'Trưởng nhóm',
+  member: 'Thành viên',
+};
+
+type MemberRow = TeamMember & { teamId: string; teamName: string };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getInitials(name: string) {
   return name
@@ -86,6 +86,9 @@ function SkeletonRows() {
             <div className="h-3 w-40 rounded bg-muted" />
           </TableCell>
           <TableCell className="px-5">
+            <div className="h-3 w-24 rounded bg-muted" />
+          </TableCell>
+          <TableCell className="px-5">
             <div className="h-5 w-20 rounded-full bg-muted" />
           </TableCell>
           <TableCell className="px-5">
@@ -101,28 +104,43 @@ function SkeletonRows() {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MembersTab() {
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [memberPage, setMemberPage] = useState(1);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
 
   const { data: teamsData, isLoading: teamsLoading } = useTeamsList({ page: 1, pageSize: 100 });
-  const {
-    data: teamDetail,
-    isLoading: membersLoading,
-    isError: membersError,
-    refetch,
-  } = useTeamDetail(selectedTeamId);
+  const teams = useMemo(() => teamsData?.items ?? [], [teamsData?.items]);
+  const teamIds = useMemo(() => teams.map(team => team.id), [teams]);
+  const detailQueries = useTeamDetails(teamIds);
 
-  const filtered = useMemo(() => {
-    const allMembers = teamDetail?.members ?? [];
-    if (!search) return allMembers;
-    const q = search.toLowerCase();
-    return allMembers.filter(
-      m => m.fullName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
-    );
-  }, [teamDetail?.members, search]);
+  const isLoadingMembers = teamsLoading || detailQueries.some(q => q.isLoading);
+
+  const allMembers: MemberRow[] = useMemo(() => {
+    const result: MemberRow[] = [];
+    teams.forEach((team, i) => {
+      const detail = detailQueries[i]?.data;
+      if (detail) {
+        detail.members.forEach(m => result.push({ ...m, teamId: team.id, teamName: team.name }));
+      }
+    });
+    return result;
+  }, [detailQueries, teams]);
+
+  const filtered: MemberRow[] = useMemo(() => {
+    let result = allMembers;
+    if (selectedTeamId !== 'all') result = result.filter(m => m.teamId === selectedTeamId);
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      result = result.filter(
+        m => m.fullName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+      );
+    }
+    if (roleFilter === 'leader') result = result.filter(m => m.isLeader);
+    if (roleFilter === 'member') result = result.filter(m => !m.isLeader);
+    return result;
+  }, [allMembers, selectedTeamId, debouncedSearch, roleFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / MEMBERS_PER_PAGE));
   const pagedMembers = filtered.slice(
@@ -130,65 +148,91 @@ export function MembersTab() {
     memberPage * MEMBERS_PER_PAGE
   );
 
-  const handleRefresh = () => {
-    if (!selectedTeamId) return;
-    setIsRefreshing(true);
-    refetch().finally(() => setIsRefreshing(false));
+  const handleSearch = (v: string) => {
+    setSearch(v);
+    setMemberPage(1);
   };
 
   const handleTeamChange = (id: string) => {
     setSelectedTeamId(id);
     setMemberPage(1);
-    setSearch('');
   };
 
-  const handleSearchChange = (s: string) => {
-    setSearch(s);
+  const handleRoleChange = (r: RoleFilter) => {
+    setRoleFilter(r);
     setMemberPage(1);
   };
 
-  const footerText = () => {
-    if (!selectedTeamId) return 'Chưa chọn đội';
-    if (membersLoading) return 'Đang tải...';
-    return `${filtered.length} thành viên`;
-  };
+  const selectedTeamLabel =
+    selectedTeamId === 'all'
+      ? 'Tất cả đội'
+      : (teams.find(t => t.id === selectedTeamId)?.name ?? 'Đội');
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
-      <TabToolbar
-        search={search}
-        onSearch={handleSearchChange}
-        searchPlaceholder="Tìm tên, email..."
-        isRefreshing={isRefreshing}
-        onRefresh={handleRefresh}
-        filterOpen={filterOpen}
-        onFilterToggle={() => setFilterOpen(v => !v)}
-        actionSlot={
-          <>
-            <Select
-              value={selectedTeamId ?? ''}
-              onValueChange={handleTeamChange}
-              disabled={teamsLoading}
-            >
-              <SelectTrigger className="h-8 w-52 text-sm">
-                <SelectValue placeholder="Chọn đội..." />
-              </SelectTrigger>
-              <SelectContent>
-                {(teamsData?.items ?? []).map(team => (
-                  <SelectItem key={team.id} value={team.id}>
-                    {team.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm">
-              <Plus className="mr-1.5 size-4" />
-              Thêm thành viên
-            </Button>
-          </>
-        }
-      />
+    <div className="rounded-lg border border-border bg-card shadow-sm">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        {/* Search */}
+        <div className="relative flex w-64 items-center">
+          <Search className="absolute left-3 size-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            placeholder="Tìm tên, email..."
+            className="h-9 rounded-lg pl-9 text-sm"
+          />
+        </div>
 
+        {/* Team filter */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-lg px-3 text-sm">
+              {selectedTeamLabel}
+              <ChevronDown className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-64 w-52 overflow-y-auto">
+            <DropdownMenuItem
+              onClick={() => handleTeamChange('all')}
+              className={selectedTeamId === 'all' ? 'font-medium text-emerald-700' : ''}
+            >
+              Tất cả đội
+            </DropdownMenuItem>
+            {teams.map(team => (
+              <DropdownMenuItem
+                key={team.id}
+                onClick={() => handleTeamChange(team.id)}
+                className={selectedTeamId === team.id ? 'font-medium text-emerald-700' : ''}
+              >
+                {team.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Role filter */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-lg px-3 text-sm">
+              {ROLE_LABEL[roleFilter]}
+              <ChevronDown className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-40">
+            {(Object.keys(ROLE_LABEL) as RoleFilter[]).map(key => (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => handleRoleChange(key)}
+                className={roleFilter === key ? 'font-medium text-emerald-700' : ''}
+              >
+                {ROLE_LABEL[key]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Table */}
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -197,6 +241,9 @@ export function MembersTab() {
             </TableHead>
             <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
               Email
+            </TableHead>
+            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
+              Đội
             </TableHead>
             <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
               Vai trò
@@ -208,33 +255,17 @@ export function MembersTab() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {!selectedTeamId && (
+          {isLoadingMembers && <SkeletonRows />}
+          {!isLoadingMembers && filtered.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
-                Chọn một đội để xem danh sách thành viên.
-              </TableCell>
-            </TableRow>
-          )}
-          {selectedTeamId && membersLoading && <SkeletonRows />}
-          {selectedTeamId && membersError && (
-            <TableRow>
-              <TableCell colSpan={5} className="px-5 py-10 text-center text-destructive">
-                Không thể tải dữ liệu. Vui lòng thử lại.
-              </TableCell>
-            </TableRow>
-          )}
-          {selectedTeamId && !membersLoading && !membersError && pagedMembers.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
+              <TableCell colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
                 Không có thành viên nào phù hợp.
               </TableCell>
             </TableRow>
           )}
-          {selectedTeamId &&
-            !membersLoading &&
-            !membersError &&
+          {!isLoadingMembers &&
             pagedMembers.map((member, idx) => (
-              <TableRow key={member.userId} className="cursor-pointer">
+              <TableRow key={`${member.teamId}-${member.userId}`} className="cursor-pointer">
                 <TableCell className="px-5">
                   <div className="flex items-center gap-3">
                     <div
@@ -246,6 +277,9 @@ export function MembersTab() {
                   </div>
                 </TableCell>
                 <TableCell className="px-5 text-muted-foreground">{member.email}</TableCell>
+                <TableCell className="px-5 text-sm text-muted-foreground">
+                  {member.teamName}
+                </TableCell>
                 <TableCell className="px-5">
                   {member.isLeader ? (
                     <Badge
@@ -288,47 +322,18 @@ export function MembersTab() {
         </TableBody>
       </Table>
 
+      {/* Footer */}
       <div className="flex items-center justify-between border-t border-border px-5 py-3">
-        <span className="text-xs text-muted-foreground">{footerText()}</span>
-        {selectedTeamId && !membersLoading && totalPages > 1 && (
-          <Pagination className="w-auto justify-end">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault();
-                    if (memberPage > 1) setMemberPage(memberPage - 1);
-                  }}
-                  className={memberPage <= 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <PaginationItem key={p}>
-                  <PaginationLink
-                    href="#"
-                    isActive={p === memberPage}
-                    onClick={e => {
-                      e.preventDefault();
-                      setMemberPage(p);
-                    }}
-                  >
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault();
-                    if (memberPage < totalPages) setMemberPage(memberPage + 1);
-                  }}
-                  className={memberPage >= totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+        <span className="text-xs text-muted-foreground">
+          {isLoadingMembers ? 'Đang tải...' : `${filtered.length} thành viên`}
+        </span>
+        {!isLoadingMembers && totalPages > 1 && (
+          <PaginationSimple
+            page={memberPage}
+            totalPages={totalPages}
+            onPageChange={setMemberPage}
+            className="w-auto"
+          />
         )}
       </div>
     </div>
