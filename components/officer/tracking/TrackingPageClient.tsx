@@ -11,7 +11,6 @@ import { useState } from 'react';
  *
  * - Token role nào → chỉ tải bundle của role đó (next/dynamic, ssr:false).
  * - State `detailReportId` ở router: DEO → `VerifyDetailClient`, LEO → `LeoTrackingReportDetail`.
- * - LEO detail: không render tiêu đề trang ở router (breadcrumb/header nằm trong `LeoTrackingReportDetail`).
  */
 
 function TrackingFallback() {
@@ -26,20 +25,10 @@ function TrackingFallback() {
   );
 }
 
-// const DeoTrackingPageClient = dynamic(
-//   () => import('./DeoTrackingPageClient').then(m => m.default as React.ComponentType<any>),
-//   { ssr: false, loading: TrackingFallback }
-// );
-
 const LeoTrackingPageClient = dynamic(
   () => import('./LeoTrackingPageClient').then(m => m.LeoTrackingPageClient),
   { ssr: false, loading: TrackingFallback }
 );
-
-// const LeoTrackingReportDetail = dynamic(
-//   () => import('./LeoTrackingReportDetail').then(m => m.LeoTrackingReportDetail),
-//   { ssr: false, loading: TrackingFallback }
-// );
 
 export function TrackingPageClient() {
   const [detailReportId, setDetailReportId] = useState<string | null>(null);
@@ -67,20 +56,23 @@ export function TrackingPageClient() {
             />
           ) : (
             <h1>HELLO</h1>
-            // <LeoTrackingReportDetail
-            //   // reportId={detailReportId}
-            //   onBack={() => setDetailReportId(null)}
-            // />
           )}
         </div>
       </div>
     );
   }
 
-  return isDeo ? (
-    <h1>HELLO</h1>
-  ) : (
-    // <DeoTrackingPageClient onOpenDetail={setDetailReportId} />
-    <LeoTrackingPageClient onOpenDetail={setDetailReportId} />
-  );
+  if (isDeo) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-center">
+        <h1 className="text-lg font-semibold text-foreground">Theo dõi xử lý</h1>
+        <p className="max-w-md text-sm text-muted-foreground">
+          Giao diện theo dõi DEO đang được chuyển sang bố cục bản đồ. Vui lòng dùng mục Bản đồ hoặc
+          Tổng quan trên sidebar.
+        </p>
+      </div>
+    );
+  }
+
+  return <LeoTrackingPageClient onOpenDetail={setDetailReportId} />;
 }

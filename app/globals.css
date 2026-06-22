@@ -275,3 +275,49 @@
 @utility rounded-card {
   border-radius: 5px;
 }
+
+/* Map shell — third-party overrides (MapLibre, FA pin icon) */
+@layer components {
+  .map-shell-map .maplibregl-ctrl-top-left,
+  .map-shell-map .maplibregl-ctrl-bottom-right {
+    margin: 10px;
+  }
+
+  .map-shell-map .maplibregl-ctrl-group {
+    border-radius: 0;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+    border: 1px solid rgb(0 0 0 / 12%);
+  }
+
+  .map-shell-map .maplibregl-ctrl button {
+    width: 30px;
+    height: 30px;
+  }
+
+  .map-shell-map .maplibregl-ctrl-attrib {
+    font-size: 10px;
+    background: rgb(255 255 255 / 86%);
+  }
+
+  .map-shell-map .maplibregl-popup-content {
+    border-radius: 4px;
+    box-shadow: 0 1px 6px rgb(0 0 0 / 20%);
+    padding: 8px 9px;
+  }
+
+  .map-shell-map .maplibregl-popup-tip {
+    border-top-color: #ffffff;
+  }
+
+  .map-pin-icon--outline svg path {
+    fill: transparent;
+    stroke: currentColor;
+    stroke-width: 32;
+    stroke-linejoin: round;
+  }
+
+  .map-pin-icon--solid svg path {
+    fill: currentColor;
+    stroke: none;
+  }
+}

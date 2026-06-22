@@ -25,6 +25,7 @@ export function getDefaultOfficerHomePath(systemRole: UserRole | undefined): str
   const role = parseOfficerApiRole(systemRole);
   if (role === 'LEO') return '/officer/assign';
   if (role === 'Inspector') return '/officer/tracking';
+  if (role === 'DEO') return '/officer/map';
   return '/officer/dashboard';
 }
 

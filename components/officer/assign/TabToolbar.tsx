@@ -9,6 +9,10 @@ interface TabToolbarProps {
   search: string;
   onSearch: (value: string) => void;
   searchPlaceholder?: string;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+  filterOpen?: boolean;
+  onFilterToggle?: () => void;
 }
 
 export function TabToolbar({

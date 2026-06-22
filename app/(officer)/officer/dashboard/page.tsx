@@ -1,6 +1,15 @@
 import { AlertTriangle, TrendingUp, Clock, MapPin } from 'lucide-react';
+import { mapOverviewPanelClass } from '@/lib/map/mapShellStyles';
 
 export default function OfficerDashboardPage() {
+  return (
+    <div className={mapOverviewPanelClass()}>
+      <OfficerDashboardContent />
+    </div>
+  );
+}
+
+function OfficerDashboardContent() {
   return (
     <div className="space-y-5">
       {/* Dark hero zone */}

@@ -36,6 +36,11 @@ export function canAccessVerifyQueue(systemRole: UserRole | string | undefined):
   return parseOfficerApiRole(systemRole) === 'DEO';
 }
 
+/** Danh sách doanh nghiệp trong map shell — chỉ DEO. */
+export function canAccessCompanies(systemRole: UserRole | string | undefined): boolean {
+  return parseOfficerApiRole(systemRole) === 'DEO';
+}
+
 /** Layout phân công DEO — báo cáo + đơn vị VP (không tab đội/thành viên). */
 export function isDeoOfficer(systemRole: UserRole | string | undefined): boolean {
   return parseOfficerApiRole(systemRole) === 'DEO';
