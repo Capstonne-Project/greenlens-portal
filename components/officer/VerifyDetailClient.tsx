@@ -2,9 +2,8 @@
 
 // import { ReportAssignmentPanel } from '@/components/officer/tracking/ReportAssignmentPanel';
 import { Button } from '@/components/ui/button';
-import { useRejectReport, useReportDetail, useVerifyReport } from '@/hooks/useOfficer';
+import { useReportDetail } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
-import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
 import { cn } from '@/lib/utils';
 import {
@@ -22,7 +21,6 @@ import {
   Camera,
   Check,
   CheckCircle2,
-  Copy,
   Hourglass,
   LayoutGrid,
   Layers,
@@ -38,7 +36,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 // ── Token maps (re-used from queue) ───────────────────────────────────────────
 
@@ -699,286 +697,14 @@ function InsightRow({
   );
 }
 
-function VerifySuccessDialog({
-  open,
-  reportCode,
-  onClose,
-  onAssignNow,
-}: {
-  open: boolean;
-  reportCode: string;
-  onClose: () => void;
-  onAssignNow: () => void;
-}) {
-  if (!open) return null;
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={e => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-emerald-50 ring-4 ring-emerald-100">
-            <CheckCircle2 className="size-7 text-emerald-600" />
-          </div>
-          <h2 className="text-base font-semibold text-foreground">Xác minh thành công</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Báo cáo <span className="font-semibold text-foreground">{reportCode}</span> đã chuyển
-            sang trạng thái <span className="font-semibold text-emerald-700">Đã xác minh</span>. Bạn
-            có muốn phân công đội xử lý ngay để bắt đầu khắc phục không?
-          </p>
-        </div>
-
-        <div className="mt-6 flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
-            Để sau
-          </Button>
-          <Button
-            className="flex-1 bg-emerald-600 text-white hover:bg-emerald-500"
-            onClick={onAssignNow}
-          >
-            Phân công ngay
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RejectReportDialog({
-  open,
-  onClose,
-  onConfirm,
-  submitting,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (reason: string) => void;
-  reportCode: string;
-  submitting: boolean;
-}) {
-  const [reason, setReason] = useState('');
-
-  const QUICK_REASONS = [
-    'Hình ảnh không rõ ràng, không đủ căn cứ xác minh.',
-    'Vị trí GPS không khớp với ảnh báo cáo.',
-    'Nội dung không thuộc phạm vi ô nhiễm môi trường.',
-    'Báo cáo trùng với báo cáo đã xử lý trước đó.',
-  ];
-
-  if (!open) return null;
-
-  const trimmed = reason.trim();
-  const tooShort = trimmed.length < 10;
-  const canSubmit = !tooShort && !submitting;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-      onClick={e => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
-        <div className="mb-5 flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">Từ chối báo cáo</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Vui lòng ghi rõ lý do từ chối báo cáo{' '}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <p className="mb-1.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              Lý do thường gặp
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {QUICK_REASONS.map(r => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setReason(r)}
-                  className="rounded-full border border-border bg-muted/30 px-3 py-1 text-sm text-foreground transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
-                >
-                  {r.slice(0, 50)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="reject-reason"
-              className="text-sm font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              Lý do từ chối <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="reject-reason"
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              rows={4}
-              placeholder="Mô tả lý do cụ thể (tối thiểu 10 ký tự)..."
-              className="mt-1.5 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-md text-foreground outline-none transition focus:border-red-300 focus:ring-2 focus:ring-red-100"
-            />
-            <p className="mt-1 flex items-center justify-between text-sm">
-              <span
-                className={
-                  tooShort && trimmed.length > 0 ? 'text-red-500' : 'text-muted-foreground'
-                }
-              >
-                {tooShort && trimmed.length > 0
-                  ? `Tối thiểu 10 ký tự (hiện tại ${trimmed.length})`
-                  : 'Lý do sẽ gửi tới người báo cáo qua thông báo.'}
-              </span>
-              <span className="text-muted-foreground">{trimmed.length}/500</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
-            Huỷ
-          </Button>
-          <Button
-            className="flex-1 bg-red-600 text-white hover:bg-red-500 disabled:bg-red-300"
-            onClick={() => canSubmit && onConfirm(trimmed)}
-            disabled={!canSubmit}
-          >
-            {submitting ? 'Đang xử lý...' : 'Từ chối'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * HoldToVerifyButton — press-and-hold confirmation pattern.
- * - Pointer down: start 5s timer + CSS-driven progress bar overlay
- * - Pointer up / leave / cancel before 5s: clear timer, snap bar back
- * - Held full 5s: trigger onComplete() once
- *
- * Performance:
- * - Single setTimeout (one-shot) for the trigger — CSS handles the bar animation (GPU)
- * - 200ms interval only for the integer seconds-left text (max 25 ticks total)
- * - All timers cleaned on cancel + unmount → no leaks
- */
-function HoldToVerifyButton({
-  onComplete,
-  pending,
-  className,
-}: {
-  onComplete: () => void;
-  pending: boolean;
-  className?: string;
-}) {
-  const HOLD_MS = 3000;
-  const [holding, setHolding] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(3);
-  const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tickTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startedAtRef = useRef<number>(0);
-
-  const clearTimers = () => {
-    if (completeTimerRef.current) {
-      clearTimeout(completeTimerRef.current);
-      completeTimerRef.current = null;
-    }
-    if (tickTimerRef.current) {
-      clearInterval(tickTimerRef.current);
-      tickTimerRef.current = null;
-    }
-  };
-
-  const handleStart = () => {
-    if (pending || holding) return;
-    setHolding(true);
-    setSecondsLeft(3);
-    startedAtRef.current = Date.now();
-
-    completeTimerRef.current = setTimeout(() => {
-      clearTimers();
-      setHolding(false);
-      setSecondsLeft(3);
-      onComplete();
-    }, HOLD_MS);
-
-    tickTimerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startedAtRef.current;
-      const left = Math.max(0, Math.ceil((HOLD_MS - elapsed) / 1000));
-      setSecondsLeft(left);
-    }, 200);
-  };
-
-  const handleCancel = () => {
-    if (!holding) return;
-    clearTimers();
-    setHolding(false);
-    setSecondsLeft(3);
-  };
-
-  useEffect(() => clearTimers, []);
-
-  return (
-    <Button
-      type="button"
-      disabled={pending}
-      onPointerDown={handleStart}
-      onPointerUp={handleCancel}
-      onPointerLeave={handleCancel}
-      onPointerCancel={handleCancel}
-      className={`relative touch-none select-none overflow-hidden ${className ?? ''}`}
-      aria-label="Giữ 3 giây để xác minh và duyệt báo cáo"
-      aria-pressed={holding}
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 bg-white/30 ease-linear"
-        style={{
-          width: holding ? '100%' : '0%',
-          transitionProperty: 'width',
-          transitionDuration: holding ? `${HOLD_MS}ms` : '150ms',
-        }}
-      />
-      <span className="relative z-10 flex items-center justify-center">
-        {pending
-          ? 'Đang xử lý...'
-          : holding
-            ? `Giữ ${secondsLeft}s để xác minh...`
-            : 'Xác minh & duyệt'}
-      </span>
-    </Button>
-  );
-}
-
 function SlaActionCard({
   detail,
-  onVerify,
-  onReject,
   editingCategory,
   onToggleEditCategory,
-  verifyPending,
-  rejectPending,
 }: {
   detail: ReportDetail;
-  onVerify: () => void;
-  onReject: () => void;
   editingCategory: boolean;
   onToggleEditCategory: () => void;
-  verifyPending: boolean;
-  rejectPending: boolean;
 }) {
   const { isOverdue, remainingMs, percentElapsed, level, totalMs } = useSlaCountdown(
     detail.createdAt,
@@ -1066,21 +792,15 @@ function SlaActionCard({
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Chỉnh loại — xác minh/từ chối qua cổng bản đồ DEO */}
         <div className="grid grid-cols-2 gap-2">
-          <HoldToVerifyButton
-            onComplete={onVerify}
-            pending={verifyPending}
-            className={`col-span-2 rounded-4xl text-base text-white ${tokens.verifyBtn}`}
-          />
-
           <Button
             variant="outline"
             onClick={onToggleEditCategory}
             className={
               editingCategory
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800'
-                : 'text-foreground'
+                ? 'col-span-2 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800'
+                : 'col-span-2 text-foreground'
             }
             aria-pressed={editingCategory}
           >
@@ -1091,21 +811,6 @@ function SlaActionCard({
             )}
             {editingCategory ? 'Hoàn tất chỉnh' : 'Chỉnh loại'}
           </Button>
-
-          <Button variant="outline" className="text-foreground">
-            <Copy className="mr-1.5 size-4" />
-            Đánh dấu trùng
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={onReject}
-            disabled={rejectPending}
-            className="col-span-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <X className="mr-1.5 size-4" />
-            Từ chối
-          </Button>
         </div>
       </div>
     </div>
@@ -1114,21 +819,13 @@ function SlaActionCard({
 
 function ActionCard({
   detail,
-  onVerify,
-  onReject,
   onAssignNow,
-  verifyPending,
-  rejectPending,
   status,
   editingCategory,
   onToggleEditCategory,
 }: {
   detail: ReportDetail;
-  onVerify: () => void;
-  onReject: () => void;
   onAssignNow: () => void;
-  verifyPending: boolean;
-  rejectPending: boolean;
   status: ReportStatus;
   editingCategory: boolean;
   onToggleEditCategory: () => void;
@@ -1192,12 +889,8 @@ function ActionCard({
   return (
     <SlaActionCard
       detail={detail}
-      onVerify={onVerify}
-      onReject={onReject}
       editingCategory={editingCategory}
       onToggleEditCategory={onToggleEditCategory}
-      verifyPending={verifyPending}
-      rejectPending={rejectPending}
     />
   );
 }
@@ -1217,15 +910,11 @@ export function VerifyDetailClient({
 }) {
   const router = useRouter();
   const { data: detail, isLoading, isError } = useReportDetail(id);
-  const verifyMutation = useVerifyReport();
-  const rejectMutation = useRejectReport();
   const { data: categories = [], isLoading: catsLoading } = useCatalogPollutionCategories();
 
   const [pendingCategoryId, setPendingCategoryId] = useState<string>('');
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
   const [editingCategory, setEditingCategory] = useState(false);
-  const [successOpen, setSuccessOpen] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
 
   // Sync pending state once detail loads (runs once)
   const [synced, setSynced] = useState(false);
@@ -1267,47 +956,12 @@ export function VerifyDetailClient({
     );
   }
 
-  const handleVerify = () => {
-    const dto: { overrideSeverity?: ReportSeverity; overrideCategoryId?: string } = {};
-    if (pendingSeverity !== detail.severity) dto.overrideSeverity = pendingSeverity;
-    if (pendingCategoryId !== detail.categoryId) dto.overrideCategoryId = pendingCategoryId;
-    verifyMutation.mutate(
-      { id: detail.id, dto },
-      {
-        onSuccess: () => {
-          setSuccessOpen(true);
-        },
-        onError: err => {
-          toastApiError(err, 'Không thể xác minh báo cáo. Vui lòng thử lại.');
-        },
-      }
-    );
-  };
-
   const handleAssignNow = () => {
-    setSuccessOpen(false);
     if (onBack && detailMode !== 'tracking') {
       onBack();
       return;
     }
     router.push(`/officer/assign?highlightReportId=${detail.id}`);
-  };
-
-  const handleReject = () => setRejectOpen(true);
-
-  const handleConfirmReject = (reason: string) => {
-    rejectMutation.mutate(
-      { id: detail.id, dto: { reason } },
-      {
-        onSuccess: () => {
-          toastApiSuccess(null, `Đã từ chối báo cáo ${detail.code}.`);
-          setRejectOpen(false);
-        },
-        onError: err => {
-          toastApiError(err, 'Không thể từ chối báo cáo. Vui lòng thử lại.');
-        },
-      }
-    );
   };
 
   return (
@@ -1368,11 +1022,7 @@ export function VerifyDetailClient({
             <AiInsightCard detail={detail} />
             <ActionCard
               detail={detail}
-              onVerify={handleVerify}
-              onReject={handleReject}
               onAssignNow={handleAssignNow}
-              verifyPending={verifyMutation.isPending}
-              rejectPending={rejectMutation.isPending}
               status={detail.status}
               editingCategory={editingCategory}
               onToggleEditCategory={() => setEditingCategory(v => !v)}
@@ -1380,21 +1030,6 @@ export function VerifyDetailClient({
           </div>
         </div>
       </div>
-
-      <VerifySuccessDialog
-        open={successOpen}
-        reportCode={detail.code}
-        onClose={() => setSuccessOpen(false)}
-        onAssignNow={handleAssignNow}
-      />
-
-      <RejectReportDialog
-        open={rejectOpen}
-        onClose={() => setRejectOpen(false)}
-        onConfirm={handleConfirmReject}
-        reportCode={detail.code}
-        submitting={rejectMutation.isPending}
-      />
     </div>
   );
 }
@@ -1413,7 +1048,7 @@ function BackLink({ onBack }: { onBack?: () => void }) {
   }
 
   return (
-    <Link href="/officer/verify" className={className}>
+    <Link href="/officer/assign" className={className}>
       <ArrowLeft className="size-3.5" />
       Quay lại danh sách
     </Link>

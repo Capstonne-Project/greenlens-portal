@@ -31,11 +31,6 @@ export function officerPortalSubtitle(systemRole: UserRole | undefined): string 
   return 'Cổng cán bộ';
 }
 
-/** Màn xác minh báo cáo — chỉ DEO (cán bộ sở). */
-export function canAccessVerifyQueue(systemRole: UserRole | string | undefined): boolean {
-  return parseOfficerApiRole(systemRole) === 'DEO';
-}
-
 /** Danh sách doanh nghiệp trong map shell — chỉ DEO. */
 export function canAccessCompanies(systemRole: UserRole | string | undefined): boolean {
   return parseOfficerApiRole(systemRole) === 'DEO';

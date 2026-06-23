@@ -20,6 +20,8 @@ interface SearchableSelectProps {
   disabled?: boolean;
   loading?: boolean;
   emptyMessage?: string;
+  /** Gọi khi panel dropdown mở/đóng — dùng lazy-fetch options. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function SearchableSelect({
@@ -32,6 +34,7 @@ export function SearchableSelect({
   disabled = false,
   loading = false,
   emptyMessage = 'Không có kết quả.',
+  onOpenChange,
 }: SearchableSelectProps) {
   const autoId = useId();
   const listboxId = `${idProp ?? autoId}-listbox`;
@@ -53,7 +56,8 @@ export function SearchableSelect({
   const closeDropdown = useCallback(() => {
     setOpen(false);
     setQuery('');
-  }, []);
+    onOpenChange?.(false);
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -84,8 +88,10 @@ export function SearchableSelect({
         onClick={() => {
           if (disabled || loading) return;
           setOpen(v => {
-            if (v) setQuery('');
-            return !v;
+            const next = !v;
+            if (!next) setQuery('');
+            onOpenChange?.(next);
+            return next;
           });
         }}
         className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60"

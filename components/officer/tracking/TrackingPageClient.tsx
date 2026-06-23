@@ -1,17 +1,9 @@
 'use client';
 
-import { VerifyDetailClient } from '@/components/officer/VerifyDetailClient';
 import { isDeoOfficer } from '@/lib/constants/officerRoles';
 import { useAuthStore } from '@/lib/store/authStore';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-
-/**
- * Router mỏng cho mục Theo dõi xử lý.
- *
- * - Token role nào → chỉ tải bundle của role đó (next/dynamic, ssr:false).
- * - State `detailReportId` ở router: DEO → `VerifyDetailClient`, LEO → `LeoTrackingReportDetail`.
- */
 
 function TrackingFallback() {
   return (
@@ -31,36 +23,9 @@ const LeoTrackingPageClient = dynamic(
 );
 
 export function TrackingPageClient() {
-  const [detailReportId, setDetailReportId] = useState<string | null>(null);
   const systemRole = useAuthStore(s => s.user?.systemRole);
   const isDeo = isDeoOfficer(systemRole);
-
-  if (detailReportId) {
-    return (
-      <div
-        className={
-          isDeo ? 'flex min-h-0 flex-1 flex-col gap-4 sm:gap-6' : 'flex min-h-0 flex-1 flex-col'
-        }
-      >
-        {isDeo ? (
-          <div className="shrink-0">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Theo dõi xử lý</h1>
-          </div>
-        ) : null}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
-          {isDeo ? (
-            <VerifyDetailClient
-              id={detailReportId}
-              onBack={() => setDetailReportId(null)}
-              detailMode="tracking"
-            />
-          ) : (
-            <h1>HELLO</h1>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const [, setDetailReportId] = useState<string | null>(null);
 
   if (isDeo) {
     return (
