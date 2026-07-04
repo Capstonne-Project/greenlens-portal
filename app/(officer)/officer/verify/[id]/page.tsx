@@ -1,10 +1,11 @@
-import { redirect } from 'next/navigation';
+import { VerifyDetailRouteClient } from '@/components/officer/verify/VerifyDetailRouteClient';
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
 export default async function OfficerVerifyDetailPage({ params }: PageProps) {
-  await params;
-  redirect('/officer/map');
+  const { id } = await params;
+
+  return <VerifyDetailRouteClient id={id} />;
 }

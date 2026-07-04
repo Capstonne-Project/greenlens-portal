@@ -1,16 +1,11 @@
 export default function OfficerTrackingLoading() {
   return (
-    <div className="space-y-6 animate-pulse">
-      <div className="space-y-2">
-        <div className="h-8 w-56 rounded-lg bg-muted" />
-        <div className="h-4 w-96 max-w-full rounded bg-muted" />
+    <div className="animate-pulse space-y-3">
+      <div className="border-b border-slate-200 pb-3">
+        <div className="h-7 w-48 rounded bg-slate-200" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        {['a', 'b', 'c', 'd', 'e', 'f'].map(k => (
-          <div key={k} className="h-28 rounded-xl border border-border bg-muted/40" />
-        ))}
-      </div>
-      <div className="h-96 rounded-xl border border-border bg-muted/30" />
+      <div className="h-10 w-full max-w-md rounded bg-slate-200" />
+      <div className="h-96 rounded border border-slate-200 bg-white" />
     </div>
   );
 }

@@ -3,16 +3,20 @@
  */
 import {
   adaptCompaniesList,
+  adaptCompanyDetail,
   adaptCreateCompany,
   adaptFetchCompanyServiceAreas,
+  adaptMyWardCompanies,
   adaptUpdateCompanyServiceAreas,
 } from '@/lib/api/adapters/companies.adapter';
 import type {
   CompaniesList,
   CompaniesListParams,
+  CompanyDetail,
   CompanyServiceAreas,
   CreateCompanyInput,
   CreatedCompany,
+  MyWardCompanies,
   UpdateCompanyServiceAreasInput,
 } from '@/lib/api/models/company';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -22,13 +26,17 @@ export type {
   CompaniesListParams,
   CompanyContractType,
   COMPANY_CONTRACT_TYPES,
+  CompanyDetail,
   CompanyListItem,
   CompanyPagination,
+  CompanyServiceArea,
   CompanyStatus,
   COMPANIES_PAGE_SIZE,
   CompanyServiceAreas,
   CreateCompanyInput,
   CreatedCompany,
+  MyWardCompanies,
+  MyWardCompanyItem,
   UpdateCompanyServiceAreasInput,
 } from '@/lib/api/models/company';
 
@@ -39,11 +47,21 @@ export async function fetchCompanies(
   return adaptCompaniesList(params);
 }
 
+/** GET /v1/companies/my-ward — [LEO] công ty phục vụ phường/xã của LEO. */
+export async function fetchMyWardCompanies(): Promise<ApiEnvelope<MyWardCompanies>> {
+  return adaptMyWardCompanies();
+}
+
 /** POST /v1/companies — tạo công ty DVMT + tài khoản CM. */
 export async function createCompany(
   body: CreateCompanyInput
 ): Promise<ApiEnvelope<CreatedCompany>> {
   return adaptCreateCompany(body);
+}
+
+/** GET /v1/companies/{id} — chi tiết công ty DVMT. */
+export async function fetchCompanyDetail(companyId: string): Promise<ApiEnvelope<CompanyDetail>> {
+  return adaptCompanyDetail(companyId);
 }
 
 /** GET /v1/companies/{id}/service-areas — danh sách phường phụ trách. */
@@ -63,6 +81,8 @@ export async function updateCompanyServiceAreas(
 
 const companyApi = {
   fetchCompanies,
+  fetchMyWardCompanies,
+  fetchCompanyDetail,
   createCompany,
   fetchCompanyServiceAreas,
   updateCompanyServiceAreas,

@@ -46,6 +46,9 @@ export function OfficeWardSelect({
   const [open, setOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedOffice, setSelectedOffice] = useState<{ wardCode: string; name: string } | null>(
+    null
+  );
 
   const fetchEnabled = active && open;
 
@@ -90,7 +93,14 @@ export function OfficeWardSelect({
     return () => observer.disconnect();
   }, [open, hasNextPage, isFetchingNextPage, fetchNextPage, offices.length]);
 
-  const selected = offices.find(office => office.wardCode === value);
+  const matchedInList = offices.find(office => office.wardCode === value);
+  const selected = !value
+    ? null
+    : selectedOffice?.wardCode === value
+      ? selectedOffice
+      : matchedInList
+        ? { wardCode: matchedInList.wardCode, name: matchedInList.name }
+        : null;
   const isInitialLoading = fetchEnabled && isPending;
 
   const closeDropdown = useCallback(() => {
@@ -110,8 +120,9 @@ export function OfficeWardSelect({
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open, closeDropdown]);
 
-  const handleSelect = (wardCode: string) => {
-    onChange(wardCode);
+  const handleSelect = (office: { wardCode: string; name: string }) => {
+    setSelectedOffice({ wardCode: office.wardCode, name: office.name });
+    onChange(office.wardCode);
     closeDropdown();
   };
 
@@ -177,7 +188,7 @@ export function OfficeWardSelect({
               <li key={office.id} role="option" aria-selected={office.wardCode === value}>
                 <button
                   type="button"
-                  onClick={() => handleSelect(office.wardCode)}
+                  onClick={() => handleSelect(office)}
                   className={`flex w-full px-3 py-2 text-left text-sm hover:bg-muted/60 ${
                     office.wardCode === value ? 'bg-emerald-50 font-medium text-emerald-900' : ''
                   }`}

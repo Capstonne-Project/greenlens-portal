@@ -6,13 +6,18 @@ import type {
   OfficeDto,
   OfficesListDataDto,
   OfficesListParamsDto,
+  OfficeStaffListDataDto,
+  RecruitOfficeStaffBodyDto,
+  RecruitOfficeStaffDataDto,
   UpdateOfficeBodyDto,
 } from '@/lib/api/dto/office.dto';
 import {
   mapLeoMyReportsDataDto,
   mapOfficeDetailDto,
   mapOfficeDto,
+  mapOfficeStaffListDataDto,
   mapOfficesListDataDto,
+  mapRecruitOfficeStaffDataDto,
 } from '@/lib/api/mappers/office.mapper';
 import type {
   AssignOfficeOfficerInput,
@@ -23,6 +28,10 @@ import type {
   OfficeDetail,
   OfficesList,
   OfficesListParams,
+  OfficeStaffList,
+  OfficeStaffListParams,
+  RecruitOfficeStaffInput,
+  RecruitOfficeStaffResult,
   UpdateOfficeInput,
 } from '@/lib/api/models/office';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
@@ -104,4 +113,51 @@ export async function adaptFetchLeoMyReports(
     buildLeoMyReportsQuery(params)
   );
   return mapApiEnvelope(res.data, mapLeoMyReportsDataDto);
+}
+
+/** POST /v1/offices/my/staff — tuyển Citizen vào LocalOffice và đội xử lý. */
+function buildRecruitOfficeStaffBody(body: RecruitOfficeStaffInput): RecruitOfficeStaffBodyDto {
+  const teamId = body.teamId?.trim() || null;
+  return {
+    email: body.email.trim(),
+    targetRole: body.targetRole,
+    teamId,
+    // BE: teamId null → isLeader phải false (không gửi null).
+    isLeader: teamId ? Boolean(body.isLeader) : false,
+  };
+}
+
+export async function adaptRecruitOfficeStaff(
+  body: RecruitOfficeStaffInput
+): Promise<ApiEnvelope<RecruitOfficeStaffResult>> {
+  const payload = buildRecruitOfficeStaffBody(body);
+  const res = await apiService.post<ApiEnvelope<RecruitOfficeStaffDataDto>>(
+    '/v1/offices/my/staff',
+    payload
+  );
+  return mapApiEnvelope(res.data, mapRecruitOfficeStaffDataDto);
+}
+
+function buildOfficeStaffQuery(
+  params?: OfficeStaffListParams
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
+  if (params?.page != null) query.page = params.page;
+  if (params?.pageSize != null) query.pageSize = params.pageSize;
+  const search = params?.search?.trim();
+  if (search) query.search = search;
+  if (params?.role) query.role = params.role;
+  if (params?.hasTeam !== undefined) query.hasTeam = params.hasTeam;
+  return query;
+}
+
+/** GET /v1/offices/my/staff — danh sách Cleaner/Inspector trong LocalOffice. */
+export async function adaptFetchOfficeStaff(
+  params?: OfficeStaffListParams
+): Promise<ApiEnvelope<OfficeStaffList>> {
+  const res = await apiService.get<ApiEnvelope<OfficeStaffListDataDto>>(
+    '/v1/offices/my/staff',
+    buildOfficeStaffQuery(params)
+  );
+  return mapApiEnvelope(res.data, mapOfficeStaffListDataDto);
 }

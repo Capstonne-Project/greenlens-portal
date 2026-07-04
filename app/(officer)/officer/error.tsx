@@ -25,9 +25,7 @@ export default function OfficerError({
         Không thể tải nội dung trang. Vui lòng thử lại hoặc quay về trang trước.
       </p>
       {process.env.NODE_ENV === 'development' && error.message ? (
-        <p className="mt-3 max-w-lg break-words font-mono text-xs text-destructive/90">
-          {error.message}
-        </p>
+        <p className="mt-3 max-w-lg break-words text-xs text-destructive/90">{error.message}</p>
       ) : null}
       <Button
         type="button"

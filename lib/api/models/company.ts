@@ -78,6 +78,23 @@ export interface CompaniesListParams {
 
 export const COMPANIES_PAGE_SIZE = 10;
 
+/** GET /v1/companies/my-ward — [LEO] công ty phục vụ phường/xã của LEO. */
+export interface MyWardCompanyItem {
+  id: string;
+  name: string;
+  contractNumber: string;
+  contractType: CompanyContractType;
+  status: CompanyStatus;
+  phone: string;
+  email: string;
+  serviceAreaCount: number;
+  staffCount: number;
+}
+
+export interface MyWardCompanies {
+  companies: MyWardCompanyItem[];
+}
+
 /** GET /v1/companies/{id}/service-areas */
 export interface CompanyServiceAreas {
   wardCodes: string[];
@@ -86,4 +103,33 @@ export interface CompanyServiceAreas {
 /** PUT /v1/companies/{id}/service-areas */
 export interface UpdateCompanyServiceAreasInput {
   wardCodes: string[];
+}
+
+/** GET /v1/companies/{id} — địa bàn phụ trách (phường/xã). */
+export interface CompanyServiceArea {
+  id: string;
+  wardCode: string;
+  wardName: string;
+  provinceCode: string;
+}
+
+/** GET /v1/companies/{id} — chi tiết công ty DVMT. */
+export interface CompanyDetail {
+  id: string;
+  name: string;
+  contractNumber: string;
+  contractType: CompanyContractType;
+  status: CompanyStatus;
+  contractStartDate: string;
+  contractEndDate: string | null;
+  taxCode: string;
+  address: string;
+  phone: string;
+  email: string;
+  departmentId: string;
+  departmentName: string;
+  activatedAt: string | null;
+  serviceAreas: CompanyServiceArea[];
+  staffCount: number;
+  createdAt: string;
 }

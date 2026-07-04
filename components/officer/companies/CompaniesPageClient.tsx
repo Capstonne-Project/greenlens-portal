@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
   ChevronLeft,
@@ -37,7 +38,6 @@ import type { CompanyListItem, CompanyStatus } from '@/lib/api/models/company';
 import { COMPANIES_PAGE_SIZE } from '@/lib/api/models/company';
 import { canAccessCompanies } from '@/lib/constants/officerRoles';
 import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
-import { mapDataPanelClass } from '@/lib/map/mapShellStyles';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 
@@ -73,8 +73,10 @@ function CompanyRowActions({
   row: CompanyListItem;
   onAssignArea: (row: CompanyListItem) => void;
 }) {
+  const router = useRouter();
+
   const handleDetail = () => {
-    toast.info(`Chi tiết "${row.name}" — tính năng đang phát triển.`);
+    router.push(`/officer/companies/${row.id}`);
   };
 
   const handleRemove = () => {
@@ -143,7 +145,7 @@ export function CompaniesPageClient() {
   }
 
   return (
-    <div className={mapDataPanelClass()}>
+    <>
       <header className="mb-3 shrink-0">
         <div className="border-b border-slate-200 pb-3">
           <div className="flex items-center gap-[0.35rem]">
@@ -311,7 +313,7 @@ export function CompaniesPageClient() {
           </div>
         ) : null}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -323,19 +325,19 @@ function renderCompanyCell(
   switch (key) {
     case 'name':
       return (
-        <button
-          type="button"
-          className="text-left text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline"
+        <Link
+          href={`/officer/companies/${row.id}`}
+          className="text-sm font-medium text-sky-700 hover:text-sky-900 hover:underline"
         >
           {row.name}
-        </button>
+        </Link>
       );
     case 'contractNumber':
-      return <span className="font-mono text-xs text-slate-700">{row.contractNumber}</span>;
+      return <span className="text-xs text-slate-700">{row.contractNumber}</span>;
     case 'contractType':
       return <span className="text-sm text-slate-700">{row.contractType}</span>;
     case 'taxCode':
-      return <span className="font-mono text-xs text-slate-600">{row.taxCode}</span>;
+      return <span className="text-xs text-slate-600">{row.taxCode}</span>;
     case 'email':
       return <span className="text-sm text-slate-700">{row.email}</span>;
     case 'phone':

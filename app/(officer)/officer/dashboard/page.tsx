@@ -1,12 +1,7 @@
 import { AlertTriangle, TrendingUp, Clock, MapPin } from 'lucide-react';
-import { mapOverviewPanelClass } from '@/lib/map/mapShellStyles';
 
 export default function OfficerDashboardPage() {
-  return (
-    <div className={mapOverviewPanelClass()}>
-      <OfficerDashboardContent />
-    </div>
-  );
+  return <OfficerDashboardContent />;
 }
 
 function OfficerDashboardContent() {
@@ -304,9 +299,7 @@ function QueueRow({
       <td className="py-3 pr-4">
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">{status}</span>
       </td>
-      <td className={`py-3 font-mono font-medium ${slaOverdue ? 'text-red-500' : 'text-gray-700'}`}>
-        {sla}
-      </td>
+      <td className={`py-3 font-medium ${slaOverdue ? 'text-red-500' : 'text-gray-700'}`}>{sla}</td>
     </tr>
   );
 }

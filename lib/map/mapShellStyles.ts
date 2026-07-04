@@ -118,12 +118,69 @@ export function mapNavItemLabelClass(expanded: boolean, active?: boolean) {
   );
 }
 
+export function mapNavDropdownChevronBtnClass() {
+  return cn(
+    'relative z-[1] flex size-7 shrink-0 items-center justify-center rounded-md border-none bg-transparent text-white/60',
+    'transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30'
+  );
+}
+
+/** Thời gian mở/đóng dropdown nav con — khớp chevron + panel (`duration-300` = 300ms). */
+export const MAP_NAV_DROPDOWN_MS = 300;
+
+export function mapNavDropdownChevronIconClass(open: boolean) {
+  return cn('size-3 transition-transform duration-300 ease-out', open && 'rotate-180');
+}
+
+export function mapNavChildPanelClass(open: boolean) {
+  return cn(
+    'grid transition-[grid-template-rows,opacity] duration-300 ease-out',
+    open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+  );
+}
+
+export function mapNavChildPanelInnerClass() {
+  return 'min-h-0 overflow-hidden';
+}
+
+export function mapNavChildListClass() {
+  return cn(
+    'relative flex flex-col gap-0.5 pb-1',
+    'pl-[calc(var(--nav-item-inset)+var(--nav-tile-size-square)+0.62rem)]',
+    'pr-[var(--nav-item-inset)]'
+  );
+}
+
+export function mapNavChildConnectorClass() {
+  return cn(
+    'pointer-events-none absolute top-0 bottom-2 z-[2] w-px bg-white/20',
+    'left-[calc(var(--nav-item-inset)+var(--nav-tile-size-square)/2-0.5px)]'
+  );
+}
+
+export function mapNavChildLinkClass({ active }: { active?: boolean }) {
+  return cn(
+    'relative z-[1] flex min-h-[2rem] w-full items-center rounded-[0.35rem] px-2 py-1.5',
+    'text-[0.8125rem] font-medium text-white/70 no-underline transition-colors',
+    !active && 'hover:bg-white/[0.06] hover:text-white',
+    active && 'bg-[rgba(90,94,104,0.92)] font-semibold text-white hover:bg-[rgba(90,94,104,0.92)]'
+  );
+}
+
 export function mapOverviewPanelClass() {
   return 'min-h-full bg-slate-50 p-6';
 }
 
 export function mapDataPanelClass() {
   return 'flex min-h-[calc(100dvh-48px)] flex-col gap-0';
+}
+
+/**
+ * Khung trang nav officer (Tổng quan, Xác minh, Phân công, …) — áp dụng 1 lần tại
+ * `MapShellContent` variant `panel`. Mọi page/loading không bọc lại lớp này.
+ */
+export function mapOfficerNavPageShellClass(layer: 'outer' | 'inner') {
+  return layer === 'outer' ? mapOverviewPanelClass() : mapDataPanelClass();
 }
 
 export function mapProfileTriggerClass(expanded: boolean) {

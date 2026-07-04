@@ -1,22 +1,28 @@
 import type {
   CompaniesListDataDto,
+  CompanyDetailDto,
   CompanyServiceAreasDataDto,
   CreateCompanyBodyDto,
   CreateCompanyDataDto,
+  MyWardCompaniesDataDto,
   UpdateCompanyServiceAreasBodyDto,
 } from '@/lib/api/dto/company.dto';
 import {
   mapCompaniesListDataDto,
+  mapCompanyDetailDto,
   mapCompanyServiceAreasDataDto,
   mapCreateCompanyDataDto,
+  mapMyWardCompaniesDataDto,
 } from '@/lib/api/mappers/company.mapper';
 import type {
   CompaniesList,
   CompaniesListParams,
+  CompanyDetail,
   CompanyServiceAreas,
   CreateCompanyInput,
   CreatedCompany,
   UpdateCompanyServiceAreasInput,
+  MyWardCompanies,
 } from '@/lib/api/models/company';
 import apiService from '@/lib/api/core';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
@@ -43,6 +49,12 @@ export async function adaptCompaniesList(
     buildCompaniesQuery(params)
   );
   return mapApiEnvelope(res.data, mapCompaniesListDataDto);
+}
+
+/** GET /v1/companies/my-ward — [LEO] công ty phục vụ phường/xã của LEO (không params). */
+export async function adaptMyWardCompanies(): Promise<ApiEnvelope<MyWardCompanies>> {
+  const res = await apiService.get<ApiEnvelope<MyWardCompaniesDataDto>>('/v1/companies/my-ward');
+  return mapApiEnvelope(res.data, mapMyWardCompaniesDataDto);
 }
 
 function buildCreateCompanyBody(body: CreateCompanyInput): CreateCompanyBodyDto {
@@ -75,6 +87,12 @@ export async function adaptCreateCompany(
   const payload = buildCreateCompanyBody(body);
   const res = await apiService.post<ApiEnvelope<CreateCompanyDataDto>>('/v1/companies', payload);
   return mapApiEnvelope(res.data, mapCreateCompanyDataDto);
+}
+
+/** GET /v1/companies/{id} — [DEO/Admin] chi tiết công ty DVMT. */
+export async function adaptCompanyDetail(companyId: string): Promise<ApiEnvelope<CompanyDetail>> {
+  const res = await apiService.get<ApiEnvelope<CompanyDetailDto>>(`/v1/companies/${companyId}`);
+  return mapApiEnvelope(res.data, mapCompanyDetailDto);
 }
 
 /** GET /v1/companies/{id}/service-areas — [DEO/Admin] danh sách phường phụ trách. */

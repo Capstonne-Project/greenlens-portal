@@ -1,9 +1,7 @@
 'use client';
 
-// // import { fetchReportProgress } from '@/lib/api/services/fetchReport';
-// import { useQuery } from '@tanstack/react-query';
-
-// const REPORT_STALE_MS = 3 * 60 * 1000;
+import { fetchReportProgress } from '@/lib/api/services/fetchReport';
+import { useQuery } from '@tanstack/react-query';
 
 /** Query keys — GET /v1/reports/{id}/progress (LEO tracking detail). */
 export const reportKeys = {
@@ -11,15 +9,14 @@ export const reportKeys = {
   progress: (id: string) => [...reportKeys.all, 'progress', id] as const,
 };
 
-/**
- * GET /v1/reports/{id}/progress — [LEO] tiến trình xử lý báo cáo.
- * Chi tiết / verify / reject dùng `hooks/useOfficer.ts`.
- */
-// export function useReportProgress(reportId: string, options?: { enabled?: boolean }) {
-//   return useQuery({
-//     queryKey: reportKeys.progress(reportId),
-//     queryFn: () => fetchReportProgress(reportId),
-//     staleTime: REPORT_STALE_MS,
-//     enabled: (options?.enabled ?? true) && Boolean(reportId),
-//   });
-// }
+const PROGRESS_STALE_MS = 3 * 60 * 1000;
+
+/** GET /v1/reports/{id}/progress — tiến trình xử lý báo cáo [LEO]. */
+export function useReportProgress(id: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: reportKeys.progress(id),
+    queryFn: () => fetchReportProgress(id),
+    staleTime: PROGRESS_STALE_MS,
+    enabled: options?.enabled ?? Boolean(id),
+  });
+}

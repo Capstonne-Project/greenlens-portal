@@ -1,9 +1,8 @@
 /** Khớp BE `/v1/teams` — 2026-06-02. */
 
-/** POST /v1/teams */
+/** POST /v1/teams — LEO: `localOfficeId` lấy từ token, không gửi trong body. */
 export interface CreateTeamBodyDto {
   name: string;
-  localOfficeId: string;
   teamType: string;
 }
 

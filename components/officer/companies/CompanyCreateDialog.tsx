@@ -4,6 +4,18 @@ import {
   OfficeWardSelect,
   type OfficeWardDepartmentMeta,
 } from '@/components/officer/companies/OfficeWardSelect';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -21,7 +33,7 @@ import {
 } from '@/lib/api/models/company';
 import { getCompanyMutationError } from '@/utils/companyErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, Check, Copy, Loader2, MapPin, X } from 'lucide-react';
+import { Building2, Check, Copy, Loader2, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -193,9 +205,13 @@ export function CompanyCreateDialog({
     }
   }, [open, isAssignMode, assignCompany, reset]);
 
-  const handleClose = () => {
-    if (isPending) return;
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen || isPending) return;
     onClose();
+  };
+
+  const blockDismissWhenPending = (event: Event) => {
+    if (isPending) event.preventDefault();
   };
 
   const onSubmit = handleSubmit(async values => {
@@ -285,304 +301,289 @@ export function CompanyCreateDialog({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 sm:p-6"
-      role="presentation"
-      onClick={handleClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={isAssignMode ? 'company-assign-title' : 'company-create-title'}
-        className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl sm:p-8"
-        onClick={e => e.stopPropagation()}
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-h-[92vh] max-w-lg gap-0 overflow-y-auto rounded-2xl p-6 sm:p-8"
+        onEscapeKeyDown={blockDismissWhenPending}
+        onPointerDownOutside={blockDismissWhenPending}
+        onInteractOutside={blockDismissWhenPending}
       >
-        <button
-          type="button"
-          onClick={handleClose}
-          disabled={isPending}
-          className="absolute top-4 right-4 rounded-lg p-2 text-muted-foreground transition hover:bg-muted disabled:opacity-60 sm:top-5 sm:right-5"
-          aria-label="Đóng"
-        >
-          <X className="size-5" />
-        </button>
-
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-sky-600 text-white shadow-sm">
-            {isAssignMode ? (
-              <MapPin className="size-6" aria-hidden />
-            ) : (
-              <Building2 className="size-6" aria-hidden />
-            )}
-          </div>
-          {isAssignMode ? (
-            <>
-              <h2
-                id="company-assign-title"
-                className="text-xl font-bold tracking-tight text-foreground"
-              >
-                Gán địa bàn
-              </h2>
-              <p className="mt-1.5 text-sm text-muted-foreground">{assignCompany?.name}</p>
-            </>
-          ) : (
-            <>
-              <h2
-                id="company-create-title"
-                className="text-xl font-bold tracking-tight text-foreground"
-              >
-                Thêm doanh nghiệp DVMT
-              </h2>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                Tạo hồ sơ công ty và tài khoản quản lý (CM)
-              </p>
-            </>
-          )}
-        </div>
-
         {createdResult && !isAssignMode ? (
           <CompanyCreateSuccess
             result={createdResult}
             copied={copied}
             onCopyPassword={handleCopyPassword}
-            onClose={handleClose}
+            onClose={() => {
+              if (!isPending) onClose();
+            }}
           />
         ) : (
-          <form onSubmit={isAssignMode ? handleAssignSubmit : onSubmit} className="space-y-6">
-            <section>
-              <p className={sectionLabelClass}>Địa bàn vận hành</p>
-              <FormField
-                label={
-                  isAssignMode
-                    ? 'Gán địa bàn vận hành (phường/xã)'
-                    : 'Gán địa bàn vận hành (phường/xã) — tùy chọn'
-                }
-                hint={
-                  departmentMeta?.departmentName
-                    ? `Thuộc ${departmentMeta.departmentName}`
-                    : 'Thuộc Ủy ban nhân dân Thành phố Hồ Chí Minh'
-                }
-                error={
-                  wardError ??
-                  (wardLoadError ? 'Không tải được danh sách văn phòng cấp phường/xã.' : undefined)
-                }
-              >
-                <OfficeWardSelect
-                  id={isAssignMode ? 'company-assign-service-area' : 'company-create-service-area'}
-                  value={wardCode}
-                  onChange={v => {
-                    setWardCode(v);
-                    setWardError(undefined);
-                  }}
-                  active={open}
-                  placeholder="— Chọn văn phòng MT phường/xã —"
-                  searchPlaceholder="Tìm phường, xã hoặc tên văn phòng…"
-                  disabled={isPending}
-                  onDepartmentMeta={setDepartmentMeta}
-                  onLoadError={setWardLoadError}
-                />
-              </FormField>
-            </section>
-
-            <section>
-              <p className={sectionLabelClass}>Thông tin doanh nghiệp</p>
-              <div className="space-y-4">
-                <FormField
-                  label="Tên doanh nghiệp"
-                  error={isAssignMode ? undefined : errors.name?.message}
-                >
-                  <input
-                    id="company-name"
-                    {...register('name')}
-                    placeholder="Công ty TNHH Môi trường Xanh"
-                    className={fieldClass}
-                    disabled={isPending || isAssignMode}
-                    readOnly={isAssignMode}
-                  />
-                </FormField>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Mã số thuế"
-                    error={isAssignMode ? undefined : errors.taxCode?.message}
-                  >
-                    <input
-                      id="company-tax"
-                      {...register('taxCode')}
-                      placeholder="0123456789"
-                      className={fieldClass}
-                      disabled={isPending || isAssignMode}
-                      readOnly={isAssignMode}
-                    />
-                  </FormField>
-                  <FormField
-                    label="Số điện thoại"
-                    error={isAssignMode ? undefined : errors.phone?.message}
-                  >
-                    <input
-                      id="company-phone"
-                      {...register('phone')}
-                      placeholder="0901234567"
-                      className={fieldClass}
-                      disabled={isPending || isAssignMode}
-                      readOnly={isAssignMode}
-                    />
-                  </FormField>
-                </div>
-
-                <FormField
-                  label="Email công ty"
-                  error={isAssignMode ? undefined : errors.email?.message}
-                >
-                  <input
-                    id="company-email"
-                    type="email"
-                    {...register('email')}
-                    placeholder="contact@company.vn"
-                    className={fieldClass}
-                    disabled={isPending || isAssignMode}
-                    readOnly={isAssignMode}
-                  />
-                </FormField>
-
-                <FormField
-                  label="Địa chỉ"
-                  error={isAssignMode ? undefined : errors.address?.message}
-                >
-                  <input
-                    id="company-address"
-                    {...register('address')}
-                    placeholder="123 Đường ABC, Quận 1, TP.HCM"
-                    className={fieldClass}
-                    disabled={isPending || isAssignMode}
-                    readOnly={isAssignMode}
-                  />
-                </FormField>
+          <>
+            <DialogHeader className="mb-6 items-center space-y-0 text-center sm:text-center">
+              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-sky-600 text-white shadow-sm">
+                {isAssignMode ? (
+                  <MapPin className="size-6" aria-hidden />
+                ) : (
+                  <Building2 className="size-6" aria-hidden />
+                )}
               </div>
-            </section>
+              {isAssignMode ? (
+                <>
+                  <DialogTitle className="text-xl font-bold tracking-tight">
+                    Gán địa bàn
+                  </DialogTitle>
+                  <DialogDescription>{assignCompany?.name}</DialogDescription>
+                </>
+              ) : (
+                <>
+                  <DialogTitle className="text-xl font-bold tracking-tight">
+                    Thêm doanh nghiệp DVMT
+                  </DialogTitle>
+                  <DialogDescription>Tạo hồ sơ công ty và tài khoản quản lý (CM)</DialogDescription>
+                </>
+              )}
+            </DialogHeader>
 
-            <section>
-              <p className={sectionLabelClass}>Hợp đồng</p>
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+            <form onSubmit={isAssignMode ? handleAssignSubmit : onSubmit} className="space-y-6">
+              <section>
+                <p className={sectionLabelClass}>Địa bàn vận hành</p>
+                <FormField
+                  label={
+                    isAssignMode
+                      ? 'Gán địa bàn vận hành (phường/xã)'
+                      : 'Gán địa bàn vận hành (phường/xã) — tùy chọn'
+                  }
+                  hint={
+                    departmentMeta?.departmentName
+                      ? `Thuộc ${departmentMeta.departmentName}`
+                      : 'Thuộc Ủy ban nhân dân Thành phố Hồ Chí Minh'
+                  }
+                  error={
+                    wardError ??
+                    (wardLoadError
+                      ? 'Không tải được danh sách văn phòng cấp phường/xã.'
+                      : undefined)
+                  }
+                >
+                  <OfficeWardSelect
+                    id={
+                      isAssignMode ? 'company-assign-service-area' : 'company-create-service-area'
+                    }
+                    value={wardCode}
+                    onChange={v => {
+                      setWardCode(v);
+                      setWardError(undefined);
+                    }}
+                    active={open}
+                    placeholder="Chọn văn phòng MT phường/xã"
+                    searchPlaceholder="Tìm phường, xã hoặc tên văn phòng…"
+                    disabled={isPending}
+                    onDepartmentMeta={setDepartmentMeta}
+                    onLoadError={setWardLoadError}
+                  />
+                </FormField>
+              </section>
+
+              <section>
+                <p className={sectionLabelClass}>Thông tin doanh nghiệp</p>
+                <div className="space-y-4">
                   <FormField
-                    label="Số hợp đồng"
-                    error={isAssignMode ? undefined : errors.contractNumber?.message}
+                    label="Tên doanh nghiệp"
+                    error={isAssignMode ? undefined : errors.name?.message}
                   >
                     <input
-                      id="company-contract-number"
-                      {...register('contractNumber')}
-                      placeholder="HD-2026-001"
+                      id="company-name"
+                      {...register('name')}
+                      placeholder="Công ty TNHH Môi trường Xanh"
                       className={fieldClass}
                       disabled={isPending || isAssignMode}
                       readOnly={isAssignMode}
                     />
                   </FormField>
-                  <FormField
-                    label="Loại hợp đồng"
-                    error={isAssignMode ? undefined : errors.contractType?.message}
-                  >
-                    <Select
-                      value={contractType}
-                      onValueChange={v =>
-                        setValue('contractType', v as CompanyContractType, { shouldValidate: true })
-                      }
-                      disabled={isPending || isAssignMode}
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      label="Mã số thuế"
+                      error={isAssignMode ? undefined : errors.taxCode?.message}
                     >
-                      <SelectTrigger className="h-11 rounded-lg">
-                        <SelectValue placeholder="Chọn loại" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMPANY_CONTRACT_TYPES.map(type => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormField>
-                </div>
+                      <input
+                        id="company-tax"
+                        {...register('taxCode')}
+                        placeholder="0123456789"
+                        className={fieldClass}
+                        disabled={isPending || isAssignMode}
+                        readOnly={isAssignMode}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Số điện thoại"
+                      error={isAssignMode ? undefined : errors.phone?.message}
+                    >
+                      <input
+                        id="company-phone"
+                        {...register('phone')}
+                        placeholder="0901234567"
+                        className={fieldClass}
+                        disabled={isPending || isAssignMode}
+                        readOnly={isAssignMode}
+                      />
+                    </FormField>
+                  </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
-                    label="Ngày bắt đầu"
-                    error={isAssignMode ? undefined : errors.contractStartDate?.message}
+                    label="Email công ty"
+                    error={isAssignMode ? undefined : errors.email?.message}
                   >
                     <input
-                      id="company-contract-start"
-                      type="date"
-                      {...register('contractStartDate')}
+                      id="company-email"
+                      type="email"
+                      {...register('email')}
+                      placeholder="contact@company.vn"
+                      className={fieldClass}
+                      disabled={isPending || isAssignMode}
+                      readOnly={isAssignMode}
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Địa chỉ"
+                    error={isAssignMode ? undefined : errors.address?.message}
+                  >
+                    <input
+                      id="company-address"
+                      {...register('address')}
+                      placeholder="123 Đường ABC, Quận 1, TP.HCM"
+                      className={fieldClass}
+                      disabled={isPending || isAssignMode}
+                      readOnly={isAssignMode}
+                    />
+                  </FormField>
+                </div>
+              </section>
+
+              <section>
+                <p className={sectionLabelClass}>Hợp đồng</p>
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      label="Số hợp đồng"
+                      error={isAssignMode ? undefined : errors.contractNumber?.message}
+                    >
+                      <input
+                        id="company-contract-number"
+                        {...register('contractNumber')}
+                        placeholder="HD-2026-001"
+                        className={fieldClass}
+                        disabled={isPending || isAssignMode}
+                        readOnly={isAssignMode}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Loại hợp đồng"
+                      error={isAssignMode ? undefined : errors.contractType?.message}
+                    >
+                      <Select
+                        value={contractType}
+                        onValueChange={v =>
+                          setValue('contractType', v as CompanyContractType, {
+                            shouldValidate: true,
+                          })
+                        }
+                        disabled={isPending || isAssignMode}
+                      >
+                        <SelectTrigger className="h-11 rounded-lg">
+                          <SelectValue placeholder="Chọn loại" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPANY_CONTRACT_TYPES.map(type => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      label="Ngày bắt đầu"
+                      error={isAssignMode ? undefined : errors.contractStartDate?.message}
+                    >
+                      <input
+                        id="company-contract-start"
+                        type="date"
+                        {...register('contractStartDate')}
+                        className={fieldClass}
+                        disabled={isPending || isAssignMode}
+                        readOnly={isAssignMode}
+                      />
+                    </FormField>
+                    <FormField
+                      label={isBiddingContract ? 'Ngày kết thúc' : 'Ngày kết thúc'}
+                      error={isAssignMode ? undefined : errors.contractEndDate?.message}
+                    >
+                      <input
+                        id="company-contract-end"
+                        type="date"
+                        {...register('contractEndDate')}
+                        className={fieldClass}
+                        disabled={isPending || isAssignMode}
+                        readOnly={isAssignMode}
+                        aria-required={isBiddingContract && !isAssignMode}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <p className={sectionLabelClass}>Tài khoản quản lý (CM)</p>
+                <div className="space-y-4">
+                  <FormField
+                    label="Họ và tên"
+                    error={isAssignMode ? undefined : errors.managerFullName?.message}
+                  >
+                    <input
+                      id="company-manager-name"
+                      {...register('managerFullName')}
+                      placeholder="Nguyễn Văn A"
                       className={fieldClass}
                       disabled={isPending || isAssignMode}
                       readOnly={isAssignMode}
                     />
                   </FormField>
                   <FormField
-                    label={isBiddingContract ? 'Ngày kết thúc' : 'Ngày kết thúc'}
-                    error={isAssignMode ? undefined : errors.contractEndDate?.message}
+                    label="Email quản lý"
+                    error={isAssignMode ? undefined : errors.managerEmail?.message}
                   >
                     <input
-                      id="company-contract-end"
-                      type="date"
-                      {...register('contractEndDate')}
+                      id="company-manager-email"
+                      type="email"
+                      {...register('managerEmail')}
+                      placeholder="manager@company.vn"
                       className={fieldClass}
                       disabled={isPending || isAssignMode}
                       readOnly={isAssignMode}
-                      aria-required={isBiddingContract && !isAssignMode}
                     />
                   </FormField>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            <section>
-              <p className={sectionLabelClass}>Tài khoản quản lý (CM)</p>
-              <div className="space-y-4">
-                <FormField
-                  label="Họ và tên"
-                  error={isAssignMode ? undefined : errors.managerFullName?.message}
-                >
-                  <input
-                    id="company-manager-name"
-                    {...register('managerFullName')}
-                    placeholder="Nguyễn Văn A"
-                    className={fieldClass}
-                    disabled={isPending || isAssignMode}
-                    readOnly={isAssignMode}
-                  />
-                </FormField>
-                <FormField
-                  label="Email quản lý"
-                  error={isAssignMode ? undefined : errors.managerEmail?.message}
-                >
-                  <input
-                    id="company-manager-email"
-                    type="email"
-                    {...register('managerEmail')}
-                    placeholder="manager@company.vn"
-                    className={fieldClass}
-                    disabled={isPending || isAssignMode}
-                    readOnly={isAssignMode}
-                  />
-                </FormField>
-              </div>
-            </section>
-
-            <button
-              type="submit"
-              disabled={isPending}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-slate-900 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
-            >
-              {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-              {isAssignMode ? 'Lưu địa bàn' : 'Tạo doanh nghiệp'}
-            </button>
-          </form>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="h-11 w-full bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                {isAssignMode ? 'Lưu địa bàn' : 'Tạo doanh nghiệp'}
+              </Button>
+            </form>
+          </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -619,43 +620,62 @@ function CompanyCreateSuccess({
   onClose: () => void;
 }) {
   return (
-    <div className="space-y-5">
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 text-center">
-        <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-          <Check className="size-5" aria-hidden />
+    <>
+      <DialogHeader className="items-center space-y-3 text-center sm:text-center">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+          <Check className="size-6" aria-hidden />
         </div>
-        <p className="text-sm font-medium text-emerald-900">Đã tạo {result.companyName}</p>
-        <p className="mt-1 text-xs text-emerald-800/80">
-          Trạng thái: {result.status} · Hợp đồng {result.contractNumber}
-        </p>
-      </div>
+        <DialogTitle className="text-xl font-bold tracking-tight">
+          Tạo doanh nghiệp thành công
+        </DialogTitle>
+        <DialogDescription asChild>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">{result.companyName}</p>
+            <p>
+              Trạng thái: {result.status} · Hợp đồng {result.contractNumber}
+            </p>
+          </div>
+        </DialogDescription>
+      </DialogHeader>
 
-      <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
-        <p className="text-xs font-medium text-amber-900">
-          Mật khẩu tạm cho {result.managerEmail} — chỉ hiển thị một lần
+      <div className="my-6 space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
+        <Label htmlFor="company-temp-password" className="text-xs font-medium text-amber-900">
+          Mật khẩu tạm cho {result.managerEmail}
+        </Label>
+        <p className="text-xs text-amber-800/80">
+          Chỉ hiển thị một lần — hãy sao chép trước khi đóng.
         </p>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 truncate rounded-md border border-amber-200 bg-white px-3 py-2 font-mono text-sm text-slate-800">
-            {result.tempPassword}
-          </code>
-          <button
+        <div className="flex items-center gap-2 pt-1">
+          <Input
+            id="company-temp-password"
+            readOnly
+            value={result.tempPassword}
+            className="h-10 flex-1 border-amber-200 bg-white text-sm text-slate-800"
+          />
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onCopyPassword}
-            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium hover:bg-muted"
+            className="h-10 shrink-0 gap-1.5 border-amber-200 bg-white text-xs hover:bg-amber-50"
           >
             {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
             {copied ? 'Đã copy' : 'Sao chép'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={onClose}
-        className="flex h-11 w-full items-center justify-center rounded-lg bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800"
-      >
-        Đóng
-      </button>
-    </div>
+      <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+        <DialogClose asChild>
+          <Button
+            type="button"
+            onClick={onClose}
+            className="h-11 w-full bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Đóng
+          </Button>
+        </DialogClose>
+      </DialogFooter>
+    </>
   );
 }

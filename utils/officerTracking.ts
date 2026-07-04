@@ -1,6 +1,4 @@
 import { HCMC_WARD_NAMES_BY_LENGTH } from '@/lib/constants/hcmcWardNames';
-import { STALE_UPDATE_DAYS, TRACKING_EXCLUDED_STATUSES } from '@/lib/constants/officerTracking';
-import type { ReportQueueItem, ReportStatus } from '@/lib/api/models/report';
 
 function normalizeForWardMatch(value: string): string {
   return value
@@ -24,58 +22,6 @@ function matchWardNameInAddress(address: string): string | null {
     }
   }
   return null;
-}
-
-const EXCLUDED = new Set<ReportStatus>(TRACKING_EXCLUDED_STATUSES);
-
-export function isTrackingReport(item: ReportQueueItem): boolean {
-  return !EXCLUDED.has(item.status);
-}
-
-export function filterTrackingReports(items: ReportQueueItem[]): ReportQueueItem[] {
-  return items.filter(isTrackingReport);
-}
-
-export function isStaleReport(item: ReportQueueItem, now = Date.now()): boolean {
-  if (item.status !== 'InProgress') return false;
-  const created = new Date(item.createdAt).getTime();
-  const staleMs = STALE_UPDATE_DAYS * 24 * 60 * 60 * 1000;
-  return now - created >= staleMs;
-}
-
-export function formatTrackingSla(isoString: string): { text: string; overdue: boolean } {
-  const due = new Date(isoString);
-  const now = new Date();
-  const diffMs = due.getTime() - now.getTime();
-
-  if (diffMs < 0) {
-    const overdueH = Math.floor(-diffMs / 3_600_000);
-    if (overdueH >= 24) {
-      const days = Math.floor(overdueH / 24);
-      const hours = overdueH % 24;
-      return {
-        text: hours > 0 ? `Quá hạn ${days} ngày ${hours}h` : `Quá hạn ${days} ngày`,
-        overdue: true,
-      };
-    }
-    return { text: `Quá hạn ${overdueH}h`, overdue: true };
-  }
-
-  const totalH = Math.floor(diffMs / 3_600_000);
-  const days = Math.floor(totalH / 24);
-  const hours = totalH % 24;
-  const minutes = Math.floor((diffMs % 3_600_000) / 60_000);
-
-  if (days > 0) {
-    return { text: hours > 0 ? `${days} ngày ${hours}h` : `${days} ngày`, overdue: false };
-  }
-  if (totalH > 0) {
-    return {
-      text: minutes > 0 ? `${totalH}h ${minutes}m` : `${totalH}h`,
-      overdue: false,
-    };
-  }
-  return { text: `${minutes}m`, overdue: false };
 }
 
 /**
@@ -115,63 +61,42 @@ export function formatCheckInTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 }
 
-export type TrackingRowTone = 'default' | 'stale' | 'overdue' | 'escalate';
+export function formatTrackingSla(isoString: string): { text: string; overdue: boolean } {
+  const due = new Date(isoString);
+  const now = new Date();
+  const diffMs = due.getTime() - now.getTime();
 
-export function getTrackingRowTone(item: ReportQueueItem): TrackingRowTone {
-  if (item.status === 'PenaltyIssued') return 'escalate';
-  const sla = formatTrackingSla(item.slaVerifyDueAt);
-  if (sla.overdue) return 'overdue';
-  if (isStaleReport(item)) return 'stale';
-  return 'default';
-}
-
-export function getTrackingStatusLabel(item: ReportQueueItem): string {
-  if (isStaleReport(item)) return 'Chưa update 3 ngày';
-  const labels: Partial<Record<ReportStatus, string>> = {
-    Assigned: 'Đã phân công',
-    InProgress: 'Đang xử lý',
-    Resolved: 'Đã giải quyết',
-    Closed: 'Đã đóng',
-    Rejected: 'Từ chối',
-    Duplicate: 'Trùng lặp',
-    PenaltyIssued: 'Escalate',
-    ClosedNoViolation: 'Đóng — Không vi phạm',
-  };
-  return labels[item.status] ?? item.status;
-}
-
-export interface TrackingSummaryStats {
-  inProgress: number;
-  stale: number;
-  overdueSla: number;
-  escalate: number;
-  highSeverity: number;
-  completed: number;
-}
-
-export function computeTrackingSummary(items: ReportQueueItem[]): TrackingSummaryStats {
-  const tracking = filterTrackingReports(items);
-  let inProgress = 0;
-  let stale = 0;
-  let overdueSla = 0;
-  let escalate = 0;
-  let highSeverity = 0;
-  let completed = 0;
-
-  for (const item of tracking) {
-    if (item.status === 'InProgress') inProgress += 1;
-    if (isStaleReport(item)) stale += 1;
-    if (formatTrackingSla(item.slaVerifyDueAt).overdue) overdueSla += 1;
-    if (item.status === 'PenaltyIssued') escalate += 1;
-    if (item.severity === 'High' || item.severity === 'Critical') highSeverity += 1;
-    if (
-      item.status === 'Resolved' ||
-      item.status === 'Closed' ||
-      item.status === 'ClosedNoViolation'
-    ) {
-      completed += 1;
-    }
+  if (diffMs < 0) {
+    const overdueH = Math.floor(-diffMs / 3_600_000);
+    return { text: `Quá hạn ${overdueH}h`, overdue: true };
   }
 
-  return { inProgress, stale, overdueSla, escalate, highSeverity, completed };
+  const totalH = Math.floor(diffMs / 3_600_000);
+  const minutes = Math.floor((diffMs % 3_600_000) / 60_000);
+
+  if (totalH > 0) {
+    return {
+      text: minutes > 0 ? `${totalH}h ${minutes}m` : `${totalH}h`,
+      overdue: false,
+    };
+  }
+  return { text: `${minutes}m`, overdue: false };
+}
+
+/** .NET DateTime.MinValue hoặc BE chưa gán ngày thực. */
+export function isPlaceholderIsoDate(iso: string | null | undefined): boolean {
+  if (!iso?.trim()) return true;
+  if (iso.trim().startsWith('0001-')) return true;
+  const year = new Date(iso).getFullYear();
+  return Number.isNaN(year) || year < 1900;
+}
+
+/** Ngày tham gia nhân sự — hiển thị vi-VN hoặc "Chưa có" khi BE chưa set. */
+export function formatJoinedDateVi(iso: string | null | undefined): string {
+  if (isPlaceholderIsoDate(iso)) return 'Chưa có';
+  return new Date(iso!).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }

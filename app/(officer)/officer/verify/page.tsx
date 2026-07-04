@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { VerifyPageClient } from '@/components/officer/verify/VerifyPageClient';
 
 export default function OfficerVerifyPage() {
-  redirect('/officer/map');
+  return <VerifyPageClient />;
 }

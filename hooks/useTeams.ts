@@ -13,24 +13,84 @@ import type {
   TeamDetail,
   TeamsListParams,
 } from '@/lib/api/models/team';
+import type { OfficeStaffList, OfficeStaffListParams } from '@/lib/api/models/office';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
+
+/** Khớp `leoOfficesKeys.myStaff()` — tách key tránh circular import với useLeoOffices. */
+const LEO_MY_STAFF_QUERY_KEY = ['officer', 'leo', 'my-staff'] as const;
+
+function removeStaffFromAvailableCache(queryClient: QueryClient, userId: string) {
+  queryClient.setQueriesData<OfficeStaffList>(
+    {
+      queryKey: LEO_MY_STAFF_QUERY_KEY,
+      predicate: query => {
+        const params = query.queryKey[3] as OfficeStaffListParams | undefined;
+        return params?.hasTeam === false;
+      },
+    },
+    old => {
+      if (!old?.items?.length) return old;
+      const items = old.items.filter(item => item.userId !== userId);
+      if (items.length === old.items.length) return old;
+      return {
+        ...old,
+        items,
+        pagination: {
+          ...old.pagination,
+          totalItems: Math.max(0, old.pagination.totalItems - 1),
+        },
+      };
+    }
+  );
+}
 
 export const teamKeys = {
   all: ['admin', 'teams'] as const,
   list: (params: TeamsListParams) => [...teamKeys.all, 'list', params] as const,
+  infiniteList: (params: Omit<TeamsListParams, 'page'>) =>
+    [...teamKeys.all, 'infinite-list', params] as const,
   detail: (id: string) => [...teamKeys.all, 'detail', id] as const,
 };
 
 const LIST_STALE_MS = 3 * 60 * 1000;
 const DETAIL_STALE_MS = 3 * 60 * 1000;
 
-export function useTeamsList(params: TeamsListParams) {
+export const TEAMS_ASSIGN_PAGE_SIZE = 10;
+
+export function useTeamsList(params: TeamsListParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: teamKeys.list(params),
     queryFn: () => fetchTeams(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/** GET /v1/teams — infinite scroll (pageSize cố định, load thêm khi scroll). */
+export function useTeamsInfiniteList(
+  params: Omit<TeamsListParams, 'page'>,
+  options?: { enabled?: boolean }
+) {
+  return useInfiniteQuery({
+    queryKey: teamKeys.infiniteList(params),
+    queryFn: async ({ pageParam }) => {
+      const envelope = await fetchTeams({ ...params, page: pageParam });
+      return envelope.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: lastPage =>
+      lastPage.pagination.hasNext ? lastPage.pagination.page + 1 : undefined,
+    staleTime: LIST_STALE_MS,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -72,9 +132,11 @@ export function useAddTeamMember() {
   return useMutation({
     mutationFn: ({ teamId, body }: { teamId: string; body: AddTeamMemberInput }) =>
       addTeamMember(teamId, body),
-    onSuccess: (_data, { teamId }) => {
+    onSuccess: (_data, { teamId, body }) => {
+      removeStaffFromAvailableCache(queryClient, body.userId);
       void queryClient.invalidateQueries({ queryKey: teamKeys.all });
       void queryClient.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
+      void queryClient.invalidateQueries({ queryKey: LEO_MY_STAFF_QUERY_KEY });
     },
   });
 }
@@ -87,6 +149,7 @@ export function useRemoveTeamMember() {
     onSuccess: (_data, { teamId }) => {
       void queryClient.invalidateQueries({ queryKey: teamKeys.all });
       void queryClient.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
+      void queryClient.invalidateQueries({ queryKey: LEO_MY_STAFF_QUERY_KEY });
     },
   });
 }

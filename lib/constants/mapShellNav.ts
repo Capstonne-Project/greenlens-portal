@@ -2,19 +2,29 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
   faBell,
   faBuilding,
+  faClipboardCheck,
   faClipboardList,
   faEarthAmericas,
   faGaugeHigh,
   faGear,
+  faRoute,
 } from '@fortawesome/free-solid-svg-icons';
 import { parseOfficerApiRole } from '@/lib/constants/officerRoles';
 import type { UserRole } from '@/lib/constants/systemRoles';
+
+export type MapShellNavChildItem = {
+  id: string;
+  label: string;
+  href: string;
+};
 
 export type MapShellNavItem = {
   id: string;
   label: string;
   href: string;
   icon: IconDefinition;
+  /** Mục con trong sidebar (dropdown) — LEO Phân công. */
+  children?: MapShellNavChildItem[];
 };
 
 export type MapShellBrand = {
@@ -50,60 +60,116 @@ const SYSTEM_NAV: MapShellSystemNav = {
   },
 };
 
-const DEO_MAP_SHELL_NAV: MapShellNavConfig = {
-  brand: {
-    name: APP_NAME,
-    tagline: 'Cổng điều hành sở TNMT',
+const NAV_ITEMS = {
+  map: {
+    id: 'map',
+    label: 'Bản đồ',
+    href: '/officer/map',
+    icon: faEarthAmericas,
   },
-  mainNav: [
-    { id: 'map', label: 'Bản đồ', href: '/officer/map', icon: faEarthAmericas },
-    { id: 'overview', label: 'Tổng quan', href: '/officer/dashboard', icon: faGaugeHigh },
-    {
-      id: 'companies',
-      label: 'Doanh nghiệp',
-      href: '/officer/companies',
-      icon: faBuilding,
-    },
-  ],
-  systemNav: SYSTEM_NAV,
+  overview: {
+    id: 'overview',
+    label: 'Tổng quan',
+    href: '/officer/dashboard',
+    icon: faGaugeHigh,
+  },
+  verify: {
+    id: 'verify',
+    label: 'Xác minh',
+    href: '/officer/verify',
+    icon: faClipboardCheck,
+  },
+  assign: {
+    id: 'assign',
+    label: 'Phân công',
+    href: '/officer/assign',
+    icon: faClipboardList,
+  },
+  tracking: {
+    id: 'tracking',
+    label: 'Theo dõi xử lý',
+    href: '/officer/tracking',
+    icon: faRoute,
+  },
+  companies: {
+    id: 'companies',
+    label: 'Doanh nghiệp',
+    href: '/officer/companies',
+    icon: faBuilding,
+  },
+} as const satisfies Record<string, MapShellNavItem>;
+
+const BRAND_DEO: MapShellBrand = {
+  name: APP_NAME,
+  tagline: 'Cổng điều hành sở TNMT',
 };
 
-const LEO_MAP_SHELL_NAV: MapShellNavConfig = {
-  brand: {
-    name: APP_NAME,
-    tagline: 'Cổng văn phòng MT phường',
-  },
-  mainNav: [
-    { id: 'map', label: 'Bản đồ', href: '/officer/map', icon: faEarthAmericas },
-    { id: 'assign', label: 'Phân công', href: '/officer/assign', icon: faClipboardList },
-  ],
-  systemNav: SYSTEM_NAV,
+const BRAND_LEO: MapShellBrand = {
+  name: APP_NAME,
+  tagline: 'Cổng văn phòng MT phường',
 };
 
-const DEFAULT_MAP_SHELL_NAV = DEO_MAP_SHELL_NAV;
+const BRAND_DEFAULT: MapShellBrand = {
+  name: APP_NAME,
+  tagline: 'Cổng cán bộ',
+};
 
+/** Sidebar map shell — nav chính theo role (DEO / LEO). */
 export function getMapShellNavForRole(
   systemRole: UserRole | string | undefined
 ): MapShellNavConfig {
   const role = parseOfficerApiRole(systemRole);
-  if (role === 'LEO') return LEO_MAP_SHELL_NAV;
-  if (role === 'DEO') return DEO_MAP_SHELL_NAV;
-  return DEFAULT_MAP_SHELL_NAV;
+
+  const mainNav: MapShellNavItem[] = [NAV_ITEMS.map, NAV_ITEMS.overview];
+
+  if (role === 'DEO') {
+    mainNav.push(NAV_ITEMS.companies);
+  } else if (role === 'LEO') {
+    mainNav.push(
+      NAV_ITEMS.verify,
+      {
+        ...NAV_ITEMS.assign,
+        children: [
+          { id: 'assign-teams', label: 'Đội xử lý', href: '/officer/assign/teams' },
+          { id: 'assign-members', label: 'Thành viên', href: '/officer/assign/members' },
+        ],
+      },
+      NAV_ITEMS.tracking
+    );
+  } else if (role === 'Inspector') {
+    mainNav.push(NAV_ITEMS.tracking);
+  }
+
+  const brand = role === 'LEO' ? BRAND_LEO : role === 'DEO' ? BRAND_DEO : BRAND_DEFAULT;
+
+  return {
+    brand,
+    mainNav,
+    systemNav: SYSTEM_NAV,
+  };
 }
 
+/** Mọi route `/officer/*` dùng chung map shell (LEO + DEO). */
 export function isMapShellRoute(pathname: string): boolean {
-  return (
-    pathname === '/officer/map' ||
-    pathname.startsWith('/officer/map/') ||
-    pathname === '/officer/dashboard' ||
-    pathname.startsWith('/officer/dashboard/') ||
-    pathname === '/officer/companies' ||
-    pathname.startsWith('/officer/companies/')
-  );
+  return pathname === '/officer' || pathname.startsWith('/officer/');
 }
 
 export function getActiveNavId(pathname: string, config: MapShellNavConfig): string | null {
-  const all = [...config.mainNav, config.systemNav.notifications, config.systemNav.settings];
-  const match = all.find(item => pathname === item.href || pathname.startsWith(`${item.href}/`));
-  return match?.id ?? null;
+  const path = pathname.split('?')[0] ?? pathname;
+
+  for (const item of config.mainNav) {
+    if (item.children?.length) {
+      const child = item.children.find(c => path === c.href || path.startsWith(`${c.href}/`));
+      if (child) return child.id;
+      if (path === item.href) return item.id;
+      continue;
+    }
+    if (path === item.href || path.startsWith(`${item.href}/`)) {
+      return item.id;
+    }
+  }
+
+  const system = [config.systemNav.notifications, config.systemNav.settings];
+  const systemMatch = system.find(item => path === item.href || path.startsWith(`${item.href}/`));
+  return systemMatch?.id ?? null;
 }

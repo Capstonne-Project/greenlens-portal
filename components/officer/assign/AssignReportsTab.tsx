@@ -10,21 +10,53 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { PaginationSimple } from '@/components/ui/pagination';
-import { VerifyDetailClient } from '@/components/officer/VerifyDetailClient';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { VerifyDetailClient } from '@/components/officer/verify/VerifyDetailClient';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useReportQueue } from '@/hooks/useOfficer';
+import { useAssignReportQueue } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
-import type { ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
-import { resolveQueueDisplayTotal } from '@/utils/officerQueueScope';
-import { extractLocationLabel, formatCheckInTime } from '@/utils/officerTracking';
-import { Camera, ChevronDown, MoreHorizontal, Search, UserPlus } from 'lucide-react';
+import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
+import type { ReportSeverity } from '@/lib/api/services/fetchReport';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import {
+  extractLocationLabel,
+  formatCheckInTime,
+  formatTrackingSla,
+} from '@/utils/officerTracking';
+import { cn } from '@/lib/utils';
+import {
+  Camera,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MoreHorizontal,
+  Search,
+  UserPlus,
+} from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 
 const REPORT_PAGE_SIZE = 10;
 
-const TABLE_COLS = ['CHỌN', 'REPORT', 'LOẠI', 'MỨC ĐỘ', 'VỊ TRÍ', 'TRẠNG THÁI', 'HẠN XỬ LÝ'];
+const TABLE_COLS = [
+  { key: 'select', label: 'Chọn', className: 'w-12' },
+  { key: 'report', label: 'Report', className: 'min-w-[180px]' },
+  { key: 'category', label: 'Loại', className: 'min-w-[120px]' },
+  { key: 'severity', label: 'Mức độ', className: 'w-[120px]' },
+  { key: 'location', label: 'Vị trí', className: 'min-w-[160px]' },
+  { key: 'status', label: 'Trạng thái', className: 'w-[130px]' },
+  { key: 'sla', label: 'Hạn xử lý', className: 'w-[110px]' },
+  { key: 'actions', label: '', className: 'w-12' },
+] as const;
 
 const SEVERITY_OPTIONS: Array<{ label: string; value: ReportSeverity }> = [
   { label: 'Nghiêm trọng', value: 'Critical' },
@@ -33,13 +65,6 @@ const SEVERITY_OPTIONS: Array<{ label: string; value: ReportSeverity }> = [
   { label: 'Thấp', value: 'Low' },
 ];
 
-const SEVERITY_CLASS: Record<ReportSeverity, string> = {
-  Critical: 'text-red-600 font-semibold',
-  High: 'text-orange-600 font-semibold',
-  Medium: 'text-amber-600 font-medium',
-  Low: 'text-muted-foreground',
-};
-
 const SEVERITY_LABEL: Record<ReportSeverity, string> = {
   Critical: 'Nghiêm trọng',
   High: 'Cao',
@@ -47,15 +72,11 @@ const SEVERITY_LABEL: Record<ReportSeverity, string> = {
   Low: 'Thấp',
 };
 
-/** Badge trạng thái — chỉ cần 2 giá trị tab phân công hiển thị. */
-const STATUS_LABEL: Partial<Record<ReportStatus, string>> = {
-  Verified: 'Đã xác minh',
-  Dispatched: 'Chờ phân công',
-};
-
-const STATUS_CLASS: Partial<Record<ReportStatus, string>> = {
-  Verified: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  Dispatched: 'bg-teal-50 text-teal-700 ring-1 ring-teal-200',
+const SEVERITY_DOT: Record<ReportSeverity, string> = {
+  Critical: 'bg-red-500',
+  High: 'bg-orange-500',
+  Medium: 'bg-amber-400',
+  Low: 'bg-slate-300',
 };
 
 function toggleInArray<T>(arr: T[], val: T): T[] {
@@ -76,25 +97,28 @@ function FilterSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-t border-border">
+    <div className="border-t border-slate-200 first:border-t-0">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between py-3 text-left"
+        className="flex w-full items-center justify-between py-2.5 text-left"
       >
-        <span className="flex items-center gap-1 text-base font-medium text-foreground">
+        <span className="flex items-center gap-1 text-sm font-medium text-slate-800">
           {title}
-          {activeCount ? <span className="text-muted-foreground">({activeCount})</span> : null}
+          {activeCount ? <span className="text-slate-500">({activeCount})</span> : null}
         </span>
         <ChevronDown
-          className={`size-4 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={cn(
+            'size-4 text-slate-400 transition-transform duration-200',
+            open && 'rotate-180'
+          )}
         />
       </button>
 
       <div
-        className={`overflow-hidden transition-all duration-200 ${open ? 'max-h-96' : 'max-h-0'}`}
+        className={cn('overflow-hidden transition-all duration-200', open ? 'max-h-96' : 'max-h-0')}
       >
-        <div className="pb-3">{children}</div>
+        <div className="pb-2">{children}</div>
       </div>
     </div>
   );
@@ -110,11 +134,12 @@ function CheckItem({
   onChange: () => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-base text-foreground transition-colors hover:bg-muted/50">
+    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-50">
       <span
-        className={`flex size-4 shrink-0 items-center justify-center border transition-colors ${
-          checked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-border bg-background'
-        }`}
+        className={cn(
+          'flex size-4 shrink-0 items-center justify-center border transition-colors',
+          checked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'
+        )}
       >
         {checked && (
           <svg
@@ -134,22 +159,6 @@ function CheckItem({
   );
 }
 
-function SkeletonRows() {
-  return (
-    <>
-      {['s1', 's2', 's3', 's4', 's5'].map(key => (
-        <tr key={key} className="animate-pulse border-t border-border">
-          {['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'].map(ck => (
-            <td key={ck} className="px-5 py-4">
-              <div className="h-3 w-24 rounded bg-muted" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
-
 /** Props của dialog phân công — DEO/LEO truyền component khác nhau. */
 export interface AssignDialogProps {
   open: boolean;
@@ -159,8 +168,6 @@ export interface AssignDialogProps {
 }
 
 interface AssignReportsTabProps {
-  /** Status báo cáo cần hiển thị: DEO = `Verified`, LEO = `Dispatched`. */
-  status: ReportStatus;
   /** Dialog phân công riêng theo role — tự nắm logic call API. */
   Dialog: React.ComponentType<AssignDialogProps>;
   /** Label dropdown menu item — DEO: "Phân công đơn vị", LEO: "Phân công đội". */
@@ -168,15 +175,14 @@ interface AssignReportsTabProps {
 }
 
 /**
- * Tab phân công báo cáo dùng chung cho DEO/LEO.
- *
- * Khác biệt giữa role chỉ nằm ở config (`status`, `Dialog`, `actionLabel`).
- * Detail drawer dùng chung `VerifyDetailClient` cho mọi role.
+ * Tab phân công — báo cáo Verified + Rejected từ GET /v1/reports/queue.
  */
-export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsTabProps) {
+export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS, () => {
+    setPage(1);
+  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detailReportId, setDetailReportId] = useState<string | null>(null);
   const [severityFilters, setSeverityFilters] = useState<ReportSeverity[]>([]);
@@ -188,24 +194,22 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
   const [highlightFading, setHighlightFading] = useState(false);
   const consumedHighlightRef = useRef<string | null>(null);
 
-  const { data, isLoading, isError } = useReportQueue({
-    page,
-    pageSize: REPORT_PAGE_SIZE,
-    // status,
-  });
+  const listParams = useMemo(
+    () => ({
+      page,
+      pageSize: REPORT_PAGE_SIZE,
+      sortBy: 'PriorityScore' as const,
+      sortDir: 'Desc' as const,
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    }),
+    [page, debouncedSearch]
+  );
+
+  const { data, isPending, isError } = useAssignReportQueue(listParams);
   const { data: catalogCategories = [] } = useCatalogPollutionCategories();
 
-  const queueScope = useMemo(() => ({ type: 'status' as const, status }), [status]);
-  const displayTotal = useMemo(
-    () => resolveQueueDisplayTotal(data?.items ?? [], data?.totalCount ?? 0, queueScope),
-    [data?.items, data?.totalCount, queueScope]
-  );
-
-  const totalPages = Math.max(
-    1,
-    // data?.pagination.totalPages ?? Math.ceil(displayTotal / REPORT_PAGE_SIZE)
-    Math.ceil(displayTotal / REPORT_PAGE_SIZE)
-  );
+  const items = data?.items ?? [];
+  const pagination = data?.pagination;
   const totalActiveFilters = severityFilters.length + categoryFilters.length;
 
   const triggerHighlight = (el: HTMLTableRowElement, reportId: string) => {
@@ -218,24 +222,22 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
   const [assignOpen, setAssignOpen] = useState(false);
 
   const filtered = useMemo(() => {
-    return (data?.items ?? [])
-      .filter(r => r.status === status)
-      .filter(r => {
-        if (severityFilters.length > 0 && !severityFilters.includes(r.severity)) return false;
-        if (categoryFilters.length > 0 && !categoryFilters.includes(r.categoryCode)) return false;
-        if (!debouncedSearch) return true;
-        const q = debouncedSearch.toLowerCase();
-        return r.code.toLowerCase().includes(q) || r.address.toLowerCase().includes(q);
-      });
-  }, [data?.items, debouncedSearch, severityFilters, categoryFilters, status]);
+    return items.filter((r: ReportQueueItem) => {
+      if (severityFilters.length > 0 && !severityFilters.includes(r.severity)) return false;
+      if (categoryFilters.length > 0 && !categoryFilters.includes(r.categoryCode)) return false;
+      return true;
+    });
+  }, [items, severityFilters, categoryFilters]);
+
+  const hasRejectedSelected = useMemo(
+    () => [...selected].some(id => filtered.find(r => r.id === id)?.status === 'Rejected'),
+    [selected, filtered]
+  );
 
   const allChecked = filtered.length > 0 && selected.size === filtered.length;
   const indeterminate = selected.size > 0 && selected.size < filtered.length;
 
   const handleAssigned = () => setSelected(new Set());
-
-  const statusLabel = STATUS_LABEL[status] ?? status;
-  const statusClass = STATUS_CLASS[status] ?? 'bg-muted text-foreground';
 
   if (detailReportId) {
     return (
@@ -256,40 +258,39 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
+        {/* Sidebar filter — layout cũ */}
         <div className="w-full shrink-0 overflow-hidden lg:w-72 lg:max-w-[35%]">
-          <aside className="flex max-h-[45dvh] w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm lg:h-full lg:max-h-none lg:w-72">
-            <div className="flex shrink-0 items-center justify-between px-5 py-4">
-              <span className="text-xl font-semibold text-foreground">Bộ lọc</span>
-              {totalActiveFilters > 0 && (
+          <aside className="flex max-h-[45dvh] w-full flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)] lg:h-full lg:max-h-none lg:w-72">
+            <div className="flex shrink-0 items-center justify-between px-4 py-3">
+              <span className="text-sm font-semibold text-slate-800">Bộ lọc</span>
+              {totalActiveFilters > 0 ? (
                 <button
                   type="button"
                   onClick={() => {
                     setSeverityFilters([]);
                     setCategoryFilters([]);
                   }}
-                  className="text-sm text-muted-foreground transition hover:text-foreground"
+                  className="text-xs font-medium text-slate-500 transition hover:text-slate-800"
                 >
                   Xoá tất cả
                 </button>
-              )}
+              ) : null}
             </div>
 
-            <div className="shrink-0 px-5 pb-2">
+            <div className="shrink-0 px-4 pb-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={search}
-                  onChange={e => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
+                  onChange={e => setSearch(e.target.value)}
                   placeholder="Tìm mã báo cáo, địa chỉ..."
-                  className="h-9 rounded-lg pl-9 text-sm"
+                  className="h-8 border-slate-200 bg-white pl-9 text-sm shadow-none"
+                  aria-label="Tìm báo cáo phân công"
                 />
               </div>
             </div>
 
-            <div className="scrollbar-smooth flex-1 overflow-y-auto px-5 pb-5">
+            <div className="scrollbar-smooth flex-1 overflow-y-auto px-4 pb-4">
               <FilterSection title="Loại ô nhiễm" activeCount={categoryFilters.length}>
                 {catalogCategories.map(cat => (
                   <CheckItem
@@ -300,7 +301,7 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
                   />
                 ))}
                 {catalogCategories.length === 0 && (
-                  <p className="py-2 text-sm text-muted-foreground">Đang tải...</p>
+                  <p className="py-2 text-sm text-slate-500">Đang tải...</p>
                 )}
               </FilterSection>
 
@@ -318,35 +319,39 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
           </aside>
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border p-3 sm:p-4">
+        {/* Table — layout cũ, typography giữ Verify-style */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]">
+          <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 px-3 py-2 sm:px-4">
             <Button
+              type="button"
               size="sm"
-              disabled={selected.size === 0}
+              disabled={selected.size === 0 || hasRejectedSelected}
               onClick={() => setAssignOpen(true)}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
+              className="h-8 gap-1.5 bg-emerald-600 px-3 text-[0.8125rem] text-white hover:bg-emerald-500"
             >
-              <UserPlus className="mr-1.5 size-4" />
+              <UserPlus className="size-3.5" />
               Phân công
-              {selected.size > 0 && (
-                <span className="ml-1.5 rounded-full bg-white/20 px-1.5 text-xs font-semibold">
+              {selected.size > 0 ? (
+                <span className="rounded-full bg-white/20 px-1.5 text-[11px] font-semibold">
                   {selected.size}
                 </span>
-              )}
+              ) : null}
             </Button>
-            <div className="flex-1" />
           </div>
 
-          <div className="scrollbar-smooth min-h-0 flex-1 overflow-x-auto overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10 bg-muted/30 backdrop-blur-sm">
-                <tr>
-                  {TABLE_COLS.map(h => (
-                    <th
-                      key={h}
-                      className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"
+          <div className="scrollbar-smooth min-h-0 flex-1 overflow-x-auto overflow-y-auto [&_table]:border-collapse">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  {TABLE_COLS.map(col => (
+                    <TableHead
+                      key={col.key}
+                      className={cn(
+                        'h-9 border-b border-slate-200 bg-slate-50/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500',
+                        col.className
+                      )}
                     >
-                      {h === 'CHỌN' ? (
+                      {col.key === 'select' ? (
                         <Checkbox
                           checked={indeterminate ? 'indeterminate' : allChecked}
                           onCheckedChange={() => {
@@ -355,50 +360,46 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
                           }}
                         />
                       ) : (
-                        h
+                        col.label
                       )}
-                    </th>
+                    </TableHead>
                   ))}
-                  <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    THAO TÁC
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading && <SkeletonRows />}
-                {isError && (
-                  <tr>
-                    <td colSpan={8} className="px-5 py-24 text-center text-sm text-destructive">
-                      Không thể tải dữ liệu. Vui lòng thử lại.
-                    </td>
-                  </tr>
-                )}
-                {!isLoading && !isError && filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-5 py-24 text-center text-sm text-muted-foreground"
-                    >
-                      Không có báo cáo nào phù hợp.
-                    </td>
-                  </tr>
-                )}
-                {!isLoading &&
-                  !isError &&
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isPending ? (
+                  <TableRow>
+                    <TableCell colSpan={TABLE_COLS.length} className="h-40 text-center">
+                      <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                    </TableCell>
+                  </TableRow>
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={TABLE_COLS.length} className="h-40 text-center">
+                      <p className="text-sm text-destructive">
+                        Không thể tải dữ liệu. Vui lòng thử lại.
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={TABLE_COLS.length} className="h-40 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                        <SaveIcon size={32} className="opacity-30" />
+                        <span>Không có báo cáo nào phù hợp.</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
                   filtered.map(report => {
                     const isHighlighted = report.id === highlightReportId && !highlightFading;
-                    let rowClass =
-                      'cursor-pointer border-t border-border transition-colors duration-700 hover:bg-muted/40';
-                    if (isHighlighted) rowClass += ' bg-emerald-50';
-                    else if (selected.has(report.id)) rowClass += ' bg-primary/5';
-
                     const location = extractLocationLabel(report.address);
-                    // const resolveSla = report.slaResolveDueAt
-                    //   ? formatTrackingSla(report.slaResolveDueAt)
-                    //   : null;
+                    const resolveSla = report.slaResolveDueAt
+                      ? formatTrackingSla(report.slaResolveDueAt)
+                      : null;
 
                     return (
-                      <tr
+                      <TableRow
                         key={report.id}
                         ref={el => {
                           if (el) {
@@ -409,9 +410,13 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
                           }
                         }}
                         onClick={() => setDetailReportId(report.id)}
-                        className={rowClass}
+                        className={cn(
+                          'cursor-pointer border-slate-100 transition-colors duration-700 hover:bg-sky-50/40',
+                          isHighlighted && 'bg-emerald-50',
+                          !isHighlighted && selected.has(report.id) && 'bg-sky-50/60'
+                        )}
                       >
-                        <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
+                        <TableCell className="px-3 py-2" onClick={e => e.stopPropagation()}>
                           <Checkbox
                             checked={selected.has(report.id)}
                             onCheckedChange={() =>
@@ -423,49 +428,69 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
                               })
                             }
                           />
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-sky-100">
-                              <Camera className="size-4" aria-hidden />
+                        </TableCell>
+                        <TableCell className="px-3 py-2">
+                          <div className="flex items-start gap-2.5">
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-50 text-sky-600 ring-1 ring-sky-100">
+                              <Camera className="size-3.5" aria-hidden />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-foreground">{report.code}</p>
-                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              <p className="text-xs font-medium text-sky-700">{report.code}</p>
+                              <p className="mt-0.5 truncate text-[11px] text-slate-500">
                                 Check-in {formatCheckInTime(report.createdAt)}
                               </p>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-5 py-4 text-sm text-foreground">{report.categoryName}</td>
-                        <td className={`px-5 py-4 text-sm ${SEVERITY_CLASS[report.severity]}`}>
-                          {SEVERITY_LABEL[report.severity]}
-                        </td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground">{location}</td>
-                        <td className="px-5 py-4">
+                        </TableCell>
+                        <TableCell className="px-3 py-2 text-sm text-slate-700">
+                          {report.categoryName}
+                        </TableCell>
+                        <TableCell className="px-3 py-2">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                            <span
+                              className={cn(
+                                'inline-block size-2.5 shrink-0 rounded-full',
+                                SEVERITY_DOT[report.severity]
+                              )}
+                              aria-hidden
+                            />
+                            {SEVERITY_LABEL[report.severity]}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-3 py-2 text-sm text-slate-600">
+                          {location}
+                        </TableCell>
+                        <TableCell className="px-3 py-2">
                           <Badge
                             variant="secondary"
-                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusClass}`}
+                            className={cn(
+                              'rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                              REPORT_STATUS_BADGE_CLASSES[report.status] ??
+                                'bg-muted text-foreground'
+                            )}
                           >
-                            {statusLabel}
+                            {reportStatusLabelVi(report.status)}
                           </Badge>
-                        </td>
-                        <td
-                          className={`px-5 py-4 text-sm font-medium tabular-nums ${
-                            // resolveSla?.overdue ? 'text-red-600' : 'text-foreground'
-                            'text-foreground'
-                          }`}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'px-3 py-2 text-xs font-medium tabular-nums',
+                            resolveSla?.overdue ? 'text-red-600' : 'text-slate-700'
+                          )}
                         >
-                          {/* {resolveSla?.text ?? '—'} */}
-                          {'—'}
-                        </td>
-                        <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
+                          {resolveSla?.text ?? '—'}
+                        </TableCell>
+                        <TableCell
+                          className="px-3 py-2 text-right"
+                          onClick={e => e.stopPropagation()}
+                        >
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="size-8 text-muted-foreground"
+                                className="size-7 text-slate-500 hover:text-slate-700"
                               >
                                 <MoreHorizontal className="size-4" />
                               </Button>
@@ -474,32 +499,54 @@ export function AssignReportsTab({ status, Dialog, actionLabel }: AssignReportsT
                               <DropdownMenuItem onClick={() => setDetailReportId(report.id)}>
                                 Xem chi tiết
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelected(new Set([report.id]));
-                                  setAssignOpen(true);
-                                }}
-                              >
-                                {actionLabel}
-                              </DropdownMenuItem>
+                              {report.status === 'Verified' && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelected(new Set([report.id]));
+                                    setAssignOpen(true);
+                                  }}
+                                >
+                                  {actionLabel}
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
-                  })}
-              </tbody>
-            </table>
+                  })
+                )}
+              </TableBody>
+            </Table>
           </div>
 
-          <div className="mt-auto flex shrink-0 flex-wrap items-center justify-end gap-3 p-3 sm:p-4">
-            <PaginationSimple
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              className={isLoading ? 'pointer-events-none opacity-60' : 'w-auto'}
-            />
-          </div>
+          {pagination && pagination.totalPages > 1 ? (
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2">
+              <span className="text-xs text-slate-500">
+                Trang {pagination.page}/{Math.max(pagination.totalPages, 1)}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!pagination.hasPrev || isPending}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Trước
+                </button>
+                <button
+                  type="button"
+                  disabled={!pagination.hasNext || isPending}
+                  onClick={() => setPage(p => p + 1)}
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Sau
+                  <ChevronRight className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

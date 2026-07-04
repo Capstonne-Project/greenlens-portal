@@ -51,7 +51,6 @@ export async function adaptTeamDetail(id: string): Promise<ApiEnvelope<TeamDetai
 export async function adaptCreateTeam(body: CreateTeamInput): Promise<ApiEnvelope<CreatedTeam>> {
   const payload: CreateTeamBodyDto = {
     name: body.name.trim(),
-    localOfficeId: body.localOfficeId,
     teamType: body.teamType,
   };
   const res = await apiService.post<ApiEnvelope<CreateTeamDataDto>>('/v1/teams', payload);

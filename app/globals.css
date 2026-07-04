@@ -10,8 +10,8 @@
 /* ===== 4. Theme tokens ===== */
 @theme {
   /* Fonts */
-  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
-  --font-mann: var(--font-nunito), sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mann: var(--font-inter), sans-serif;
   --font-urbanist: 'Urbanist', sans-serif;
 
   /* Radius */
@@ -225,6 +225,16 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Aceternity UI tabs — ẩn scrollbar tab bar (optional) */
+.no-visible-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.no-visible-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @utility scrollbar-smooth {

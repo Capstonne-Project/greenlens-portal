@@ -5,72 +5,48 @@ export type { ReportSeverity } from '@/lib/api/models/adminReport';
 export type { ReportStatus } from '@/lib/constants/reportStatus';
 
 export type SeveritySetBy = 'User' | 'AI' | 'Officer';
-export type MediaType = 'Image' | 'Video';
 
+/** GET /v1/reports/{id} — `data.media[]` */
 export interface ReportMedia {
   id: string;
-  mediaType: MediaType;
+  mediaType: string;
   url: string;
   mimeType: string;
   sizeBytes: number;
 }
 
-/** Record gán đội xử lý cho một báo cáo — audit trail.
- *  Khớp response của POST /v1/reports/{id}/assign. */
+/** GET /v1/reports/{id} — `data.assignments[]` */
 export interface ReportAssignment {
   id: string;
   teamId: string;
   teamName: string;
-  note: string | null;
+  teamType: string;
+  status: string;
+  note: string;
   assignedAt: string;
-  assignedByUserId: string;
-  assignedByName: string | null;
+  startedAt: string;
+  completedAt: string;
+  progressPercent: number;
+  progressNote: string;
+  progressUpdatedAt: string;
 }
 
-export interface ReportQueueItem {
-  id: string;
+/** GET /v1/reports/{id} — `data.wasteTags[]` */
+export interface ReportWasteTag {
+  tagId: string;
   code: string;
-  categoryCode: string;
-  categoryName: string;
-  severity: ReportSeverity;
-  status: ReportStatus;
-  latitude: number;
-  longitude: number;
-  address: string;
-  wardCode: string;
-  priorityScore: number;
-  createdAt: string;
-  slaVerifyDueAt: string;
+  nameVi: string;
+  nameEn: string;
+  iconUrl: string;
 }
 
-export interface ReportQueueParams {
-  page: number;
-  pageSize: number;
-}
-
-export interface ReportQueueData {
-  items: ReportQueueItem[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-}
-
+/** GET /v1/reports/{id} — domain model (khớp Swagger BE; `status` đã normalize). */
 export interface ReportDetail {
   id: string;
   code: string;
-  verifiedAt: string;
-  dispatchedAt: string;
-  resolvedAt: string;
-  closedAt: string;
-  slaResolveDueAt: string;
-  slaVerifyDueAt: string;
-  createdAt: string;
-  media: ReportMedia[];
-  assignments: ReportAssignment[];
-  isAnonymous: boolean;
+  reporterId: string;
   categoryId: string;
   categoryCode: string;
-  reporterId: string;
   categoryName: string;
   severity: ReportSeverity;
   severitySetBy: SeveritySetBy;
@@ -84,6 +60,20 @@ export interface ReportDetail {
   priorityScore: number;
   reporterCount: number;
   reopenedCount: number;
+  aiClassifiedType: string | null;
+  aiConfidence: number | null;
+  verifiedBy: string | null;
+  assignedByOfficerId: string | null;
   assignedOfficeId: string | null;
-  updatedAt: string;
+  media: ReportMedia[];
+  assignments: ReportAssignment[];
+  wasteTags: ReportWasteTag[];
+  aiSuggestedWasteTagCodes: string | null;
+  createdAt: string;
+  verifiedAt: string | null;
+  startedAt: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  slaVerifyDueAt: string | null;
+  slaResolveDueAt: string | null;
 }

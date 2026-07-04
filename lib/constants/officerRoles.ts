@@ -40,3 +40,13 @@ export function canAccessCompanies(systemRole: UserRole | string | undefined): b
 export function isDeoOfficer(systemRole: UserRole | string | undefined): boolean {
   return parseOfficerApiRole(systemRole) === 'DEO';
 }
+
+/** Phân công / theo dõi / xác minh queue — chỉ LEO. */
+export function isLeoOfficer(systemRole: UserRole | string | undefined): boolean {
+  return parseOfficerApiRole(systemRole) === 'LEO';
+}
+
+/** Hàng đợi xác minh — chỉ LEO (DEO xác minh qua bản đồ). */
+export function canAccessVerifyQueue(systemRole: UserRole | string | undefined): boolean {
+  return isLeoOfficer(systemRole);
+}

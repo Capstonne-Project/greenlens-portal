@@ -63,6 +63,24 @@ export interface CompaniesListDataDto {
   pagination: CompanyPaginationDto;
 }
 
+/** GET /v1/companies/my-ward — item trong `companies[]`. */
+export interface MyWardCompanyItemDto {
+  id: string;
+  name: string;
+  contractNumber: string;
+  contractType: CompanyContractType;
+  status: string;
+  phone: string;
+  email: string;
+  serviceAreaCount: number;
+  staffCount: number;
+}
+
+/** GET /v1/companies/my-ward — data envelope. */
+export interface MyWardCompaniesDataDto {
+  companies: MyWardCompanyItemDto[];
+}
+
 /** GET /v1/companies/{id}/service-areas — data */
 export interface CompanyServiceAreasDataDto {
   wardCodes: string[];
@@ -71,4 +89,33 @@ export interface CompanyServiceAreasDataDto {
 /** PUT /v1/companies/{id}/service-areas — request body */
 export interface UpdateCompanyServiceAreasBodyDto {
   wardCodes: string[];
+}
+
+/** GET /v1/companies/{id}/service-areas — item */
+export interface CompanyServiceAreaDto {
+  id: string;
+  wardCode: string;
+  wardName: string;
+  provinceCode: string;
+}
+
+/** GET /v1/companies/{id} — data */
+export interface CompanyDetailDto {
+  id: string;
+  name: string;
+  contractNumber: string;
+  contractType: CompanyContractType;
+  status: string;
+  contractStartDate: string;
+  contractEndDate: string | null;
+  taxCode: string;
+  address: string;
+  phone: string;
+  email: string;
+  departmentId: string;
+  departmentName: string;
+  activatedAt: string | null;
+  serviceAreas: CompanyServiceAreaDto[];
+  staffCount: number;
+  createdAt: string;
 }

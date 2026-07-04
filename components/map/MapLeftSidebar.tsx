@@ -1,12 +1,12 @@
 'use client';
 
 import '@/lib/external/fontawesome';
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRightToBracket, faThumbtack } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faRightToBracket, faThumbtack } from '@fortawesome/free-solid-svg-icons';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
 import { getActiveNavId } from '@/lib/constants/mapShellNav';
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
@@ -23,6 +23,13 @@ import {
   mapNavItemIconRailClass,
   mapNavItemLabelClass,
   mapNavItemSurfaceClass,
+  mapNavChildConnectorClass,
+  mapNavChildLinkClass,
+  mapNavChildListClass,
+  mapNavChildPanelClass,
+  mapNavChildPanelInnerClass,
+  mapNavDropdownChevronBtnClass,
+  mapNavDropdownChevronIconClass,
   mapSidebarAsideClass,
   mapSidebarBrandClass,
   SIDEBAR_CSS_VARS,
@@ -32,6 +39,7 @@ import {
   mapSidebarProfileFooterClass,
 } from '@/lib/map/mapShellStyles';
 import { MapSidebarUserProfile } from './MapSidebarUserProfile';
+import { cn } from '@/lib/utils';
 
 type MapLeftSidebarProps = {
   config: MapShellNavConfig;
@@ -63,6 +71,96 @@ function NavItem({
         </span>
       </span>
     </Link>
+  );
+}
+
+function isAssignSectionPath(path: string, item: MapShellNavItem): boolean {
+  if (!item.children?.length) return false;
+  if (path === item.href) return true;
+  return item.children.some(c => path === c.href || path.startsWith(`${c.href}/`));
+}
+
+function NavDropdownGroup({
+  item,
+  activeId,
+  expanded,
+  pathname,
+}: {
+  item: MapShellNavItem;
+  activeId: string | null;
+  expanded: boolean;
+  pathname: string;
+}) {
+  const path = pathname.split('?')[0] ?? pathname;
+  const inSection = isAssignSectionPath(path, item);
+  const parentActive = activeId === item.id;
+  const [open, setOpen] = useState(inSection);
+  const [lastPath, setLastPath] = useState(path);
+
+  if (lastPath !== path) {
+    setLastPath(path);
+    setOpen(inSection);
+  }
+
+  if (!item.children?.length || !expanded) {
+    return <NavItem item={item} active={parentActive} expanded={expanded} />;
+  }
+
+  const opts = { active: parentActive, expanded };
+
+  return (
+    <div className="w-full">
+      <div className={mapNavItemClass(opts)} title={item.label}>
+        <span className={cn(mapNavItemSurfaceClass(opts), expanded && 'w-full pr-1')}>
+          <Link
+            href={item.href}
+            className="relative z-[1] flex min-w-0 flex-1 items-center gap-[0.62rem] text-inherit no-underline"
+            aria-current={parentActive ? 'page' : undefined}
+          >
+            <span className={mapNavItemIconRailClass()} aria-hidden>
+              <FontAwesomeIcon icon={item.icon} className={mapNavItemIconClass()} />
+            </span>
+            <span className={mapNavItemLabelClass(expanded, opts.active)} aria-hidden={!expanded}>
+              {item.label}
+            </span>
+          </Link>
+          <button
+            type="button"
+            className={mapNavDropdownChevronBtnClass()}
+            onClick={() => setOpen(v => !v)}
+            aria-expanded={open}
+            aria-label={open ? `Thu gọn ${item.label}` : `Mở rộng ${item.label}`}
+          >
+            <FontAwesomeIcon
+              icon={faChevronDown}
+              className={mapNavDropdownChevronIconClass(open)}
+            />
+          </button>
+        </span>
+      </div>
+
+      <div className={mapNavChildPanelClass(open)} aria-hidden={!open}>
+        <div className={mapNavChildPanelInnerClass()}>
+          <div className={mapNavChildListClass()}>
+            <span className={mapNavChildConnectorClass()} aria-hidden />
+            {item.children.map(child => {
+              const childActive = activeId === child.id;
+              return (
+                <Link
+                  key={child.id}
+                  href={child.href}
+                  className={mapNavChildLinkClass({ active: childActive })}
+                  aria-current={childActive ? 'page' : undefined}
+                  tabIndex={open ? undefined : -1}
+                >
+                  {child.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -149,6 +247,7 @@ export function MapLeftSidebar({ config }: MapLeftSidebarProps) {
             alt=""
             width={24}
             height={24}
+            priority
             className="object-contain"
             unoptimized
           />
@@ -164,9 +263,19 @@ export function MapLeftSidebar({ config }: MapLeftSidebarProps) {
       </div>
 
       <nav className="flex w-full flex-col pt-1" aria-label="Menu chính">
-        {config.mainNav.map(item => (
-          <NavItem key={item.id} item={item} active={activeId === item.id} expanded={expanded} />
-        ))}
+        {config.mainNav.map(item =>
+          item.children?.length ? (
+            <NavDropdownGroup
+              key={item.id}
+              item={item}
+              activeId={activeId}
+              expanded={expanded}
+              pathname={pathname}
+            />
+          ) : (
+            <NavItem key={item.id} item={item} active={activeId === item.id} expanded={expanded} />
+          )
+        )}
       </nav>
 
       <div className="mt-auto w-full">

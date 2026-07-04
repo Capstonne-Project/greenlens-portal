@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
 import {
   Select,
@@ -12,42 +13,58 @@ import {
 } from '@/components/ui/select';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeoMyReports } from '@/hooks/useLeoOffices';
-import type { LeoMyReportAssignment, LeoMyReportItem } from '@/lib/api/models/office';
-// import type { ReportAssignmentStatus, ReportSeverity } from '@/lib/api/models/report';
+import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
+import type {
+  LeoMyReportAssignment,
+  LeoMyReportItem,
+  LeoMyReportsSeverity,
+  LeoMyReportsStatus,
+  LeoReportAssignmentStatus,
+} from '@/lib/api/models/office';
+import {
+  LEO_MY_REPORTS_SEVERITIES,
+  LEO_MY_REPORTS_STATUSES,
+  LEO_REPORT_ASSIGNMENT_STATUSES,
+} from '@/lib/api/models/office';
+import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
-import { Clock, LayoutGrid, List, Loader2, MapPin, MoreVertical, Search, User } from 'lucide-react';
+import {
+  CircleHelp,
+  Clock,
+  LayoutGrid,
+  List,
+  Loader2,
+  MapPin,
+  MoreVertical,
+  Search,
+  User,
+} from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 /** Số báo cáo mỗi trang — query `pageSize` gửi lên GET /v1/offices/my/reports. */
 const LEO_PAGE_SIZE = 10;
 
-/** Trạng thái LEO theo dõi — report.ts (9–16), không gồm Submitted / Verified / Dispatched. */
-const LEO_TRACKING_STATUSES = [
-  'Assigned',
-  'InProgress',
-  'Resolved',
-  'Closed',
-  'Rejected',
-  'Duplicate',
-  'PenaltyIssued',
-  'ClosedNoViolation',
-] as const;
+/** Swagger GET /v1/offices/my/reports — query `status`. */
+const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES;
 
 const LEO_TRACKING_STATUS_SET = new Set<string>(LEO_TRACKING_STATUSES);
 
-type LeoTrackingStatus = (typeof LEO_TRACKING_STATUSES)[number];
+type LeoTrackingStatus = LeoMyReportsStatus;
 type LeoStatusTab = 'All' | LeoTrackingStatus;
 type LeoViewMode = 'list' | 'board';
 
-const LEO_STATUS_LABEL: Record<LeoTrackingStatus, string> = {
+const SEVERITY_LABEL: Record<LeoMyReportsSeverity, string> = {
+  Low: 'Thấp',
+  Medium: 'Trung bình',
+  High: 'Cao',
+  Critical: 'Nghiêm trọng',
+};
+
+const ASSIGNMENT_STATUS_LABEL: Record<LeoReportAssignmentStatus, string> = {
   Assigned: 'Đã phân công',
   InProgress: 'Đang xử lý',
-  Resolved: 'Đã giải quyết',
-  Closed: 'Đã đóng',
-  Rejected: 'Từ chối',
-  Duplicate: 'Trùng lặp',
-  PenaltyIssued: 'Đã xử phạt',
-  ClosedNoViolation: 'Đóng không vi phạm',
+  Completed: 'Hoàn thành',
+  Declined: 'Từ chối',
 };
 
 const LEO_VIEW_TOGGLE_CLASS = (active: boolean) =>
@@ -57,32 +74,6 @@ const LEO_VIEW_TOGGLE_CLASS = (active: boolean) =>
   );
 
 const EMPTY_LEO_ITEMS: LeoMyReportItem[] = [];
-
-// ─── Color palette ─────────────────────────────────────────────────────────
-
-// const SEVERITY_LABEL: Record<ReportSeverity, string> = {
-//   Low: 'Thấp',
-//   Medium: 'Trung bình',
-//   High: 'Cao',
-//   Critical: 'Nghiêm trọng',
-// };
-
-// const SEVERITY_BADGE_CLASS: Record<ReportSeverity, string> = {
-//   Low: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-//   Medium: 'bg-amber-50 text-amber-700 ring-amber-200',
-//   High: 'bg-orange-50 text-orange-700 ring-orange-200',
-//   Critical: 'bg-rose-50 text-rose-700 ring-rose-200',
-// };
-
-// const ASSIGNMENT_STATUS_OPTIONS: readonly {
-//   value: ReportAssignmentStatus;
-//   label: string;
-// }[] = [
-//   { value: 'Assigned', label: 'Đã phân công' },
-//   { value: 'InProgress', label: 'Đang xử lý' },
-//   { value: 'Completed', label: 'Hoàn thành' },
-//   { value: 'Declined', label: 'Từ chối' },
-// ];
 
 const AVATAR_PALETTE = [
   'bg-orange-200 text-orange-800',
@@ -299,10 +290,10 @@ function ProjectCard({ item, onOpen }: ProjectCardProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 `}
-            title={`Mức độ: cc`}
+            className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200"
+            title={`Mức độ: ${SEVERITY_LABEL[item.severity]}`}
           >
-            ● {'—'}
+            {SEVERITY_LABEL[item.severity]}
           </span>
           <span
             className="inline-flex max-w-48 items-center truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700"
@@ -516,10 +507,11 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
   const [statusTab, setStatusTab] = useState<LeoStatusTab>('All');
   const [viewMode, setViewMode] = useState<LeoViewMode>('board');
   const [search, setSearch] = useState('');
-  // const [severityFilter, setSeverityFilter] = useState<'all' ;
-  // const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<
-  //   'all' | ReportAssignmentStatus
-  // >('all');
+  const [severityFilter, setSeverityFilter] = useState<'all' | LeoMyReportsSeverity>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+  const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<
+    'all' | LeoReportAssignmentStatus
+  >('all');
 
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const isSearchPending = search.trim() !== debouncedSearch;
@@ -532,14 +524,20 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     setSearch(value);
     setPage(1);
   };
-  // const handleSeverityChange = (value: 'all' | ReportSeverity) => {
-  //   setSeverityFilter(value);
-  //   setPage(1);
-  // };
-  // const handleAssignmentStatusChange = (value: 'all' | ReportAssignmentStatus) => {
-  //   setAssignmentStatusFilter(value);
-  //   setPage(1);
-  // };
+  const handleSeverityChange = (value: 'all' | LeoMyReportsSeverity) => {
+    setSeverityFilter(value);
+    setPage(1);
+  };
+  const handleCategoryChange = (value: string) => {
+    setCategoryFilter(value);
+    setPage(1);
+  };
+  const handleAssignmentStatusChange = (value: 'all' | LeoReportAssignmentStatus) => {
+    setAssignmentStatusFilter(value);
+    setPage(1);
+  };
+
+  const { data: catalogCategories = [] } = useCatalogPollutionCategories();
 
   const { data, isLoading, isError } = useLeoMyReports({
     page,
@@ -548,8 +546,9 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     sortDesc: true,
     search: debouncedSearch || undefined,
     status: statusTab === 'All' ? undefined : statusTab,
-    // severity: severityFilter === 'all' ? undefined : severityFilter,
-    // assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
+    categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
+    severity: severityFilter === 'all' ? undefined : severityFilter,
+    assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
   });
 
   const items = useMemo(() => data?.items ?? EMPTY_LEO_ITEMS, [data?.items]);
@@ -578,7 +577,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
       { key: 'All', label: 'Tất cả', count: statusCounts.All },
       ...LEO_TRACKING_STATUSES.map(s => ({
         key: s,
-        label: LEO_STATUS_LABEL[s],
+        label: reportStatusLabelVi(s),
         count: statusCounts[s],
       })),
     ],
@@ -588,17 +587,27 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
   /** Tổng trang từ BE (`pagination.totalPages`), tính theo `pageSize` server nhận. */
   const totalPages = Math.max(1, data?.pagination.totalPages ?? 1);
 
-  const activeTabLabel =
-    statusTab === 'All' ? 'Tất cả' : LEO_STATUS_LABEL[statusTab as LeoTrackingStatus];
+  const activeTabLabel = statusTab === 'All' ? 'Tất cả' : reportStatusLabelVi(statusTab);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-6">
-      <div className="shrink-0">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Theo dõi xử lý</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Quản lý báo cáo thuộc văn phòng phường — phân công đội, tiến độ và hạn xử lý
-        </p>
-      </div>
+    <>
+      <header className="mb-3 shrink-0">
+        <div className="border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-[0.35rem]">
+            <h1 className="text-lg font-bold tracking-tight text-slate-900">Theo dõi xử lý</h1>
+            <button
+              type="button"
+              className="inline-flex cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-[0.15rem] text-slate-500 hover:bg-slate-400/15 hover:text-slate-700"
+              aria-label="Thông tin theo dõi xử lý"
+            >
+              <CircleHelp className="size-4" aria-hidden />
+            </button>
+          </div>
+          {data?.localOfficeName ? (
+            <p className="mt-1 text-xs text-slate-500">{data.localOfficeName}</p>
+          ) : null}
+        </div>
+      </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <LeoStatusTabBar
@@ -627,38 +636,53 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             ) : null}
           </div>
 
+          <Select value={categoryFilter} onValueChange={handleCategoryChange}>
+            <SelectTrigger className="h-9 w-full min-w-0 rounded-lg text-sm sm:w-auto">
+              <SelectValue placeholder="Loại ô nhiễm" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Loại ô nhiễm</SelectItem>
+              {catalogCategories.map(cat => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.nameVi}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select
-          // value={severityFilter}
-          // onValueChange={value => handleSeverityChange(value as 'all' | ReportSeverity)}
+            value={severityFilter}
+            onValueChange={value => handleSeverityChange(value as 'all' | LeoMyReportsSeverity)}
           >
             <SelectTrigger className="h-9 w-full min-w-0 rounded-lg text-sm sm:w-auto">
               <SelectValue placeholder="Mức độ" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Mức độ</SelectItem>
-              <SelectItem value="Critical">cc</SelectItem>
-              <SelectItem value="High">cc</SelectItem>
-              <SelectItem value="Medium">cc</SelectItem>
-              <SelectItem value="Low">cc</SelectItem>
+              {LEO_MY_REPORTS_SEVERITIES.map(level => (
+                <SelectItem key={level} value={level}>
+                  {SEVERITY_LABEL[level]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
           <Select
-          // value={assignmentStatusFilter}
-          // onValueChange={value =>
-          // handleAssignmentStatusChange(value as 'all' | ReportAssignmentStatus)
-          // }
+            value={assignmentStatusFilter}
+            onValueChange={value =>
+              handleAssignmentStatusChange(value as 'all' | LeoReportAssignmentStatus)
+            }
           >
             <SelectTrigger className="h-9 w-full min-w-0 rounded-lg text-sm sm:w-auto">
               <SelectValue placeholder="Trạng thái đội" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Trạng thái đội</SelectItem>
-              {/* {ASSIGNMENT_STATUS_OPTIONS.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+              {LEO_REPORT_ASSIGNMENT_STATUSES.map(status => (
+                <SelectItem key={status} value={status}>
+                  {ASSIGNMENT_STATUS_LABEL[status]}
                 </SelectItem>
-              ))} */}
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -672,9 +696,12 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             isLoading ? (
               <SkeletonGrid />
             ) : items.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                Không có báo cáo phù hợp ở trạng thái{' '}
-                <span className="ml-1 font-medium text-foreground">{activeTabLabel}</span>.
+              <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                <SaveIcon size={32} className="opacity-30" />
+                <p>
+                  Không có báo cáo phù hợp ở trạng thái{' '}
+                  <span className="font-medium text-foreground">{activeTabLabel}</span>.
+                </p>
               </div>
             ) : (
               <section className="grid gap-4 grid-cols-1 sm:grid-cols-3 xl:grid-cols-5">
@@ -686,9 +713,12 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           ) : isLoading ? (
             <SkeletonList />
           ) : items.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-              Không có báo cáo phù hợp ở trạng thái{' '}
-              <span className="ml-1 font-medium text-foreground">{activeTabLabel}</span>.
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              <SaveIcon size={32} className="opacity-30" />
+              <p>
+                Không có báo cáo phù hợp ở trạng thái{' '}
+                <span className="font-medium text-foreground">{activeTabLabel}</span>.
+              </p>
             </div>
           ) : (
             <section className="flex flex-col gap-3">
@@ -708,6 +738,6 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           />
         </div>
       </div>
-    </div>
+    </>
   );
 }

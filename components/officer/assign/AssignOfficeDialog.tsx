@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/button';
 import { Building2, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-// import { DeoOfficesTable } from './DeoOfficesTable';
 
 interface AssignOfficeDialogProps {
   open: boolean;
@@ -82,15 +81,6 @@ function AssignOfficeDialogContent({
             <X className="size-4" />
           </button>
         </div>
-
-        {/* <DeoOfficesTable
-          selectable
-          paginationMode="infinite"
-          selectedOfficeIds={selectedOfficeIds}
-          onToggleOffice={toggleOffice}
-          onMetaChange={meta => setDepartmentName(meta.departmentName)}
-          className="min-h-0 flex-1"
-        /> */}
 
         <div className="shrink-0 border-t border-border px-5 py-3">
           <label

@@ -66,10 +66,9 @@ export interface TeamsListParams {
   isAvailable?: boolean;
 }
 
-/** POST /v1/teams */
+/** POST /v1/teams — LEO: office lấy từ auth token. */
 export interface CreateTeamInput {
   name: string;
-  localOfficeId: string;
   teamType: TeamType;
 }
 
