@@ -1,16 +1,29 @@
+import {
+  getAccessTokenFromCookie,
+  getRefreshTokenFromCookie,
+  setAuthCookies,
+} from '@/lib/storage/authCookies';
 import axios, { AxiosProgressEvent, AxiosRequestConfig, AxiosResponse } from 'axios';
 
+/** Re-export of axios.isAxiosError so layers L2–L6 can type-guard errors
+ *  without importing axios directly. */
+export const isAxiosError = axios.isAxiosError;
+import { getApiBaseUrl } from './getApiBaseUrl';
+import { postRefreshToken } from './refreshSession';
+import type { LoginSuccessData } from './types/auth';
+
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
 
-// Request interceptor — attach Bearer token from authStore
+// Request interceptor — resolve base URL per request + Bearer token
 axiosInstance.interceptors.request.use(config => {
+  config.baseURL = getApiBaseUrl();
   if (typeof window !== 'undefined') {
-    // Lazy import to avoid circular deps; authStore sets window.__authToken on login
-    const token = (window as Window & { __authToken?: string }).__authToken;
+    const windowToken = (window as Window & { __authToken?: string }).__authToken;
+    const token = windowToken ?? getAccessTokenFromCookie();
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -18,18 +31,85 @@ axiosInstance.interceptors.request.use(config => {
   return config;
 });
 
-// Response interceptor — 401 → logout + redirect
+type RetriableConfig = { _retry?: boolean; url?: string };
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+function forceLogout(): void {
+  if (typeof window === 'undefined') return;
+  (window as Window & { __authToken?: string }).__authToken = undefined;
+  window.dispatchEvent(new Event('auth:logout'));
+  window.location.href = '/login';
+}
+
+function shouldSkipRefreshRetry(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.includes('/v1/auth/login') || url.includes('/v1/auth/refresh-token');
+}
+
+async function refreshSessionOnce(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const refreshToken = getRefreshTokenFromCookie();
+      if (!refreshToken) return false;
+
+      const envelope = await postRefreshToken(refreshToken);
+      const { accessToken, refreshToken: newRefresh, user } = envelope.data;
+      setAuthCookies(accessToken, newRefresh);
+      (window as Window & { __authToken?: string }).__authToken = accessToken;
+
+      const sessionDetail: LoginSuccessData = {
+        accessToken,
+        refreshToken: newRefresh,
+        user,
+      };
+      window.dispatchEvent(new CustomEvent('auth:session', { detail: sessionDetail }));
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+// Response interceptor — 401 → refresh once, then retry; else logout
 axiosInstance.interceptors.response.use(
   response => response,
   async error => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
-      // Clear token and redirect to login
-      (window as Window & { __authToken?: string }).__authToken = undefined;
-      // Trigger auth store logout via custom event so we avoid circular import
-      window.dispatchEvent(new Event('auth:logout'));
-      window.location.href = '/login';
+    const status = error.response?.status;
+    const originalRequest = error.config as RetriableConfig | undefined;
+    const url = originalRequest?.url;
+
+    if (typeof window === 'undefined' || status !== 401) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    if (shouldSkipRefreshRetry(url)) {
+      return Promise.reject(error);
+    }
+
+    if (originalRequest?._retry) {
+      forceLogout();
+      return Promise.reject(error);
+    }
+
+    const ok = await refreshSessionOnce();
+    if (!ok) {
+      forceLogout();
+      return Promise.reject(error);
+    }
+
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+    return axiosInstance(originalRequest);
   }
 );
 

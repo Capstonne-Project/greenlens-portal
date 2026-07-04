@@ -1,0 +1,1 @@
+export const ADMIN_DEPARTMENTS_PAGE_SIZE = 20;
