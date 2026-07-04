@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
-import { LogOut, MoreVertical, User } from 'lucide-react';
+import { LogOut, MoreVertical } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -16,18 +16,18 @@ function initialsFromUser(name: string | undefined, email: string | undefined): 
     return name.slice(0, 2).toUpperCase();
   }
   if (email) return email.slice(0, 2).toUpperCase();
-  return 'GL';
+  return 'CM';
 }
 
-export function AdminSidebarProfile({ collapsed = false }: { collapsed?: boolean }) {
+export function CompanySidebarProfile({ collapsed = false }: { collapsed?: boolean }) {
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const title = user?.name?.trim() || 'Quản trị viên';
-  const subtitle = user?.email?.trim() || 'Hệ thống GreenLens';
+  const title = user?.name?.trim() || 'Quản lý công ty';
+  const subtitle = user?.email?.trim() || 'Company Manager';
   const initials = initialsFromUser(user?.name, user?.email);
 
   const handleLogout = () => {
@@ -58,11 +58,13 @@ export function AdminSidebarProfile({ collapsed = false }: { collapsed?: boolean
   }, [menuOpen]);
 
   return (
-    <div className={cn('border-t border-border', collapsed ? 'p-2' : 'p-4')}>
+    <div
+      className={cn('border-t border-emerald-200/60 dark:border-border', collapsed ? 'p-2' : 'p-4')}
+    >
       <div
         className={cn(
-          'relative flex rounded-lg bg-muted/50',
-          collapsed ? 'flex-col items-center gap-1 p-1.5' : 'items-start gap-2 p-2'
+          'relative flex rounded-lg',
+          collapsed ? 'flex-col items-center gap-1' : 'items-center gap-2'
         )}
         ref={wrapRef}
       >
@@ -90,8 +92,8 @@ export function AdminSidebarProfile({ collapsed = false }: { collapsed?: boolean
             type="button"
             onClick={() => setMenuOpen(o => !o)}
             className={cn(
-              'rounded-lg text-muted-foreground outline-none transition hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
-              collapsed ? 'p-1' : 'p-1.5'
+              'rounded-lg p-1.5 text-muted-foreground outline-none transition hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
+              collapsed && 'p-1'
             )}
             aria-expanded={menuOpen}
             aria-haspopup="menu"
@@ -105,18 +107,6 @@ export function AdminSidebarProfile({ collapsed = false }: { collapsed?: boolean
               role="menu"
               className="absolute bottom-full right-0 z-50 mb-1 min-w-[11rem] rounded-lg border border-border bg-card py-1 shadow-lg ring-1 ring-black/5"
             >
-              <button
-                role="menuitem"
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  router.push('/admin/profile');
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-foreground outline-none transition hover:bg-muted focus:bg-muted"
-              >
-                <User className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                Hồ sơ
-              </button>
               <button
                 role="menuitem"
                 type="button"

@@ -8,7 +8,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'citizen' | 'officer' | 'cleanup' | 'admin';
+  role: 'citizen' | 'officer' | 'cleanup' | 'admin' | 'company';
   avatarUrl?: string;
 }
 

@@ -3,7 +3,15 @@
  * Citizen | DEO | LEO | Cleanup | Inspector | Admin
  */
 
-export const SYSTEM_ROLES = ['Admin', 'Citizen', 'DEO', 'LEO', 'Cleanup', 'Inspector'] as const;
+export const SYSTEM_ROLES = [
+  'Admin',
+  'Citizen',
+  'DEO',
+  'LEO',
+  'Cleanup',
+  'Inspector',
+  'CompanyManager',
+] as const;
 
 export type SystemRole = (typeof SYSTEM_ROLES)[number];
 
