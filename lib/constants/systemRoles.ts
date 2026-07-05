@@ -1,5 +1,6 @@
 /**
- * UserRole khớp BE: Citizen | DEO | LEO | Cleaner | Inspector | Admin
+ * 8 human roles — khớp BE `UserRole` enum (PascalCase, string trong DB/JWT).
+ * Citizen | DEO | LEO | Cleaner | CompanyManager | CompanyStaff | Inspector | Admin
  */
 
 export const SYSTEM_ROLES = [
@@ -8,9 +9,9 @@ export const SYSTEM_ROLES = [
   'DEO',
   'LEO',
   'Cleaner',
-  'Cleanup',
-  'Inspector',
   'CompanyManager',
+  'CompanyStaff',
+  'Inspector',
 ] as const;
 
 /** Alias khớp tên enum BE (`UserRole`). */
@@ -20,6 +21,7 @@ export type SystemRole = UserRole;
 
 /** Giá trị role cũ → role chuẩn (tương thích JWT/DB legacy). */
 export const LEGACY_ROLE_TO_CANONICAL: Record<string, UserRole> = {
+  Cleanup: 'Cleaner',
   CleanupTeam: 'Cleaner',
   'Cleanup Team': 'Cleaner',
   Officer: 'Inspector',

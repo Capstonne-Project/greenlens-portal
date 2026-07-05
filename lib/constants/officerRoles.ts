@@ -1,20 +1,19 @@
 import { normalizeApiRole, type UserRole } from '@/lib/constants/systemRoles';
 
-/** UserRole BE thuộc cổng officer (DEO / LEO / Inspector). */
-export const OFFICER_API_ROLES = ['DEO', 'LEO', 'Inspector'] as const;
+/** UserRole BE được phép vào cổng `/officer` — chỉ DEO và LEO. */
+export const OFFICER_API_ROLES = ['DEO', 'LEO'] as const;
 
 export type OfficerApiRole = (typeof OFFICER_API_ROLES)[number];
 
 export const OFFICER_ROLE_LABEL_VI: Record<OfficerApiRole, string> = {
   DEO: 'Cán bộ sở (DEO)',
   LEO: 'Cán bộ phường (LEO)',
-  Inspector: 'Thanh tra (Inspector)',
 };
 
 export function parseOfficerApiRole(role: string | undefined): OfficerApiRole | null {
   if (!role?.trim()) return null;
   const canonical = normalizeApiRole(role);
-  if (canonical === 'DEO' || canonical === 'LEO' || canonical === 'Inspector') {
+  if (canonical === 'DEO' || canonical === 'LEO') {
     return canonical;
   }
   return null;

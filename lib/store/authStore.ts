@@ -11,7 +11,7 @@ export interface AuthUser {
   name: string;
   /** Bucket route: admin | officer | cleanup | citizen | company */
   role: 'citizen' | 'officer' | 'cleanup' | 'admin' | 'company';
-  /** Role BE (`UserRole`) — DEO, LEO, Inspector, CompanyManager, … */
+  /** Role BE (`UserRole`) — 8 human roles; officer portal chỉ DEO/LEO. */
   systemRole?: UserRole;
   avatarUrl?: string;
 }

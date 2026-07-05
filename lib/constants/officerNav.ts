@@ -1,12 +1,9 @@
 import type { UserRole } from '@/lib/constants/systemRoles';
-import { parseOfficerApiRole } from '@/lib/constants/officerRoles';
 import type { LucideIcon } from 'lucide-react';
 import { BarChart3, MessageSquare, User } from 'lucide-react';
 
-/** Trang mặc định sau đăng nhập / khi bị từ chối quyền. */
-export function getDefaultOfficerHomePath(systemRole: UserRole | undefined): string {
-  const role = parseOfficerApiRole(systemRole);
-  if (role === 'Inspector') return '/officer/tracking';
+/** Trang mặc định sau đăng nhập / khi bị từ chối quyền (DEO / LEO). */
+export function getDefaultOfficerHomePath(_systemRole: UserRole | undefined): string {
   return '/officer/map';
 }
 

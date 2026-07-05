@@ -136,8 +136,6 @@ export function getMapShellNavForRole(
       },
       NAV_ITEMS.tracking
     );
-  } else if (role === 'Inspector') {
-    mainNav.push(NAV_ITEMS.tracking);
   }
 
   const brand = role === 'LEO' ? BRAND_LEO : role === 'DEO' ? BRAND_DEO : BRAND_DEFAULT;
