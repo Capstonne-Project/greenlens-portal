@@ -70,3 +70,25 @@ export interface DepartmentsListDataDto {
   page: number;
   pageSize: number;
 }
+
+export interface MyOfficesOfficeItemDto extends DepartmentOfficeSummaryDto {
+  createdAt: string;
+}
+
+export interface MyOfficesPaginationDto {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+/** GET /v1/departments/my-offices — data envelope. */
+export interface MyOfficesDataDto {
+  departmentId: string;
+  departmentName: string;
+  provinceCode: string;
+  offices: MyOfficesOfficeItemDto[];
+  pagination: MyOfficesPaginationDto;
+}

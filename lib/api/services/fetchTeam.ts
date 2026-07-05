@@ -1,14 +1,33 @@
 /**
  * L2 — Teams (đội môi trường).
  */
-import { adaptTeamDetail, adaptTeamsList } from '@/lib/api/adapters/teams.adapter';
-import type { TeamDetail, TeamsList, TeamsListParams } from '@/lib/api/models/team';
+import {
+  adaptAddTeamMember,
+  adaptCreateTeam,
+  adaptRemoveTeamMember,
+  adaptTeamDetail,
+  adaptTeamsList,
+} from '@/lib/api/adapters/teams.adapter';
+import type {
+  AddTeamMemberInput,
+  CreateTeamInput,
+  CreatedTeam,
+  TeamDetail,
+  TeamMembership,
+  TeamsList,
+  TeamsListParams,
+} from '@/lib/api/models/team';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
+  AddTeamMemberInput,
+  CreateTeamInput,
+  CreatedTeam,
+  TeamCurrentStatus,
   TeamDetail,
   TeamListItem,
   TeamMember,
+  TeamMembership,
   TeamPagination,
   TeamsList,
   TeamsListParams,
@@ -23,7 +42,30 @@ export async function fetchTeamDetail(id: string): Promise<ApiEnvelope<TeamDetai
   return adaptTeamDetail(id);
 }
 
-export default {
+export async function createTeam(body: CreateTeamInput): Promise<ApiEnvelope<CreatedTeam>> {
+  return adaptCreateTeam(body);
+}
+
+export async function addTeamMember(
+  teamId: string,
+  body: AddTeamMemberInput
+): Promise<ApiEnvelope<TeamMembership>> {
+  return adaptAddTeamMember(teamId, body);
+}
+
+export async function removeTeamMember(
+  teamId: string,
+  userId: string
+): Promise<ApiEnvelope<string>> {
+  return adaptRemoveTeamMember(teamId, userId);
+}
+
+const teamService = {
   fetchTeams,
   fetchTeamDetail,
+  createTeam,
+  addTeamMember,
+  removeTeamMember,
 };
+
+export default teamService;

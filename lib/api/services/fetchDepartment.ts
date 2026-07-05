@@ -7,6 +7,7 @@ import {
   adaptDeactivateDepartment,
   adaptDepartmentDetail,
   adaptDepartmentsList,
+  adaptMyOffices,
   adaptUpdateDepartment,
 } from '@/lib/api/adapters/departments.adapter';
 import type {
@@ -16,6 +17,8 @@ import type {
   DepartmentDetail,
   DepartmentsList,
   DepartmentsListParams,
+  MyOffices,
+  MyOfficesParams,
   UpdateDepartmentInput,
 } from '@/lib/api/models/department';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -30,6 +33,9 @@ export type {
   DepartmentOfficeSummary,
   DepartmentsList,
   DepartmentsListParams,
+  MyOffices,
+  MyOfficesOfficeItem,
+  MyOfficesParams,
   UpdateDepartmentInput,
 } from '@/lib/api/models/department';
 
@@ -37,6 +43,11 @@ export async function fetchDepartments(
   params?: DepartmentsListParams
 ): Promise<ApiEnvelope<DepartmentsList>> {
   return adaptDepartmentsList(params);
+}
+
+/** GET /v1/departments/my-offices — Sở của DEO đang đăng nhập. */
+export async function fetchMyOffices(params?: MyOfficesParams): Promise<ApiEnvelope<MyOffices>> {
+  return adaptMyOffices(params);
 }
 
 export async function fetchDepartmentDetail(id: string): Promise<ApiEnvelope<DepartmentDetail>> {
@@ -66,6 +77,7 @@ export async function assignDepartmentOfficer(
 
 const departmentApi = {
   fetchDepartments,
+  fetchMyOffices,
   fetchDepartmentDetail,
   createDepartment,
   updateDepartment,

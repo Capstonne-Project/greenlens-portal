@@ -1,5 +1,6 @@
 'use client';
 
+import type { UserRole } from '@/lib/constants/systemRoles';
 import { clearAuthCookies } from '@/lib/storage/authCookies';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -8,7 +9,10 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  /** Bucket route: admin | officer | cleanup | citizen | company */
   role: 'citizen' | 'officer' | 'cleanup' | 'admin' | 'company';
+  /** Role BE (`UserRole`) — 8 human roles; officer portal chỉ DEO/LEO. */
+  systemRole?: UserRole;
   avatarUrl?: string;
 }
 

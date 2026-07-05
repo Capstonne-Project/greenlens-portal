@@ -1,6 +1,6 @@
 /**
- * Role hệ thống khớp BE (Swagger dropdown).
- * Citizen | DEO | LEO | Cleanup | Inspector | Admin
+ * 8 human roles — khớp BE `UserRole` enum (PascalCase, string trong DB/JWT).
+ * Citizen | DEO | LEO | Cleaner | CompanyManager | CompanyStaff | Inspector | Admin
  */
 
 export const SYSTEM_ROLES = [
@@ -8,20 +8,25 @@ export const SYSTEM_ROLES = [
   'Citizen',
   'DEO',
   'LEO',
-  'Cleanup',
-  'Inspector',
+  'Cleaner',
   'CompanyManager',
+  'CompanyStaff',
+  'Inspector',
 ] as const;
 
-export type SystemRole = (typeof SYSTEM_ROLES)[number];
+/** Alias khớp tên enum BE (`UserRole`). */
+export type UserRole = (typeof SYSTEM_ROLES)[number];
 
-/** Giá trị role cũ → role mới (tương thích dữ liệu/API legacy). */
-export const LEGACY_ROLE_TO_CANONICAL: Record<string, SystemRole> = {
+export type SystemRole = UserRole;
+
+/** Giá trị role cũ → role chuẩn (tương thích JWT/DB legacy). */
+export const LEGACY_ROLE_TO_CANONICAL: Record<string, UserRole> = {
+  Cleanup: 'Cleaner',
+  CleanupTeam: 'Cleaner',
+  'Cleanup Team': 'Cleaner',
   Officer: 'Inspector',
   EnvironmentalOfficer: 'Inspector',
   'Environmental Officer': 'Inspector',
-  CleanupTeam: 'Cleanup',
-  'Cleanup Team': 'Cleanup',
 };
 
 export function normalizeApiRole(role: string): string {
@@ -33,6 +38,10 @@ export function normalizeApiRole(role: string): string {
   return match ?? trimmed;
 }
 
-export function isSystemRole(role: string): role is SystemRole {
+export function isSystemRole(role: string): role is UserRole {
   return SYSTEM_ROLES.some(r => r.toLowerCase() === role.trim().toLowerCase());
+}
+
+export function isUserRole(role: string): role is UserRole {
+  return isSystemRole(role);
 }

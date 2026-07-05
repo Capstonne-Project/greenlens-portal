@@ -1,124 +1,99 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useTeamsList } from '@/hooks/useTeams';
-import { MoreHorizontal, Plus, Users } from 'lucide-react';
+import type { TeamListItem } from '@/lib/api/models/team';
 import { useMemo, useState } from 'react';
-import { TabToolbar } from './TabToolbar';
+import { BoardView } from './teamTab/TeamBoardView';
+import { AddMemberDialog, CreateTeamDialog, TeamDetailDialog } from './teamTab/TeamTabDialogs';
+import { TeamListView } from './teamTab/TeamListView';
+import {
+  buildClientPagination,
+  buildSharedTeamsQueryParams,
+  PAGE_SIZE,
+  paginateClient,
+  type AddMemberTeamTarget,
+  type AvailableFilter,
+  type LeoCreateTeamType,
+  type StatusFilter,
+  type TeamTypeFilter,
+} from './teamTab/teamTab.shared';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const PAGE_SIZE = 5;
-
-const TYPE_CLASS: Record<string, string> = {
-  Cleanup: 'bg-green-50 text-green-600 ring-1 ring-green-200',
-  Survey: 'bg-blue-50 text-blue-600 ring-1 ring-blue-200',
-  Inspection: 'bg-purple-50 text-purple-600 ring-1 ring-purple-200',
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  Cleanup: 'Dọn dẹp',
-  Survey: 'Khảo sát',
-  Inspection: 'Kiểm tra',
-};
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function SkeletonRows() {
-  return (
-    <>
-      {['s1', 's2', 's3', 's4', 's5'].map(key => (
-        <TableRow key={key} className="animate-pulse">
-          <TableCell className="px-5">
-            <div className="size-4 rounded bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-3 w-36 rounded bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-5 w-20 rounded-full bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-3 w-48 rounded bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-3 w-8 rounded bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-5 w-20 rounded-full bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-3 w-20 rounded bg-muted" />
-          </TableCell>
-          <TableCell className="px-5" />
-        </TableRow>
-      ))}
-    </>
-  );
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export function TeamTab() {
+export function TeamTab({ viewMode }: Readonly<{ viewMode: 'list' | 'board' }>) {
   const [page, setPage] = useState(1);
+  const [cleanupPage, setCleanupPage] = useState(1);
+  const [inspectionPage, setInspectionPage] = useState(1);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [teamTypeFilter, setTeamTypeFilter] = useState<TeamTypeFilter>('all');
+  const [availableFilter, setAvailableFilter] = useState<AvailableFilter>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [detailTeam, setDetailTeam] = useState<TeamListItem | null>(null);
+  const [addMemberTeam, setAddMemberTeam] = useState<AddMemberTeamTarget | null>(null);
+  const [createTeamType, setCreateTeamType] = useState<LeoCreateTeamType | null>(null);
 
-  const { data, isLoading, isError, refetch } = useTeamsList({ page, pageSize: PAGE_SIZE });
+  const sharedParams = useMemo(
+    () => buildSharedTeamsQueryParams({ statusFilter, teamTypeFilter, availableFilter }),
+    [statusFilter, teamTypeFilter, availableFilter]
+  );
 
-  const totalCount = data?.pagination.totalItems ?? 0;
-  const totalPages = data?.pagination.totalPages ?? 1;
+  const { data, isLoading, isError, refetch } = useTeamsList(sharedParams);
 
-  const filtered = useMemo(() => {
-    const items = data?.items ?? [];
-    if (!search) return items;
-    const q = search.toLowerCase();
-    return items.filter(
+  const allTeams = useMemo(() => data?.items ?? [], [data?.items]);
+
+  const resetAllPages = () => {
+    setPage(1);
+    setCleanupPage(1);
+    setInspectionPage(1);
+    setSelected(new Set());
+  };
+
+  const handleSearch = (v: string) => {
+    setSearch(v);
+    resetAllPages();
+  };
+
+  const handleStatusFilter = (v: StatusFilter) => {
+    setStatusFilter(v);
+    resetAllPages();
+  };
+
+  const handleTeamTypeFilter = (v: TeamTypeFilter) => {
+    setTeamTypeFilter(v);
+    resetAllPages();
+  };
+
+  const handleAvailableFilter = (v: AvailableFilter) => {
+    setAvailableFilter(v);
+    resetAllPages();
+  };
+
+  const listFiltered = useMemo(() => {
+    if (!debouncedSearch) return allTeams;
+    const q = debouncedSearch.toLowerCase();
+    return allTeams.filter(
       t => t.name.toLowerCase().includes(q) || t.officeName.toLowerCase().includes(q)
     );
-  }, [data?.items, search]);
+  }, [allTeams, debouncedSearch]);
 
-  const allChecked = filtered.length > 0 && selected.size === filtered.length;
-  const indeterminate = selected.size > 0 && selected.size < filtered.length;
+  const listTeams = useMemo(
+    () => paginateClient(listFiltered, page, PAGE_SIZE),
+    [listFiltered, page]
+  );
+
+  const listPagination = useMemo(
+    () => buildClientPagination(listFiltered.length, page, PAGE_SIZE),
+    [listFiltered.length, page]
+  );
+
+  const allChecked = listTeams.length > 0 && selected.size === listTeams.length;
+  const indeterminate = selected.size > 0 && selected.size < listTeams.length;
 
   const toggleAll = () => {
     if (allChecked || indeterminate) setSelected(new Set());
-    else setSelected(new Set(filtered.map(t => t.id)));
+    else setSelected(new Set(listTeams.map(t => t.id)));
   };
 
   const toggleOne = (id: string) => {
@@ -140,187 +115,86 @@ export function TeamTab() {
     setSelected(new Set());
   };
 
+  const handleAddMember = (team: AddMemberTeamTarget) => {
+    setAddMemberTeam(team);
+  };
+
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
-      <TabToolbar
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder="Tìm tên đội, văn phòng..."
-        isRefreshing={isRefreshing}
-        onRefresh={handleRefresh}
-        filterOpen={filterOpen}
-        onFilterToggle={() => setFilterOpen(v => !v)}
-        actionSlot={
-          <Button variant="outline" size="sm">
-            <Plus className="mr-1.5 size-4" />
-            Thêm đội
-          </Button>
-        }
+    <>
+      {detailTeam && (
+        <TeamDetailDialog
+          team={detailTeam}
+          onClose={() => setDetailTeam(null)}
+          onAddMember={() => {
+            handleAddMember({
+              id: detailTeam.id,
+              name: detailTeam.name,
+              teamType: detailTeam.teamType,
+            });
+            setDetailTeam(null);
+          }}
+        />
+      )}
+      <AddMemberDialog
+        open={addMemberTeam != null}
+        teamId={addMemberTeam?.id ?? ''}
+        teamName={addMemberTeam?.name ?? ''}
+        teamType={addMemberTeam?.teamType ?? ''}
+        onClose={() => setAddMemberTeam(null)}
+      />
+      <CreateTeamDialog
+        open={createTeamType != null}
+        teamType={createTeamType ?? 'Cleanup'}
+        onClose={() => setCreateTeamType(null)}
       />
 
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/30 hover:bg-muted/30">
-            <TableHead className="w-12 px-5">
-              <Checkbox
-                checked={indeterminate ? 'indeterminate' : allChecked}
-                onCheckedChange={toggleAll}
-              />
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Tên đội
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Loại
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Văn phòng quản lý
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Thành viên
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Trạng thái
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Ngày tạo
-            </TableHead>
-            <TableHead className="w-12 px-5" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading && <SkeletonRows />}
-          {isError && (
-            <TableRow>
-              <TableCell colSpan={8} className="px-5 py-10 text-center text-destructive">
-                Không thể tải dữ liệu. Vui lòng thử lại.
-              </TableCell>
-            </TableRow>
-          )}
-          {!isLoading && !isError && filtered.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={8} className="px-5 py-10 text-center text-muted-foreground">
-                Không có đội nào phù hợp.
-              </TableCell>
-            </TableRow>
-          )}
-          {!isLoading &&
-            !isError &&
-            filtered.map(team => (
-              <TableRow
-                key={team.id}
-                onClick={() => toggleOne(team.id)}
-                className={`cursor-pointer ${selected.has(team.id) ? 'bg-primary/5 hover:bg-primary/5' : ''}`}
-              >
-                <TableCell className="px-5" onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selected.has(team.id)}
-                    onCheckedChange={() => toggleOne(team.id)}
-                  />
-                </TableCell>
-                <TableCell className="px-5 font-medium">{team.name}</TableCell>
-                <TableCell className="px-5">
-                  <Badge
-                    variant="secondary"
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${TYPE_CLASS[team.teamType]}`}
-                  >
-                    {TYPE_LABEL[team.teamType]}
-                  </Badge>
-                </TableCell>
-                <TableCell className="px-5 text-muted-foreground">{team.officeName}</TableCell>
-                <TableCell className="px-5">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Users className="size-3.5" />
-                    <span>{team.memberCount}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="px-5">
-                  {team.isActive ? (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-green-50 px-2.5 py-0.5 text-[11px] font-medium text-green-600"
-                    >
-                      Hoạt động
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-500"
-                    >
-                      Tạm dừng
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="px-5 text-muted-foreground">
-                  {formatDate(team.createdAt)}
-                </TableCell>
-                <TableCell className="px-5" onClick={e => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Xem chi tiết</DropdownMenuItem>
-                      <DropdownMenuItem>Phân công thành viên</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive">
-                        Vô hiệu hoá
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-        </TableBody>
-      </Table>
-
-      <div className="flex items-center justify-between border-t border-border px-5 py-3">
-        <span className="text-xs text-muted-foreground">
-          {isLoading ? 'Đang tải...' : `${totalCount} đội`}
-        </span>
-        {totalPages > 1 && (
-          <Pagination className="w-auto justify-end">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault();
-                    if (page > 1) handlePageChange(page - 1);
-                  }}
-                  className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <PaginationItem key={p}>
-                  <PaginationLink
-                    href="#"
-                    isActive={p === page}
-                    onClick={e => {
-                      e.preventDefault();
-                      handlePageChange(p);
-                    }}
-                  >
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault();
-                    if (page < totalPages) handlePageChange(page + 1);
-                  }}
-                  className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
-      </div>
-    </div>
+      {viewMode === 'board' ? (
+        <BoardView
+          teams={allTeams}
+          isLoading={isLoading}
+          search={search}
+          onSearchChange={handleSearch}
+          statusFilter={statusFilter}
+          teamTypeFilter={teamTypeFilter}
+          availableFilter={availableFilter}
+          onStatusChange={handleStatusFilter}
+          onTeamTypeChange={handleTeamTypeFilter}
+          onAvailableChange={handleAvailableFilter}
+          cleanupPage={cleanupPage}
+          inspectionPage={inspectionPage}
+          onCleanupPageChange={setCleanupPage}
+          onInspectionPageChange={setInspectionPage}
+          onAddMember={handleAddMember}
+          onCreateTeam={setCreateTeamType}
+        />
+      ) : (
+        <TeamListView
+          search={search}
+          onSearchChange={handleSearch}
+          statusFilter={statusFilter}
+          teamTypeFilter={teamTypeFilter}
+          availableFilter={availableFilter}
+          onStatusChange={handleStatusFilter}
+          onTeamTypeChange={handleTeamTypeFilter}
+          onAvailableChange={handleAvailableFilter}
+          isRefreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+          isError={isError}
+          listFiltered={listFiltered}
+          listTeams={listTeams}
+          listPagination={listPagination}
+          page={page}
+          onPageChange={handlePageChange}
+          selected={selected}
+          allChecked={allChecked}
+          indeterminate={indeterminate}
+          onToggleAll={toggleAll}
+          onToggleOne={toggleOne}
+          onDetailTeam={setDetailTeam}
+          onAddMember={handleAddMember}
+        />
+      )}
+    </>
   );
 }

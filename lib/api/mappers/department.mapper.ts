@@ -5,6 +5,8 @@ import type {
   DepartmentListItemDto,
   DepartmentOfficeSummaryDto,
   DepartmentsListDataDto,
+  MyOfficesDataDto,
+  MyOfficesOfficeItemDto,
 } from '@/lib/api/dto/department.dto';
 import type {
   Department,
@@ -13,6 +15,8 @@ import type {
   DepartmentListItem,
   DepartmentOfficeSummary,
   DepartmentsList,
+  MyOffices,
+  MyOfficesOfficeItem,
 } from '@/lib/api/models/department';
 
 function mapDepartmentDeoDto(dto: DepartmentDeoDto): DepartmentDeo {
@@ -57,6 +61,7 @@ function mapDepartmentOfficeSummaryDto(dto: DepartmentOfficeSummaryDto): Departm
     officerName: dto.officerName,
     isOnboarded: dto.isOnboarded,
     teamCount: dto.teamCount,
+    // ...(dto.createdAt ? { createdAt: dto.createdAt } : {}),
   };
 }
 
@@ -91,6 +96,30 @@ export function mapDepartmentsListDataDto(data: DepartmentsListDataDto): Departm
       totalPages,
       hasNext: data.page < totalPages,
       hasPrev: data.page > 1,
+    },
+  };
+}
+
+function mapMyOfficesOfficeItemDto(dto: MyOfficesOfficeItemDto): MyOfficesOfficeItem {
+  return {
+    ...mapDepartmentOfficeSummaryDto(dto),
+    createdAt: dto.createdAt,
+  };
+}
+
+export function mapMyOfficesDataDto(dto: MyOfficesDataDto): MyOffices {
+  return {
+    departmentId: dto.departmentId,
+    departmentName: dto.departmentName,
+    provinceCode: dto.provinceCode.trim(),
+    offices: (dto.offices ?? []).map(mapMyOfficesOfficeItemDto),
+    pagination: {
+      page: dto.pagination.page,
+      pageSize: dto.pagination.pageSize,
+      totalItems: dto.pagination.totalItems,
+      totalPages: dto.pagination.totalPages,
+      hasNext: dto.pagination.hasNext,
+      hasPrev: dto.pagination.hasPrev,
     },
   };
 }

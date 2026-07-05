@@ -1,5 +1,5 @@
-import { VerifyQueueClient } from '@/components/officer/VerifyQueueClient';
+import { VerifyPageClient } from '@/components/officer/verify/VerifyPageClient';
 
 export default function OfficerVerifyPage() {
-  return <VerifyQueueClient />;
+  return <VerifyPageClient />;
 }

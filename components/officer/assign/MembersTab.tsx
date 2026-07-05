@@ -9,21 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { RecruitStaffDialog } from '@/components/officer/assign/RecruitStaffDialog';
+import UsersIcon from '@/components/ui/users-icon';
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useOfficeStaffList } from '@/hooks/useLeoOffices';
 import {
   Table,
   TableBody,
@@ -32,10 +22,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useTeamDetail, useTeamsList } from '@/hooks/useTeams';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import type { OfficeStaffAssignRole, OfficeStaffListParams } from '@/lib/api/models/office';
+import { cn } from '@/lib/utils';
+import { formatJoinedDateVi } from '@/utils/officerTracking';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { TabToolbar } from './TabToolbar';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -52,6 +50,48 @@ const AVATAR_COLORS = [
   'bg-amber-100 text-amber-700',
 ];
 
+type ColumnKey = 'name' | 'email' | 'team' | 'role' | 'joined' | 'actions';
+
+const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
+  { key: 'name', label: 'Họ tên', className: 'min-w-[180px]' },
+  { key: 'email', label: 'Email', className: 'min-w-[200px]' },
+  { key: 'team', label: 'Đội', className: 'min-w-[140px]' },
+  { key: 'role', label: 'Vai trò', className: 'w-[130px]' },
+  { key: 'joined', label: 'Ngày tham gia', className: 'w-[120px]' },
+  { key: 'actions', label: '', className: 'w-12' },
+];
+
+type HasTeamFilter = 'all' | 'true' | 'false';
+
+const HAS_TEAM_LABEL: Record<HasTeamFilter, string> = {
+  all: 'Đội xử lý',
+  true: 'Có đội',
+  false: 'Chưa có đội',
+};
+
+type RoleFilter = 'all' | OfficeStaffAssignRole;
+
+const ROLE_LABEL: Record<RoleFilter, string> = {
+  all: 'Vai trò',
+  Cleaner: 'Đội dọn dẹp (Cleaner)',
+  Inspector: 'Thanh tra (Inspector)',
+};
+
+const ROLE_BADGE: Record<OfficeStaffAssignRole, string> = {
+  Cleaner: 'Đội dọn dẹp',
+  Inspector: 'Thanh tra',
+};
+
+function staffRoleBadge(role: string): string {
+  if (role === 'Cleaner' || role === 'Inspector') return ROLE_BADGE[role];
+  return role;
+}
+
+const FILTER_BTN_CLASS =
+  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-sky-700';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function getInitials(name: string) {
   return name
     .split(' ')
@@ -61,276 +101,292 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function SkeletonRows() {
-  return (
-    <>
-      {['s1', 's2', 's3', 's4', 's5'].map(key => (
-        <TableRow key={key} className="animate-pulse">
-          <TableCell className="px-5">
-            <div className="flex items-center gap-3">
-              <div className="size-8 rounded-full bg-muted" />
-              <div className="h-3 w-28 rounded bg-muted" />
-            </div>
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-3 w-40 rounded bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-5 w-20 rounded-full bg-muted" />
-          </TableCell>
-          <TableCell className="px-5">
-            <div className="h-3 w-20 rounded bg-muted" />
-          </TableCell>
-          <TableCell className="px-5" />
-        </TableRow>
-      ))}
-    </>
-  );
+function buildStaffParams(
+  page: number,
+  search: string,
+  hasTeamFilter: HasTeamFilter,
+  roleFilter: RoleFilter
+): OfficeStaffListParams {
+  const params: OfficeStaffListParams = {
+    page,
+    pageSize: MEMBERS_PER_PAGE,
+  };
+  if (search) params.search = search;
+  if (roleFilter !== 'all') params.role = roleFilter;
+  if (hasTeamFilter === 'true') params.hasTeam = true;
+  if (hasTeamFilter === 'false') params.hasTeam = false;
+  return params;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MembersTab() {
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [hasTeamFilter, setHasTeamFilter] = useState<HasTeamFilter>('all');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [memberPage, setMemberPage] = useState(1);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [recruitOpen, setRecruitOpen] = useState(false);
 
-  const { data: teamsData, isLoading: teamsLoading } = useTeamsList({ page: 1, pageSize: 100 });
-  const {
-    data: teamDetail,
-    isLoading: membersLoading,
-    isError: membersError,
-    refetch,
-  } = useTeamDetail(selectedTeamId);
-
-  const filtered = useMemo(() => {
-    const allMembers = teamDetail?.members ?? [];
-    if (!search) return allMembers;
-    const q = search.toLowerCase();
-    return allMembers.filter(
-      m => m.fullName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
-    );
-  }, [teamDetail?.members, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / MEMBERS_PER_PAGE));
-  const pagedMembers = filtered.slice(
-    (memberPage - 1) * MEMBERS_PER_PAGE,
-    memberPage * MEMBERS_PER_PAGE
+  const staffParams = useMemo(
+    () => buildStaffParams(memberPage, debouncedSearch, hasTeamFilter, roleFilter),
+    [memberPage, debouncedSearch, hasTeamFilter, roleFilter]
   );
 
-  const handleRefresh = () => {
-    if (!selectedTeamId) return;
-    setIsRefreshing(true);
-    refetch().finally(() => setIsRefreshing(false));
-  };
+  const {
+    data: staffData,
+    isPending: isLoadingMembers,
+    isFetching,
+    isError,
+    refetch,
+  } = useOfficeStaffList(staffParams);
 
-  const handleTeamChange = (id: string) => {
-    setSelectedTeamId(id);
+  const members = staffData?.items ?? [];
+  const pagination = staffData?.pagination;
+
+  const handleSearch = (v: string) => {
+    setSearch(v);
     setMemberPage(1);
-    setSearch('');
   };
 
-  const handleSearchChange = (s: string) => {
-    setSearch(s);
+  const handleHasTeamChange = (value: HasTeamFilter) => {
+    setHasTeamFilter(value);
     setMemberPage(1);
   };
 
-  const footerText = () => {
-    if (!selectedTeamId) return 'Chưa chọn đội';
-    if (membersLoading) return 'Đang tải...';
-    return `${filtered.length} thành viên`;
+  const handleRoleChange = (r: RoleFilter) => {
+    setRoleFilter(r);
+    setMemberPage(1);
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
-      <TabToolbar
-        search={search}
-        onSearch={handleSearchChange}
-        searchPlaceholder="Tìm tên, email..."
-        isRefreshing={isRefreshing}
-        onRefresh={handleRefresh}
-        filterOpen={filterOpen}
-        onFilterToggle={() => setFilterOpen(v => !v)}
-        actionSlot={
-          <>
-            <Select
-              value={selectedTeamId ?? ''}
-              onValueChange={handleTeamChange}
-              disabled={teamsLoading}
-            >
-              <SelectTrigger className="h-8 w-52 text-sm">
-                <SelectValue placeholder="Chọn đội..." />
-              </SelectTrigger>
-              <SelectContent>
-                {(teamsData?.items ?? []).map(team => (
-                  <SelectItem key={team.id} value={team.id}>
-                    {team.name}
-                  </SelectItem>
+    <>
+      <header className="mb-6 shrink-0">
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                  {HAS_TEAM_LABEL[hasTeamFilter]}
+                  <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-44">
+                {(Object.keys(HAS_TEAM_LABEL) as HasTeamFilter[]).map(key => (
+                  <DropdownMenuItem
+                    key={key}
+                    onClick={() => handleHasTeamChange(key)}
+                    className={hasTeamFilter === key ? 'font-medium text-sky-700' : ''}
+                  >
+                    {HAS_TEAM_LABEL[key]}
+                  </DropdownMenuItem>
                 ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm">
-              <Plus className="mr-1.5 size-4" />
-              Thêm thành viên
-            </Button>
-          </>
-        }
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                  {ROLE_LABEL[roleFilter]}
+                  <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                {(Object.keys(ROLE_LABEL) as RoleFilter[]).map(key => (
+                  <DropdownMenuItem
+                    key={key}
+                    onClick={() => handleRoleChange(key)}
+                    className={roleFilter === key ? 'font-medium text-sky-700' : ''}
+                  >
+                    {ROLE_LABEL[key]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Input
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Tìm tên, email..."
+              className="h-8 max-w-sm border-slate-200 bg-white text-sm shadow-none"
+              aria-label="Tìm thành viên theo tên hoặc email"
+            />
+            {isFetching && !isLoadingMembers ? (
+              <Loader2 className="size-4 shrink-0 animate-spin text-slate-400" aria-hidden />
+            ) : null}
+          </div>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setRecruitOpen(true)}
+            className="h-8 shrink-0 gap-1.5 bg-emerald-600 px-3 text-[0.8125rem] text-white hover:bg-emerald-500"
+          >
+            <Plus className="size-3.5" />
+            Thêm
+          </Button>
+        </div>
+      </header>
+
+      <RecruitStaffDialog
+        open={recruitOpen}
+        onClose={() => setRecruitOpen(false)}
+        onRecruited={() => setMemberPage(1)}
       />
 
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/30 hover:bg-muted/30">
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Họ tên
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Email
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Vai trò
-            </TableHead>
-            <TableHead className="px-5 text-xs font-semibold uppercase tracking-wide">
-              Ngày tham gia
-            </TableHead>
-            <TableHead className="w-12 px-5" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {!selectedTeamId && (
-            <TableRow>
-              <TableCell colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
-                Chọn một đội để xem danh sách thành viên.
-              </TableCell>
-            </TableRow>
-          )}
-          {selectedTeamId && membersLoading && <SkeletonRows />}
-          {selectedTeamId && membersError && (
-            <TableRow>
-              <TableCell colSpan={5} className="px-5 py-10 text-center text-destructive">
-                Không thể tải dữ liệu. Vui lòng thử lại.
-              </TableCell>
-            </TableRow>
-          )}
-          {selectedTeamId && !membersLoading && !membersError && pagedMembers.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={5} className="px-5 py-10 text-center text-muted-foreground">
-                Không có thành viên nào phù hợp.
-              </TableCell>
-            </TableRow>
-          )}
-          {selectedTeamId &&
-            !membersLoading &&
-            !membersError &&
-            pagedMembers.map((member, idx) => (
-              <TableRow key={member.userId} className="cursor-pointer">
-                <TableCell className="px-5">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${AVATAR_COLORS[((memberPage - 1) * MEMBERS_PER_PAGE + idx) % AVATAR_COLORS.length]}`}
-                    >
-                      {getInitials(member.fullName)}
-                    </div>
-                    <span className="font-medium text-foreground">{member.fullName}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="px-5 text-muted-foreground">{member.email}</TableCell>
-                <TableCell className="px-5">
-                  {member.isLeader ? (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600 ring-1 ring-amber-200"
-                    >
-                      Trưởng nhóm
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-500"
-                    >
-                      Thành viên
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="px-5 text-muted-foreground">
-                  {formatDate(member.joinedAt)}
-                </TableCell>
-                <TableCell className="px-5">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Xem hồ sơ</DropdownMenuItem>
-                      <DropdownMenuItem>Đổi vai trò</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive">
-                        Xoá khỏi đội
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-        </TableBody>
-      </Table>
-
-      <div className="flex items-center justify-between border-t border-border px-5 py-3">
-        <span className="text-xs text-muted-foreground">{footerText()}</span>
-        {selectedTeamId && !membersLoading && totalPages > 1 && (
-          <Pagination className="w-auto justify-end">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault();
-                    if (memberPage > 1) setMemberPage(memberPage - 1);
-                  }}
-                  className={memberPage <= 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <PaginationItem key={p}>
-                  <PaginationLink
-                    href="#"
-                    isActive={p === memberPage}
-                    onClick={e => {
-                      e.preventDefault();
-                      setMemberPage(p);
-                    }}
+      <div className="flex flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]">
+        <div className="flex-1 overflow-auto [&_table]:border-collapse">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                {COLUMN_DEFS.map(col => (
+                  <TableHead
+                    key={col.key}
+                    className={cn(
+                      'h-9 border-b border-slate-200 bg-slate-50/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500',
+                      col.className
+                    )}
                   >
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault();
-                    if (memberPage < totalPages) setMemberPage(memberPage + 1);
-                  }}
-                  className={memberPage >= totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+                    {col.label}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoadingMembers ? (
+                <TableRow>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
+                    <p className="text-sm text-destructive">Không tải được danh sách thành viên.</p>
+                    <button
+                      type="button"
+                      onClick={() => void refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
+                    >
+                      Thử lại
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ) : members.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <UsersIcon size={32} className="opacity-30" />
+                      <span>Không có thành viên.</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                members.map((member, idx) => (
+                  <TableRow
+                    key={member.userId}
+                    className="cursor-pointer border-slate-100 hover:bg-sky-50/40"
+                  >
+                    <TableCell className="px-3 py-2">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={cn(
+                            'flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
+                            AVATAR_COLORS[
+                              ((memberPage - 1) * MEMBERS_PER_PAGE + idx) % AVATAR_COLORS.length
+                            ]
+                          )}
+                        >
+                          {getInitials(member.fullName)}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-slate-800">
+                            {member.fullName}
+                          </span>
+                          {member.isLeader ? (
+                            <span className="text-[11px] font-medium text-amber-600">
+                              Trưởng nhóm
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-3 py-2 text-sm text-slate-600">
+                      {member.email}
+                    </TableCell>
+                    <TableCell className="px-3 py-6 text-sm text-slate-600">
+                      {member.teamName ?? '—'}
+                    </TableCell>
+                    <TableCell className="px-3 py-2">
+                      <Badge
+                        variant="secondary"
+                        className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600"
+                      >
+                        {staffRoleBadge(member.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-3 py-2 text-sm text-slate-600">
+                      {formatJoinedDateVi(member.createdAt)}
+                    </TableCell>
+                    <TableCell className="px-3 py-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-slate-500 hover:text-slate-700"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Xem hồ sơ</DropdownMenuItem>
+                          <DropdownMenuItem>Đổi vai trò</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive">
+                            Xoá khỏi đội
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {pagination && pagination.totalPages > 1 ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2">
+            <span className="text-xs text-slate-500">
+              Trang {pagination.page}/{Math.max(pagination.totalPages, 1)} · {pagination.totalItems}{' '}
+              thành viên
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!pagination.hasPrev}
+                onClick={() => setMemberPage(p => Math.max(1, p - 1))}
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              >
+                <ChevronLeft className="size-3.5" />
+                Trước
+              </button>
+              <button
+                type="button"
+                disabled={!pagination.hasNext}
+                onClick={() => setMemberPage(p => p + 1)}
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Sau
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
-    </div>
+    </>
   );
 }

@@ -4,12 +4,14 @@ import type {
   DepartmentDetailDto,
   DepartmentDto,
   DepartmentsListDataDto,
+  MyOfficesDataDto,
   UpdateDepartmentBodyDto,
 } from '@/lib/api/dto/department.dto';
 import {
   mapDepartmentDetailDto,
   mapDepartmentDto,
   mapDepartmentsListDataDto,
+  mapMyOfficesDataDto,
 } from '@/lib/api/mappers/department.mapper';
 import type {
   AssignDepartmentOfficerInput,
@@ -18,6 +20,8 @@ import type {
   DepartmentDetail,
   DepartmentsList,
   DepartmentsListParams,
+  MyOffices,
+  MyOfficesParams,
   UpdateDepartmentInput,
 } from '@/lib/api/models/department';
 import apiService from '@/lib/api/core';
@@ -31,6 +35,26 @@ function buildDepartmentsQuery(
   if (params?.pageSize != null) query.pageSize = params.pageSize;
   if (params?.isActive !== undefined) query.isActive = params.isActive;
   return query;
+}
+
+function buildMyOfficesQuery(params?: MyOfficesParams): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
+  if (params?.page != null) query.page = params.page;
+  if (params?.pageSize != null) query.pageSize = params.pageSize;
+  if (params?.search?.trim()) query.search = params.search.trim();
+  if (params?.isOnboarded !== undefined) query.isOnboarded = params.isOnboarded;
+  if (params?.sortBy?.trim()) query.sortBy = params.sortBy.trim();
+  if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
+  return query;
+}
+
+/** GET /v1/departments/my-offices — [DEO] Sở và danh sách văn phòng cấp phường. */
+export async function adaptMyOffices(params?: MyOfficesParams): Promise<ApiEnvelope<MyOffices>> {
+  const res = await apiService.get<ApiEnvelope<MyOfficesDataDto>>(
+    '/v1/departments/my-offices',
+    buildMyOfficesQuery(params)
+  );
+  return mapApiEnvelope(res.data, mapMyOfficesDataDto);
 }
 
 export async function adaptDepartmentsList(

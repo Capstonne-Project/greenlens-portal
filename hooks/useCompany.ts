@@ -3,21 +3,28 @@
 import {
   assignCompanyStaffTeam,
   assignCompanyTeam,
+  createCompany,
   createCompanyStaff,
   createCompanyTeam,
   deactivateCompanyTeam,
+  fetchCompanies,
   fetchCompanyAssignmentDetail,
   fetchCompanyAssignments,
+  fetchCompanyDetail,
   fetchCompanyQueue,
+  fetchCompanyServiceAreas,
   fetchCompanyStaff,
   fetchCompanyTeams,
   fetchMyCompany,
+  fetchMyWardCompanies,
   renameCompanyTeam,
+  updateCompanyServiceAreas,
   updateCompanyStaffStatus,
 } from '@/lib/api/services/fetchCompany';
 import type {
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
+  CompaniesListParams,
   CompanyAssignmentDetail,
   CompanyAssignmentsList,
   CompanyAssignmentsParams,
@@ -27,14 +34,104 @@ import type {
   CompanyStaffListParams,
   CompanyTeamsList,
   CompanyTeamsListParams,
+  CreateCompanyInput,
   CreateCompanyStaffInput,
   CreateCompanyTeamInput,
   MyCompany,
   RenameCompanyTeamInput,
+  UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+// ── Officer (LEO) — quản lý doanh nghiệp ────────────────────────────────────
+// Tách key factory khỏi `companyKeys` của company portal (dev) để tránh trùng export.
+
+const officerCompanyKeys = {
+  all: ['officer', 'companies'] as const,
+  list: (params: CompaniesListParams) => [...officerCompanyKeys.all, 'list', params] as const,
+  myWard: () => [...officerCompanyKeys.all, 'my-ward'] as const,
+  detail: (companyId: string) => [...officerCompanyKeys.all, 'detail', companyId] as const,
+  serviceAreas: (companyId: string) =>
+    [...officerCompanyKeys.all, 'service-areas', companyId] as const,
+};
+
+const LIST_STALE_MS = 3 * 60 * 1000;
+
+export function useCompaniesList(params: CompaniesListParams) {
+  return useQuery({
+    queryKey: officerCompanyKeys.list(params),
+    queryFn: () => fetchCompanies(params),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+  });
+}
+
+/** GET /v1/companies/my-ward — công ty phục vụ phường/xã của LEO đang đăng nhập. */
+export function useMyWardCompanies(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: officerCompanyKeys.myWard(),
+    queryFn: () => fetchMyWardCompanies(),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useCompanyDetail(companyId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: officerCompanyKeys.detail(companyId ?? ''),
+    queryFn: () => fetchCompanyDetail(companyId!),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    enabled: Boolean(companyId) && enabled,
+  });
+}
+
+export function useCreateCompany() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateCompanyInput) => createCompany(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
+    },
+  });
+}
+
+export function useCompanyServiceAreas(companyId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: officerCompanyKeys.serviceAreas(companyId ?? ''),
+    queryFn: () => fetchCompanyServiceAreas(companyId!),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    enabled: Boolean(companyId) && enabled,
+  });
+}
+
+export function useUpdateCompanyServiceAreas() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      companyId,
+      body,
+    }: {
+      companyId: string;
+      body: UpdateCompanyServiceAreasInput;
+    }) => updateCompanyServiceAreas(companyId, body),
+    onSuccess: (_data, { companyId }) => {
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.detail(companyId) });
+      void queryClient.invalidateQueries({
+        queryKey: officerCompanyKeys.serviceAreas(companyId),
+      });
+    },
+  });
+}
+
+export { LIST_STALE_MS as COMPANY_LIST_STALE_MS };
+
+// ── Company portal (dev) — giữ nguyên ───────────────────────────────────────
 
 export const companyKeys = {
   all: ['company'] as const,

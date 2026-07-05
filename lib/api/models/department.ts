@@ -83,3 +83,34 @@ export interface UpdateDepartmentInput {
 export interface AssignDepartmentOfficerInput {
   userId: string;
 }
+
+/** GET /v1/departments/my-offices — office item */
+export interface MyOfficesOfficeItem extends DepartmentOfficeSummary {
+  createdAt: string;
+}
+
+/** GET /v1/departments/my-offices — 200 data */
+export interface MyOffices {
+  departmentId: string;
+  departmentName: string;
+  provinceCode: string;
+  offices: MyOfficesOfficeItem[];
+  pagination: DepartmentPagination;
+}
+
+/** GET /v1/departments/my-offices — giá trị `sortBy` hợp lệ. */
+export type MyOfficesSortBy = 'name' | 'wardName' | 'officerName' | 'teamCount' | 'createdAt';
+
+/** Page size mặc định cho dropdown phường/xã (khớp BE default 20). */
+export const MY_OFFICES_PAGE_SIZE = 20;
+
+export interface MyOfficesParams {
+  page?: number;
+  pageSize?: number;
+  /** Tìm theo tên văn phòng, phường/xã hoặc tên LEO. */
+  search?: string;
+  isOnboarded?: boolean;
+  /** API hỗ trợ — không truyền từ UI company dialog. */
+  sortBy?: MyOfficesSortBy;
+  sortDesc?: boolean;
+}
