@@ -1,5 +1,6 @@
 'use client';
 
+import { SidebarCollapseToggle } from '@/components/common/SidebarCollapseToggle';
 import { ADMIN_USERS_NAV } from '@/lib/constants/adminUsersNav';
 import { roleBadgeClasses } from '@/utils/adminUserUi';
 import { useAdminReportsTotal } from '@/hooks/useAdminReports';
@@ -25,17 +26,37 @@ import { useMemo, useState } from 'react';
 type AdminUsersNavCollapsibleProps = {
   pathname: string;
   defaultOpen: boolean;
+  collapsed: boolean;
   countQueries: ReturnType<typeof useAdminUsersTotalsByRole>;
 };
 
 function AdminUsersNavCollapsible({
   pathname,
   defaultOpen,
+  collapsed,
   countQueries,
 }: AdminUsersNavCollapsibleProps) {
   const [manualOpen, setManualOpen] = useState(false);
 
   const usersOpen = defaultOpen || manualOpen;
+
+  if (collapsed) {
+    const usersActive = pathname === '/admin/users' || pathname.startsWith('/admin/users/');
+    return (
+      <Link
+        href="/admin/users"
+        title="Người dùng"
+        className={cn(
+          'flex items-center justify-center rounded-lg p-2.5 transition',
+          usersActive
+            ? 'bg-emerald-600/10 text-emerald-800'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+      >
+        <Users className="size-4 shrink-0" aria-hidden />
+      </Link>
+    );
+  }
 
   return (
     <div className="rounded-lg border-border/60 bg-muted/20">
@@ -117,7 +138,7 @@ function AdminUsersNavCollapsible({
   );
 }
 
-export function AdminSidebarNav() {
+export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
 
   const usersSectionActive = pathname === '/admin/users' || pathname.startsWith('/admin/users/');
@@ -143,176 +164,182 @@ export function AdminSidebarNav() {
   const departmentsActive =
     pathname === '/admin/departments' || pathname.startsWith('/admin/departments/');
   const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
+
+  const navLinkClass = (active: boolean) =>
+    cn(
+      'flex items-center rounded-lg font-medium transition',
+      collapsed ? 'justify-center p-2.5' : 'gap-2 px-3 py-2',
+      active
+        ? 'bg-emerald-600/10 text-emerald-800'
+        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+    );
+
   return (
     <>
-      <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <Leaf className="size-7 text-emerald-600" aria-hidden />
+      <div
+        className={cn(
+          'relative flex shrink-0 items-center border-b border-border',
+          collapsed ? 'flex-col justify-center gap-1 px-1 py-2' : 'h-16 gap-2 px-4'
+        )}
+      >
+        <Leaf
+          className={cn('shrink-0 text-emerald-600', collapsed ? 'size-5' : 'size-7')}
+          aria-hidden
+        />
 
-        <div className="leading-tight">
-          <p className="text-sm font-bold tracking-tight text-emerald-700">GreenLens</p>
+        {!collapsed && (
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="text-sm font-bold tracking-tight text-emerald-700">GreenLens</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Admin Console
+            </p>
+          </div>
+        )}
 
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Admin Console
-          </p>
-        </div>
+        <SidebarCollapseToggle />
       </div>
 
-      <nav className="flex flex-1 flex-col gap-6 overflow-y-auto p-4 text-sm">
+      <nav
+        className={cn(
+          'flex flex-1 flex-col gap-6 overflow-y-auto text-sm',
+          collapsed ? 'p-2' : 'p-4'
+        )}
+      >
         <div>
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Tổng quan
-          </p>
+          {!collapsed && (
+            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Tổng quan
+            </p>
+          )}
           <ul className="space-y-1">
             <li>
-              <Link
-                href="/admin"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  dashboardActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-              >
+              <Link href="/admin" title="Tổng quan" className={navLinkClass(dashboardActive)}>
                 <LayoutDashboard className="size-4 shrink-0" />
-                Tổng quan
+                {!collapsed && <span>Tổng quan</span>}
               </Link>
             </li>
             <li>
               <Link
                 href="/admin/reports"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  reportsActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
+                title="Báo cáo ô nhiễm"
+                className={navLinkClass(reportsActive)}
               >
                 <Shield className="size-4 shrink-0" />
-                Báo cáo ô nhiễm
-                {reportsCountPending ? (
-                  <span className="ml-auto inline-block size-4 animate-pulse rounded bg-muted" />
-                ) : typeof reportsTotal === 'number' ? (
-                  <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums">
-                    {reportsTotal > 999 ? '999+' : reportsTotal}
-                  </span>
-                ) : null}
+                {!collapsed && (
+                  <>
+                    <span className="flex-1">Báo cáo ô nhiễm</span>
+                    {reportsCountPending ? (
+                      <span className="ml-auto inline-block size-4 animate-pulse rounded bg-muted" />
+                    ) : typeof reportsTotal === 'number' ? (
+                      <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums">
+                        {reportsTotal > 999 ? '999+' : reportsTotal}
+                      </span>
+                    ) : null}
+                  </>
+                )}
               </Link>
             </li>
             <li>
               <Link
                 href="/admin/departments"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  departmentsActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
+                title="Sở TNMT"
+                className={navLinkClass(departmentsActive)}
               >
                 <Landmark className="size-4 shrink-0" />
-                Sở TNMT
+                {!collapsed && <span>Sở TNMT</span>}
               </Link>
             </li>
             <li>
               <Link
                 href="/admin/offices"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  officesActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
+                title="Văn phòng địa phương"
+                className={navLinkClass(officesActive)}
               >
                 <Users className="size-4 shrink-0" />
-                Văn phòng địa phương
+                {!collapsed && <span>Văn phòng địa phương</span>}
               </Link>
             </li>
             <li>
               <Link
                 href="/admin/teams"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  teamsActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
+                title="Đội môi trường"
+                className={navLinkClass(teamsActive)}
               >
                 <UsersRound className="size-4 shrink-0" />
-                Đội môi trường
+                {!collapsed && <span>Đội môi trường</span>}
               </Link>
             </li>
             <li>
-              <span className="flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground">
+              <span
+                title="Bản đồ quản trị"
+                className={cn(
+                  navLinkClass(false),
+                  'cursor-default opacity-60',
+                  collapsed && 'justify-center'
+                )}
+              >
                 <Map className="size-4 shrink-0" />
-                Bản đồ quản trị
+                {!collapsed && <span>Bản đồ quản trị</span>}
               </span>
             </li>
           </ul>
         </div>
 
         <div>
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Cộng đồng
-          </p>
+          {!collapsed && (
+            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Cộng đồng
+            </p>
+          )}
           <ul className="space-y-1">
             <li>
               <Link
                 href="/admin/pollution-categories"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  categoriesActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
+                title="Danh mục ô nhiễm"
+                className={navLinkClass(categoriesActive)}
               >
                 <Tags className="size-4 shrink-0" />
-                Danh mục ô nhiễm
+                {!collapsed && <span>Danh mục ô nhiễm</span>}
               </Link>
             </li>
             <li>
               <Link
                 href="/admin/waste-tags"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  wasteTagsActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
+                title="Thẻ rác thải"
+                className={navLinkClass(wasteTagsActive)}
               >
                 <Recycle className="size-4 shrink-0" />
-                Thẻ rác thải
+                {!collapsed && <span>Thẻ rác thải</span>}
               </Link>
             </li>
           </ul>
         </div>
 
         <div>
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Người dùng
-          </p>
+          {!collapsed && (
+            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Người dùng
+            </p>
+          )}
           <AdminUsersNavCollapsible
             pathname={pathname}
             defaultOpen={usersSectionActive}
+            collapsed={collapsed}
             countQueries={countQueries}
           />
         </div>
 
         <div>
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Tài khoản
-          </p>
+          {!collapsed && (
+            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Tài khoản
+            </p>
+          )}
           <ul className="space-y-1">
             <li>
-              <Link
-                href="/admin/profile"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition',
-                  profileActive
-                    ? 'bg-emerald-600/10 text-emerald-800'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-              >
+              <Link href="/admin/profile" title="Hồ sơ" className={navLinkClass(profileActive)}>
                 <UserCircle className="size-4 shrink-0" />
-                Hồ sơ
+                {!collapsed && <span>Hồ sơ</span>}
               </Link>
             </li>
           </ul>

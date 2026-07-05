@@ -10,6 +10,7 @@ const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role
 
 const PROTECTED: { prefix: string; role: AuthUser['role'] }[] = [
   { prefix: '/admin', role: 'admin' },
+  { prefix: '/company', role: 'company' },
   { prefix: '/officer', role: 'officer' },
   { prefix: '/cleanup', role: 'cleanup' },
 ];

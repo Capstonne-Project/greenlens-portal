@@ -9,9 +9,9 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  /** Bucket route: admin | officer | cleanup | citizen */
-  role: 'citizen' | 'officer' | 'cleanup' | 'admin';
-  /** Role BE (`UserRole`) — DEO, LEO, Inspector, … */
+  /** Bucket route: admin | officer | cleanup | citizen | company */
+  role: 'citizen' | 'officer' | 'cleanup' | 'admin' | 'company';
+  /** Role BE (`UserRole`) — DEO, LEO, Inspector, CompanyManager, … */
   systemRole?: UserRole;
   avatarUrl?: string;
 }

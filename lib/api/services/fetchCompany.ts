@@ -1,6 +1,21 @@
 /**
- * L2 — Companies (công ty DVMT).
+ * L2 — Companies (officer) + Company Manager (dev portal).
  */
+import {
+  adaptAssignCompanyStaffTeam,
+  adaptAssignCompanyTeam,
+  adaptCompanyAssignmentDetail,
+  adaptCompanyAssignments,
+  adaptCompanyQueue,
+  adaptCompanyStaffList,
+  adaptCompanyTeamsList,
+  adaptCreateCompanyStaff,
+  adaptCreateCompanyTeam,
+  adaptDeactivateCompanyTeam,
+  adaptMyCompany,
+  adaptRenameCompanyTeam,
+  adaptUpdateCompanyStaffStatus,
+} from '@/lib/api/adapters/company.adapter';
 import {
   adaptCompaniesList,
   adaptCompanyDetail,
@@ -10,34 +25,82 @@ import {
   adaptUpdateCompanyServiceAreas,
 } from '@/lib/api/adapters/companies.adapter';
 import type {
+  AssignCompanyStaffTeamInput,
+  AssignCompanyTeamInput,
   CompaniesList,
   CompaniesListParams,
+  CompanyAssignmentDetail,
+  CompanyAssignmentsList,
+  CompanyAssignmentsParams,
   CompanyDetail,
+  CompanyQueueList,
+  CompanyQueueParams,
   CompanyServiceAreas,
+  CompanyStaffList,
+  CompanyStaffListParams,
+  CompanyTeam,
+  CompanyTeamsList,
+  CompanyTeamsListParams,
   CreateCompanyInput,
+  CreateCompanyStaffInput,
+  CreateCompanyStaffResult,
+  CreateCompanyTeamInput,
   CreatedCompany,
+  MyCompany,
   MyWardCompanies,
+  RenameCompanyTeamInput,
   UpdateCompanyServiceAreasInput,
+  UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
+  AssignCompanyStaffTeamInput,
+  AssignCompanyTeamInput,
   CompaniesList,
   CompaniesListParams,
+  CompanyAssignmentDetail,
+  CompanyAssignmentListItem,
+  CompanyAssignmentMedia,
+  CompanyAssignmentProgressSummary,
+  CompanyAssignmentsList,
+  CompanyAssignmentsParams,
+  CompanyAssignmentStatus,
+  CompanyAssignmentTeamDetail,
+  CompanyAssignmentTimelineEntry,
+  CompanyAssignmentWasteTag,
   CompanyContractType,
   COMPANY_CONTRACT_TYPES,
   CompanyDetail,
   CompanyListItem,
   CompanyPagination,
+  CompanyQueueItem,
+  CompanyQueueList,
+  CompanyQueueParams,
+  CompanyQueueSeverity,
   CompanyServiceArea,
+  CompanyServiceAreas,
+  CompanyStaffItem,
+  CompanyStaffList,
+  CompanyStaffListParams,
   CompanyStatus,
   COMPANIES_PAGE_SIZE,
-  CompanyServiceAreas,
+  CompanyTeam,
+  CompanyTeamListItem,
+  CompanyTeamOption,
+  CompanyTeamsList,
+  CompanyTeamsListParams,
   CreateCompanyInput,
+  CreateCompanyStaffInput,
+  CreateCompanyStaffResult,
+  CreateCompanyTeamInput,
   CreatedCompany,
+  MyCompany,
   MyWardCompanies,
   MyWardCompanyItem,
+  RenameCompanyTeamInput,
   UpdateCompanyServiceAreasInput,
+  UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
 
 /** GET /v1/companies — danh sách công ty DVMT (phân trang, tìm kiếm). */
@@ -79,6 +142,84 @@ export async function updateCompanyServiceAreas(
   return adaptUpdateCompanyServiceAreas(companyId, body);
 }
 
+export async function fetchMyCompany(): Promise<ApiEnvelope<MyCompany>> {
+  return adaptMyCompany();
+}
+
+export async function fetchCompanyStaff(
+  params?: CompanyStaffListParams
+): Promise<ApiEnvelope<CompanyStaffList>> {
+  return adaptCompanyStaffList(params);
+}
+
+export async function createCompanyStaff(
+  body: CreateCompanyStaffInput
+): Promise<ApiEnvelope<CreateCompanyStaffResult>> {
+  return adaptCreateCompanyStaff(body);
+}
+
+export async function updateCompanyStaffStatus(
+  userId: string,
+  body: UpdateCompanyStaffStatusInput
+): Promise<ApiEnvelope<string | null>> {
+  return adaptUpdateCompanyStaffStatus(userId, body);
+}
+
+export async function assignCompanyStaffTeam(
+  userId: string,
+  body: AssignCompanyStaffTeamInput
+): Promise<ApiEnvelope<string | null>> {
+  return adaptAssignCompanyStaffTeam(userId, body);
+}
+
+export async function fetchCompanyTeams(
+  params?: CompanyTeamsListParams
+): Promise<ApiEnvelope<CompanyTeamsList>> {
+  return adaptCompanyTeamsList(params);
+}
+
+export async function createCompanyTeam(
+  body: CreateCompanyTeamInput
+): Promise<ApiEnvelope<CompanyTeam>> {
+  return adaptCreateCompanyTeam(body);
+}
+
+export async function renameCompanyTeam(
+  id: string,
+  body: RenameCompanyTeamInput
+): Promise<ApiEnvelope<string | null>> {
+  return adaptRenameCompanyTeam(id, body);
+}
+
+export async function deactivateCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
+  return adaptDeactivateCompanyTeam(id);
+}
+
+export async function fetchCompanyQueue(
+  params?: CompanyQueueParams
+): Promise<ApiEnvelope<CompanyQueueList>> {
+  return adaptCompanyQueue(params);
+}
+
+export async function fetchCompanyAssignments(
+  params?: CompanyAssignmentsParams
+): Promise<ApiEnvelope<CompanyAssignmentsList>> {
+  return adaptCompanyAssignments(params);
+}
+
+export async function fetchCompanyAssignmentDetail(
+  reportId: string
+): Promise<ApiEnvelope<CompanyAssignmentDetail>> {
+  return adaptCompanyAssignmentDetail(reportId);
+}
+
+export async function assignCompanyTeam(
+  reportId: string,
+  body: AssignCompanyTeamInput
+): Promise<void> {
+  return adaptAssignCompanyTeam(reportId, body);
+}
+
 const companyApi = {
   fetchCompanies,
   fetchMyWardCompanies,
@@ -86,6 +227,19 @@ const companyApi = {
   createCompany,
   fetchCompanyServiceAreas,
   updateCompanyServiceAreas,
+  fetchMyCompany,
+  fetchCompanyStaff,
+  createCompanyStaff,
+  updateCompanyStaffStatus,
+  assignCompanyStaffTeam,
+  fetchCompanyTeams,
+  createCompanyTeam,
+  renameCompanyTeam,
+  deactivateCompanyTeam,
+  fetchCompanyQueue,
+  fetchCompanyAssignments,
+  fetchCompanyAssignmentDetail,
+  assignCompanyTeam,
 };
 
 export default companyApi;
