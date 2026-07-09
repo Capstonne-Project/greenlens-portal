@@ -35,6 +35,11 @@ export function canAccessCompanies(systemRole: UserRole | string | undefined): b
   return parseOfficerApiRole(systemRole) === 'DEO';
 }
 
+/** Danh sách văn phòng MT (my-offices) — chỉ DEO. */
+export function canAccessDeoReports(systemRole: UserRole | string | undefined): boolean {
+  return parseOfficerApiRole(systemRole) === 'DEO';
+}
+
 /** Layout phân công DEO — báo cáo + đơn vị VP (không tab đội/thành viên). */
 export function isDeoOfficer(systemRole: UserRole | string | undefined): boolean {
   return parseOfficerApiRole(systemRole) === 'DEO';

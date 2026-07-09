@@ -5,6 +5,7 @@ import {
   faClipboardCheck,
   faClipboardList,
   faEarthAmericas,
+  faFileLines,
   faGaugeHigh,
   faGear,
   faRoute,
@@ -97,21 +98,27 @@ const NAV_ITEMS = {
     href: '/officer/companies',
     icon: faBuilding,
   },
+  reports: {
+    id: 'reports',
+    label: 'Báo cáo',
+    href: '/officer/reports',
+    icon: faFileLines,
+  },
 } as const satisfies Record<string, MapShellNavItem>;
 
 const BRAND_DEO: MapShellBrand = {
   name: APP_NAME,
-  tagline: 'Cổng điều hành sở TNMT',
+  tagline: 'Hệ thống điều hành',
 };
 
 const BRAND_LEO: MapShellBrand = {
   name: APP_NAME,
-  tagline: 'Cổng văn phòng MT phường',
+  tagline: 'Hệ thống điều hành',
 };
 
 const BRAND_DEFAULT: MapShellBrand = {
   name: APP_NAME,
-  tagline: 'Cổng cán bộ',
+  tagline: 'Hệ thống điều hành',
 };
 
 /** Sidebar map shell — nav chính theo role (DEO / LEO). */
@@ -123,7 +130,7 @@ export function getMapShellNavForRole(
   const mainNav: MapShellNavItem[] = [NAV_ITEMS.map, NAV_ITEMS.overview];
 
   if (role === 'DEO') {
-    mainNav.push(NAV_ITEMS.companies);
+    mainNav.push(NAV_ITEMS.reports, NAV_ITEMS.companies);
   } else if (role === 'LEO') {
     mainNav.push(
       NAV_ITEMS.verify,

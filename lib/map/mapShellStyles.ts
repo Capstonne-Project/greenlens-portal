@@ -194,11 +194,11 @@ export function mapProfileTriggerClass(expanded: boolean) {
 
 export function mapProfileSurfaceClass(expanded: boolean, menuOpen: boolean) {
   return cn(
-    'relative isolate inline-flex shrink-0 items-center justify-start overflow-hidden rounded-[0.35rem] gap-0',
+    'relative isolate inline-flex shrink-0 items-center justify-start overflow-hidden rounded-[0.35rem]',
     'size-[var(--nav-tile-size-square)]',
     SIDEBAR_WIDTH_TRANSITION,
     'before:absolute before:inset-0 before:-z-0 before:rounded-[inherit] before:bg-transparent before:transition-[background] before:duration-200 before:ease-out before:content-[""]',
-    expanded && 'w-full gap-[0.62rem]',
+    expanded && 'h-auto min-h-[var(--nav-tile-size-square)] w-full gap-[0.5rem] px-2.5 py-1',
     expanded &&
       (menuOpen
         ? 'before:bg-[rgba(255,255,255,0.16)]'

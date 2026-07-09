@@ -4,6 +4,7 @@ import type {
   DepartmentDetailDto,
   DepartmentDto,
   DepartmentsListDataDto,
+  DeoMyReportsDataDto,
   MyOfficesDataDto,
   UpdateDepartmentBodyDto,
 } from '@/lib/api/dto/department.dto';
@@ -11,6 +12,7 @@ import {
   mapDepartmentDetailDto,
   mapDepartmentDto,
   mapDepartmentsListDataDto,
+  mapDeoMyReportsDataDto,
   mapMyOfficesDataDto,
 } from '@/lib/api/mappers/department.mapper';
 import type {
@@ -20,6 +22,8 @@ import type {
   DepartmentDetail,
   DepartmentsList,
   DepartmentsListParams,
+  DeoMyReportsData,
+  DeoMyReportsParams,
   MyOffices,
   MyOfficesParams,
   UpdateDepartmentInput,
@@ -55,6 +59,34 @@ export async function adaptMyOffices(params?: MyOfficesParams): Promise<ApiEnvel
     buildMyOfficesQuery(params)
   );
   return mapApiEnvelope(res.data, mapMyOfficesDataDto);
+}
+
+function buildDeoMyReportsQuery(
+  params?: DeoMyReportsParams
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
+  if (params?.page != null) query.page = params.page;
+  if (params?.pageSize != null) query.pageSize = params.pageSize;
+  const search = params?.search?.trim();
+  if (search) query.search = search;
+  if (params?.status) query.status = params.status;
+  if (params?.categoryId?.trim()) query.categoryId = params.categoryId.trim();
+  if (params?.severity) query.severity = params.severity;
+  if (params?.wardCode?.trim()) query.wardCode = params.wardCode.trim();
+  if (params?.sortBy) query.sortBy = params.sortBy;
+  if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
+  return query;
+}
+
+/** GET /v1/departments/my/reports — [DEO] Danh sách báo cáo trong Sở (phân trang). */
+export async function adaptDeoMyReports(
+  params?: DeoMyReportsParams
+): Promise<ApiEnvelope<DeoMyReportsData>> {
+  const res = await apiService.get<ApiEnvelope<DeoMyReportsDataDto>>(
+    '/v1/departments/my/reports',
+    buildDeoMyReportsQuery(params)
+  );
+  return mapApiEnvelope(res.data, mapDeoMyReportsDataDto);
 }
 
 export async function adaptDepartmentsList(

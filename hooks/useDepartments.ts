@@ -6,6 +6,7 @@ import {
   deactivateDepartment,
   fetchDepartmentDetail,
   fetchDepartments,
+  fetchDeoMyReports,
   fetchMyOffices,
   updateDepartment,
 } from '@/lib/api/services/fetchDepartment';
@@ -24,6 +25,7 @@ import type {
   AssignDepartmentOfficerInput,
   CreateDepartmentInput,
   DepartmentsListParams,
+  DeoMyReportsParams,
   MyOffices,
   MyOfficesParams,
   UpdateDepartmentInput,
@@ -34,6 +36,8 @@ export const departmentKeys = {
   all: ['admin', 'departments'] as const,
   list: (params: DepartmentsListParams) => [...departmentKeys.all, 'list', params] as const,
   myOffices: (params: MyOfficesParams) => [...departmentKeys.all, 'my-offices', params] as const,
+  deoMyReports: (params: DeoMyReportsParams) =>
+    [...departmentKeys.all, 'deo-my-reports', params] as const,
   myOfficesInfinite: (search: string) =>
     [
       ...departmentKeys.all,
@@ -78,6 +82,17 @@ export function useMyOffices(params: MyOfficesParams, enabled = true) {
   return useQuery({
     queryKey: departmentKeys.myOffices(params),
     queryFn: () => fetchMyOffices(params),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    enabled,
+  });
+}
+
+/** GET /v1/departments/my/reports — danh sách báo cáo Sở (DEO). */
+export function useDeoMyReports(params: DeoMyReportsParams, enabled = true) {
+  return useQuery({
+    queryKey: departmentKeys.deoMyReports(params),
+    queryFn: () => fetchDeoMyReports(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     enabled,
