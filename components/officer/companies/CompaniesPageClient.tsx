@@ -15,8 +15,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { CompanyCreateDialog } from '@/components/officer/companies/CompanyCreateDialog';
+import { CompanyAssignAreaDialog } from '@/components/officer/companies/CompanyCreatePageClient';
 import { Button } from '@/components/ui/button';
+import HotelIcon from '@/components/ui/hotel-icon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,8 +113,7 @@ export function CompaniesPageClient() {
   const user = useAuthStore(s => s.user);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'create' | 'assign'>('create');
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignCompany, setAssignCompany] = useState<CompanyListItem | null>(null);
 
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS, () => {
@@ -121,9 +121,8 @@ export function CompaniesPageClient() {
   });
 
   const handleAssignArea = (row: CompanyListItem) => {
-    setDialogMode('assign');
     setAssignCompany(row);
-    setDialogOpen(true);
+    setAssignDialogOpen(true);
   };
 
   const listParams = useMemo(
@@ -190,27 +189,23 @@ export function CompaniesPageClient() {
             type="button"
             size="sm"
             className="h-8 shrink-0 gap-1.5 bg-sky-600 text-[0.8125rem] font-medium text-white hover:bg-sky-700"
-            onClick={() => {
-              setDialogMode('create');
-              setAssignCompany(null);
-              setDialogOpen(true);
-            }}
+            asChild
           >
-            <Plus className="size-3.5" aria-hidden />
-            Thêm
+            <Link href="/officer/companies/new">
+              <Plus className="size-3.5" aria-hidden />
+              Thêm
+            </Link>
           </Button>
         </div>
       </header>
 
-      <CompanyCreateDialog
-        open={dialogOpen}
-        mode={dialogMode}
+      <CompanyAssignAreaDialog
+        open={assignDialogOpen}
         assignCompany={assignCompany}
         onClose={() => {
-          setDialogOpen(false);
+          setAssignDialogOpen(false);
           setAssignCompany(null);
         }}
-        onCreated={() => void refetch()}
         onAssigned={() => void refetch()}
       />
 
@@ -255,12 +250,12 @@ export function CompaniesPageClient() {
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={COLUMN_DEFS.length}
-                    className="h-32 text-center text-sm text-slate-500"
-                  >
-                    Không có doanh nghiệp phù hợp.
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <HotelIcon size={32} className="opacity-30" />
+                      <span>Không có doanh nghiệp phù hợp.</span>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -270,7 +265,7 @@ export function CompaniesPageClient() {
                       <TableCell
                         key={col.key}
                         className={cn(
-                          'px-3 py-2',
+                          'px-4 py-5',
                           (col.key === 'serviceAreaCount' || col.key === 'staffCount') &&
                             'text-center'
                         )}

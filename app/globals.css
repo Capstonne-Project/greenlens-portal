@@ -328,6 +328,7 @@
 
   .map-pin-icon--solid svg path {
     fill: currentColor;
-    stroke: none;
+    stroke: currentColor;
+    stroke-width: 32;
   }
 }

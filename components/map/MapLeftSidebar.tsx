@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronDown, faRightToBracket, faThumbtack } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faRightToBracket } from '@fortawesome/free-solid-svg-icons';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
 import { getActiveNavId } from '@/lib/constants/mapShellNav';
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
@@ -39,6 +39,7 @@ import {
   mapSidebarProfileFooterClass,
 } from '@/lib/map/mapShellStyles';
 import { MapSidebarUserProfile } from './MapSidebarUserProfile';
+import PenIcon from '@/components/ui/pen-icon';
 import { cn } from '@/lib/utils';
 
 type MapLeftSidebarProps = {
@@ -236,7 +237,7 @@ export function MapLeftSidebar({ config }: MapLeftSidebarProps) {
           aria-label={isPinned ? 'Bỏ ghim sidebar' : 'Ghim sidebar'}
           title={isPinned ? 'Bỏ ghim' : 'Ghim sidebar'}
         >
-          <FontAwesomeIcon icon={faThumbtack} className={mapSidebarPinIconClass(isPinned)} />
+          <PenIcon size={14} className={mapSidebarPinIconClass(isPinned)} />
         </button>
       ) : null}
 
