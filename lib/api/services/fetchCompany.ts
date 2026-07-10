@@ -2,7 +2,7 @@
  * L2 — Companies (officer) + Company Manager (dev portal).
  */
 import {
-  adaptAssignCompanyStaffTeam,
+  adaptAddCompanyTeamMember,
   adaptAssignCompanyTeam,
   adaptCompanyAssignmentDetail,
   adaptCompanyAssignments,
@@ -14,6 +14,7 @@ import {
   adaptDeactivateCompanyTeam,
   adaptMyCompany,
   adaptRenameCompanyTeam,
+  adaptRemoveCompanyTeamMember,
   adaptUpdateCompanyStaffStatus,
 } from '@/lib/api/adapters/company.adapter';
 import {
@@ -25,6 +26,7 @@ import {
   adaptUpdateCompanyServiceAreas,
 } from '@/lib/api/adapters/companies.adapter';
 import type {
+  AddCompanyTeamMemberInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
   CompaniesList,
@@ -39,6 +41,7 @@ import type {
   CompanyStaffList,
   CompanyStaffListParams,
   CompanyTeam,
+  CompanyTeamMembership,
   CompanyTeamsList,
   CompanyTeamsListParams,
   CreateCompanyInput,
@@ -55,6 +58,7 @@ import type {
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
+  AddCompanyTeamMemberInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
   CompaniesList,
@@ -87,6 +91,7 @@ export type {
   COMPANIES_PAGE_SIZE,
   CompanyTeam,
   CompanyTeamListItem,
+  CompanyTeamMembership,
   CompanyTeamOption,
   CompanyTeamsList,
   CompanyTeamsListParams,
@@ -165,11 +170,42 @@ export async function updateCompanyStaffStatus(
   return adaptUpdateCompanyStaffStatus(userId, body);
 }
 
+export async function addCompanyTeamMember(
+  teamId: string,
+  body: AddCompanyTeamMemberInput
+): Promise<ApiEnvelope<CompanyTeamMembership>> {
+  return adaptAddCompanyTeamMember(teamId, {
+    userId: body.userId,
+    isLeader: body.isLeader ?? false,
+  });
+}
+
+export async function removeCompanyTeamMember(
+  teamId: string,
+  userId: string
+): Promise<ApiEnvelope<string>> {
+  return adaptRemoveCompanyTeamMember(teamId, userId);
+}
+
+/**
+ * Gán / chuyển nhân viên vào team công ty.
+ * Move A→B: DELETE khỏi team cũ rồi POST vào team mới (không atomic — nếu POST fail sau DELETE, staff tạm không thuộc team).
+ */
 export async function assignCompanyStaffTeam(
-  userId: string,
-  body: AssignCompanyStaffTeamInput
-): Promise<ApiEnvelope<string | null>> {
-  return adaptAssignCompanyStaffTeam(userId, body);
+  input: AssignCompanyStaffTeamInput
+): Promise<ApiEnvelope<CompanyTeamMembership>> {
+  if (input.currentTeamId && input.currentTeamId === input.teamId) {
+    throw new Error('Nhân viên đã thuộc đội này');
+  }
+
+  if (input.currentTeamId) {
+    await removeCompanyTeamMember(input.currentTeamId, input.userId);
+  }
+
+  return addCompanyTeamMember(input.teamId, {
+    userId: input.userId,
+    isLeader: input.isLeader ?? false,
+  });
 }
 
 export async function fetchCompanyTeams(
@@ -213,6 +249,10 @@ export async function fetchCompanyAssignmentDetail(
   return adaptCompanyAssignmentDetail(reportId);
 }
 
+/**
+ * POST /v1/reports/{id}/assign-company-team — [CompanyManager] phân công team công ty
+ * (Verified → InProgress). Khác với `assignReport` (LEO → POST .../assign).
+ */
 export async function assignCompanyTeam(
   reportId: string,
   body: AssignCompanyTeamInput
@@ -231,6 +271,8 @@ const companyApi = {
   fetchCompanyStaff,
   createCompanyStaff,
   updateCompanyStaffStatus,
+  addCompanyTeamMember,
+  removeCompanyTeamMember,
   assignCompanyStaffTeam,
   fetchCompanyTeams,
   createCompanyTeam,

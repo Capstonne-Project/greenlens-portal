@@ -248,8 +248,26 @@ export interface UpdateCompanyStaffStatusInput {
   isActive: boolean;
 }
 
-export interface AssignCompanyStaffTeamInput {
+export interface AddCompanyTeamMemberInput {
+  userId: string;
+  isLeader?: boolean;
+}
+
+export interface CompanyTeamMembership {
+  memberId: string;
   teamId: string;
+  userId: string;
+  isLeader: boolean;
+}
+
+export interface AssignCompanyStaffTeamInput {
+  /** Staff user to assign into a company team. */
+  userId: string;
+  /** Target team to assign into. */
+  teamId: string;
+  /** Current team of the staff, if any. Delete from this team before assigning when different. */
+  currentTeamId?: string | null;
+  isLeader?: boolean;
 }
 
 export type CompanyQueueSeverity = 'Low' | 'Medium' | 'High' | 'Critical' | string;
@@ -276,6 +294,7 @@ export interface CompanyQueueParams {
   severity?: string;
 }
 
+/** Body POST /v1/reports/{id}/assign-company-team — [CompanyManager]. */
 export interface AssignCompanyTeamInput {
   teams: { teamId: string; note?: string }[];
 }

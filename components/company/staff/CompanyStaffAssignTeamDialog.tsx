@@ -21,14 +21,23 @@ export function CompanyStaffAssignTeamDialog({
   onSuccess,
 }: CompanyStaffAssignTeamDialogProps) {
   const [teamId, setTeamId] = useState('');
+  const [isLeader, setIsLeader] = useState(false);
 
   const { options: teams, isPending: teamsLoading } = useCompanyAllTeamOptions();
   const assign = useAssignCompanyStaffTeam();
 
   if (!open || !staff) return null;
 
+  const currentTeam = teams.find(team => team.id === staff.teamId);
+  const currentTeamName = currentTeam?.name ?? staff.teamName ?? 'hiện tại';
+  const isChangingTeam = Boolean(staff.teamId);
+  const dialogTitle = isChangingTeam ? 'Đổi đội' : 'Gán đội';
+  const activeTeams = teams.filter(team => team.isActive);
+  const selectableTeams = activeTeams.filter(team => team.id !== staff.teamId);
+
   const handleClose = () => {
     setTeamId('');
+    setIsLeader(false);
     onClose();
   };
 
@@ -37,11 +46,20 @@ export function CompanyStaffAssignTeamDialog({
       toast.error('Vui lòng chọn đội');
       return;
     }
+    if (staff.teamId && staff.teamId === teamId) {
+      toast.error('Nhân viên đã thuộc đội này');
+      return;
+    }
     assign.mutate(
-      { userId: staff.userId, body: { teamId } },
       {
-        onSuccess: env => {
-          toast.success(env.message ?? 'Đã gán nhân viên vào đội');
+        userId: staff.userId,
+        teamId,
+        currentTeamId: staff.teamId ?? null,
+        isLeader,
+      },
+      {
+        onSuccess: () => {
+          toast.success(isChangingTeam ? 'Đã chuyển đội' : 'Đã gán nhân viên vào đội');
           onSuccess();
           handleClose();
         },
@@ -67,11 +85,16 @@ export function CompanyStaffAssignTeamDialog({
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <h2 id="assign-staff-team-title" className="text-lg font-semibold">
-              Gán đội
+              {dialogTitle}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Nhân viên <span className="font-semibold text-emerald-800">{staff.fullName}</span>
             </p>
+            {isChangingTeam && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Đội hiện tại: <span className="font-medium">{currentTeamName}</span>
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -90,20 +113,21 @@ export function CompanyStaffAssignTeamDialog({
               <Loader2 className="size-4 animate-spin" aria-hidden />
               Đang tải danh sách đội…
             </div>
-          ) : teams.length === 0 ? (
+          ) : selectableTeams.length === 0 ? (
             <p className="rounded-lg border border-dashed border-emerald-200 px-3 py-4 text-sm text-muted-foreground">
-              Chưa có đội nào. Hãy tạo đội trước khi gán nhân viên.
+              Chưa có đội đang hoạt động phù hợp. Hãy tạo hoặc kích hoạt đội trước khi gán nhân
+              viên.
             </p>
           ) : (
             <div className="max-h-56 space-y-2 overflow-y-auto">
-              {teams.map(team => (
+              {selectableTeams.map(team => (
                 <label
                   key={team.id}
                   className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
                     teamId === team.id
                       ? 'border-emerald-500 bg-emerald-50'
                       : 'border-emerald-100 hover:border-emerald-300 dark:border-border'
-                  } ${!team.isActive ? 'opacity-70' : ''}`}
+                  }`}
                 >
                   <input
                     type="radio"
@@ -118,7 +142,6 @@ export function CompanyStaffAssignTeamDialog({
                     <span className="block text-sm font-medium">{team.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {team.memberCount} thành viên
-                      {!team.isActive ? ' · Ngưng hoạt động' : ''}
                     </span>
                   </span>
                 </label>
@@ -126,6 +149,16 @@ export function CompanyStaffAssignTeamDialog({
             </div>
           )}
         </div>
+
+        <label className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-100 px-3 py-2.5 text-sm font-medium transition hover:border-emerald-300 dark:border-border">
+          <input
+            type="checkbox"
+            checked={isLeader}
+            onChange={event => setIsLeader(event.target.checked)}
+            className="size-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          Gán làm trưởng đội
+        </label>
 
         <div className="mt-6 flex justify-end gap-2">
           <button
@@ -137,12 +170,12 @@ export function CompanyStaffAssignTeamDialog({
           </button>
           <button
             type="button"
-            disabled={assign.isPending || !teamId || teams.length === 0}
+            disabled={assign.isPending || !teamId || selectableTeams.length === 0}
             onClick={handleSubmit}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {assign.isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-            Gán đội
+            {dialogTitle}
           </button>
         </div>
       </div>

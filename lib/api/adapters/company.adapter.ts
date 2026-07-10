@@ -1,6 +1,6 @@
 import apiService from '@/lib/api/core';
 import type {
-  AssignCompanyStaffTeamInput,
+  AddCompanyTeamMemberInput,
   AssignCompanyTeamInput,
   CompanyAssignmentDetail,
   CompanyAssignmentsList,
@@ -10,6 +10,7 @@ import type {
   CompanyStaffList,
   CompanyStaffListParams,
   CompanyTeam,
+  CompanyTeamMembership,
   CompanyTeamsList,
   CompanyTeamsListParams,
   CreateCompanyStaffInput,
@@ -85,13 +86,26 @@ export async function adaptUpdateCompanyStaffStatus(
   return res.data;
 }
 
-export async function adaptAssignCompanyStaffTeam(
-  userId: string,
-  body: AssignCompanyStaffTeamInput
-): Promise<ApiEnvelope<string | null>> {
-  const res = await apiService.put<ApiEnvelope<string | null>>(
-    `/v1/companies/my/staff/${userId}/team`,
-    body
+export async function adaptAddCompanyTeamMember(
+  teamId: string,
+  body: AddCompanyTeamMemberInput
+): Promise<ApiEnvelope<CompanyTeamMembership>> {
+  const res = await apiService.post<ApiEnvelope<CompanyTeamMembership>>(
+    `/v1/teams/company-teams/${teamId}/members`,
+    {
+      userId: body.userId,
+      isLeader: body.isLeader ?? false,
+    }
+  );
+  return res.data;
+}
+
+export async function adaptRemoveCompanyTeamMember(
+  teamId: string,
+  userId: string
+): Promise<ApiEnvelope<string>> {
+  const res = await apiService.delete<ApiEnvelope<string>>(
+    `/v1/teams/company-teams/${teamId}/members/${userId}`
   );
   return res.data;
 }
@@ -168,9 +182,19 @@ export async function adaptCompanyAssignmentDetail(
   return res.data;
 }
 
+/**
+ * POST /v1/reports/{id}/assign-company-team — [CompanyManager] gán team công ty.
+ * Không dùng POST /v1/reports/{id}/assign (đó là LEO gán community team).
+ */
 export async function adaptAssignCompanyTeam(
   reportId: string,
   body: AssignCompanyTeamInput
 ): Promise<void> {
-  await apiService.post(`/v1/reports/${reportId}/assign-company-team`, body);
+  const payload: AssignCompanyTeamInput = {
+    teams: body.teams.map(t => ({
+      teamId: t.teamId,
+      ...(t.note?.trim() ? { note: t.note.trim() } : {}),
+    })),
+  };
+  await apiService.post(`/v1/reports/${reportId}/assign-company-team`, payload);
 }

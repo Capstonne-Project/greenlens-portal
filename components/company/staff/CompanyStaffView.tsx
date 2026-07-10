@@ -2,11 +2,26 @@
 
 import { CompanyStaffAssignTeamDialog } from '@/components/company/staff/CompanyStaffAssignTeamDialog';
 import { CompanyStaffCreateDialog } from '@/components/company/staff/CompanyStaffCreateDialog';
+import { CompanyStaffLeaveTeamDialog } from '@/components/company/staff/CompanyStaffLeaveTeamDialog';
 import { CompanyStaffTempPasswordDialog } from '@/components/company/staff/CompanyStaffTempPasswordDialog';
-import { useCompanyStaffList, useUpdateCompanyStaffStatus } from '@/hooks/useCompany';
+import {
+  useCompanyStaffList,
+  useRemoveCompanyTeamMember,
+  useUpdateCompanyStaffStatus,
+} from '@/hooks/useCompany';
 import type { CompanyStaffItem, CreateCompanyStaffResult } from '@/lib/api/models/company';
 import { formatCompanyDate, getCompanyMutationError } from '@/utils/companyUi';
-import { ChevronLeft, ChevronRight, Loader2, Plus, Power, UserPlus, Users } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Plus,
+  Power,
+  UserMinus,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -14,8 +29,8 @@ type ActiveFilter = 'all' | 'active' | 'inactive';
 
 const PAGE_SIZE = 20;
 
-function staffHasNoTeam(row: CompanyStaffItem): boolean {
-  return !row.teamId && !row.teamName;
+function staffHasTeam(row: CompanyStaffItem): boolean {
+  return Boolean(row.teamId);
 }
 
 export function CompanyStaffView() {
@@ -24,9 +39,11 @@ export function CompanyStaffView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createdStaff, setCreatedStaff] = useState<CreateCompanyStaffResult | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<CompanyStaffItem | null>(null);
   const [assignTarget, setAssignTarget] = useState<CompanyStaffItem | null>(null);
 
   const updateStatus = useUpdateCompanyStaffStatus();
+  const removeTeamMember = useRemoveCompanyTeamMember();
 
   const isActiveParam =
     activeFilter === 'all' ? undefined : activeFilter === 'active' ? true : false;
@@ -55,6 +72,21 @@ export function CompanyStaffView() {
         },
         onError: err => toast.error(getCompanyMutationError(err, 'Không thể cập nhật trạng thái')),
         onSettled: () => setTogglingId(null),
+      }
+    );
+  };
+
+  const handleConfirmLeaveTeam = () => {
+    if (!leaveTarget?.teamId) return;
+
+    removeTeamMember.mutate(
+      { teamId: leaveTarget.teamId, userId: leaveTarget.userId },
+      {
+        onSuccess: env => {
+          toast.success(env.message ?? 'Đã cho nhân viên rời đội');
+          setLeaveTarget(null);
+        },
+        onError: err => toast.error(getCompanyMutationError(err, 'Không thể rời đội')),
       }
     );
   };
@@ -159,7 +191,26 @@ export function CompanyStaffView() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-wrap items-center justify-end gap-2">
-                        {staffHasNoTeam(row) && (
+                        {staffHasTeam(row) ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setAssignTarget(row)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
+                            >
+                              <ArrowRightLeft className="size-3.5" aria-hidden />
+                              Đổi đội
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLeaveTarget(row)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50"
+                            >
+                              <UserMinus className="size-3.5" aria-hidden />
+                              Rời đội
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
                             onClick={() => setAssignTarget(row)}
@@ -237,10 +288,21 @@ export function CompanyStaffView() {
       />
 
       <CompanyStaffAssignTeamDialog
+        key={assignTarget?.userId ?? 'assign-team'}
         open={Boolean(assignTarget)}
         staff={assignTarget}
         onClose={() => setAssignTarget(null)}
         onSuccess={() => setAssignTarget(null)}
+      />
+
+      <CompanyStaffLeaveTeamDialog
+        open={Boolean(leaveTarget)}
+        staff={leaveTarget}
+        submitting={removeTeamMember.isPending}
+        onConfirm={handleConfirmLeaveTeam}
+        onClose={() => {
+          if (!removeTeamMember.isPending) setLeaveTarget(null);
+        }}
       />
     </div>
   );
