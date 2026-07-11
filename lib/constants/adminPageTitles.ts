@@ -8,6 +8,7 @@ export function getAdminPageTitle(pathname: string): string {
     return 'Văn phòng địa phương';
   if (pathname === '/admin/pollution-categories') return 'Danh mục ô nhiễm';
   if (pathname === '/admin/waste-tags') return 'Thẻ rác thải';
+  if (pathname === '/admin/penalty-frameworks') return 'Khung xử phạt';
   if (pathname === '/admin/departments') return 'Sở TNMT · Cấp tỉnh';
   if (pathname === '/admin/teams') return 'Quản lý đội môi trường';
   if (pathname === '/admin/reports') return 'Quản lý báo cáo ô nhiễm';

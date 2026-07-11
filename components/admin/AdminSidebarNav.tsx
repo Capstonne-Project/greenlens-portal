@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
+  Gavel,
   Landmark,
   LayoutDashboard,
   Leaf,
@@ -161,6 +162,8 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
     pathname.startsWith('/admin/pollution-categories/');
   const wasteTagsActive =
     pathname === '/admin/waste-tags' || pathname.startsWith('/admin/waste-tags/');
+  const penaltyActive =
+    pathname === '/admin/penalty-frameworks' || pathname.startsWith('/admin/penalty-frameworks/');
   const departmentsActive =
     pathname === '/admin/departments' || pathname.startsWith('/admin/departments/');
   const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
@@ -310,6 +313,16 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
               >
                 <Recycle className="size-4 shrink-0" />
                 {!collapsed && <span>Thẻ rác thải</span>}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/penalty-frameworks"
+                title="Khung xử phạt"
+                className={navLinkClass(penaltyActive)}
+              >
+                <Gavel className="size-4 shrink-0" />
+                {!collapsed && <span>Khung xử phạt</span>}
               </Link>
             </li>
           </ul>
