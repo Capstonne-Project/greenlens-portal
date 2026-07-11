@@ -4,9 +4,21 @@ import {
   PenaltyFrameworkCreateDialog,
   type PenaltyFrameworkFormValues,
 } from '@/components/admin/penalty-frameworks/PenaltyFrameworkCreateDialog';
-import { usePenaltyFrameworksList, useCreatePenaltyFramework } from '@/hooks/usePenaltyFrameworks';
+import {
+  PenaltyFrameworkEditDialog,
+  type PenaltyFrameworkEditFormValues,
+} from '@/components/admin/penalty-frameworks/PenaltyFrameworkEditDialog';
+import {
+  useCreatePenaltyFramework,
+  usePenaltyFrameworksList,
+  useTogglePenaltyFramework,
+  useUpdatePenaltyFramework,
+} from '@/hooks/usePenaltyFrameworks';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
-import type { PenaltyFrameworkPagination } from '@/lib/api/models/penaltyFramework';
+import type {
+  PenaltyFramework,
+  PenaltyFrameworkPagination,
+} from '@/lib/api/models/penaltyFramework';
 import {
   PENALTY_FRAMEWORKS_PAGE_SIZE,
   PENALTY_VIOLATION_LEVEL_LABEL_VI,
@@ -20,7 +32,16 @@ import {
   getPenaltyMutationError,
   getPenaltyViolationBadgeClass,
 } from '@/utils/penaltyFrameworkUi';
-import { ChevronLeft, ChevronRight, Filter, Loader2, Plus, Scale } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Loader2,
+  Pencil,
+  Plus,
+  Power,
+  Scale,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -60,6 +81,8 @@ export function AdminPenaltyFrameworksView() {
   const [violationLevel, setViolationLevel] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<PenaltyFramework | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const params = useMemo(
     () => ({
@@ -76,6 +99,8 @@ export function AdminPenaltyFrameworksView() {
   const listQuery = usePenaltyFrameworksList(params);
   const categoriesQuery = useCatalogPollutionCategories();
   const createMutation = useCreatePenaltyFramework();
+  const updateMutation = useUpdatePenaltyFramework();
+  const toggleMutation = useTogglePenaltyFramework();
 
   const items = listQuery.data?.items ?? [];
   const pagination = listQuery.data?.pagination ?? EMPTY_PAGINATION;
@@ -102,6 +127,47 @@ export function AdminPenaltyFrameworksView() {
           setCreateOpen(false);
         },
         onError: err => toast.error(getPenaltyMutationError(err, 'Không thể tạo khung xử phạt.')),
+      }
+    );
+  };
+
+  const handleUpdate = (values: PenaltyFrameworkEditFormValues) => {
+    if (!editTarget) return;
+    updateMutation.mutate(
+      {
+        id: editTarget.id,
+        body: {
+          minAmount: values.minAmount,
+          maxAmount: values.maxAmount,
+          effectiveFrom: `${values.effectiveFrom}T00:00:00.000Z`,
+          effectiveTo: values.effectiveTo?.trim() ? `${values.effectiveTo}T23:59:59.000Z` : null,
+        },
+      },
+      {
+        onSuccess: env => {
+          toast.success(env.message || 'Đã cập nhật khung xử phạt.');
+          setEditTarget(null);
+        },
+        onError: err =>
+          toast.error(getPenaltyMutationError(err, 'Không thể cập nhật khung xử phạt.')),
+      }
+    );
+  };
+
+  const handleToggle = (item: PenaltyFramework) => {
+    const activate = !item.isActive;
+    setTogglingId(item.id);
+    toggleMutation.mutate(
+      { id: item.id, body: { activate } },
+      {
+        onSuccess: env => {
+          toast.success(
+            env.message || (activate ? 'Đã bật khung xử phạt.' : 'Đã tắt khung xử phạt.')
+          );
+        },
+        onError: err =>
+          toast.error(getPenaltyMutationError(err, 'Không thể đổi trạng thái khung xử phạt.')),
+        onSettled: () => setTogglingId(null),
       }
     );
   };
@@ -287,6 +353,7 @@ export function AdminPenaltyFrameworksView() {
                     <th className="px-5 py-3 font-semibold">Hiệu lực</th>
                     <th className="px-5 py-3 font-semibold">Trạng thái</th>
                     <th className="px-5 py-3 font-semibold">Ngày tạo</th>
+                    <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -333,6 +400,36 @@ export function AdminPenaltyFrameworksView() {
                       </td>
                       <td className="px-5 py-4 text-sm text-muted-foreground">
                         {formatAdminDate(item.createdAt)}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditTarget(item)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
+                          >
+                            <Pencil className="size-3.5" aria-hidden />
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            disabled={togglingId === item.id}
+                            onClick={() => handleToggle(item)}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-50',
+                              item.isActive
+                                ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
+                                : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                            )}
+                          >
+                            {togglingId === item.id ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                            ) : (
+                              <Power className="size-3.5" aria-hidden />
+                            )}
+                            {item.isActive ? 'Tắt' : 'Bật'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -382,6 +479,17 @@ export function AdminPenaltyFrameworksView() {
         categoriesLoading={categoriesQuery.isPending}
         onClose={() => setCreateOpen(false)}
         onSubmit={handleCreate}
+      />
+
+      <PenaltyFrameworkEditDialog
+        key={editTarget?.id ?? 'penalty-edit-closed'}
+        open={Boolean(editTarget)}
+        framework={editTarget}
+        busy={updateMutation.isPending}
+        onClose={() => {
+          if (!updateMutation.isPending) setEditTarget(null);
+        }}
+        onSubmit={handleUpdate}
       />
     </div>
   );

@@ -45,6 +45,17 @@ export interface CreatePenaltyFrameworkInput {
   effectiveTo?: string | null;
 }
 
+export interface UpdatePenaltyFrameworkInput {
+  minAmount: number;
+  maxAmount: number;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+}
+
+export interface TogglePenaltyFrameworkInput {
+  activate: boolean;
+}
+
 export interface CreatedPenaltyFramework {
   id: string;
   categoryId: string;

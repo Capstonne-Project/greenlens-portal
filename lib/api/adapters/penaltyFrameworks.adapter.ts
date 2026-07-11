@@ -3,6 +3,8 @@ import type {
   CreatePenaltyFrameworkDataDto,
   PenaltyFrameworksListDataDto,
   PenaltyFrameworksListParamsDto,
+  TogglePenaltyFrameworkBodyDto,
+  UpdatePenaltyFrameworkBodyDto,
 } from '@/lib/api/dto/penaltyFramework.dto';
 import {
   mapCreatePenaltyFrameworkDataDto,
@@ -13,6 +15,8 @@ import type {
   CreatePenaltyFrameworkInput,
   PenaltyFrameworksList,
   PenaltyFrameworksListParams,
+  TogglePenaltyFrameworkInput,
+  UpdatePenaltyFrameworkInput,
 } from '@/lib/api/models/penaltyFramework';
 import apiService from '@/lib/api/core';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
@@ -47,6 +51,22 @@ function buildCreatePenaltyFrameworkBody(
   return payload;
 }
 
+function buildUpdatePenaltyFrameworkBody(
+  body: UpdatePenaltyFrameworkInput
+): UpdatePenaltyFrameworkBodyDto {
+  const payload: UpdatePenaltyFrameworkBodyDto = {
+    minAmount: body.minAmount,
+    maxAmount: body.maxAmount,
+    effectiveFrom: body.effectiveFrom.trim(),
+  };
+
+  if (body.effectiveTo !== undefined) {
+    payload.effectiveTo = body.effectiveTo?.trim() || null;
+  }
+
+  return payload;
+}
+
 /** GET /v1/admin/penalty-frameworks — danh sách khung xử phạt. */
 export async function adaptPenaltyFrameworksList(
   params?: PenaltyFrameworksListParams
@@ -68,4 +88,30 @@ export async function adaptCreatePenaltyFramework(
     payload
   );
   return mapApiEnvelope(res.data, mapCreatePenaltyFrameworkDataDto);
+}
+
+/** PUT /v1/admin/penalty-frameworks/{id} — cập nhật khung xử phạt. */
+export async function adaptUpdatePenaltyFramework(
+  id: string,
+  body: UpdatePenaltyFrameworkInput
+): Promise<ApiEnvelope<string | null>> {
+  const payload = buildUpdatePenaltyFrameworkBody(body);
+  const res = await apiService.put<ApiEnvelope<string | null>>(
+    `/v1/admin/penalty-frameworks/${id}`,
+    payload
+  );
+  return res.data;
+}
+
+/** PATCH /v1/admin/penalty-frameworks/{id}/toggle — bật/tắt khung xử phạt. */
+export async function adaptTogglePenaltyFramework(
+  id: string,
+  body: TogglePenaltyFrameworkInput
+): Promise<ApiEnvelope<string | null>> {
+  const payload: TogglePenaltyFrameworkBodyDto = { activate: body.activate };
+  const res = await apiService.patch<ApiEnvelope<string | null>>(
+    `/v1/admin/penalty-frameworks/${id}/toggle`,
+    payload
+  );
+  return res.data;
 }
