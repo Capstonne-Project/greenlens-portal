@@ -9,12 +9,14 @@ import { cn } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
+  Gavel,
   Landmark,
   LayoutDashboard,
   Leaf,
   Map,
-  Shield,
   Recycle,
+  ScrollText,
+  Shield,
   Tags,
   UserCircle,
   Users,
@@ -161,9 +163,13 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
     pathname.startsWith('/admin/pollution-categories/');
   const wasteTagsActive =
     pathname === '/admin/waste-tags' || pathname.startsWith('/admin/waste-tags/');
+  const penaltyActive =
+    pathname === '/admin/penalty-frameworks' || pathname.startsWith('/admin/penalty-frameworks/');
   const departmentsActive =
     pathname === '/admin/departments' || pathname.startsWith('/admin/departments/');
   const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
+  const auditLogsActive =
+    pathname === '/admin/audit-logs' || pathname.startsWith('/admin/audit-logs/');
 
   const navLinkClass = (active: boolean) =>
     cn(
@@ -312,6 +318,16 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
                 {!collapsed && <span>Thẻ rác thải</span>}
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin/penalty-frameworks"
+                title="Khung xử phạt"
+                className={navLinkClass(penaltyActive)}
+              >
+                <Gavel className="size-4 shrink-0" />
+                {!collapsed && <span>Khung xử phạt</span>}
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -327,6 +343,26 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
             collapsed={collapsed}
             countQueries={countQueries}
           />
+        </div>
+
+        <div>
+          {!collapsed && (
+            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Hệ thống
+            </p>
+          )}
+          <ul className="space-y-1">
+            <li>
+              <Link
+                href="/admin/audit-logs"
+                title="Nhật ký kiểm toán"
+                className={navLinkClass(auditLogsActive)}
+              >
+                <ScrollText className="size-4 shrink-0" />
+                {!collapsed && <span>Nhật ký kiểm toán</span>}
+              </Link>
+            </li>
+          </ul>
         </div>
 
         <div>

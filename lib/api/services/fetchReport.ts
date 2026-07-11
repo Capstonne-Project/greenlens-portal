@@ -79,7 +79,10 @@ export async function fetchReportProgress(id: string): Promise<ReportProgress> {
   return adaptFetchReportProgress(id);
 }
 
-/** POST /v1/reports/{reportId}/assign — gán đội xử lý, Dispatched → Assigned / InProgress */
+/**
+ * POST /v1/reports/{reportId}/assign — [LEO] gán community team.
+ * Company Manager dùng `assignCompanyTeam` → POST .../assign-company-team.
+ */
 export async function assignReport(reportId: string, body: AssignReportInput): Promise<void> {
   return adaptAssignReport(reportId, body);
 }

@@ -18,6 +18,7 @@ import {
   fetchMyCompany,
   fetchMyWardCompanies,
   renameCompanyTeam,
+  removeCompanyTeamMember,
   updateCompanyServiceAreas,
   updateCompanyStaffStatus,
 } from '@/lib/api/services/fetchCompany';
@@ -277,8 +278,20 @@ export function useUpdateCompanyStaffStatus() {
 export function useAssignCompanyStaffTeam() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, body }: { userId: string; body: AssignCompanyStaffTeamInput }) =>
-      assignCompanyStaffTeam(userId, body),
+    mutationFn: (input: AssignCompanyStaffTeamInput) => assignCompanyStaffTeam(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
+    },
+  });
+}
+
+export function useRemoveCompanyTeamMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, userId }: { teamId: string; userId: string }) =>
+      removeCompanyTeamMember(teamId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
@@ -319,6 +332,7 @@ export function useDeactivateCompanyTeam() {
   });
 }
 
+/** Company Manager — POST /v1/reports/{id}/assign-company-team (không phải LEO `/assign`). */
 export function useAssignCompanyTeam() {
   const queryClient = useQueryClient();
   return useMutation({
