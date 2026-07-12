@@ -6,12 +6,15 @@ import type {
   UpdatePollutionCategoryBodyDto,
 } from '@/lib/api/dto/pollutionCategory.dto';
 import {
+  mapPollutionCategoryAdminListDataDto,
   mapPollutionCategoryListDataDto,
   mapPollutionCategoryMutationDto,
 } from '@/lib/api/mappers/pollutionCategory.mapper';
 import type {
+  AdminPollutionCategoriesParams,
   ArchivePollutionCategoryInput,
   CreatePollutionCategoryInput,
+  PollutionCategoryAdminList,
   PollutionCategoryList,
   PollutionCategoryMutationResult,
   UpdatePollutionCategoryInput,
@@ -19,11 +22,20 @@ import type {
 import apiService from '@/lib/api/core';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
 
-export interface AdminPollutionCategoriesParams {
-  /** true = chỉ lưu trữ, false = chỉ đang dùng, undefined = tất cả */
-  archived?: boolean;
+function buildAdminPollutionCategoriesQuery(
+  params?: AdminPollutionCategoriesParams
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
+  if (params?.page != null) query.page = params.page;
+  if (params?.pageSize != null) query.pageSize = params.pageSize;
+  if (params?.search?.trim()) query.search = params.search.trim();
+  if (params?.isActive !== undefined) query.isActive = params.isActive;
+  if (params?.sortBy?.trim()) query.sortBy = params.sortBy.trim();
+  if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
+  return query;
 }
 
+/** GET /v1/catalog/pollution-categories — chỉ active (dropdown). */
 export async function adaptCatalogPollutionCategories(): Promise<
   ApiEnvelope<PollutionCategoryList>
 > {
@@ -33,26 +45,15 @@ export async function adaptCatalogPollutionCategories(): Promise<
   return mapApiEnvelope(res.data, mapPollutionCategoryListDataDto);
 }
 
+/** GET /v1/admin/pollution-categories — phân trang, search, isActive, sort. */
 export async function adaptAdminPollutionCategories(
   params?: AdminPollutionCategoriesParams
-): Promise<ApiEnvelope<PollutionCategoryList>> {
-  const query: Record<string, boolean> = {};
-  if (params?.archived === true) query.archived = true;
-  if (params?.archived === false) query.archived = false;
-
-  try {
-    const res = await apiService.get<ApiEnvelope<PollutionCategoryListDataDto>>(
-      '/v1/admin/pollution-categories',
-      query
-    );
-    return mapApiEnvelope(res.data, mapPollutionCategoryListDataDto);
-  } catch {
-    const catalog = await adaptCatalogPollutionCategories();
-    let items = catalog.data.items;
-    if (params?.archived === true) items = [];
-    if (params?.archived === false) items = items.filter(i => !i.isArchived);
-    return { ...catalog, data: { items } };
-  }
+): Promise<ApiEnvelope<PollutionCategoryAdminList>> {
+  const res = await apiService.get<ApiEnvelope<PollutionCategoryListDataDto>>(
+    '/v1/admin/pollution-categories',
+    buildAdminPollutionCategoriesQuery(params)
+  );
+  return mapApiEnvelope(res.data, mapPollutionCategoryAdminListDataDto);
 }
 
 export async function adaptCreatePollutionCategory(
@@ -80,7 +81,7 @@ export async function adaptUpdatePollutionCategory(
     nameEn: body.nameEn.trim(),
     ...(body.iconUrl?.trim() ? { iconUrl: body.iconUrl.trim() } : {}),
   };
-  await apiService.put(`/v1/admin/pollution-categories/${id}`, payload);
+  await apiService.put(`/v1/admin/pollution-categories/${encodeURIComponent(id)}`, payload);
 }
 
 export async function adaptArchivePollutionCategory(
@@ -88,9 +89,9 @@ export async function adaptArchivePollutionCategory(
   body: ArchivePollutionCategoryInput
 ): Promise<void> {
   const payload: ArchivePollutionCategoryBodyDto = { archive: body.archive };
-  await apiService.put(`/v1/admin/pollution-categories/${id}/archive`, payload);
+  await apiService.put(`/v1/admin/pollution-categories/${encodeURIComponent(id)}/archive`, payload);
 }
 
 export async function adaptDeletePollutionCategory(id: string): Promise<void> {
-  await apiService.delete(`/v1/admin/pollution-categories/${id}`);
+  await apiService.delete(`/v1/admin/pollution-categories/${encodeURIComponent(id)}`);
 }

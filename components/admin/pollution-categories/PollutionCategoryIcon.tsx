@@ -1,5 +1,3 @@
-'use client';
-
 import { getPollutionCategoryDisplay } from '@/lib/constants/pollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import { Cloud, Droplets, FlaskConical, Leaf, Trash2, Volume2 } from 'lucide-react';
@@ -24,8 +22,7 @@ export function PollutionCategoryIcon({ category, dimmed }: PollutionCategoryIco
   const Icon = CODE_ICONS[category.code.toUpperCase()] ?? Leaf;
   const url = category.iconUrl?.trim();
 
-  const isRemoteIcon =
-    url && (url.startsWith('http://') || url.startsWith('https://')) && url !== 'string';
+  const isRemoteIcon = Boolean(url && /^https:\/\//i.test(url) && url !== 'string');
 
   return (
     <span
@@ -33,7 +30,7 @@ export function PollutionCategoryIcon({ category, dimmed }: PollutionCategoryIco
         dimmed ? 'opacity-60' : ''
       }`}
     >
-      {isRemoteIcon ? (
+      {isRemoteIcon && url ? (
         <Image
           src={url}
           alt=""

@@ -1,8 +1,8 @@
 export interface PollutionCategoryItemDto {
-  id: string;
-  code: string;
-  nameVi: string;
-  nameEn: string;
+  id?: string;
+  code?: string;
+  nameVi?: string;
+  nameEn?: string;
   iconUrl?: string | null;
   descriptionVi?: string | null;
   descriptionEn?: string | null;
@@ -10,10 +10,22 @@ export interface PollutionCategoryItemDto {
   isActive?: boolean;
   archived?: boolean;
   reportCount?: number;
+  createdAt?: string | null;
 }
 
+export interface PollutionCategoryPaginationDto {
+  page?: number;
+  pageSize?: number;
+  totalItems?: number;
+  totalPages?: number;
+  hasNext?: boolean;
+  hasPrev?: boolean;
+}
+
+/** Admin list — có pagination. Catalog có thể chỉ có items. */
 export interface PollutionCategoryListDataDto {
-  items: PollutionCategoryItemDto[];
+  items?: PollutionCategoryItemDto[];
+  pagination?: PollutionCategoryPaginationDto;
 }
 
 export interface CreatePollutionCategoryBodyDto {

@@ -1,16 +1,16 @@
 'use client';
 
-import { useRef } from 'react';
-import { MapLibreView, type MapLibreViewHandle } from './MapLibreView';
-import { MapRightSidebar } from './MapRightSidebar';
+import dynamic from 'next/dynamic';
+
+function MapFallback() {
+  return <div className="absolute inset-0 z-0 animate-pulse bg-slate-200" aria-hidden />;
+}
+
+const OfficerMapInner = dynamic(() => import('./OfficerMapInner').then(m => m.OfficerMapInner), {
+  ssr: false,
+  loading: MapFallback,
+});
 
 export function OfficerMapPageClient() {
-  const mapRef = useRef<MapLibreViewHandle>(null);
-
-  return (
-    <>
-      <MapLibreView ref={mapRef} />
-      <MapRightSidebar onRefresh={() => mapRef.current?.refresh()} />
-    </>
-  );
+  return <OfficerMapInner />;
 }

@@ -23,6 +23,7 @@ import Map, {
   type ViewStateChangeEvent,
 } from 'react-map-gl/maplibre';
 import { useMapReports, type MapViewportParams } from '@/hooks/useMap';
+import { MAP_VIEWPORT_PIN_LIMIT } from '@/lib/constants/mapReports';
 import {
   MAP_SIDEBAR_TRANSITION_MS,
   selectMapPaddingLeft,
@@ -150,7 +151,7 @@ export const MapLibreView = forwardRef<MapLibreViewHandle, MapLibreViewProps>(fu
       minLng: Number(bounds.getWest().toFixed(6)),
       maxLng: Number(bounds.getEast().toFixed(6)),
       mode: 'detail',
-      limit: 1000,
+      limit: MAP_VIEWPORT_PIN_LIMIT,
     });
   }, []);
 

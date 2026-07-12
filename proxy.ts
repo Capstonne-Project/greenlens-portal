@@ -32,6 +32,11 @@ async function getMappedRole(token: string): Promise<AuthUser['role'] | null> {
         (typeof payload.role === 'string' && payload.role);
       return raw ? mapApiRoleToAuth(raw) : null;
     }
+    // Production: fail closed — require JWT_SECRET to verify signatures.
+    if (process.env.NODE_ENV === 'production') {
+      return null;
+    }
+    // Local/dev UX only — BE still enforces auth on API calls.
     const payload = decodeJwt(token);
     const raw =
       (typeof payload[ROLE_CLAIM] === 'string' && payload[ROLE_CLAIM]) ||
