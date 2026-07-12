@@ -3,11 +3,11 @@
 import { PollutionCategoryIcon } from '@/components/admin/pollution-categories/PollutionCategoryIcon';
 import { getPollutionCategoryDisplay } from '@/lib/constants/pollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
-import { ArchiveRestore, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArchiveRestore, CircleOff, MoreHorizontal, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 interface PollutionCategoryCardProps {
-  category: PollutionCategory & { reportCount: number };
+  category: PollutionCategory;
   onEdit: (category: PollutionCategory) => void;
   onArchiveToggle: (category: PollutionCategory, archive: boolean) => void;
   archiveBusy?: boolean;
@@ -75,7 +75,7 @@ export function PollutionCategoryCard({
             <span
               className={`size-1.5 rounded-full ${archived ? 'bg-muted-foreground' : 'bg-emerald-600'}`}
             />
-            {archived ? 'Đã xóa' : 'Đang dùng'}
+            {archived ? 'Đã ngưng' : 'Đang dùng'}
           </span>
           <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{descriptionVi}</p>
         </div>
@@ -112,12 +112,12 @@ export function PollutionCategoryCard({
           {archived ? (
             <>
               <ArchiveRestore className="size-4" />
-              Khôi phục
+              Kích hoạt
             </>
           ) : (
             <>
-              <Trash2 className="size-4" />
-              Xóa
+              <CircleOff className="size-4" />
+              Ngưng
             </>
           )}
         </button>

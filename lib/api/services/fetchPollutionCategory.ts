@@ -8,25 +8,28 @@ import {
   adaptCreatePollutionCategory,
   adaptDeletePollutionCategory,
   adaptUpdatePollutionCategory,
-  type AdminPollutionCategoriesParams,
 } from '@/lib/api/adapters/pollutionCategories.adapter';
 import type {
+  AdminPollutionCategoriesParams,
   ArchivePollutionCategoryInput,
   CreatePollutionCategoryInput,
+  PollutionCategoryAdminList,
   PollutionCategoryList,
   PollutionCategoryMutationResult,
   UpdatePollutionCategoryInput,
 } from '@/lib/api/models/pollutionCategory';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
-export type { AdminPollutionCategoriesParams };
-
 export type {
+  AdminPollutionCategoriesParams,
   ArchivePollutionCategoryInput,
   CreatePollutionCategoryInput,
   PollutionCategory,
+  PollutionCategoryAdminList,
   PollutionCategoryList,
   PollutionCategoryMutationResult,
+  PollutionCategoryPagination,
+  PollutionCategorySortBy,
   UpdatePollutionCategoryInput,
 } from '@/lib/api/models/pollutionCategory';
 
@@ -36,9 +39,10 @@ export async function fetchCatalogPollutionCategories(): Promise<
   return adaptCatalogPollutionCategories();
 }
 
+/** GET /v1/admin/pollution-categories */
 export async function fetchAdminPollutionCategories(
   params?: AdminPollutionCategoriesParams
-): Promise<ApiEnvelope<PollutionCategoryList>> {
+): Promise<ApiEnvelope<PollutionCategoryAdminList>> {
   return adaptAdminPollutionCategories(params);
 }
 
@@ -66,7 +70,7 @@ export async function deletePollutionCategory(id: string): Promise<void> {
   return adaptDeletePollutionCategory(id);
 }
 
-export default {
+const pollutionCategoryApi = {
   fetchCatalogPollutionCategories,
   fetchAdminPollutionCategories,
   createPollutionCategory,
@@ -74,3 +78,5 @@ export default {
   archivePollutionCategory,
   deletePollutionCategory,
 };
+
+export default pollutionCategoryApi;

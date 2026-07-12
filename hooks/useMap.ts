@@ -6,6 +6,7 @@ import {
   type MapReportsMode,
   type MapReportsQueryParams,
 } from '@/lib/api/services/fetchMap';
+import { MAP_VIEWPORT_PIN_LIMIT } from '@/lib/constants/mapReports';
 
 export type MapViewportParams = {
   minLat: number;
@@ -47,7 +48,7 @@ export function useMapReports(params: MapViewportParams | null) {
         maxLat: params.maxLat,
         minLng: params.minLng,
         maxLng: params.maxLng,
-        limit: params.limit ?? 1000,
+        limit: params.limit ?? MAP_VIEWPORT_PIN_LIMIT,
         mode: params.mode ?? 'detail',
         gridLevel: params.gridLevel,
         categoryId: params.categoryId,

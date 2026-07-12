@@ -1,25 +1,41 @@
 'use client';
 
 import { AdminReportDetailPanel } from '@/components/admin/reports/AdminReportDetailPanel';
+import { AdminReportHideDialog } from '@/components/admin/reports/AdminReportHideDialog';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
-import { useAdminReportsList, usePollutionCategories } from '@/hooks/useAdminReports';
+import {
+  useAdminReportsList,
+  usePollutionCategories,
+  useUnhideAdminReport,
+} from '@/hooks/useAdminReports';
 import { ADMIN_REPORT_PAGE_SIZE, ADMIN_REPORT_STATUS_TABS } from '@/lib/constants/adminReports';
 import type { AdminReportListItem } from '@/lib/api/models/adminReport';
+import {
+  isAdminReportMarkedHidden,
+  markAdminReportHidden,
+  markAdminReportVisible,
+} from '@/lib/storage/adminHiddenReports';
+import { cn } from '@/lib/utils';
 import { OPEN_REPORT_STATUSES } from '@/utils/adminOverview';
+import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { formatReportRelativeTime, reportListTitle } from '@/utils/adminReportUi';
 import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
+  EyeOff,
   FileWarning,
+  Loader2,
   MoreHorizontal,
   Search,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 function categoryInitial(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || '?';
@@ -42,6 +58,19 @@ export function AdminReportsView() {
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailListItem, setDetailListItem] = useState<AdminReportListItem | null>(null);
+  /** Optimistic + session — BE có thể không trả `isHidden`. */
+  const [hiddenOverride, setHiddenOverride] = useState<Record<string, boolean>>({});
+  const [hideTarget, setHideTarget] = useState<AdminReportListItem | null>(null);
+  const unhideReport = useUnhideAdminReport();
+
+  const isReportHidden = useCallback(
+    (report: AdminReportListItem) => {
+      if (report.id in hiddenOverride) return hiddenOverride[report.id];
+      if (report.isHidden) return true;
+      return isAdminReportMarkedHidden(report.id);
+    },
+    [hiddenOverride]
+  );
 
   const queryParams = useMemo(
     () => ({
@@ -87,6 +116,17 @@ export function AdminReportsView() {
   const openDetail = (item: AdminReportListItem) => {
     setDetailListItem(item);
     setDetailId(item.id);
+  };
+
+  const onUnhide = (report: AdminReportListItem) => {
+    unhideReport.mutate(report.id, {
+      onSuccess: env => {
+        markAdminReportVisible(report.id);
+        setHiddenOverride(prev => ({ ...prev, [report.id]: false }));
+        toast.success(env.message || 'Đã hiện lại báo cáo.');
+      },
+      onError: err => toast.error(getAdminReportMutationError(err, 'Không thể hiện lại báo cáo.')),
+    });
   };
 
   return (
@@ -290,84 +330,131 @@ export function AdminReportsView() {
                 </tr>
               ))}
             {!isPending &&
-              items.map(report => (
-                <tr
-                  key={report.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30"
-                >
-                  <td className="px-3 py-3">
-                    <input type="checkbox" className="rounded border-input" aria-label="Chọn" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600/10 text-sm font-bold text-emerald-900"
-                        aria-hidden
-                      >
-                        {categoryInitial(report.categoryName)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{reportListTitle(report)}</p>
-                        <p className="truncate font-mono text-xs text-muted-foreground">
-                          {report.code}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="max-w-[140px] truncate px-4 py-3 text-muted-foreground">
-                    {report.categoryName}
-                  </td>
-                  <td className="px-4 py-3">
-                    <ReportSeverityBars severity={report.severity} />
-                  </td>
-                  <td className="max-w-[160px] truncate px-4 py-3 text-muted-foreground">
-                    {report.address || '—'}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {report.isAnonymous ? (
-                      <span className="text-amber-800">Ẩn danh</span>
-                    ) : (
-                      <span className="truncate">Người gửi #{report.reporterCount}</span>
+              items.map(report => {
+                const hidden = isReportHidden(report);
+                const unhiding = unhideReport.isPending && unhideReport.variables === report.id;
+
+                return (
+                  <tr
+                    key={report.id}
+                    className={cn(
+                      'border-b border-border last:border-0 transition-[opacity,filter]',
+                      hidden
+                        ? 'bg-muted/50 opacity-60 grayscale hover:opacity-75'
+                        : 'hover:bg-muted/30'
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <ReportStatusBadge status={report.status} />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {report.status === 'Duplicate' ? (
-                      <span className="text-amber-700">Trùng?</span>
-                    ) : report.reopenedCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-red-700">
-                        <FileWarning className="size-3.5" />
-                        Bất thường
-                      </span>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                    {formatReportRelativeTime(report.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openDetail(report)}
-                        className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
-                      >
-                        Chi tiết
-                      </button>
-                      <Link
-                        href={`/admin/reports/${report.id}`}
-                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                        aria-label="Mở trang chi tiết"
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                  >
+                    <td className="px-3 py-3">
+                      <input type="checkbox" className="rounded border-input" aria-label="Chọn" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={cn(
+                            'flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold',
+                            hidden
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-emerald-600/10 text-emerald-900'
+                          )}
+                          aria-hidden
+                        >
+                          {categoryInitial(report.categoryName)}
+                        </div>
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              'truncate font-semibold',
+                              hidden ? 'text-muted-foreground' : 'text-foreground'
+                            )}
+                          >
+                            {reportListTitle(report)}
+                          </p>
+                          <p className="truncate font-mono text-xs text-muted-foreground">
+                            {report.code}
+                            {hidden ? ' · Đã ẩn' : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="max-w-[140px] truncate px-4 py-3 text-muted-foreground">
+                      {report.categoryName}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ReportSeverityBars severity={report.severity} />
+                    </td>
+                    <td className="max-w-[160px] truncate px-4 py-3 text-muted-foreground">
+                      {report.address || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {report.isAnonymous ? (
+                        <span className="text-amber-800">Ẩn danh</span>
+                      ) : (
+                        <span className="truncate">Người gửi #{report.reporterCount}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ReportStatusBadge status={report.status} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {report.status === 'Duplicate' ? (
+                        <span className="text-amber-700">Trùng?</span>
+                      ) : report.reopenedCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-red-700">
+                          <FileWarning className="size-3.5" />
+                          Bất thường
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      {formatReportRelativeTime(report.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        {hidden ? (
+                          <button
+                            type="button"
+                            onClick={() => onUnhide(report)}
+                            disabled={unhiding}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+                          >
+                            {unhiding ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                            ) : (
+                              <Eye className="size-3.5" aria-hidden />
+                            )}
+                            Hiện lại
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setHideTarget(report)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                          >
+                            <EyeOff className="size-3.5" aria-hidden />
+                            Ẩn
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openDetail(report)}
+                          className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+                        >
+                          Chi tiết
+                        </button>
+                        <Link
+                          href={`/admin/reports/${report.id}`}
+                          className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+                          aria-label="Mở trang chi tiết"
+                        >
+                          <MoreHorizontal className="size-4" />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             {!isPending && items.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
@@ -424,10 +511,30 @@ export function AdminReportsView() {
 
       <AdminReportDetailPanel
         reportId={detailId}
-        listItem={detailListItem}
+        listItem={
+          detailListItem
+            ? {
+                ...detailListItem,
+                isHidden: isReportHidden(detailListItem),
+              }
+            : null
+        }
         onClose={() => {
           setDetailId(null);
           setDetailListItem(null);
+        }}
+        onHiddenChange={(id, hidden) => setHiddenOverride(prev => ({ ...prev, [id]: hidden }))}
+      />
+
+      <AdminReportHideDialog
+        reportId={hideTarget?.id ?? null}
+        reportCode={hideTarget?.code}
+        open={hideTarget != null}
+        onClose={() => setHideTarget(null)}
+        onHidden={() => {
+          if (!hideTarget) return;
+          markAdminReportHidden(hideTarget.id);
+          setHiddenOverride(prev => ({ ...prev, [hideTarget.id]: true }));
         }}
       />
     </div>

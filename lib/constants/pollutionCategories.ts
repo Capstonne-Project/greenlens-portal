@@ -52,4 +52,4 @@ export function getPollutionCategoryDisplay(category: PollutionCategory) {
   };
 }
 
-export const ADMIN_REPORTS_AGGREGATE_PAGE_SIZE = 500;
+export const ADMIN_POLLUTION_CATEGORIES_PAGE_SIZE = 20;
