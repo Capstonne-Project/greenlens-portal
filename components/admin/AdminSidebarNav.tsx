@@ -17,7 +17,9 @@ import {
   Recycle,
   ScrollText,
   Shield,
+  ShieldAlert,
   Tags,
+  Trophy,
   UserCircle,
   Users,
   UsersRound,
@@ -170,6 +172,11 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
   const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
   const auditLogsActive =
     pathname === '/admin/audit-logs' || pathname.startsWith('/admin/audit-logs/');
+  const spamSuspectsActive =
+    pathname === '/admin/spam-suspects' || pathname.startsWith('/admin/spam-suspects/');
+  const gamificationActive =
+    pathname === '/admin/gamification-configs' ||
+    pathname.startsWith('/admin/gamification-configs/');
 
   const navLinkClass = (active: boolean) =>
     cn(
@@ -328,6 +335,16 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
                 {!collapsed && <span>Khung xử phạt</span>}
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin/gamification-configs"
+                title="Điểm gamification"
+                className={navLinkClass(gamificationActive)}
+              >
+                <Trophy className="size-4 shrink-0" />
+                {!collapsed && <span>Điểm gamification</span>}
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -352,6 +369,16 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
             </p>
           )}
           <ul className="space-y-1">
+            <li>
+              <Link
+                href="/admin/spam-suspects"
+                title="Tài khoản nghi spam"
+                className={navLinkClass(spamSuspectsActive)}
+              >
+                <ShieldAlert className="size-4 shrink-0" />
+                {!collapsed && <span>Nghi spam</span>}
+              </Link>
+            </li>
             <li>
               <Link
                 href="/admin/audit-logs"

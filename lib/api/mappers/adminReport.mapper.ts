@@ -4,6 +4,7 @@ import type {
   AdminReportListItemDto,
   AdminReportMediaDto,
   AdminReportsListDataDto,
+  AdminReportWasteTagDto,
 } from '@/lib/api/dto/adminReport.dto';
 import type {
   AdminReportAssignment,
@@ -11,6 +12,7 @@ import type {
   AdminReportListItem,
   AdminReportMedia,
   AdminReportsList,
+  AdminReportWasteTag,
   PaginationMeta,
   ReportSeverity,
   ReportStatus,
@@ -42,20 +44,43 @@ export function mapAdminReportListItemDto(dto: AdminReportListItemDto): AdminRep
     provinceCode: dto.provinceCode ?? null,
     reporterId: dto.reporterId ?? null,
     isAnonymous: Boolean(dto.isAnonymous),
-    assignedOfficerId: dto.assignedOfficerId ?? null,
+    isHidden: Boolean(dto.isHidden),
+    verifiedBy: dto.verifiedBy ?? null,
+    assignedOfficerId: dto.assignedByOfficerId ?? dto.assignedOfficerId ?? null,
     assignmentCount: dto.assignmentCount ?? 0,
     priorityScore: dto.priorityScore ?? 0,
     reporterCount: dto.reporterCount ?? 0,
     reopenedCount: dto.reopenedCount ?? 0,
     createdAt: dto.createdAt ?? '',
+    verifiedAt: dto.verifiedAt ?? null,
+    resolvedAt: dto.resolvedAt ?? null,
+    closedAt: dto.closedAt ?? null,
   };
 }
 
 function mapPagination(dto: AdminReportsListDataDto): PaginationMeta {
+  if (dto.pagination) {
+    const page = Math.max(1, dto.pagination.page ?? 1);
+    const pageSize = Math.max(1, dto.pagination.pageSize ?? 20);
+    const totalItems = Math.max(0, dto.pagination.totalItems ?? 0);
+    const totalPages = Math.max(
+      1,
+      dto.pagination.totalPages ?? (Math.ceil(totalItems / pageSize) || 1)
+    );
+    return {
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+      hasNext: dto.pagination.hasNext ?? page < totalPages,
+      hasPrev: dto.pagination.hasPrev ?? page > 1,
+    };
+  }
+
   const page = Math.max(1, dto.page ?? 1);
   const pageSize = Math.max(1, dto.pageSize ?? 20);
   const totalItems = dto.totalCount ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize) || 1);
 
   return {
     page,
@@ -95,6 +120,19 @@ function mapAssignmentDto(dto: AdminReportAssignmentDto): AdminReportAssignment 
     assignedAt: dto.assignedAt ?? null,
     startedAt: dto.startedAt ?? null,
     completedAt: dto.completedAt ?? null,
+    progressPercent: dto.progressPercent ?? null,
+    progressNote: dto.progressNote ?? null,
+    progressUpdatedAt: dto.progressUpdatedAt ?? null,
+  };
+}
+
+function mapWasteTagDto(dto: AdminReportWasteTagDto): AdminReportWasteTag {
+  return {
+    tagId: dto.tagId,
+    code: dto.code,
+    nameVi: dto.nameVi,
+    nameEn: dto.nameEn ?? null,
+    iconUrl: dto.iconUrl ?? null,
   };
 }
 
@@ -110,6 +148,8 @@ export function mapAdminReportDetailDto(dto: AdminReportDetailDto): AdminReportD
     assignedOfficeId: dto.assignedOfficeId ?? null,
     media: (dto.media ?? []).map(mapMediaDto),
     assignments: (dto.assignments ?? []).map(mapAssignmentDto),
+    wasteTags: (dto.wasteTags ?? []).map(mapWasteTagDto),
+    aiSuggestedWasteTagCodes: dto.aiSuggestedWasteTagCodes ?? null,
     verifiedAt: dto.verifiedAt ?? null,
     resolvedAt: dto.resolvedAt ?? null,
     closedAt: dto.closedAt ?? null,
