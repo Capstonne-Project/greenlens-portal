@@ -9,6 +9,7 @@ import {
   useAdminPollutionCategoriesList,
   useArchivePollutionCategory,
   useCreatePollutionCategory,
+  useDeletePollutionCategory,
   useUpdatePollutionCategory,
 } from '@/hooks/usePollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
@@ -57,6 +58,7 @@ export function AdminPollutionCategoriesView() {
   const createMutation = useCreatePollutionCategory();
   const updateMutation = useUpdatePollutionCategory();
   const archiveMutation = useArchivePollutionCategory();
+  const deleteMutation = useDeletePollutionCategory();
 
   const setQuery = useCallback(
     (patch: Record<string, string | null>) => {
@@ -117,11 +119,24 @@ export function AdminPollutionCategoriesView() {
 
   const handleArchiveToggle = (category: PollutionCategory, archive: boolean) => {
     setArchivingId(category.id);
+    if (archive) {
+      deleteMutation.mutate(category.id, {
+        onSuccess: () => {
+          toast.success('Đã vô hiệu hóa danh mục.');
+          setArchivingId(null);
+        },
+        onError: err => {
+          toast.error(getPollutionCategoryMutationError(err, 'Không thể đổi trạng thái.'));
+          setArchivingId(null);
+        },
+      });
+      return;
+    }
     archiveMutation.mutate(
-      { id: category.id, body: { archive } },
+      { id: category.id, body: { archive: false } },
       {
         onSuccess: () => {
-          toast.success(archive ? 'Đã ngưng danh mục.' : 'Đã kích hoạt danh mục.');
+          toast.success('Đã kích hoạt danh mục.');
           setArchivingId(null);
         },
         onError: err => {
@@ -251,7 +266,10 @@ export function AdminPollutionCategoriesView() {
                 category={category}
                 onEdit={setEditCategory}
                 onArchiveToggle={handleArchiveToggle}
-                archiveBusy={archivingId === category.id && archiveMutation.isPending}
+                archiveBusy={
+                  archivingId === category.id &&
+                  (archiveMutation.isPending || deleteMutation.isPending)
+                }
               />
             ))}
           </div>

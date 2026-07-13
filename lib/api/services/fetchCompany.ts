@@ -21,6 +21,7 @@ import {
   adaptCompaniesList,
   adaptCompanyDetail,
   adaptCreateCompany,
+  adaptDeleteCompany,
   adaptFetchCompanyServiceAreas,
   adaptMyWardCompanies,
   adaptUpdateCompanyServiceAreas,
@@ -147,6 +148,11 @@ export async function updateCompanyServiceAreas(
   return adaptUpdateCompanyServiceAreas(companyId, body);
 }
 
+/** DELETE /v1/companies/{id} — soft delete (vô hiệu hóa công ty). */
+export async function deleteCompany(id: string): Promise<void> {
+  return adaptDeleteCompany(id);
+}
+
 export async function fetchMyCompany(): Promise<ApiEnvelope<MyCompany>> {
   return adaptMyCompany();
 }
@@ -265,6 +271,7 @@ const companyApi = {
   fetchMyWardCompanies,
   fetchCompanyDetail,
   createCompany,
+  deleteCompany,
   fetchCompanyServiceAreas,
   updateCompanyServiceAreas,
   fetchMyCompany,

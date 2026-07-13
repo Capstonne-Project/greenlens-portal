@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
+  Bell,
   Gavel,
   Landmark,
   LayoutDashboard,
@@ -177,6 +178,9 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
   const gamificationActive =
     pathname === '/admin/gamification-configs' ||
     pathname.startsWith('/admin/gamification-configs/');
+  const notificationTemplatesActive =
+    pathname === '/admin/notification-templates' ||
+    pathname.startsWith('/admin/notification-templates/');
 
   const navLinkClass = (active: boolean) =>
     cn(
@@ -369,6 +373,16 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
             </p>
           )}
           <ul className="space-y-1">
+            <li>
+              <Link
+                href="/admin/notification-templates"
+                title="Mẫu thông báo"
+                className={navLinkClass(notificationTemplatesActive)}
+              >
+                <Bell className="size-4 shrink-0" />
+                {!collapsed && <span>Mẫu thông báo</span>}
+              </Link>
+            </li>
             <li>
               <Link
                 href="/admin/spam-suspects"

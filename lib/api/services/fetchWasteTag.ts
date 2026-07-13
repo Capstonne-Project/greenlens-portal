@@ -5,6 +5,7 @@ import {
   adaptAdminWasteTags,
   adaptCatalogWasteTags,
   adaptCreateWasteTag,
+  adaptDeleteWasteTag,
   adaptToggleWasteTag,
   adaptUpdateWasteTag,
   type AdminWasteTagsParams,
@@ -53,12 +54,17 @@ export async function toggleWasteTag(id: string, body: ToggleWasteTagInput): Pro
   return adaptToggleWasteTag(id, body);
 }
 
+export async function deleteWasteTag(id: string): Promise<void> {
+  return adaptDeleteWasteTag(id);
+}
+
 const wasteTagApi = {
   fetchCatalogWasteTags,
   fetchAdminWasteTags,
   createWasteTag,
   updateWasteTag,
   toggleWasteTag,
+  deleteWasteTag,
 };
 
 export default wasteTagApi;

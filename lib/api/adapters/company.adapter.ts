@@ -139,7 +139,9 @@ export async function adaptRenameCompanyTeam(
 }
 
 export async function adaptDeactivateCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
-  const res = await apiService.delete<ApiEnvelope<string | null>>(`/v1/teams/company-teams/${id}`);
+  const res = await apiService.delete<ApiEnvelope<string | null>>(
+    `/v1/teams/${encodeURIComponent(id)}`
+  );
   return res.data;
 }
 
