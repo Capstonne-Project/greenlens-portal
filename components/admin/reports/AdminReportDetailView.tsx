@@ -1,5 +1,6 @@
 'use client';
 
+import { AdminReportStatusDialog } from '@/components/admin/reports/AdminReportStatusDialog';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
 import { useAdminReportDetail, useUnhideAdminReport } from '@/hooks/useAdminReports';
@@ -7,7 +8,7 @@ import { isAdminReportMarkedHidden } from '@/lib/storage/adminHiddenReports';
 import { cn } from '@/lib/utils';
 import { getAdminReportMutationError, isAdminReportNotFound } from '@/utils/adminReportErrors';
 import { formatReportRelativeTime, reportListTitle } from '@/utils/adminReportUi';
-import { ArrowLeft, Eye, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, Loader2, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -21,6 +22,7 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
   const { data, isPending, isError, error, refetch, isFetching } = useAdminReportDetail(reportId);
   const unhideReport = useUnhideAdminReport();
   const [hiddenLocal, setHiddenLocal] = useState(() => isAdminReportMarkedHidden(reportId));
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   const isHidden = hiddenLocal || Boolean(data?.isHidden);
   const isNotFound = isAdminReportNotFound(error);
@@ -112,21 +114,31 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
           Quay lại danh sách
         </Link>
 
-        {isHidden ? (
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={onUnhide}
-            disabled={unhideReport.isPending || isFetching}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+            onClick={() => setStatusDialogOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted"
           >
-            {unhideReport.isPending ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <Eye className="size-4" aria-hidden />
-            )}
-            Hiện lại
+            <RefreshCw className="size-4" aria-hidden />
+            Đổi status
           </button>
-        ) : null}
+          {isHidden ? (
+            <button
+              type="button"
+              onClick={onUnhide}
+              disabled={unhideReport.isPending || isFetching}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+            >
+              {unhideReport.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Eye className="size-4" aria-hidden />
+              )}
+              Hiện lại
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <header
@@ -297,6 +309,14 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
           </div>
         </section>
       )}
+
+      <AdminReportStatusDialog
+        reportId={reportId}
+        currentStatus={data.status}
+        reportCode={data.code}
+        open={statusDialogOpen}
+        onClose={() => setStatusDialogOpen(false)}
+      />
     </div>
   );
 }

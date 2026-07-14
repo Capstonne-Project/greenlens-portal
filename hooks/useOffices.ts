@@ -1,8 +1,13 @@
 'use client';
 
-import { changeAdminUserRole, fetchAdminUsers } from '@/lib/api/services/fetchAdmin';
+import {
+  changeAdminUserRole,
+  clearAdminAllUsersCache,
+  fetchAdminUsers,
+} from '@/lib/api/services/fetchAdmin';
 import { collectAssignedOfficerIds, filterUnassignedLeoUsers } from '@/utils/officeLeo';
 import { createDepartment } from '@/lib/api/services/fetchDepartment';
+import { adminUsersKeys } from '@/hooks/useAdminUsers';
 import { departmentKeys } from '@/hooks/useDepartments';
 import {
   assignOfficeOfficer,
@@ -165,20 +170,22 @@ export function useUpdateOffice() {
 export function useAssignOfficeOfficer() {
   const invalidate = useInvalidateOffices();
   return useMutation({
-    mutationFn: ({ officeId, body }: { officeId: string; body: AssignOfficeOfficerInput }) =>
-      assignOfficeOfficer(officeId, body),
+    mutationFn: ({ id, body }: { id: string; body: AssignOfficeOfficerInput }) =>
+      assignOfficeOfficer(id, body),
     onSuccess: () => invalidate(),
   });
 }
 
+/** @deprecated Prefer `useChangeAdminUserRole` from `@/hooks/useAdminUsers` (`{ id, newRole }`). */
 export function useChangeUserRole() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, newRole }: { userId: string; newRole: string }) =>
       changeAdminUserRole(userId, newRole),
     onSuccess: () => {
+      clearAdminAllUsersCache();
+      void queryClient.invalidateQueries({ queryKey: adminUsersKeys.all });
       void queryClient.invalidateQueries({ queryKey: officeKeys.all });
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 }

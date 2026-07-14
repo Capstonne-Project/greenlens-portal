@@ -3,6 +3,7 @@ import type {
   AdminReportsListDataDto,
   AdminReportsListParamsDto,
   HideAdminReportBodyDto,
+  UpdateAdminReportStatusBodyDto,
 } from '@/lib/api/dto/adminReport.dto';
 import {
   mapAdminReportDetailDto,
@@ -13,6 +14,7 @@ import type {
   AdminReportsList,
   AdminReportsListParams,
   HideAdminReportInput,
+  UpdateAdminReportStatusInput,
 } from '@/lib/api/models/adminReport';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
 import apiService from '@/lib/api/core';
@@ -69,6 +71,27 @@ export async function adaptHideAdminReport(
 export async function adaptUnhideAdminReport(id: string): Promise<ApiEnvelope<null>> {
   const res = await apiService.post<ApiEnvelope<unknown>>(
     `/v1/admin/reports/${encodeURIComponent(id)}/unhide`
+  );
+  return {
+    code: res.data.code,
+    message: res.data.message,
+    status: res.data.status,
+    data: null,
+  };
+}
+
+/** PUT /v1/admin/reports/{id}/status — admin override status. */
+export async function adaptUpdateAdminReportStatus(
+  id: string,
+  body: UpdateAdminReportStatusInput
+): Promise<ApiEnvelope<null>> {
+  const payload: UpdateAdminReportStatusBodyDto = {
+    newStatus: body.newStatus,
+    reason: body.reason.trim(),
+  };
+  const res = await apiService.put<ApiEnvelope<unknown>>(
+    `/v1/admin/reports/${encodeURIComponent(id)}/status`,
+    payload
   );
   return {
     code: res.data.code,

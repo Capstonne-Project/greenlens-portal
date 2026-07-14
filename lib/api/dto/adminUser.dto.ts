@@ -11,6 +11,17 @@ export interface AdminUserDto {
   createdAt: string;
 }
 
+/** GET /v1/admin/users/{id} */
+export interface AdminUserDetailDto extends AdminUserDto {
+  googleId?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface AdminRoleDto {
+  name: string;
+  description: string;
+}
+
 export interface AdminUsersPaginationDto {
   page: number;
   pageSize: number;

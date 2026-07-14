@@ -4,6 +4,8 @@
  */
 import {
   adaptAdminAllUsers,
+  adaptAdminRoles,
+  adaptAdminUserDetail,
   adaptAdminUsersList,
   adaptChangeAdminUserRole,
   adaptCreateAdminUser,
@@ -12,7 +14,9 @@ import {
   clearAdminAllUsersCache,
 } from '@/lib/api/adapters/adminUsers.adapter';
 import type {
+  AdminRole,
   AdminUser,
+  AdminUserDetail,
   AdminUserMutationResult,
   AdminUsersList,
   AdminUsersListParams,
@@ -22,7 +26,9 @@ import type {
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
+  AdminRole,
   AdminUser,
+  AdminUserDetail,
   AdminUserMutationResult,
   AdminUsersList,
   AdminUsersListParams,
@@ -62,6 +68,14 @@ export async function fetchAdminAllUsers(): Promise<ApiEnvelope<AdminUser[]>> {
   return adaptAdminAllUsers();
 }
 
+export async function fetchAdminUserDetail(id: string): Promise<ApiEnvelope<AdminUserDetail>> {
+  return adaptAdminUserDetail(id);
+}
+
+export async function fetchAdminRoles(): Promise<ApiEnvelope<AdminRole[]>> {
+  return adaptAdminRoles();
+}
+
 export async function createAdminUser(
   body: CreateAdminUserInput
 ): Promise<
@@ -81,13 +95,15 @@ export async function deleteAdminUser(id: string): Promise<ApiEnvelope<AdminUser
   return adaptDeleteAdminUser(id);
 }
 
-export async function changeAdminUserRole(id: string, newRole: string): Promise<void> {
+export async function changeAdminUserRole(id: string, newRole: string): Promise<ApiEnvelope<null>> {
   return adaptChangeAdminUserRole(id, newRole);
 }
 
 export default {
   fetchAdminUsers,
   fetchAdminAllUsers,
+  fetchAdminUserDetail,
+  fetchAdminRoles,
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
