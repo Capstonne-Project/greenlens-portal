@@ -1,16 +1,17 @@
 'use client';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
+import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { GooeyInput } from '@/components/ui/gooey-input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeoMyReports } from '@/hooks/useLeoOffices';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
@@ -29,6 +30,7 @@ import {
 import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import {
+  ChevronDown,
   CircleHelp,
   Clock,
   LayoutGrid,
@@ -36,7 +38,6 @@ import {
   Loader2,
   MapPin,
   MoreVertical,
-  Search,
   User,
 } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -66,6 +67,9 @@ const ASSIGNMENT_STATUS_LABEL: Record<LeoReportAssignmentStatus, string> = {
   Completed: 'Hoàn thành',
   Declined: 'Từ chối',
 };
+
+const FILTER_BTN_CLASS =
+  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-sky-700';
 
 const LEO_VIEW_TOGGLE_CLASS = (active: boolean) =>
   cn(
@@ -270,6 +274,15 @@ function ProjectCard({ item, onOpen }: ProjectCardProps) {
 
   const visibleTeams = item.assignments.slice(0, 4);
   const extraTeams = Math.max(0, item.assignments.length - visibleTeams.length);
+  const teamTooltipItems = visibleTeams.map((assignment, index) => ({
+    id: index + 1,
+    name: assignment.teamName,
+    designation: assignment.teamType || 'Đội xử lý',
+    initials: getInitials(assignment.teamName),
+    fallbackClassName:
+      AVATAR_PALETTE[hashIndex(assignment.teamId, AVATAR_PALETTE.length)] ??
+      'bg-muted text-foreground',
+  }));
 
   // const severityLabel = SEVERITY_LABEL[item.severity];
   // const severityClass = SEVERITY_BADGE_CLASS[item.severity];
@@ -344,27 +357,30 @@ function ProjectCard({ item, onOpen }: ProjectCardProps) {
 
       <div className="mt-auto flex items-center justify-between gap-3 pt-5">
         <div
-          className="flex items-center -space-x-2"
+          className="flex items-center"
           title={`${item.assignmentCount} đội đã được phân công`}
+          onClick={e => e.stopPropagation()}
+          onKeyDown={e => e.stopPropagation()}
         >
-          {visibleTeams.length === 0 && (
+          {visibleTeams.length === 0 ? (
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               Chưa có đội
             </span>
-          )}
-          {visibleTeams.map(assignment => (
-            <TeamAvatar key={assignment.assignmentId} assignment={assignment} />
-          ))}
-          {extraTeams > 0 && (
-            <span
-              className="flex size-7 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground ring-2 ring-card"
-              title={item.assignments
-                .slice(4)
-                .map(a => `${a.teamName} · ${a.teamType}`)
-                .join('\n')}
-            >
-              +{extraTeams}
-            </span>
+          ) : (
+            <>
+              <AnimatedTooltip items={teamTooltipItems} />
+              {extraTeams > 0 ? (
+                <span
+                  className="relative z-10 -ml-1 flex size-7 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground ring-2 ring-white"
+                  title={item.assignments
+                    .slice(4)
+                    .map(a => `${a.teamName} · ${a.teamType}`)
+                    .join('\n')}
+                >
+                  +{extraTeams}
+                </span>
+              ) : null}
+            </>
           )}
         </div>
 
@@ -589,6 +605,16 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
 
   const activeTabLabel = statusTab === 'All' ? 'Tất cả' : reportStatusLabelVi(statusTab);
 
+  const categoryFilterLabel =
+    categoryFilter === 'all'
+      ? 'Loại ô nhiễm'
+      : (catalogCategories.find(cat => cat.id === categoryFilter)?.nameVi ?? 'Loại ô nhiễm');
+  const severityFilterLabel = severityFilter === 'all' ? 'Mức độ' : SEVERITY_LABEL[severityFilter];
+  const assignmentFilterLabel =
+    assignmentStatusFilter === 'all'
+      ? 'Trạng thái đội'
+      : ASSIGNMENT_STATUS_LABEL[assignmentStatusFilter];
+
   return (
     <>
       <header className="mb-3 shrink-0">
@@ -619,72 +645,100 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
         />
 
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b py-3 sm:gap-3">
-          <div className="relative w-full shrink-0 sm:w-1/2 lg:w-2/5 xl:w-1/3">
-            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
+          <div className="flex items-center gap-2">
+            <GooeyInput
               value={search}
-              onChange={e => handleSearchChange(e.target.value)}
+              onValueChange={handleSearchChange}
               placeholder="Tìm mã báo cáo, địa chỉ..."
-              className={`h-8 w-full rounded-lg pl-8 text-xs ${isSearchPending ? 'pr-8' : ''}`}
-              aria-busy={isSearchPending}
+              collapsedWidth={180}
+              expandedWidth={320}
+              className="justify-start"
             />
             {isSearchPending ? (
               <Loader2
-                className="absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground"
+                className="size-3.5 shrink-0 animate-spin text-muted-foreground"
                 aria-hidden
               />
             ) : null}
           </div>
 
-          <Select value={categoryFilter} onValueChange={handleCategoryChange}>
-            <SelectTrigger className="h-9 w-full min-w-0 rounded-lg text-sm sm:w-auto">
-              <SelectValue placeholder="Loại ô nhiễm" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Loại ô nhiễm</SelectItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                {categoryFilterLabel}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                onClick={() => handleCategoryChange('all')}
+                className={categoryFilter === 'all' ? 'font-medium text-sky-700' : ''}
+              >
+                Loại ô nhiễm
+              </DropdownMenuItem>
               {catalogCategories.map(cat => (
-                <SelectItem key={cat.id} value={cat.id}>
+                <DropdownMenuItem
+                  key={cat.id}
+                  onClick={() => handleCategoryChange(cat.id)}
+                  className={categoryFilter === cat.id ? 'font-medium text-sky-700' : ''}
+                >
                   {cat.nameVi}
-                </SelectItem>
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-          <Select
-            value={severityFilter}
-            onValueChange={value => handleSeverityChange(value as 'all' | LeoMyReportsSeverity)}
-          >
-            <SelectTrigger className="h-9 w-full min-w-0 rounded-lg text-sm sm:w-auto">
-              <SelectValue placeholder="Mức độ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Mức độ</SelectItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                {severityFilterLabel}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem
+                onClick={() => handleSeverityChange('all')}
+                className={severityFilter === 'all' ? 'font-medium text-sky-700' : ''}
+              >
+                Mức độ
+              </DropdownMenuItem>
               {LEO_MY_REPORTS_SEVERITIES.map(level => (
-                <SelectItem key={level} value={level}>
+                <DropdownMenuItem
+                  key={level}
+                  onClick={() => handleSeverityChange(level)}
+                  className={severityFilter === level ? 'font-medium text-sky-700' : ''}
+                >
                   {SEVERITY_LABEL[level]}
-                </SelectItem>
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-          <Select
-            value={assignmentStatusFilter}
-            onValueChange={value =>
-              handleAssignmentStatusChange(value as 'all' | LeoReportAssignmentStatus)
-            }
-          >
-            <SelectTrigger className="h-9 w-full min-w-0 rounded-lg text-sm sm:w-auto">
-              <SelectValue placeholder="Trạng thái đội" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Trạng thái đội</SelectItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                {assignmentFilterLabel}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleAssignmentStatusChange('all')}
+                className={assignmentStatusFilter === 'all' ? 'font-medium text-sky-700' : ''}
+              >
+                Trạng thái đội
+              </DropdownMenuItem>
               {LEO_REPORT_ASSIGNMENT_STATUSES.map(status => (
-                <SelectItem key={status} value={status}>
+                <DropdownMenuItem
+                  key={status}
+                  onClick={() => handleAssignmentStatusChange(status)}
+                  className={assignmentStatusFilter === status ? 'font-medium text-sky-700' : ''}
+                >
                   {ASSIGNMENT_STATUS_LABEL[status]}
-                </SelectItem>
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
@@ -729,14 +783,18 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           )}
         </div>
 
-        <div className="mt-auto flex shrink-0 flex-wrap items-center justify-end gap-3 p-3 sm:p-4">
-          <PaginationSimple
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            className="w-auto"
-          />
-        </div>
+        {data?.pagination ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
+            {totalPages > 1 ? (
+              <PaginationSimple
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                className="w-auto"
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   );

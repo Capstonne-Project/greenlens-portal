@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
+import { GooeyInput } from '@/components/ui/gooey-input';
 import { PaginationSimple } from '@/components/ui/pagination';
 import { useRemoveTeamMember, useTeamDetail } from '@/hooks/useTeams';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
@@ -21,7 +21,6 @@ import {
   Crown,
   MoreHorizontal,
   Plus,
-  Search,
   Trash2,
   UserPlus,
   Users,
@@ -447,18 +446,17 @@ export function BoardView({
   const inspLoading = isLoading && showInspection;
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Search + filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex flex-1 max-w-xs items-center">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={e => onSearchChange(e.target.value)}
-            placeholder="Tìm tên đội..."
-            className="h-8 border-slate-200 bg-white pl-9 text-sm shadow-none"
-          />
-        </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <GooeyInput
+          value={search}
+          onValueChange={onSearchChange}
+          placeholder="Tìm tên đội..."
+          collapsedWidth={160}
+          expandedWidth={280}
+          className="justify-start"
+        />
         <TeamFilterDropdowns
           statusFilter={statusFilter}
           teamTypeFilter={teamTypeFilter}
@@ -469,10 +467,10 @@ export function BoardView({
         />
       </div>
 
-      {/* Kanban columns */}
+      {/* Kanban columns — always fill remaining height (0 or N cards) */}
       <div
         className={cn(
-          'mt-4 grid h-[calc(100vh-21rem)] gap-4',
+          'grid min-h-0 flex-1 gap-4',
           showCleanup && showInspection ? 'grid-cols-2' : 'grid-cols-1'
         )}
       >
@@ -503,7 +501,7 @@ export function BoardView({
               </div>
             </div>
 
-            <div className="scrollbar-smooth flex-1 overflow-y-auto px-3 pb-3">
+            <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto px-3 pb-3">
               {cleanupLoading ? (
                 <div className="flex gap-3">
                   <div className="flex flex-1 flex-col gap-3">
@@ -518,7 +516,7 @@ export function BoardView({
                   </div>
                 </div>
               ) : cleanupTeams.length === 0 ? (
-                <div className="flex h-40 flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-sm text-slate-500">
                   <UsersIcon size={32} className="opacity-30" />
                   <span>Không có đội nào</span>
                 </div>
@@ -570,17 +568,19 @@ export function BoardView({
               )}
             </div>
 
-            {/* Cleanup pagination */}
-            {!cleanupLoading && cleanupPagination.totalPages > 1 && (
-              <div className="shrink-0 border-t border-border px-3 py-2.5">
-                <PaginationSimple
-                  page={cleanupPage}
-                  totalPages={cleanupPagination.totalPages}
-                  onPageChange={onCleanupPageChange}
-                  className="justify-center"
-                />
+            {/* Cleanup pagination — độc lập theo cột */}
+            {!cleanupLoading ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
+                {cleanupPagination.totalPages > 1 ? (
+                  <PaginationSimple
+                    page={cleanupPage}
+                    totalPages={cleanupPagination.totalPages}
+                    onPageChange={onCleanupPageChange}
+                    className="w-auto"
+                  />
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         ) : null}
 
@@ -611,7 +611,7 @@ export function BoardView({
               </div>
             </div>
 
-            <div className="scrollbar-smooth flex-1 overflow-y-auto px-3 pb-3">
+            <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto px-3 pb-3">
               {inspLoading ? (
                 <div className="flex gap-3">
                   <div className="flex flex-1 flex-col gap-3">
@@ -626,7 +626,7 @@ export function BoardView({
                   </div>
                 </div>
               ) : inspectionTeams.length === 0 ? (
-                <div className="flex h-40 flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-sm text-slate-500">
                   <UsersIcon size={32} className="opacity-30" />
                   <span>Không có đội nào</span>
                 </div>
@@ -678,20 +678,22 @@ export function BoardView({
               )}
             </div>
 
-            {/* Inspection pagination */}
-            {!inspLoading && inspectionPagination.totalPages > 1 && (
-              <div className="shrink-0 border-t border-border px-3 py-2.5">
-                <PaginationSimple
-                  page={inspectionPage}
-                  totalPages={inspectionPagination.totalPages}
-                  onPageChange={onInspectionPageChange}
-                  className="justify-center"
-                />
+            {/* Inspection pagination — độc lập theo cột */}
+            {!inspLoading ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
+                {inspectionPagination.totalPages > 1 ? (
+                  <PaginationSimple
+                    page={inspectionPage}
+                    totalPages={inspectionPagination.totalPages}
+                    onPageChange={onInspectionPageChange}
+                    className="w-auto"
+                  />
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

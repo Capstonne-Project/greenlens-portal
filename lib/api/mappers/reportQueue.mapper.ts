@@ -41,6 +41,7 @@ function mapReportQueueItemDto(dto: ReportQueueItemDto): ReportQueueItem {
     createdAt: dto.createdAt,
     slaVerifyDueAt: dto.slaVerifyDueAt || null,
     slaResolveDueAt: dto.slaResolveDueAt || null,
+    firstImageUrl: dto.firstImageUrl || null,
   };
 }
 

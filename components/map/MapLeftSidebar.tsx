@@ -40,11 +40,30 @@ import {
 } from '@/lib/map/mapShellStyles';
 import { MapSidebarUserProfile } from './MapSidebarUserProfile';
 import PenIcon from '@/components/ui/pen-icon';
+import FilledBellIcon from '@/components/ui/filled-bell-icon';
 import { cn } from '@/lib/utils';
 
 type MapLeftSidebarProps = {
   config: MapShellNavConfig;
 };
+
+function MapNavIcon({ item }: { item: MapShellNavItem }) {
+  if (item.animatedIcon === 'filled-bell') {
+    return (
+      <FilledBellIcon
+        size="var(--nav-icon-size)"
+        color="#ffffff"
+        className={mapNavItemIconClass()}
+      />
+    );
+  }
+
+  if (item.icon) {
+    return <FontAwesomeIcon icon={item.icon} className={mapNavItemIconClass()} />;
+  }
+
+  return null;
+}
 
 function NavItem({
   item,
@@ -65,7 +84,7 @@ function NavItem({
     >
       <span className={mapNavItemSurfaceClass(opts)}>
         <span className={mapNavItemIconRailClass()} aria-hidden>
-          <FontAwesomeIcon icon={item.icon} className={mapNavItemIconClass()} />
+          <MapNavIcon item={item} />
         </span>
         <span className={mapNavItemLabelClass(expanded, active)} aria-hidden={!expanded}>
           {item.label}
@@ -119,7 +138,7 @@ function NavDropdownGroup({
             aria-current={parentActive ? 'page' : undefined}
           >
             <span className={mapNavItemIconRailClass()} aria-hidden>
-              <FontAwesomeIcon icon={item.icon} className={mapNavItemIconClass()} />
+              <MapNavIcon item={item} />
             </span>
             <span className={mapNavItemLabelClass(expanded, opts.active)} aria-hidden={!expanded}>
               {item.label}

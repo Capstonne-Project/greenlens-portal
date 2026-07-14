@@ -37,12 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import {
-  ClickableReportImage,
-  useReportImagePreview,
-  type ReportPreviewImage,
-} from '@/components/officer/shared/ReportImagePreview';
+import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
 import { useReportDetail, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
@@ -57,7 +52,7 @@ import {
   Check,
   CheckCircle2,
   Hourglass,
-  LayoutGrid,
+  LayoutGrid as LayoutGridIcon,
   Layers,
   Loader2,
   MapPin,
@@ -68,6 +63,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -274,84 +270,50 @@ function HeaderStrip({
   );
 }
 
-type GalleryImage = ReportDetail['media'][number];
+const GALLERY_PREVIEW_MAX = 5;
 
-const GALLERY_IMAGE_LABEL = 'Ảnh báo cáo';
-
-function toPreviewImages(images: GalleryImage[]): ReportPreviewImage[] {
-  return images.map(img => ({
-    url: img.url,
-    label: GALLERY_IMAGE_LABEL,
-  }));
-}
-
-function GalleryImg({
-  img,
-  sizes,
-  className = '',
-  onPreview,
-}: {
-  img: GalleryImage;
-  sizes: string;
-  className?: string;
-  onPreview: (image: ReportPreviewImage) => void;
-}) {
-  return (
-    <ClickableReportImage
-      url={img.url}
-      label={GALLERY_IMAGE_LABEL}
-      onPreview={onPreview}
-      className={cn('relative overflow-hidden rounded-none', className)}
-      sizes={sizes}
-      showTimestamp={false}
-      unoptimized
-    />
-  );
-}
-
-function GalleryModal({
-  images,
-  open,
-  onOpenChange,
-  onPreview,
-}: {
-  images: GalleryImage[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onPreview: (image: ReportPreviewImage) => void;
-}) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Tất cả ảnh ({images.length})</SheetTitle>
-        </SheetHeader>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {images.map((img, i) => (
-            <ClickableReportImage
-              key={img.id}
-              url={img.url}
-              label={`Ảnh ${i + 1}`}
-              onPreview={onPreview}
-              className="aspect-[4/3] w-full rounded-lg"
-              sizes="33vw"
-              showTimestamp={false}
-              unoptimized
-            />
-          ))}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function Gallery({ media }: { media: ReportDetail['media'] }) {
-  const images = media.filter(m => m.mediaType === 'Image');
+function Gallery({ media, address }: { media: ReportDetail['media']; address: string }) {
   const [showAll, setShowAll] = useState(false);
-  const previewImages = useMemo(() => toPreviewImages(images), [images]);
-  const { openPreview, previewDialog } = useReportImagePreview(previewImages);
 
-  if (images.length === 0) {
+  const images = useMemo(() => media.filter(m => m.mediaType === 'Image'), [media]);
+  const total = images.length;
+  const hasMore = total > GALLERY_PREVIEW_MAX;
+
+  const cards = useMemo((): LayoutGridCard[] => {
+    const preview = images.slice(0, GALLERY_PREVIEW_MAX);
+    return preview.map((img, i) => {
+      const isLastPreview = i === preview.length - 1;
+      return {
+        id: img.id,
+        thumbnail: img.url,
+        className: hero5CardClass(i, preview.length),
+        content: (
+          <div>
+            <p className="text-xl font-bold text-white md:text-2xl">Ảnh {i + 1}</p>
+            <p className="mt-2 max-w-lg text-sm font-normal text-neutral-200">
+              Ảnh hiện trường báo cáo · {total} ảnh
+            </p>
+          </div>
+        ),
+        overlay:
+          hasMore && isLastPreview ? (
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation();
+                setShowAll(true);
+              }}
+              className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-slate-50"
+            >
+              <Camera className="size-3.5 shrink-0" aria-hidden />
+              Xem gallery ({total} ảnh)
+            </button>
+          ) : undefined,
+      };
+    });
+  }, [images, total, hasMore]);
+
+  if (total === 0) {
     return (
       <Card className="flex h-64 items-center justify-center border-dashed shadow-none">
         <CardContent className="p-0 text-sm text-muted-foreground">Không có hình ảnh</CardContent>
@@ -359,97 +321,48 @@ function Gallery({ media }: { media: ReportDetail['media'] }) {
     );
   }
 
-  const showAllBtn = (
-    <Button
-      type="button"
-      size="sm"
-      variant="secondary"
-      onClick={() => setShowAll(true)}
-      className="absolute bottom-3 right-3 z-10 h-8 rounded-full bg-background/90 shadow"
-    >
-      <Camera className="size-3.5" />
-      Xem tất cả {images.length} ảnh
-    </Button>
-  );
-
-  const H = 'h-[480px]';
-  const gap = 'gap-0.5';
-
-  let grid: React.ReactNode;
-
-  if (images.length === 1) {
-    grid = (
-      <ClickableReportImage
-        url={images[0]!.url}
-        label={GALLERY_IMAGE_LABEL}
-        onPreview={openPreview}
-        className={cn('relative w-full overflow-hidden rounded-xl', H)}
-        sizes="100vw"
-        showTimestamp={false}
-        unoptimized
-      />
-    );
-  } else if (images.length === 2) {
-    grid = (
-      <div className={`grid ${H} grid-cols-2 ${gap} overflow-hidden rounded-xl`}>
-        <GalleryImg img={images[0]!} sizes="50vw" onPreview={openPreview} />
-        <GalleryImg img={images[1]!} sizes="50vw" onPreview={openPreview} />
-      </div>
-    );
-  } else if (images.length === 3) {
-    grid = (
-      <div className={`grid ${H} grid-cols-2 ${gap} overflow-hidden rounded-xl`}>
-        <GalleryImg img={images[0]!} sizes="50vw" onPreview={openPreview} />
-        <div className={`grid grid-rows-2 ${gap}`}>
-          <GalleryImg img={images[1]!} sizes="50vw" onPreview={openPreview} />
-          <GalleryImg img={images[2]!} sizes="50vw" onPreview={openPreview} />
-        </div>
-      </div>
-    );
-  } else if (images.length === 4) {
-    grid = (
-      <div className={`grid ${H} grid-cols-2 ${gap} overflow-hidden rounded-xl`}>
-        <GalleryImg img={images[0]!} sizes="50vw" onPreview={openPreview} />
-        <div className={`grid grid-rows-2 ${gap}`}>
-          <GalleryImg img={images[1]!} sizes="50vw" onPreview={openPreview} />
-          <div className={`grid grid-cols-2 ${gap}`}>
-            <GalleryImg img={images[2]!} sizes="25vw" onPreview={openPreview} />
-            <GalleryImg img={images[3]!} sizes="25vw" onPreview={openPreview} />
-          </div>
-        </div>
-      </div>
-    );
-  } else {
-    const sides = images.slice(1, 5);
-    const hasMore = images.length > 5;
-    grid = (
-      <div className={`grid ${H} grid-cols-2 ${gap} overflow-hidden rounded-xl`}>
-        <GalleryImg img={images[0]!} sizes="50vw" onPreview={openPreview} />
-        <div className={`relative grid grid-cols-2 grid-rows-2 ${gap}`}>
-          {sides.map((img, i) => {
-            const isLast = i === 3;
-            return (
-              <div key={img.id} className="relative overflow-hidden">
-                <GalleryImg img={img} sizes="25vw" onPreview={openPreview} />
-                {isLast && hasMore ? showAllBtn : null}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
-      {previewDialog}
-      {grid}
-      <GalleryModal
-        images={images}
-        open={showAll}
-        onOpenChange={setShowAll}
-        onPreview={openPreview}
-      />
+      <div className="h-[min(62vh,520px)] w-full overflow-hidden rounded-xl bg-white">
+        <LayoutGrid cards={cards} variant="hero5" className="h-full gap-1 p-0" />
+      </div>
+
+      <Dialog open={showAll} onOpenChange={setShowAll}>
+        <DialogContent className="flex h-[92vh] max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <DialogHeader className="shrink-0 space-y-0 border-b px-12 py-4 text-center">
+            <DialogTitle className="truncate text-center text-sm font-semibold tracking-tight text-foreground md:text-base">
+              {address || 'Hình ảnh báo cáo'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="shrink-0 border-b px-4 pt-2 md:px-6">
+            <div className="inline-flex items-center gap-1.5 border-b-2 border-foreground pb-2 text-sm font-medium text-foreground">
+              <Camera className="size-4" aria-hidden />
+              Hình ảnh
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {images.map((img, i) => (
+                <div
+                  key={img.id}
+                  className="relative aspect-4/3 overflow-hidden rounded-lg bg-muted"
+                >
+                  <Image
+                    src={img.url}
+                    alt={`Ảnh ${i + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -637,11 +550,11 @@ function LocationCard({
                     onValueChange={v => setMapType(v as 'm' | 'k')}
                   >
                     <DropdownMenuRadioItem value="m">
-                      <LayoutGrid className="size-3.5" />
+                      <LayoutGridIcon className="size-3.5" />
                       Mặc định
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="k">
-                      <LayoutGrid className="size-3.5" />
+                      <LayoutGridIcon className="size-3.5" />
                       Vệ tinh
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
@@ -1108,7 +1021,7 @@ export function VerifyDetailClient({
 
       <HeaderStrip detail={detail} pendingCategoryName={pendingCategoryName} />
 
-      <Gallery media={detail.media} />
+      <Gallery media={detail.media} address={detail.address} />
 
       {/* Content below gallery — padded on both sides */}
       <div className="px-14 xl:px-24">

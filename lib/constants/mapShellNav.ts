@@ -1,6 +1,5 @@
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
-  faBell,
   faBuilding,
   faClipboardCheck,
   faClipboardList,
@@ -19,11 +18,14 @@ export type MapShellNavChildItem = {
   href: string;
 };
 
+export type MapShellAnimatedIcon = 'filled-bell';
+
 export type MapShellNavItem = {
   id: string;
   label: string;
   href: string;
-  icon: IconDefinition;
+  icon?: IconDefinition;
+  animatedIcon?: MapShellAnimatedIcon;
   /** Mục con trong sidebar (dropdown) — LEO Phân công. */
   children?: MapShellNavChildItem[];
 };
@@ -51,7 +53,7 @@ const SYSTEM_NAV: MapShellSystemNav = {
     id: 'notifications',
     label: 'Thông báo',
     href: '/officer/dashboard',
-    icon: faBell,
+    animatedIcon: 'filled-bell',
   },
   settings: {
     id: 'settings',
