@@ -1,5 +1,6 @@
 'use client';
 
+import { Modal, ModalBody, ModalContent, ModalFooter } from '@/components/ui/animated-modal';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -65,6 +66,8 @@ export function CreateTeamDialog({
     defaultValues: { name: '' },
   });
 
+  const isBusy = createTeamMutation.isPending;
+
   const closeDialog = () => {
     reset({ name: '' });
     onClose();
@@ -84,63 +87,66 @@ export function CreateTeamDialog({
   });
 
   return (
-    <Dialog
+    <Modal
       open={open}
       onOpenChange={nextOpen => {
         if (!nextOpen) closeDialog();
       }}
+      dismissible={!isBusy}
     >
-      <DialogContent className="sm:max-w-md">
-        <form onSubmit={onSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                <Plus className="size-4 text-emerald-600" aria-hidden />
-              </span>
-              Tạo đội mới
-            </DialogTitle>
-            <DialogDescription>Tạo đội cộng đồng trong văn phòng của bạn.</DialogDescription>
-          </DialogHeader>
+      <ModalBody className="min-h-0 max-h-[90vh] w-full max-w-md flex-none overflow-hidden md:max-w-md">
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <ModalContent className="gap-4 p-6 md:p-8">
+            <div className="pr-8">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                  <Plus className="size-4 text-emerald-600" aria-hidden />
+                </span>
+                Tạo đội mới
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Tạo đội cộng đồng trong văn phòng của bạn.
+              </p>
+            </div>
 
-          <FieldGroup>
-            <Field>
-              <Label>Loại đội</Label>
-              <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground">
-                <span
-                  className={cn(
-                    'inline-block size-2.5 shrink-0 rounded-full',
-                    TYPE_DOT[teamType] ?? 'bg-slate-300'
-                  )}
-                  aria-hidden
+            <FieldGroup>
+              <Field>
+                <Label>Loại đội</Label>
+                <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground">
+                  <span
+                    className={cn(
+                      'inline-block size-2.5 shrink-0 rounded-full',
+                      TYPE_DOT[teamType] ?? 'bg-slate-300'
+                    )}
+                    aria-hidden
+                  />
+                  <span className="font-medium">{TYPE_LABEL[teamType] ?? teamType}</span>
+                </div>
+              </Field>
+              <Field>
+                <Label htmlFor="create-team-name">Tên đội</Label>
+                <FieldDescription>Ví dụ: Đội dọn dẹp khu vực A</FieldDescription>
+                <Input
+                  id="create-team-name"
+                  placeholder="Nhập tên đội"
+                  disabled={isBusy}
+                  {...register('name')}
                 />
-                <span className="font-medium">{TYPE_LABEL[teamType] ?? teamType}</span>
-              </div>
-            </Field>
-            <Field>
-              <Label htmlFor="create-team-name">Tên đội</Label>
-              <FieldDescription>Ví dụ: Đội dọn dẹp khu vực A</FieldDescription>
-              <Input
-                id="create-team-name"
-                placeholder="Nhập tên đội"
-                disabled={createTeamMutation.isPending}
-                {...register('name')}
-              />
-              <FieldError>{errors.name?.message}</FieldError>
-            </Field>
-          </FieldGroup>
+                <FieldError>{errors.name?.message}</FieldError>
+              </Field>
+            </FieldGroup>
+          </ModalContent>
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={createTeamMutation.isPending}>
-                Huỷ
-              </Button>
-            </DialogClose>
+          <ModalFooter className="gap-2 bg-slate-50">
+            <Button type="button" variant="outline" disabled={isBusy} onClick={closeDialog}>
+              Huỷ
+            </Button>
             <Button
               type="submit"
-              disabled={createTeamMutation.isPending}
+              disabled={isBusy}
               className="bg-emerald-600 text-white hover:bg-emerald-500"
             >
-              {createTeamMutation.isPending ? (
+              {isBusy ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden />
                   Đang tạo...
@@ -149,10 +155,10 @@ export function CreateTeamDialog({
                 'Tạo đội'
               )}
             </Button>
-          </DialogFooter>
+          </ModalFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ModalBody>
+    </Modal>
   );
 }
 

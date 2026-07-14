@@ -1,15 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Modal, ModalBody, ModalContent, ModalFooter } from '@/components/ui/animated-modal';
 import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,6 +76,7 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
 
   const selectedTeamId = watch('teamId');
   const hasTeam = Boolean(selectedTeamId?.trim());
+  const isBusy = recruitMutation.isPending;
 
   useEffect(() => {
     if (!open) {
@@ -121,128 +114,131 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
   });
 
   return (
-    <Dialog
+    <Modal
       open={open}
       onOpenChange={nextOpen => {
         if (!nextOpen) onClose();
       }}
+      dismissible={!isBusy}
     >
-      <DialogContent className="sm:max-w-md">
-        <form onSubmit={onSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Thêm thành viên</DialogTitle>
-            <DialogDescription>Tuyển công dân vào văn phòng và đội xử lý</DialogDescription>
-          </DialogHeader>
+      <ModalBody className="min-h-0 max-h-[90vh] w-full max-w-md flex-none overflow-hidden md:max-w-md">
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <ModalContent className="gap-4 p-6 md:p-8">
+            <div className="pr-8">
+              <h2 className="text-lg font-semibold text-slate-900">Thêm thành viên</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Tuyển công dân vào văn phòng và đội xử lý
+              </p>
+            </div>
 
-          <FieldGroup>
-            <Field>
-              <div className="space-y-1">
-                <Label htmlFor="recruit-email">Email công dân</Label>
-                {!errors.email ? (
-                  <FieldDescription>
-                    Chỉ tài khoản Citizen chưa thuộc văn phòng khác mới được tuyển
-                  </FieldDescription>
-                ) : null}
-              </div>
-              <Input
-                id="recruit-email"
-                type="email"
-                placeholder="vd: nguyenvana@example.com"
-                autoFocus
-                {...register('email')}
-              />
-              <FieldError>{errors.email?.message}</FieldError>
-            </Field>
+            <FieldGroup>
+              <Field>
+                <div className="space-y-1">
+                  <Label htmlFor="recruit-email">Email công dân</Label>
+                  {!errors.email ? (
+                    <FieldDescription>
+                      Chỉ tài khoản Citizen chưa thuộc văn phòng khác mới được tuyển
+                    </FieldDescription>
+                  ) : null}
+                </div>
+                <Input
+                  id="recruit-email"
+                  type="email"
+                  placeholder="vd: nguyenvana@example.com"
+                  autoFocus
+                  {...register('email')}
+                />
+                <FieldError>{errors.email?.message}</FieldError>
+              </Field>
 
-            <Field>
-              <Label htmlFor="recruit-target-role">Vai trò</Label>
+              <Field>
+                <Label htmlFor="recruit-target-role">Vai trò</Label>
+                <Controller
+                  name="targetRole"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="recruit-target-role">
+                        <SelectValue placeholder="Chọn vai trò" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TARGET_ROLE_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldError>{errors.targetRole?.message}</FieldError>
+              </Field>
+
+              <Field>
+                <Label htmlFor="recruit-team-id">Đội xử lý</Label>
+                <FieldDescription>
+                  Tuỳ chọn — có thể tuyển vào văn phòng mà chưa gán đội
+                </FieldDescription>
+                <Controller
+                  name="teamId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value?.trim() ? field.value : NO_TEAM_VALUE}
+                      onValueChange={value => {
+                        const nextTeamId = value === NO_TEAM_VALUE ? '' : value;
+                        field.onChange(nextTeamId);
+                        if (!nextTeamId) setValue('isLeader', false);
+                      }}
+                      disabled={teamsLoading}
+                    >
+                      <SelectTrigger id="recruit-team-id">
+                        <SelectValue placeholder={teamsLoading ? 'Đang tải...' : 'Chọn đội'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_TEAM_VALUE}>Không chọn đội</SelectItem>
+                        {teams.map(team => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldError>{errors.teamId?.message}</FieldError>
+              </Field>
+
               <Controller
-                name="targetRole"
+                name="isLeader"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="recruit-target-role">
-                      <SelectValue placeholder="Chọn vai trò" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TARGET_ROLE_OPTIONS.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Field orientation="horizontal">
+                    <Label htmlFor="recruit-is-leader" className="font-normal">
+                      Trưởng nhóm
+                    </Label>
+                    <Switch
+                      id="recruit-is-leader"
+                      checked={Boolean(field.value)}
+                      onCheckedChange={field.onChange}
+                      disabled={!hasTeam}
+                    />
+                  </Field>
                 )}
               />
-              <FieldError>{errors.targetRole?.message}</FieldError>
-            </Field>
+            </FieldGroup>
+          </ModalContent>
 
-            <Field>
-              <Label htmlFor="recruit-team-id">Đội xử lý</Label>
-              <FieldDescription>
-                Tuỳ chọn — có thể tuyển vào văn phòng mà chưa gán đội
-              </FieldDescription>
-              <Controller
-                name="teamId"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value?.trim() ? field.value : NO_TEAM_VALUE}
-                    onValueChange={value => {
-                      const nextTeamId = value === NO_TEAM_VALUE ? '' : value;
-                      field.onChange(nextTeamId);
-                      if (!nextTeamId) setValue('isLeader', false);
-                    }}
-                    disabled={teamsLoading}
-                  >
-                    <SelectTrigger id="recruit-team-id">
-                      <SelectValue placeholder={teamsLoading ? 'Đang tải...' : 'Chọn đội'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_TEAM_VALUE}>Không chọn đội</SelectItem>
-                      {teams.map(team => (
-                        <SelectItem key={team.id} value={team.id}>
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <FieldError>{errors.teamId?.message}</FieldError>
-            </Field>
-
-            <Controller
-              name="isLeader"
-              control={control}
-              render={({ field }) => (
-                <Field orientation="horizontal">
-                  <Label htmlFor="recruit-is-leader" className="font-normal">
-                    Trưởng nhóm
-                  </Label>
-                  <Switch
-                    id="recruit-is-leader"
-                    checked={Boolean(field.value)}
-                    onCheckedChange={field.onChange}
-                    disabled={!hasTeam}
-                  />
-                </Field>
-              )}
-            />
-          </FieldGroup>
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={recruitMutation.isPending}>
-                Huỷ
-              </Button>
-            </DialogClose>
+          <ModalFooter className="gap-2 bg-slate-50">
+            <Button type="button" variant="outline" disabled={isBusy} onClick={onClose}>
+              Huỷ
+            </Button>
             <Button
               type="submit"
-              disabled={recruitMutation.isPending || teamsLoading}
+              disabled={isBusy || teamsLoading}
               className="bg-emerald-600 text-white hover:bg-emerald-500"
             >
-              {recruitMutation.isPending ? (
+              {isBusy ? (
                 <>
                   <Loader2 className="mr-1.5 size-4 animate-spin" />
                   Đang thêm...
@@ -251,9 +247,9 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                 'Thêm'
               )}
             </Button>
-          </DialogFooter>
+          </ModalFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ModalBody>
+    </Modal>
   );
 }

@@ -3,16 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  CircleHelp,
-  Filter,
-  Loader2,
-  MoreVertical,
-  Plus,
-} from 'lucide-react';
+import { ChevronDown, CircleHelp, Filter, Loader2, MoreVertical, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { CompanyAssignAreaDialog } from '@/components/officer/companies/CompanyCreatePageClient';
@@ -25,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { MovingBorderButton } from '@/components/ui/moving-border';
+import { PaginationSimple } from '@/components/ui/pagination';
 import {
   Table,
   TableBody,
@@ -185,17 +178,18 @@ export function CompaniesPageClient() {
             ) : null}
           </div>
 
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 shrink-0 gap-1.5 bg-sky-600 text-[0.8125rem] font-medium text-white hover:bg-sky-700"
-            asChild
+          <MovingBorderButton
+            as={Link}
+            href="/officer/companies/new"
+            borderRadius="0.5rem"
+            duration={2500}
+            containerClassName="h-8 w-auto shrink-0"
+            borderClassName="bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]"
+            className="gap-1.5 border-neutral-200 bg-white px-3 text-[0.8125rem] font-medium text-sky-700 hover:bg-slate-50"
           >
-            <Link href="/officer/companies/new">
-              <Plus className="size-3.5" aria-hidden />
-              Thêm
-            </Link>
-          </Button>
+            <Plus className="size-3.5" aria-hidden />
+            Thêm
+          </MovingBorderButton>
         </div>
       </header>
 
@@ -280,31 +274,16 @@ export function CompaniesPageClient() {
           </Table>
         </div>
 
-        {pagination && pagination.totalPages > 1 ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2">
-            <span className="text-xs text-slate-500">
-              Trang {pagination.page}/{pagination.totalPages}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!pagination.hasPrev}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-              >
-                <ChevronLeft className="size-3.5" />
-                Trước
-              </button>
-              <button
-                type="button"
-                disabled={!pagination.hasNext}
-                onClick={() => setPage(p => p + 1)}
-                className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-              >
-                Sau
-                <ChevronRight className="size-3.5" />
-              </button>
-            </div>
+        {pagination ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={page}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+                className="w-auto"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

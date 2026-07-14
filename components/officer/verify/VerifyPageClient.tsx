@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Filter, Loader2 } from 'lucide-react';
+import { ChevronDown, CircleHelp, Filter, Loader2 } from 'lucide-react';
 
 import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
   Table,
@@ -191,7 +192,7 @@ export function VerifyPageClient() {
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
                       <SaveIcon size={32} className="opacity-30" />
-                      <span>Không có báo cáo phù hợp.</span>
+                      <span>Không có báo cáo</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -214,31 +215,16 @@ export function VerifyPageClient() {
           </Table>
         </div>
 
-        {pagination && pagination.totalPages > 1 ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3 py-2">
-            <span className="text-xs text-slate-500">
-              Trang {pagination.page}/{Math.max(pagination.totalPages, 1)}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!pagination.hasPrev}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-              >
-                <ChevronLeft className="size-3.5" />
-                Trước
-              </button>
-              <button
-                type="button"
-                disabled={!pagination.hasNext}
-                onClick={() => setPage(p => p + 1)}
-                className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-              >
-                Sau
-                <ChevronRight className="size-3.5" />
-              </button>
-            </div>
+        {pagination ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={page}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+                className="w-auto"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -18,6 +18,8 @@ export interface ReportQueueItem {
   createdAt: string;
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
+  /** Thumbnail ảnh đầu tiên của báo cáo (có thể null nếu chưa có media). */
+  firstImageUrl: string | null;
 }
 
 /** GET /v1/reports/queue — data envelope. */

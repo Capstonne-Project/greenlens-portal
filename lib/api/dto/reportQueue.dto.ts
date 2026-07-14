@@ -16,6 +16,7 @@ export interface ReportQueueItemDto {
   createdAt: string;
   slaVerifyDueAt: string;
   slaResolveDueAt: string;
+  firstImageUrl: string | null;
 }
 
 export interface ReportQueuePaginationDto {
