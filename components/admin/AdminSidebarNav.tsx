@@ -171,6 +171,7 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
   const departmentsActive =
     pathname === '/admin/departments' || pathname.startsWith('/admin/departments/');
   const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
+  const mapActive = pathname === '/admin/map' || pathname.startsWith('/admin/map/');
   const auditLogsActive =
     pathname === '/admin/audit-logs' || pathname.startsWith('/admin/audit-logs/');
   const spamSuspectsActive =
@@ -287,17 +288,10 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
               </Link>
             </li>
             <li>
-              <span
-                title="Bản đồ quản trị"
-                className={cn(
-                  navLinkClass(false),
-                  'cursor-default opacity-60',
-                  collapsed && 'justify-center'
-                )}
-              >
+              <Link href="/admin/map" title="Bản đồ quản trị" className={navLinkClass(mapActive)}>
                 <Map className="size-4 shrink-0" />
                 {!collapsed && <span>Bản đồ quản trị</span>}
-              </span>
+              </Link>
             </li>
           </ul>
         </div>

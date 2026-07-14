@@ -319,6 +319,17 @@
     border-top-color: #ffffff;
   }
 
+  .admin-map-report-popup .maplibregl-popup-content {
+    padding: 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+  }
+
+  .admin-map-report-popup .maplibregl-popup-tip {
+    border-top-color: hsl(var(--card));
+  }
+
   .map-pin-icon--outline svg path {
     fill: transparent;
     stroke: currentColor;

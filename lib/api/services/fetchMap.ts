@@ -55,6 +55,28 @@ export interface MapReportsQueryParams {
   categoryId?: string;
 }
 
+export interface MapSummaryDailyCount {
+  date: string; // YYYY-MM-DD
+  count: number;
+}
+
+export interface MapSummaryData {
+  reportCount: number;
+  days: number;
+  periodStart: string;
+  periodEnd: string;
+  dailyCounts: MapSummaryDailyCount[];
+}
+
+export interface MapSummaryQueryParams {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+  days?: number; // default BE 30
+  categoryId?: string;
+}
+
 export async function fetchMapReports(
   params: MapReportsQueryParams
 ): Promise<ApiEnvelope<MapReportsData>> {
@@ -73,8 +95,25 @@ export async function fetchMapReports(
   return res.data;
 }
 
+export async function fetchMapSummary(
+  params: MapSummaryQueryParams
+): Promise<ApiEnvelope<MapSummaryData>> {
+  const query: Record<string, string | number> = {
+    MinLat: params.minLat,
+    MaxLat: params.maxLat,
+    MinLng: params.minLng,
+    MaxLng: params.maxLng,
+  };
+  if (params.days != null) query.Days = params.days;
+  if (params.categoryId) query.CategoryId = params.categoryId;
+
+  const res = await apiService.get<ApiEnvelope<MapSummaryData>>('/v1/map/summary', query);
+  return res.data;
+}
+
 const mapApi = {
   fetchMapReports,
+  fetchMapSummary,
 };
 
 export default mapApi;

@@ -11,6 +11,50 @@ export const VIETNAM_MAP_BOUNDS = {
   maxLng: 110,
 } as const;
 
+const BOUNDS_EPSILON = 1e-6;
+
+export interface MapViewportBounds {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}
+
+/** Clamp viewport vào VN và đảm bảo min < max (tránh 422 từ API map). */
+export function clampMapViewportToVietnam(bounds: MapViewportBounds): MapViewportBounds {
+  let minLat = Math.min(
+    Math.max(bounds.minLat, VIETNAM_MAP_BOUNDS.minLat),
+    VIETNAM_MAP_BOUNDS.maxLat
+  );
+  let maxLat = Math.min(
+    Math.max(bounds.maxLat, VIETNAM_MAP_BOUNDS.minLat),
+    VIETNAM_MAP_BOUNDS.maxLat
+  );
+  let minLng = Math.min(
+    Math.max(bounds.minLng, VIETNAM_MAP_BOUNDS.minLng),
+    VIETNAM_MAP_BOUNDS.maxLng
+  );
+  let maxLng = Math.min(
+    Math.max(bounds.maxLng, VIETNAM_MAP_BOUNDS.minLng),
+    VIETNAM_MAP_BOUNDS.maxLng
+  );
+
+  if (minLat >= maxLat) {
+    maxLat = Math.min(minLat + BOUNDS_EPSILON, VIETNAM_MAP_BOUNDS.maxLat);
+    if (minLat >= maxLat) {
+      minLat = Math.max(maxLat - BOUNDS_EPSILON, VIETNAM_MAP_BOUNDS.minLat);
+    }
+  }
+  if (minLng >= maxLng) {
+    maxLng = Math.min(minLng + BOUNDS_EPSILON, VIETNAM_MAP_BOUNDS.maxLng);
+    if (minLng >= maxLng) {
+      minLng = Math.max(maxLng - BOUNDS_EPSILON, VIETNAM_MAP_BOUNDS.minLng);
+    }
+  }
+
+  return { minLat, maxLat, minLng, maxLng };
+}
+
 function parseMapDefaultCenter(): { lat: number; lng: number } {
   const raw = process.env.NEXT_PUBLIC_MAP_DEFAULT_CENTER;
   if (!raw?.trim()) return DEFAULT_CENTER;

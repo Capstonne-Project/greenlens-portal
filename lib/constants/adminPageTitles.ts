@@ -18,6 +18,7 @@ export function getAdminPageTitle(pathname: string): string {
   if (pathname === '/admin/teams') return 'Quản lý đội môi trường';
   if (pathname === '/admin/reports') return 'Quản lý báo cáo ô nhiễm';
   if (pathname.startsWith('/admin/reports/')) return 'Chi tiết báo cáo';
+  if (pathname === '/admin/map' || pathname.startsWith('/admin/map/')) return 'Bản đồ quản trị';
   if (pathname === '/admin/users') return 'Quản lý người dùng — Tổng quan';
 
   const usersTab = ADMIN_USERS_NAV.find(
