@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal, RefreshCw, Users } from 'lucide-react';
+import { MoreHorizontal, Loader2, RefreshCw, Users } from 'lucide-react';
 import { TeamFilterDropdowns } from './TeamBoardView';
 import {
   formatDate,
@@ -81,6 +81,7 @@ export type TeamListViewProps = {
   isRefreshing: boolean;
   onRefresh: () => void;
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   listFiltered: TeamListItem[];
   listTeams: TeamListItem[];
@@ -108,6 +109,7 @@ export function TeamListView({
   isRefreshing,
   onRefresh,
   isLoading,
+  isFetching,
   isError,
   listFiltered,
   listTeams,
@@ -133,6 +135,11 @@ export function TeamListView({
           collapsedWidth={180}
           expandedWidth={320}
           className="justify-start"
+          endAdornment={
+            isFetching && !isLoading ? (
+              <Loader2 className="size-3.5 animate-spin text-slate-400" aria-hidden />
+            ) : null
+          }
         />
         <TeamFilterDropdowns
           statusFilter={statusFilter}

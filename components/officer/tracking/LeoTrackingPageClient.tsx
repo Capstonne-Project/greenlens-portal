@@ -653,13 +653,12 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
               collapsedWidth={180}
               expandedWidth={320}
               className="justify-start"
+              endAdornment={
+                isSearchPending ? (
+                  <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-hidden />
+                ) : null
+              }
             />
-            {isSearchPending ? (
-              <Loader2
-                className="size-3.5 shrink-0 animate-spin text-muted-foreground"
-                aria-hidden
-              />
-            ) : null}
           </div>
 
           <DropdownMenu>

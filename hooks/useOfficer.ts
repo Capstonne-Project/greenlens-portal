@@ -113,6 +113,7 @@ export function useAssignReportQueue(
   return {
     data,
     isPending: queries.some(q => q.isPending),
+    isFetching: queries.some(q => q.isFetching),
     isError: queries.some(q => q.isError),
   };
 }

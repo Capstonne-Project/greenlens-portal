@@ -42,6 +42,11 @@ import { useReportDetail, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
+import {
+  REPORT_SEVERITY_BADGE_CLASSES,
+  REPORT_SEVERITY_LABEL_VI,
+} from '@/lib/constants/reportActions';
+import { REPORT_STATUS_BADGE_CLASSES } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -68,19 +73,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
-const SEVERITY_LABEL: Record<ReportSeverity, string> = {
-  Critical: 'Nghiêm trọng',
-  High: 'Cao',
-  Medium: 'Trung bình',
-  Low: 'Thấp',
-};
-
 const SEVERITY_SET_BY_LABEL: Record<string, string> = {
   User: 'Người dùng',
   AI: 'Hệ thống AI',
   Officer: 'Cán bộ',
 };
 
+/** Nhãn status theo ngữ cảnh màn xác minh (Submitted = chờ xử lý). */
 const STATUS_LABEL: Record<ReportStatus, string> = {
   Submitted: 'Chờ xác minh',
   Verified: 'Đã xác minh',
@@ -95,39 +94,23 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
   ClosedNoViolation: 'Đóng — không vi phạm',
 };
 
-/** Badge mức độ — chỉ dùng ở chế độ xem, không áp dụng dropdown Select. */
-const SEVERITY_CLASS: Record<ReportSeverity, string> = {
-  Critical: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
-  High: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
-  Medium: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  Low: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-};
-
-const STATUS_CLASS: Record<ReportStatus, string> = {
-  Submitted: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  Verified: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  Dispatched: 'bg-teal-50 text-teal-700 ring-1 ring-teal-200',
-  Assigned: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
-  InProgress: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
-  Resolved: 'bg-green-50 text-green-700 ring-1 ring-green-200',
-  Closed: 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200',
-  Rejected: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
-  Duplicate: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
-  PenaltyIssued: 'bg-fuchsia-50 text-fuchsia-700 ring-1 ring-fuchsia-200',
-  ClosedNoViolation: 'bg-stone-100 text-stone-600 ring-1 ring-stone-200',
-};
-
 function SeverityBadge({ severity }: { severity: ReportSeverity }) {
   return (
-    <Badge variant="outline" className={cn('border-0 font-semibold', SEVERITY_CLASS[severity])}>
-      {SEVERITY_LABEL[severity]}
+    <Badge
+      variant="outline"
+      className={cn('border-0 font-semibold', REPORT_SEVERITY_BADGE_CLASSES[severity])}
+    >
+      {REPORT_SEVERITY_LABEL_VI[severity]}
     </Badge>
   );
 }
 
 function StatusBadge({ status }: { status: ReportStatus }) {
   return (
-    <Badge variant="outline" className={cn('border-0 font-semibold', STATUS_CLASS[status])}>
+    <Badge
+      variant="outline"
+      className={cn('border-0 font-semibold', REPORT_STATUS_BADGE_CLASSES[status])}
+    >
       {STATUS_LABEL[status]}
     </Badge>
   );
@@ -471,7 +454,7 @@ function LocationCard({
                     <SelectContent>
                       {(['Critical', 'High', 'Medium', 'Low'] as ReportSeverity[]).map(s => (
                         <SelectItem key={s} value={s} className="text-base">
-                          {SEVERITY_LABEL[s]}
+                          {REPORT_SEVERITY_LABEL_VI[s]}
                         </SelectItem>
                       ))}
                     </SelectContent>

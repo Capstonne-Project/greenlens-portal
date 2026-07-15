@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect, useId, useMemo, useCallback, type ChangeEvent } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  useId,
+  useMemo,
+  useCallback,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 
@@ -83,6 +92,8 @@ export interface GooeyInputProps {
   onValueChange?: (value: string) => void;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
+  /** Nội dung sát phải trong field (ngoài gooey filter để không bị blur). */
+  endAdornment?: ReactNode;
 }
 
 export function GooeyInput({
@@ -98,6 +109,7 @@ export function GooeyInput({
   onValueChange,
   onOpenChange,
   disabled = false,
+  endAdornment,
 }: GooeyInputProps) {
   const reactId = useId();
   const safeId = reactId.replace(/:/g, '');
@@ -167,70 +179,79 @@ export function GooeyInput({
     <div className={cn('relative flex items-center justify-center', className, classNames?.root)}>
       <GooeyFilter filterId={filterId} blur={gooeyBlur} />
 
-      <div
-        className={cn('relative flex h-8 items-center justify-center', classNames?.filterWrap)}
-        style={{ filter: `url(#${filterId})` }}
-      >
-        <motion.div
-          className={cn('flex h-8 items-center justify-center', classNames?.buttonRow)}
-          variants={buttonVariants}
-          initial="collapsed"
-          animate={isExpanded ? 'expanded' : 'collapsed'}
-          transition={transition}
+      <div className="relative">
+        <div
+          className={cn('relative flex h-8 items-center justify-center', classNames?.filterWrap)}
+          style={{ filter: `url(#${filterId})` }}
         >
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={handleExpand}
-            className={cn(
-              'flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 text-sm font-normal outline-none transition-[color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
-              surfaceClass,
-              classNames?.trigger
-            )}
+          <motion.div
+            className={cn('flex h-8 items-center justify-center', classNames?.buttonRow)}
+            variants={buttonVariants}
+            initial="collapsed"
+            animate={isExpanded ? 'expanded' : 'collapsed'}
+            transition={transition}
           >
-            {!isExpanded ? <SearchIcon layoutId={iconLayoutId} /> : null}
-            <motion.input
-              layoutId={inputLayoutId}
-              ref={inputRef}
-              type="search"
-              enterKeyHint="search"
-              autoComplete="off"
-              value={searchText}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              disabled={disabled || !isExpanded}
-              placeholder={placeholder}
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={handleExpand}
               className={cn(
-                'h-full min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none',
-                isExpanded
-                  ? 'placeholder:text-slate-400'
-                  : 'pointer-events-none placeholder:text-slate-400',
-                classNames?.input
+                'flex h-8 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 text-sm font-normal outline-none transition-[color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
+                endAdornment ? 'pr-8' : null,
+                surfaceClass,
+                classNames?.trigger
               )}
-            />
-          </button>
-        </motion.div>
+            >
+              {!isExpanded ? <SearchIcon layoutId={iconLayoutId} /> : null}
+              <motion.input
+                layoutId={inputLayoutId}
+                ref={inputRef}
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                value={searchText}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                disabled={disabled || !isExpanded}
+                placeholder={placeholder}
+                className={cn(
+                  'h-full min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none',
+                  isExpanded
+                    ? 'placeholder:text-slate-400'
+                    : 'pointer-events-none placeholder:text-slate-400',
+                  classNames?.input
+                )}
+              />
+            </button>
+          </motion.div>
 
-        <motion.div
-          className={cn(
-            'absolute top-1/2 left-0 flex size-8 -translate-y-1/2 items-center justify-center',
-            classNames?.bubble
-          )}
-          variants={iconBubbleVariants}
-          initial="collapsed"
-          animate={isExpanded ? 'expanded' : 'collapsed'}
-          transition={transition}
-        >
-          <div
+          <motion.div
             className={cn(
-              'flex size-8 items-center justify-center rounded-md',
-              surfaceClass,
-              classNames?.bubbleSurface
+              'absolute top-1/2 left-0 flex size-8 -translate-y-1/2 items-center justify-center',
+              classNames?.bubble
             )}
+            variants={iconBubbleVariants}
+            initial="collapsed"
+            animate={isExpanded ? 'expanded' : 'collapsed'}
+            transition={transition}
           >
-            <SearchIcon layoutId={iconLayoutId} />
+            <div
+              className={cn(
+                'flex size-8 items-center justify-center rounded-md',
+                surfaceClass,
+                classNames?.bubbleSurface
+              )}
+            >
+              <SearchIcon layoutId={iconLayoutId} />
+            </div>
+          </motion.div>
+        </div>
+
+        {endAdornment ? (
+          <div className="pointer-events-none absolute top-1/2 right-2 z-10 flex -translate-y-1/2 items-center">
+            {endAdornment}
           </div>
-        </motion.div>
+        ) : null}
       </div>
     </div>
   );

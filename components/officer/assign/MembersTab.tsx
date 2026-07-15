@@ -428,10 +428,12 @@ export function MembersTab() {
               collapsedWidth={160}
               expandedWidth={320}
               className="justify-start"
+              endAdornment={
+                isFetching && !isLoadingMembers ? (
+                  <Loader2 className="size-3.5 animate-spin text-slate-400" aria-hidden />
+                ) : null
+              }
             />
-            {isFetching && !isLoadingMembers ? (
-              <Loader2 className="size-4 shrink-0 animate-spin text-slate-400" aria-hidden />
-            ) : null}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
