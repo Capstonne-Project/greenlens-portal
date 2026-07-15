@@ -1,13 +1,24 @@
 'use client';
 
+import { AdminUserChangeRoleDialog } from '@/components/admin/users/AdminUserChangeRoleDialog';
 import { AdminUserCreateDialog } from '@/components/admin/users/AdminUserCreateDialog';
 import { AdminUserDeleteDialog } from '@/components/admin/users/AdminUserDeleteDialog';
+import { AdminUserDetailDialog } from '@/components/admin/users/AdminUserDetailDialog';
 import { AdminUserEditDialog } from '@/components/admin/users/AdminUserEditDialog';
 import { useAdminUsersList } from '@/hooks/useAdminUsers';
-import type { AdminUser } from '@/lib/api/models/adminUser';
+import type { AdminUser, AdminUserDetail } from '@/lib/api/models/adminUser';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
-import { ChevronLeft, ChevronRight, Download, Pencil, Search, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Eye,
+  Pencil,
+  Search,
+  Trash2,
+  UserCog,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -58,6 +69,8 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [changeRoleUser, setChangeRoleUser] = useState<AdminUser | AdminUserDetail | null>(null);
 
   const queryParams = useMemo(
     () => ({
@@ -322,6 +335,22 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
                     <div className="inline-flex items-center justify-end gap-1">
                       <button
                         type="button"
+                        onClick={() => setDetailUserId(user.id)}
+                        className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Xem chi tiết người dùng"
+                      >
+                        <Eye className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChangeRoleUser(user)}
+                        className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Đổi vai trò"
+                      >
+                        <UserCog className="size-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setEditUser(user)}
                         className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                         aria-label="Sửa người dùng"
@@ -394,6 +423,15 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
       />
       <AdminUserEditDialog user={editUser} onClose={() => setEditUser(null)} />
       <AdminUserDeleteDialog user={deleteUser} onClose={() => setDeleteUser(null)} />
+      <AdminUserDetailDialog
+        userId={detailUserId}
+        onClose={() => setDetailUserId(null)}
+        onChangeRole={user => {
+          setDetailUserId(null);
+          setChangeRoleUser(user);
+        }}
+      />
+      <AdminUserChangeRoleDialog user={changeRoleUser} onClose={() => setChangeRoleUser(null)} />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,12 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useCompanyDetail } from '@/hooks/useCompany';
+import { useCompanyDetail, useDeleteCompany } from '@/hooks/useCompany';
 import type { CompanyDetail, CompanyStatus } from '@/lib/api/models/company';
 import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
 import { canAccessCompanies } from '@/lib/constants/officerRoles';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
+import { getCompanyMutationError } from '@/utils/companyErrors';
 
 const HCM_MAP_QUERY = '10.8231,106.6297';
 
@@ -333,11 +336,27 @@ function CompanyDetailBody({ company }: { company: CompanyDetail }) {
 }
 
 export function CompanyDetailClient({ companyId }: { companyId: string }) {
+  const router = useRouter();
   const user = useAuthStore(s => s.user);
   const { data, isPending, isError, error, refetch } = useCompanyDetail(
     companyId,
     canAccessCompanies(user?.systemRole)
   );
+  const deleteMutation = useDeleteCompany();
+
+  const handleDeactivate = () => {
+    if (!data) return;
+    if (!window.confirm(`Vô hiệu hóa doanh nghiệp "${data.name}"?`)) return;
+    deleteMutation.mutate(companyId, {
+      onSuccess: () => {
+        toast.success('Đã vô hiệu hóa doanh nghiệp.');
+        router.push('/officer/companies');
+      },
+      onError: err => {
+        toast.error(getCompanyMutationError(err, 'Không thể vô hiệu hóa doanh nghiệp.'));
+      },
+    });
+  };
 
   if (!canAccessCompanies(user?.systemRole)) {
     return (
@@ -361,7 +380,22 @@ export function CompanyDetailClient({ companyId }: { companyId: string }) {
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Header kiểu business directory */}
       <header className="mb-5 shrink-0 border-b border-slate-200 pb-4">
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex items-center justify-end gap-2">
+          {data && data.status !== 'Suspended' ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 border-destructive/40 text-destructive hover:bg-destructive/5"
+              disabled={deleteMutation.isPending}
+              onClick={handleDeactivate}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              ) : null}
+              Vô hiệu hóa
+            </Button>
+          ) : null}
           <Button
             asChild
             variant="ghost"

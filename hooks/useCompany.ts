@@ -7,6 +7,7 @@ import {
   createCompanyStaff,
   createCompanyTeam,
   deactivateCompanyTeam,
+  deleteCompany,
   fetchCompanies,
   fetchCompanyAssignmentDetail,
   fetchCompanyAssignments,
@@ -94,6 +95,16 @@ export function useCreateCompany() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateCompanyInput) => createCompany(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
+    },
+  });
+}
+
+export function useDeleteCompany() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteCompany(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
     },

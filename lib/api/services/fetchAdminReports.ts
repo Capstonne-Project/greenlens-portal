@@ -6,12 +6,14 @@ import {
   adaptAdminReportsList,
   adaptHideAdminReport,
   adaptUnhideAdminReport,
+  adaptUpdateAdminReportStatus,
 } from '@/lib/api/adapters/adminReports.adapter';
 import type {
   AdminReportDetail,
   AdminReportsList,
   AdminReportsListParams,
   HideAdminReportInput,
+  UpdateAdminReportStatusInput,
 } from '@/lib/api/models/adminReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
@@ -21,6 +23,7 @@ export type {
   AdminReportsList,
   AdminReportsListParams,
   HideAdminReportInput,
+  UpdateAdminReportStatusInput,
   ReportSeverity,
   ReportStatus,
 } from '@/lib/api/models/adminReport';
@@ -46,9 +49,17 @@ export async function unhideAdminReport(id: string): Promise<ApiEnvelope<null>> 
   return adaptUnhideAdminReport(id);
 }
 
+export async function updateAdminReportStatus(
+  id: string,
+  body: UpdateAdminReportStatusInput
+): Promise<ApiEnvelope<null>> {
+  return adaptUpdateAdminReportStatus(id, body);
+}
+
 export default {
   fetchAdminReports,
   fetchAdminReportDetail,
   hideAdminReport,
   unhideAdminReport,
+  updateAdminReportStatus,
 };

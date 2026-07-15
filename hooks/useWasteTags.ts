@@ -2,6 +2,7 @@
 
 import {
   createWasteTag,
+  deleteWasteTag,
   fetchAdminWasteTags,
   fetchCatalogWasteTags,
   toggleWasteTag,
@@ -108,6 +109,14 @@ export function useToggleWasteTag() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ToggleWasteTagInput }) =>
       toggleWasteTag(id, body),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useDeleteWasteTag() {
+  const invalidate = useInvalidateWasteTags();
+  return useMutation({
+    mutationFn: (id: string) => deleteWasteTag(id),
     onSuccess: () => invalidate(),
   });
 }

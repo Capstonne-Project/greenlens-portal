@@ -1,5 +1,6 @@
 'use client';
 
+import { AdminReportStatusDialog } from '@/components/admin/reports/AdminReportStatusDialog';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
 import { useAdminReportDetail, useUnhideAdminReport } from '@/hooks/useAdminReports';
@@ -8,7 +9,7 @@ import { isAdminReportMarkedHidden } from '@/lib/storage/adminHiddenReports';
 import { cn } from '@/lib/utils';
 import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { formatReportRelativeTime, reportListTitle } from '@/utils/adminReportUi';
-import { Eye, Loader2, X } from 'lucide-react';
+import { Eye, Loader2, RefreshCw, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -32,6 +33,7 @@ export function AdminReportDetailPanel({
   const [hiddenLocal, setHiddenLocal] = useState(() =>
     reportId ? isAdminReportMarkedHidden(reportId) : false
   );
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   const report = data ?? listItem;
   if (!reportId) return null;
@@ -172,22 +174,44 @@ export function AdminReportDetailPanel({
           )}
         </div>
 
-        {isHidden ? (
-          <div className="border-t border-border p-4">
-            <button
-              type="button"
-              onClick={onUnhide}
-              disabled={unhideReport.isPending}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
-            >
-              {unhideReport.isPending ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Eye className="size-4" aria-hidden />
-              )}
-              Hiện lại
-            </button>
+        {report || isHidden ? (
+          <div className="space-y-2 border-t border-border p-4">
+            {report ? (
+              <button
+                type="button"
+                onClick={() => setStatusDialogOpen(true)}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted"
+              >
+                <RefreshCw className="size-4" aria-hidden />
+                Đổi status
+              </button>
+            ) : null}
+            {isHidden ? (
+              <button
+                type="button"
+                onClick={onUnhide}
+                disabled={unhideReport.isPending}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+              >
+                {unhideReport.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Eye className="size-4" aria-hidden />
+                )}
+                Hiện lại
+              </button>
+            ) : null}
           </div>
+        ) : null}
+
+        {report ? (
+          <AdminReportStatusDialog
+            reportId={reportId}
+            currentStatus={report.status}
+            reportCode={report.code}
+            open={statusDialogOpen}
+            onClose={() => setStatusDialogOpen(false)}
+          />
         ) : null}
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   useCatalogWasteTags,
   useCreateWasteTag,
   useAdminWasteTagsList,
+  useDeleteWasteTag,
   useToggleWasteTag,
   useUpdateWasteTag,
 } from '@/hooks/useWasteTags';
@@ -62,6 +63,7 @@ export function AdminWasteTagsView() {
   const createMutation = useCreateWasteTag();
   const updateMutation = useUpdateWasteTag();
   const toggleMutation = useToggleWasteTag();
+  const deleteMutation = useDeleteWasteTag();
 
   const isPending = status === 'active' ? catalogQuery.isPending : inactiveQuery.isPending;
   const isError = status === 'active' ? catalogQuery.isError : inactiveQuery.isError;
@@ -179,13 +181,26 @@ export function AdminWasteTagsView() {
 
   const handleToggle = (tag: WasteTag, isActive: boolean) => {
     setTogglingId(tag.id);
+    if (!isActive) {
+      deleteMutation.mutate(tag.id, {
+        onSuccess: () => {
+          toast.success('Đã vô hiệu hóa thẻ.');
+          setTogglingId(null);
+          if (selectedId === tag.id) setSelectedId(null);
+        },
+        onError: err => {
+          toast.error(getWasteTagMutationError(err, 'Không thể đổi trạng thái.'));
+          setTogglingId(null);
+        },
+      });
+      return;
+    }
     toggleMutation.mutate(
-      { id: tag.id, body: { isActive } },
+      { id: tag.id, body: { isActive: true } },
       {
         onSuccess: () => {
-          toast.success(isActive ? 'Đã kích hoạt thẻ.' : 'Đã tắt thẻ.');
+          toast.success('Đã kích hoạt thẻ.');
           setTogglingId(null);
-          if (selectedId === tag.id && !isActive) setSelectedId(null);
         },
         onError: err => {
           toast.error(getWasteTagMutationError(err, 'Không thể đổi trạng thái.'));
@@ -340,7 +355,7 @@ export function AdminWasteTagsView() {
             totalFiltered={filteredItems.length}
             selectedId={selectedId}
             togglingId={togglingId}
-            toggleBusy={toggleMutation.isPending}
+            toggleBusy={toggleMutation.isPending || deleteMutation.isPending}
             onSelect={id => setSelectedId(prev => (prev === id ? null : id))}
             onEdit={setEditTag}
             onToggle={tag => handleToggle(tag, false)}
@@ -356,7 +371,7 @@ export function AdminWasteTagsView() {
             totalFiltered={filteredItems.length}
             selectedId={selectedId}
             togglingId={togglingId}
-            toggleBusy={toggleMutation.isPending}
+            toggleBusy={toggleMutation.isPending || deleteMutation.isPending}
             onSelect={id => setSelectedId(prev => (prev === id ? null : id))}
             onEdit={setEditTag}
             onToggle={(tag, active) => handleToggle(tag, active)}

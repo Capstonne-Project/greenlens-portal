@@ -1,15 +1,20 @@
 'use client';
 
 import {
+  changeAdminUserRole,
   clearAdminAllUsersCache,
   createAdminUser,
   deleteAdminUser,
   fetchAdminAllUsers,
+  fetchAdminRoles,
+  fetchAdminUserDetail,
   fetchAdminUsers,
   updateAdminUser,
 } from '@/lib/api/services/fetchAdmin';
 import type {
+  AdminRole,
   AdminUser,
+  AdminUserDetail,
   AdminUsersList,
   AdminUsersListParams,
   CreateAdminUserInput,
@@ -22,12 +27,16 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 export const adminUsersKeys = {
   all: ['admin', 'users'] as const,
   list: (params: AdminUsersListParams) => [...adminUsersKeys.all, 'list', params] as const,
+  detail: (id: string) => [...adminUsersKeys.all, 'detail', id] as const,
+  roles: () => [...adminUsersKeys.all, 'roles'] as const,
   count: (role?: string) => [...adminUsersKeys.all, 'count', role ?? '__all__'] as const,
   allSource: () => [...adminUsersKeys.all, 'all-source'] as const,
 };
 
 const COUNT_STALE_MS = 3 * 60 * 1000;
 const LIST_STALE_MS = 3 * 60 * 1000;
+const DETAIL_STALE_MS = 3 * 60 * 1000;
+const ROLES_STALE_MS = 10 * 60 * 1000;
 
 function pickTotal(envelope: ApiEnvelope<AdminUsersList>): number {
   return envelope.data.pagination.totalItems;
@@ -110,6 +119,27 @@ function useInvalidateAdminUsers() {
   };
 }
 
+/** Chi tiết người dùng admin. */
+export function useAdminUserDetail(id: string | null) {
+  return useQuery({
+    queryKey: adminUsersKeys.detail(id ?? ''),
+    queryFn: () => fetchAdminUserDetail(id!),
+    select: (envelope: ApiEnvelope<AdminUserDetail>) => envelope.data,
+    enabled: Boolean(id),
+    staleTime: DETAIL_STALE_MS,
+  });
+}
+
+/** Danh sách role hệ thống (ít đổi). */
+export function useAdminRoles() {
+  return useQuery({
+    queryKey: adminUsersKeys.roles(),
+    queryFn: () => fetchAdminRoles(),
+    select: (envelope: ApiEnvelope<AdminRole[]>) => envelope.data,
+    staleTime: ROLES_STALE_MS,
+  });
+}
+
 export function useCreateAdminUser() {
   const invalidate = useInvalidateAdminUsers();
   return useMutation({
@@ -131,6 +161,15 @@ export function useDeleteAdminUser() {
   const invalidate = useInvalidateAdminUsers();
   return useMutation({
     mutationFn: (id: string) => deleteAdminUser(id),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useChangeAdminUserRole() {
+  const invalidate = useInvalidateAdminUsers();
+  return useMutation({
+    mutationFn: ({ id, newRole }: { id: string; newRole: string }) =>
+      changeAdminUserRole(id, newRole),
     onSuccess: () => invalidate(),
   });
 }

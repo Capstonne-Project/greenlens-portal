@@ -114,3 +114,9 @@ export interface AdminReportDetailDto extends AdminReportListItemDto {
 export interface HideAdminReportBodyDto {
   reason: string;
 }
+
+/** PUT /v1/admin/reports/{id}/status */
+export interface UpdateAdminReportStatusBodyDto {
+  newStatus: ReportStatus | string;
+  reason: string;
+}

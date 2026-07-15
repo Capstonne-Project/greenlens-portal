@@ -8,3 +8,7 @@ export function getAdminUserMutationError(error: unknown, fallback: string): str
   if (error instanceof Error && error.message.trim()) return error.message;
   return fallback;
 }
+
+export function isAdminUserNotFound(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 404;
+}

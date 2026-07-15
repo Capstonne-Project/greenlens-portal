@@ -115,3 +115,8 @@ export async function adaptUpdateCompanyServiceAreas(
   };
   await apiService.put(`/v1/companies/${companyId}/service-areas`, payload);
 }
+
+/** DELETE /v1/companies/{id} — [DEO/Admin] soft delete (vô hiệu hóa công ty). */
+export async function adaptDeleteCompany(id: string): Promise<void> {
+  await apiService.delete(`/v1/companies/${encodeURIComponent(id)}`);
+}

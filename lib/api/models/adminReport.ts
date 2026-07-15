@@ -107,3 +107,8 @@ export interface AdminReportDetail extends AdminReportListItem {
 export interface HideAdminReportInput {
   reason: string;
 }
+
+export interface UpdateAdminReportStatusInput {
+  newStatus: string;
+  reason: string;
+}

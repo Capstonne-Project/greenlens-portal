@@ -11,6 +11,16 @@ export interface AdminUser {
   createdAt: string;
 }
 
+export interface AdminUserDetail extends AdminUser {
+  googleId: string | null;
+  updatedAt: string | null;
+}
+
+export interface AdminRole {
+  name: string;
+  description: string;
+}
+
 export interface PaginationMeta {
   page: number;
   pageSize: number;

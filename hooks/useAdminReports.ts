@@ -5,6 +5,7 @@ import {
   fetchAdminReports,
   hideAdminReport,
   unhideAdminReport,
+  updateAdminReportStatus,
 } from '@/lib/api/services/fetchAdminReports';
 import { fetchCatalogPollutionCategories } from '@/lib/api/services/fetchPollutionCategory';
 import type {
@@ -12,6 +13,7 @@ import type {
   AdminReportsList,
   AdminReportsListParams,
   HideAdminReportInput,
+  UpdateAdminReportStatusInput,
 } from '@/lib/api/models/adminReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 import { markAdminReportHidden, markAdminReportVisible } from '@/lib/storage/adminHiddenReports';
@@ -107,6 +109,19 @@ export function useUnhideAdminReport() {
     onSuccess: (_env, id) => {
       markAdminReportVisible(id);
       patchReportHiddenInCache(qc, id, false);
+      void qc.invalidateQueries({ queryKey: [...adminReportKeys.all, 'list'] });
+      void qc.invalidateQueries({ queryKey: adminReportKeys.count() });
+      void qc.invalidateQueries({ queryKey: adminReportKeys.detail(id) });
+    },
+  });
+}
+
+export function useUpdateAdminReportStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateAdminReportStatusInput }) =>
+      updateAdminReportStatus(id, body),
+    onSuccess: (_env, { id }) => {
       void qc.invalidateQueries({ queryKey: [...adminReportKeys.all, 'list'] });
       void qc.invalidateQueries({ queryKey: adminReportKeys.count() });
       void qc.invalidateQueries({ queryKey: adminReportKeys.detail(id) });
