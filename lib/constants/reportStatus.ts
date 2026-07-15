@@ -50,18 +50,19 @@ export function reportStatusLabelVi(status: ReportStatus | string): string {
   return REPORT_STATUS_LABEL_VI[normalizeReportStatus(String(status))];
 }
 
+/** Soft badge — management dashboard / ops queue. */
 export const REPORT_STATUS_BADGE_CLASSES: Record<ReportStatus, string> = {
-  Submitted: 'bg-slate-100 text-slate-800',
-  Verified: 'bg-emerald-100 text-emerald-900',
-  Dispatched: 'bg-cyan-100 text-cyan-900',
-  Assigned: 'bg-sky-100 text-sky-900',
-  InProgress: 'bg-purple-100 text-purple-900',
-  Resolved: 'bg-emerald-600/15 text-emerald-900',
-  Closed: 'bg-zinc-100 text-zinc-700',
-  Rejected: 'bg-red-100 text-red-900',
-  Duplicate: 'bg-amber-100 text-amber-900',
-  PenaltyIssued: 'bg-orange-100 text-orange-900',
-  ClosedNoViolation: 'bg-slate-100 text-slate-600',
+  Submitted: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80',
+  Verified: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80',
+  Dispatched: 'bg-teal-50 text-teal-800 ring-1 ring-teal-200/80',
+  Assigned: 'bg-sky-50 text-sky-800 ring-1 ring-sky-200/80',
+  InProgress: 'bg-blue-50 text-blue-800 ring-1 ring-blue-200/80',
+  Resolved: 'bg-green-50 text-green-800 ring-1 ring-green-200/80',
+  Closed: 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80',
+  Rejected: 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80',
+  Duplicate: 'bg-orange-50 text-orange-800 ring-1 ring-orange-200/80',
+  PenaltyIssued: 'bg-fuchsia-50 text-fuchsia-800 ring-1 ring-fuchsia-200/80',
+  ClosedNoViolation: 'bg-stone-100 text-stone-600 ring-1 ring-stone-200/80',
 };
 
 export const REPORT_STATUS_CHART_COLORS: Record<ReportStatus, string> = {

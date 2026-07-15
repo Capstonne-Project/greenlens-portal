@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Crown,
+  Loader2,
   MoreHorizontal,
   Plus,
   Trash2,
@@ -360,6 +361,7 @@ export function TeamFilterDropdowns({
 type BoardViewProps = {
   teams: TeamListItem[];
   isLoading: boolean;
+  isFetching: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   statusFilter: StatusFilter;
@@ -379,6 +381,7 @@ type BoardViewProps = {
 export function BoardView({
   teams,
   isLoading,
+  isFetching,
   search,
   onSearchChange,
   statusFilter,
@@ -456,6 +459,11 @@ export function BoardView({
           collapsedWidth={160}
           expandedWidth={280}
           className="justify-start"
+          endAdornment={
+            isFetching && !isLoading ? (
+              <Loader2 className="size-3.5 animate-spin text-slate-400" aria-hidden />
+            ) : null
+          }
         />
         <TeamFilterDropdowns
           statusFilter={statusFilter}

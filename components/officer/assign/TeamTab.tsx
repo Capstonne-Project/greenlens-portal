@@ -39,7 +39,7 @@ export function TeamTab({ viewMode }: Readonly<{ viewMode: 'list' | 'board' }>) 
     [statusFilter, teamTypeFilter, availableFilter]
   );
 
-  const { data, isLoading, isError, refetch } = useTeamsList(sharedParams);
+  const { data, isLoading, isFetching, isError, refetch } = useTeamsList(sharedParams);
 
   const allTeams = useMemo(() => data?.items ?? [], [data?.items]);
 
@@ -152,6 +152,7 @@ export function TeamTab({ viewMode }: Readonly<{ viewMode: 'list' | 'board' }>) 
         <BoardView
           teams={allTeams}
           isLoading={isLoading}
+          isFetching={isFetching}
           search={search}
           onSearchChange={handleSearch}
           statusFilter={statusFilter}
@@ -180,6 +181,7 @@ export function TeamTab({ viewMode }: Readonly<{ viewMode: 'list' | 'board' }>) 
           isRefreshing={isRefreshing}
           onRefresh={handleRefresh}
           isLoading={isLoading}
+          isFetching={isFetching}
           isError={isError}
           listFiltered={listFiltered}
           listTeams={listTeams}

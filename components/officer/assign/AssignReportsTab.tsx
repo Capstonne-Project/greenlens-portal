@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -26,29 +25,53 @@ import { useAssignReportQueue } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/services/fetchReport';
-import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import {
-  extractLocationLabel,
-  formatCheckInTime,
-  formatTrackingSla,
-} from '@/utils/officerTracking';
+  REPORT_SEVERITY_BADGE_CLASSES,
+  REPORT_SEVERITY_LABEL_VI,
+} from '@/lib/constants/reportActions';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
-import { Camera, ChevronDown, Loader2, MoreHorizontal, Search, UserPlus } from 'lucide-react';
+import { ChevronDown, ImageIcon, Loader2, MoreHorizontal, Search, UserPlus } from 'lucide-react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 
 const REPORT_PAGE_SIZE = 10;
 
-const TABLE_COLS = [
+type DataColumnKey =
+  | 'image'
+  | 'code'
+  | 'category'
+  | 'severity'
+  | 'status'
+  | 'priority'
+  | 'address'
+  | 'created'
+  | 'verifySla'
+  | 'resolveSla';
+
+type ColumnKey = 'select' | DataColumnKey | 'actions';
+
+const CELL_PAD = 'px-3 py-3 sm:px-4';
+
+const BADGE_BASE =
+  'inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium';
+
+/** Select + Verify data columns + actions (assign-only). */
+const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'select', label: 'Chọn', className: 'w-12' },
-  { key: 'report', label: 'Report', className: 'min-w-[180px]' },
-  { key: 'category', label: 'Loại', className: 'min-w-[120px]' },
-  { key: 'severity', label: 'Mức độ', className: 'w-[120px]' },
-  { key: 'location', label: 'Vị trí', className: 'min-w-[160px]' },
-  { key: 'status', label: 'Trạng thái', className: 'w-[130px]' },
-  { key: 'sla', label: 'Hạn xử lý', className: 'w-[110px]' },
+  { key: 'image', label: 'Image', className: 'w-20' },
+  { key: 'code', label: 'Report Code', className: 'w-[10%]' },
+  { key: 'category', label: 'Category', className: 'w-[12%]' },
+  { key: 'severity', label: 'Severity', className: 'w-[10%]' },
+  { key: 'status', label: 'Status', className: 'w-[10%]' },
+  { key: 'priority', label: 'Priority', className: 'w-[7%]' },
+  { key: 'address', label: 'Address', className: 'w-[18%]' },
+  { key: 'created', label: 'Created', className: 'w-[11%]' },
+  { key: 'verifySla', label: 'Verify SLA', className: 'w-[9%]' },
+  { key: 'resolveSla', label: 'Resolve SLA', className: 'w-[9%]' },
   { key: 'actions', label: '', className: 'w-12' },
-] as const;
+];
 
 const SEVERITY_OPTIONS: Array<{ label: string; value: ReportSeverity }> = [
   { label: 'Nghiêm trọng', value: 'Critical' },
@@ -57,19 +80,134 @@ const SEVERITY_OPTIONS: Array<{ label: string; value: ReportSeverity }> = [
   { label: 'Thấp', value: 'Low' },
 ];
 
-const SEVERITY_LABEL: Record<ReportSeverity, string> = {
-  Critical: 'Nghiêm trọng',
-  High: 'Cao',
-  Medium: 'Trung bình',
-  Low: 'Thấp',
-};
+function formatSla(isoString: string): { text: string; overdue: boolean } {
+  const due = new Date(isoString);
+  const now = new Date();
+  if (due < now) {
+    const diffH = Math.floor((now.getTime() - due.getTime()) / 3600000);
+    return { text: `Quá hạn ${diffH}h`, overdue: true };
+  }
+  const diffH = Math.floor((due.getTime() - now.getTime()) / 3600000);
+  const diffM = Math.floor(((due.getTime() - now.getTime()) % 3600000) / 60000);
+  return {
+    text: `${String(diffH).padStart(2, '0')}:${String(diffM).padStart(2, '0')}`,
+    overdue: false,
+  };
+}
 
-const SEVERITY_DOT: Record<ReportSeverity, string> = {
-  Critical: 'bg-red-500',
-  High: 'bg-orange-500',
-  Medium: 'bg-amber-400',
-  Low: 'bg-slate-300',
-};
+function formatCreatedParts(isoString: string): { date: string; time: string } {
+  const d = new Date(isoString);
+  return {
+    date: d.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }),
+    time: d.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  };
+}
+
+function SlaCell({ dueAt }: { dueAt: string | null }) {
+  if (!dueAt) {
+    return <span className="text-xs text-slate-400">—</span>;
+  }
+  const sla = formatSla(dueAt);
+  return (
+    <span className={cn('text-xs font-medium', sla.overdue ? 'text-red-600' : 'text-slate-700')}>
+      {sla.text}
+    </span>
+  );
+}
+
+function CreatedCell({ iso }: { iso: string }) {
+  const { date, time } = formatCreatedParts(iso);
+  return (
+    <span className="whitespace-nowrap text-xs tabular-nums" title={`${date} ${time}`}>
+      <span className="font-medium text-slate-800">{date}</span>{' '}
+      <span className="text-slate-400">{time}</span>
+    </span>
+  );
+}
+
+const THUMB_FRAME =
+  'relative h-9 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100 sm:h-10 sm:w-16';
+
+function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
+  if (!url) {
+    return (
+      <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
+        <ImageIcon className="size-3.5 sm:size-4" aria-hidden />
+      </div>
+    );
+  }
+
+  return (
+    <div className={THUMB_FRAME}>
+      <Image
+        src={url}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) 3.5rem, 4rem"
+        className="object-cover"
+        unoptimized
+      />
+    </div>
+  );
+}
+
+function SeverityBadge({ severity }: { severity: ReportSeverity }) {
+  return (
+    <span className={cn(BADGE_BASE, REPORT_SEVERITY_BADGE_CLASSES[severity])}>
+      {REPORT_SEVERITY_LABEL_VI[severity]}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: ReportQueueItem['status'] }) {
+  return (
+    <span className={cn(BADGE_BASE, REPORT_STATUS_BADGE_CLASSES[status])} title={status}>
+      {reportStatusLabelVi(status)}
+    </span>
+  );
+}
+
+function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
+  switch (key) {
+    case 'image':
+      return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
+    case 'code':
+      return <span className="text-xs font-medium text-sky-700">{row.code}</span>;
+    case 'category':
+      return <span className="text-sm text-slate-700">{row.categoryName}</span>;
+    case 'severity':
+      return <SeverityBadge severity={row.severity} />;
+    case 'status':
+      return <StatusBadge status={row.status} />;
+    case 'priority':
+      return (
+        <span className="text-xs font-medium tabular-nums text-slate-700">
+          {row.priorityScore.toFixed(2)}
+        </span>
+      );
+    case 'address':
+      return (
+        <span className="block min-w-0 truncate text-sm text-slate-600" title={row.address}>
+          {row.address}
+        </span>
+      );
+    case 'created':
+      return <CreatedCell iso={row.createdAt} />;
+    case 'verifySla':
+      return <SlaCell dueAt={row.slaVerifyDueAt} />;
+    case 'resolveSla':
+      return <SlaCell dueAt={row.slaResolveDueAt} />;
+    default:
+      return null;
+  }
+}
 
 function toggleInArray<T>(arr: T[], val: T): T[] {
   return arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
@@ -197,7 +335,7 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
     [page, debouncedSearch]
   );
 
-  const { data, isPending, isError } = useAssignReportQueue(listParams);
+  const { data, isPending, isFetching, isError } = useAssignReportQueue(listParams);
   const { data: catalogCategories = [] } = useCatalogPollutionCategories();
 
   const items = data?.items ?? [];
@@ -276,9 +414,18 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Tìm mã báo cáo, địa chỉ..."
-                  className="h-8 border-slate-200 bg-white pl-9 text-sm shadow-none"
+                  className={cn(
+                    'h-8 border-slate-200 bg-white pl-9 text-sm shadow-none',
+                    isFetching && !isPending && 'pr-8'
+                  )}
                   aria-label="Tìm báo cáo phân công"
                 />
+                {isFetching && !isPending ? (
+                  <Loader2
+                    className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                    aria-hidden
+                  />
+                ) : null}
               </div>
             </div>
 
@@ -331,15 +478,16 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
             </Button>
           </div>
 
-          <div className="scrollbar-smooth min-h-0 flex-1 overflow-x-auto overflow-y-auto [&_table]:border-collapse">
-            <Table>
+          <div className="scrollbar-smooth min-h-0 flex-1 overflow-x-auto overflow-y-auto">
+            <Table className="w-full min-w-4xl table-fixed border-collapse">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   {TABLE_COLS.map(col => (
                     <TableHead
                       key={col.key}
                       className={cn(
-                        'h-9 border-b border-slate-200 bg-slate-50/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500',
+                        CELL_PAD,
+                        'h-auto border-b border-slate-200 bg-slate-100/80 text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-500',
                         col.className
                       )}
                     >
@@ -361,13 +509,19 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
               <TableBody>
                 {isPending ? (
                   <TableRow>
-                    <TableCell colSpan={TABLE_COLS.length} className="h-40 text-center">
+                    <TableCell
+                      colSpan={TABLE_COLS.length}
+                      className={cn(CELL_PAD, 'h-40 text-center')}
+                    >
                       <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
                     </TableCell>
                   </TableRow>
                 ) : isError ? (
                   <TableRow>
-                    <TableCell colSpan={TABLE_COLS.length} className="h-40 text-center">
+                    <TableCell
+                      colSpan={TABLE_COLS.length}
+                      className={cn(CELL_PAD, 'h-40 text-center')}
+                    >
                       <p className="text-sm text-destructive">
                         Không thể tải dữ liệu. Vui lòng thử lại.
                       </p>
@@ -375,7 +529,10 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={TABLE_COLS.length} className="h-40 text-center">
+                    <TableCell
+                      colSpan={TABLE_COLS.length}
+                      className={cn(CELL_PAD, 'h-40 text-center')}
+                    >
                       <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
                         <SaveIcon size={32} className="opacity-30" />
                         <span>Không có báo cáo nào</span>
@@ -385,10 +542,6 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
                 ) : (
                   filtered.map(report => {
                     const isHighlighted = report.id === highlightReportId && !highlightFading;
-                    const location = extractLocationLabel(report.address);
-                    const resolveSla = report.slaResolveDueAt
-                      ? formatTrackingSla(report.slaResolveDueAt)
-                      : null;
 
                     return (
                       <TableRow
@@ -408,102 +561,81 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
                           !isHighlighted && selected.has(report.id) && 'bg-sky-50/60'
                         )}
                       >
-                        <TableCell className="px-3 py-2" onClick={e => e.stopPropagation()}>
-                          <Checkbox
-                            checked={selected.has(report.id)}
-                            onCheckedChange={() =>
-                              setSelected(prev => {
-                                const next = new Set(prev);
-                                if (next.has(report.id)) next.delete(report.id);
-                                else next.add(report.id);
-                                return next;
-                              })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="px-3 py-2">
-                          <div className="flex items-start gap-2.5">
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-50 text-sky-600 ring-1 ring-sky-100">
-                              <Camera className="size-3.5" aria-hidden />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium text-sky-700">{report.code}</p>
-                              <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                                Check-in {formatCheckInTime(report.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-sm text-slate-700">
-                          {report.categoryName}
-                        </TableCell>
-                        <TableCell className="px-3 py-2">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-slate-700">
-                            <span
-                              className={cn(
-                                'inline-block size-2.5 shrink-0 rounded-full',
-                                SEVERITY_DOT[report.severity]
-                              )}
-                              aria-hidden
-                            />
-                            {SEVERITY_LABEL[report.severity]}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-sm text-slate-600">
-                          {location}
-                        </TableCell>
-                        <TableCell className="px-3 py-2">
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              'rounded-full px-2.5 py-0.5 text-[11px] font-medium',
-                              REPORT_STATUS_BADGE_CLASSES[report.status] ??
-                                'bg-muted text-foreground'
-                            )}
-                          >
-                            {reportStatusLabelVi(report.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'px-3 py-2 text-xs font-medium tabular-nums',
-                            resolveSla?.overdue ? 'text-red-600' : 'text-slate-700'
-                          )}
-                        >
-                          {resolveSla?.text ?? '—'}
-                        </TableCell>
-                        <TableCell
-                          className="px-3 py-2 text-right"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="size-7 text-slate-500 hover:text-slate-700"
+                        {TABLE_COLS.map(col => {
+                          if (col.key === 'select') {
+                            return (
+                              <TableCell
+                                key={col.key}
+                                className={cn(CELL_PAD, 'align-middle', col.className)}
+                                onClick={e => e.stopPropagation()}
                               >
-                                <MoreHorizontal className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setDetailReportId(report.id)}>
-                                Xem chi tiết
-                              </DropdownMenuItem>
-                              {report.status === 'Verified' && (
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelected(new Set([report.id]));
-                                    setAssignOpen(true);
-                                  }}
-                                >
-                                  {actionLabel}
-                                </DropdownMenuItem>
+                                <Checkbox
+                                  checked={selected.has(report.id)}
+                                  onCheckedChange={() =>
+                                    setSelected(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(report.id)) next.delete(report.id);
+                                      else next.add(report.id);
+                                      return next;
+                                    })
+                                  }
+                                />
+                              </TableCell>
+                            );
+                          }
+
+                          if (col.key === 'actions') {
+                            return (
+                              <TableCell
+                                key={col.key}
+                                className={cn(CELL_PAD, 'align-middle text-right', col.className)}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-7 text-slate-500 hover:text-slate-700"
+                                    >
+                                      <MoreHorizontal className="size-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setDetailReportId(report.id)}>
+                                      Xem chi tiết
+                                    </DropdownMenuItem>
+                                    {report.status === 'Verified' && (
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSelected(new Set([report.id]));
+                                          setAssignOpen(true);
+                                        }}
+                                      >
+                                        {actionLabel}
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            );
+                          }
+
+                          return (
+                            <TableCell
+                              key={col.key}
+                              className={cn(
+                                CELL_PAD,
+                                'align-middle',
+                                col.className,
+                                col.key === 'address' && 'max-w-0'
                               )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                            >
+                              {renderDataCell(col.key, report)}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     );
                   })
@@ -513,7 +645,7 @@ export function AssignReportsTab({ Dialog, actionLabel }: AssignReportsTabProps)
           </div>
 
           {pagination ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4">
               {pagination.totalPages > 1 ? (
                 <PaginationSimple
                   page={page}

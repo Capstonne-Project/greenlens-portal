@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, CircleHelp, Filter, Loader2 } from 'lucide-react';
+import { ChevronDown, CircleHelp, Filter, ImageIcon, Loader2 } from 'lucide-react';
 
 import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { GooeyInput } from '@/components/ui/gooey-input';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -21,38 +22,52 @@ import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue
 import { useReportQueue } from '@/hooks/useOfficer';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/models/report';
+import {
+  REPORT_SEVERITY_BADGE_CLASSES,
+  REPORT_SEVERITY_LABEL_VI,
+} from '@/lib/constants/reportActions';
 import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
 import { canAccessVerifyQueue } from '@/lib/constants/officerRoles';
-import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 
 const VERIFY_PAGE_SIZE = 10;
 
-type ColumnKey = 'code' | 'category' | 'address' | 'severity' | 'sla' | 'status';
+type ColumnKey =
+  | 'image'
+  | 'code'
+  | 'category'
+  | 'severity'
+  | 'status'
+  | 'priority'
+  | 'address'
+  | 'created'
+  | 'verifySla'
+  | 'resolveSla';
 
+/** Cell pad shared by header + body — rem tokens only (no arbitrary px). */
+const CELL_PAD = 'px-3 py-3 sm:px-4';
+
+/**
+ * Proportional widths (`table-fixed`) so column gaps stay even across viewports.
+ * Image stays rem-sized; text columns use % of table width.
+ */
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
-  { key: 'code', label: 'Mã báo cáo', className: 'min-w-[120px]' },
-  { key: 'category', label: 'Loại ô nhiễm', className: 'min-w-[140px]' },
-  { key: 'address', label: 'Vị trí', className: 'min-w-[200px]' },
-  { key: 'severity', label: 'Mức độ', className: 'w-[120px]' },
-  { key: 'sla', label: 'Hạn xử lý', className: 'w-[110px]' },
-  { key: 'status', label: 'Trạng thái', className: 'w-[130px]' },
+  { key: 'image', label: 'Image', className: 'w-20' },
+  { key: 'code', label: 'Report Code', className: 'w-[10%]' },
+  { key: 'category', label: 'Category', className: 'w-[12%]' },
+  { key: 'severity', label: 'Severity', className: 'w-[10%]' },
+  { key: 'status', label: 'Status', className: 'w-[10%]' },
+  { key: 'priority', label: 'Priority', className: 'w-[7%]' },
+  { key: 'address', label: 'Address', className: 'w-[18%]' },
+  { key: 'created', label: 'Created', className: 'w-[11%]' },
+  { key: 'verifySla', label: 'Verify SLA', className: 'w-[9%]' },
+  { key: 'resolveSla', label: 'Resolve SLA', className: 'w-[9%]' },
 ];
 
-const SEVERITY_LABEL: Record<ReportSeverity, string> = {
-  Critical: 'Nghiêm trọng',
-  High: 'Cao',
-  Medium: 'Trung bình',
-  Low: 'Thấp',
-};
-
-const SEVERITY_DOT: Record<ReportSeverity, string> = {
-  Critical: 'bg-red-500',
-  High: 'bg-orange-500',
-  Medium: 'bg-amber-400',
-  Low: 'bg-slate-300',
-};
+const BADGE_BASE =
+  'inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium';
 
 function formatSla(isoString: string): { text: string; overdue: boolean } {
   const due = new Date(isoString);
@@ -67,6 +82,43 @@ function formatSla(isoString: string): { text: string; overdue: boolean } {
     text: `${String(diffH).padStart(2, '0')}:${String(diffM).padStart(2, '0')}`,
     overdue: false,
   };
+}
+
+function formatCreatedParts(isoString: string): { date: string; time: string } {
+  const d = new Date(isoString);
+  return {
+    date: d.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }),
+    time: d.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  };
+}
+
+function CreatedCell({ iso }: { iso: string }) {
+  const { date, time } = formatCreatedParts(iso);
+  return (
+    <span className="whitespace-nowrap text-xs tabular-nums" title={`${date} ${time}`}>
+      <span className="font-medium text-slate-800">{date}</span>{' '}
+      <span className="text-slate-400">{time}</span>
+    </span>
+  );
+}
+
+function SlaCell({ dueAt }: { dueAt: string | null }) {
+  if (!dueAt) {
+    return <span className="text-xs text-slate-400">—</span>;
+  }
+  const sla = formatSla(dueAt);
+  return (
+    <span className={cn('text-xs font-medium', sla.overdue ? 'text-red-600' : 'text-slate-700')}>
+      {sla.text}
+    </span>
+  );
 }
 
 export function VerifyPageClient() {
@@ -135,30 +187,34 @@ export function VerifyPageClient() {
               Thêm bộ lọc
               <ChevronDown className="size-3.5 opacity-60" aria-hidden />
             </Button>
-            <Input
+            <GooeyInput
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Tìm theo mã báo cáo, mô tả hoặc địa chỉ"
-              className="h-8 max-w-sm border-slate-200 bg-white text-sm shadow-none"
-              aria-label="Tìm báo cáo cần xác minh"
+              onValueChange={setSearch}
+              placeholder="Tìm mã báo cáo, mô tả hoặc địa chỉ"
+              collapsedWidth={180}
+              expandedWidth={320}
+              className="justify-start"
+              endAdornment={
+                isFetching && !isPending ? (
+                  <Loader2 className="size-3.5 animate-spin text-slate-400" aria-hidden />
+                ) : null
+              }
             />
-            {isFetching && !isPending ? (
-              <Loader2 className="size-4 shrink-0 animate-spin text-slate-400" aria-hidden />
-            ) : null}
           </div>
         </div>
       </header>
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]">
-        <div className="flex-1 overflow-auto [&_table]:border-collapse">
-          <Table>
+        <div className="min-h-0 flex-1 overflow-auto">
+          <Table className="w-full min-w-4xl table-fixed border-collapse">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {COLUMN_DEFS.map(col => (
                   <TableHead
                     key={col.key}
                     className={cn(
-                      'h-9 border-b border-slate-200 bg-slate-100/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500',
+                      CELL_PAD,
+                      'h-auto border-b border-slate-200 bg-slate-100/80 text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-500',
                       col.className
                     )}
                   >
@@ -170,13 +226,19 @@ export function VerifyPageClient() {
             <TableBody>
               {isPending ? (
                 <TableRow>
-                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
+                  <TableCell
+                    colSpan={COLUMN_DEFS.length}
+                    className={cn(CELL_PAD, 'h-40 text-center')}
+                  >
                     <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
+                  <TableCell
+                    colSpan={COLUMN_DEFS.length}
+                    className={cn(CELL_PAD, 'h-40 text-center')}
+                  >
                     <p className="text-sm text-destructive">Không tải được hàng đợi xác minh.</p>
                     <button
                       type="button"
@@ -189,7 +251,10 @@ export function VerifyPageClient() {
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
+                  <TableCell
+                    colSpan={COLUMN_DEFS.length}
+                    className={cn(CELL_PAD, 'h-40 text-center')}
+                  >
                     <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
                       <SaveIcon size={32} className="opacity-30" />
                       <span>Không có báo cáo</span>
@@ -204,7 +269,15 @@ export function VerifyPageClient() {
                     onClick={() => router.push(`/officer/verify/${row.id}`)}
                   >
                     {COLUMN_DEFS.map(col => (
-                      <TableCell key={col.key} className="px-3 py-7">
+                      <TableCell
+                        key={col.key}
+                        className={cn(
+                          CELL_PAD,
+                          'align-middle',
+                          col.className,
+                          col.key === 'address' && 'max-w-0'
+                        )}
+                      >
                         {renderVerifyCell(col.key, row)}
                       </TableCell>
                     ))}
@@ -216,7 +289,7 @@ export function VerifyPageClient() {
         </div>
 
         {pagination ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4">
             {pagination.totalPages > 1 ? (
               <PaginationSimple
                 page={page}
@@ -234,47 +307,78 @@ export function VerifyPageClient() {
 
 function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
   switch (key) {
+    case 'image':
+      return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
     case 'code':
       return <span className="text-xs font-medium text-sky-700">{row.code}</span>;
     case 'category':
       return <span className="text-sm text-slate-700">{row.categoryName}</span>;
+    case 'severity':
+      return <SeverityBadge severity={row.severity} />;
+    case 'status':
+      return <StatusBadge status={row.status} />;
+    case 'priority':
+      return (
+        <span className="text-xs font-medium tabular-nums text-slate-700">
+          {row.priorityScore.toFixed(2)}
+        </span>
+      );
     case 'address':
       return (
-        <span className="block max-w-[240px] truncate text-sm text-slate-600" title={row.address}>
+        <span className="block min-w-0 truncate text-sm text-slate-600" title={row.address}>
           {row.address}
         </span>
       );
-    case 'severity':
-      return <SeverityBadge severity={row.severity} />;
-    case 'sla': {
-      const slaDueAt = row.slaVerifyDueAt ?? row.slaResolveDueAt;
-      if (!slaDueAt) {
-        return <span className="text-xs text-slate-400">—</span>;
-      }
-      const sla = formatSla(slaDueAt);
-      return (
-        <span
-          className={cn('text-xs font-medium', sla.overdue ? 'text-red-600' : 'text-slate-700')}
-        >
-          {sla.text}
-        </span>
-      );
-    }
-    case 'status':
-      return <span className="text-xs text-slate-700">{reportStatusLabelVi(row.status)}</span>;
+    case 'created':
+      return <CreatedCell iso={row.createdAt} />;
+    case 'verifySla':
+      return <SlaCell dueAt={row.slaVerifyDueAt} />;
+    case 'resolveSla':
+      return <SlaCell dueAt={row.slaResolveDueAt} />;
     default:
       return null;
   }
 }
 
+/** Landscape thumb — size lives here (not square). ~16:9, rem tokens. */
+const THUMB_FRAME =
+  'relative h-9 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100 sm:h-10 sm:w-16';
+
+function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
+  if (!url) {
+    return (
+      <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
+        <ImageIcon className="size-3.5 sm:size-4" aria-hidden />
+      </div>
+    );
+  }
+
+  return (
+    <div className={THUMB_FRAME}>
+      <Image
+        src={url}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) 3.5rem, 4rem"
+        className="object-cover"
+        unoptimized
+      />
+    </div>
+  );
+}
+
 function SeverityBadge({ severity }: { severity: ReportSeverity }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-slate-700">
-      <span
-        className={cn('inline-block size-2.5 shrink-0 rounded-full', SEVERITY_DOT[severity])}
-        aria-hidden
-      />
-      {SEVERITY_LABEL[severity]}
+    <span className={cn(BADGE_BASE, REPORT_SEVERITY_BADGE_CLASSES[severity])}>
+      {REPORT_SEVERITY_LABEL_VI[severity]}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: ReportQueueItem['status'] }) {
+  return (
+    <span className={cn(BADGE_BASE, REPORT_STATUS_BADGE_CLASSES[status])} title={status}>
+      {reportStatusLabelVi(status)}
     </span>
   );
 }
