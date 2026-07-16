@@ -1,8 +1,12 @@
 'use client';
 
+import {
+  CompanyTeamArchiveDialog,
+  type CompanyTeamArchiveTarget,
+} from '@/components/company/teams/CompanyTeamArchiveDialog';
 import { CompanyTeamCreateDialog } from '@/components/company/teams/CompanyTeamCreateDialog';
 import { CompanyTeamRenameDialog } from '@/components/company/teams/CompanyTeamRenameDialog';
-import { useCompanyTeamsList, useDeactivateCompanyTeam } from '@/hooks/useCompany';
+import { useArchiveCompanyTeam, useCompanyTeamsList } from '@/hooks/useCompany';
 import { cn } from '@/lib/utils';
 import { formatCompanyDate, getCompanyMutationError } from '@/utils/companyUi';
 import {
@@ -28,7 +32,7 @@ export function CompanyTeamsView() {
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('active');
   const [createOpen, setCreateOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
-  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<CompanyTeamArchiveTarget | null>(null);
 
   const isActiveParam =
     activeFilter === 'all' ? undefined : activeFilter === 'active' ? true : false;
@@ -39,18 +43,32 @@ export function CompanyTeamsView() {
     isActive: isActiveParam,
   });
 
-  const deactivateTeam = useDeactivateCompanyTeam();
+  const archiveTeam = useArchiveCompanyTeam();
   const teams = data?.items ?? [];
   const pagination = data?.pagination;
 
-  const handleDeactivate = (id: string, name: string) => {
-    if (!window.confirm(`Vô hiệu hóa đội "${name}"? Đội sẽ không nhận task mới.`)) return;
-    setDeactivatingId(id);
-    deactivateTeam.mutate(id, {
-      onSuccess: env => toast.success(env.message ?? 'Đã vô hiệu hóa đội'),
-      onError: err => toast.error(getCompanyMutationError(err, 'Không thể vô hiệu hóa đội')),
-      onSettled: () => setDeactivatingId(null),
-    });
+  const confirmArchiveToggle = () => {
+    if (!archiveTarget) return;
+
+    const nextActive = !archiveTarget.isActive;
+    archiveTeam.mutate(
+      { id: archiveTarget.id, body: { isActive: nextActive } },
+      {
+        onSuccess: env => {
+          toast.success(
+            env.message ?? (nextActive ? 'Đã kích hoạt lại đội' : 'Đã vô hiệu hóa đội')
+          );
+          setArchiveTarget(null);
+        },
+        onError: err =>
+          toast.error(
+            getCompanyMutationError(
+              err,
+              nextActive ? 'Không thể kích hoạt đội' : 'Không thể vô hiệu hóa đội'
+            )
+          ),
+      }
+    );
   };
 
   return (
@@ -159,21 +177,26 @@ export function CompanyTeamsView() {
                     <Pencil className="size-3.5" aria-hidden />
                     Đổi tên
                   </button>
-                  {team.isActive && (
-                    <button
-                      type="button"
-                      disabled={deactivatingId === team.id}
-                      onClick={() => handleDeactivate(team.id, team.name)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      {deactivatingId === team.id ? (
-                        <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                      ) : (
-                        <Power className="size-3.5" aria-hidden />
-                      )}
-                      Vô hiệu
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled={archiveTeam.isPending && archiveTarget?.id === team.id}
+                    onClick={() =>
+                      setArchiveTarget({ id: team.id, name: team.name, isActive: team.isActive })
+                    }
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50',
+                      team.isActive
+                        ? 'border-red-100 text-red-700 hover:bg-red-50'
+                        : 'border-emerald-200 text-emerald-800 hover:bg-emerald-50'
+                    )}
+                  >
+                    {archiveTeam.isPending && archiveTarget?.id === team.id ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    ) : (
+                      <Power className="size-3.5" aria-hidden />
+                    )}
+                    {team.isActive ? 'Vô hiệu' : 'Kích hoạt'}
+                  </button>
                 </div>
               </li>
             ))}
@@ -215,6 +238,16 @@ export function CompanyTeamsView() {
         open={Boolean(renameTarget)}
         team={renameTarget}
         onClose={() => setRenameTarget(null)}
+      />
+
+      <CompanyTeamArchiveDialog
+        open={Boolean(archiveTarget)}
+        team={archiveTarget}
+        submitting={archiveTeam.isPending}
+        onConfirm={confirmArchiveToggle}
+        onClose={() => {
+          if (!archiveTeam.isPending) setArchiveTarget(null);
+        }}
       />
     </div>
   );

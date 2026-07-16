@@ -1,12 +1,12 @@
 'use client';
 
 import {
+  archiveCompanyTeam,
   assignCompanyStaffTeam,
   assignCompanyTeam,
   createCompany,
   createCompanyStaff,
   createCompanyTeam,
-  deactivateCompanyTeam,
   deleteCompany,
   fetchCompanies,
   fetchCompanyAssignmentDetail,
@@ -17,6 +17,8 @@ import {
   fetchCompanyStaff,
   fetchCompanyTeams,
   fetchMyCompany,
+  fetchMyCompanyContractHistory,
+  fetchMyCompanyKpi,
   fetchMyWardCompanies,
   renameCompanyTeam,
   removeCompanyTeamMember,
@@ -24,6 +26,7 @@ import {
   updateCompanyStaffStatus,
 } from '@/lib/api/services/fetchCompany';
 import type {
+  ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
   CompaniesListParams,
@@ -40,6 +43,9 @@ import type {
   CreateCompanyStaffInput,
   CreateCompanyTeamInput,
   MyCompany,
+  MyCompanyContractHistory,
+  MyCompanyKpi,
+  MyCompanyKpiParams,
   RenameCompanyTeamInput,
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
@@ -157,6 +163,8 @@ export const companyKeys = {
     [...companyKeys.all, 'assignments', params] as const,
   assignmentDetail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'detail', reportId] as const,
+  contractHistory: () => [...companyKeys.all, 'contract-history'] as const,
+  kpi: (params: MyCompanyKpiParams) => [...companyKeys.all, 'kpi', params] as const,
 };
 
 const STALE_MS = 3 * 60 * 1000;
@@ -333,12 +341,34 @@ export function useRenameCompanyTeam() {
   });
 }
 
-export function useDeactivateCompanyTeam() {
+export function useMyCompanyContractHistory() {
+  return useQuery({
+    queryKey: companyKeys.contractHistory(),
+    queryFn: () => fetchMyCompanyContractHistory(),
+    select: (envelope: ApiEnvelope<MyCompanyContractHistory>) => envelope.data,
+    staleTime: STALE_MS,
+  });
+}
+
+/** GET /v1/companies/my/kpi — KPI công ty CM theo kỳ. */
+export function useMyCompanyKpi(params: MyCompanyKpiParams = {}) {
+  return useQuery({
+    queryKey: companyKeys.kpi(params),
+    queryFn: () => fetchMyCompanyKpi(params),
+    select: (envelope: ApiEnvelope<MyCompanyKpi>) => envelope.data,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useArchiveCompanyTeam() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deactivateCompanyTeam(id),
+    mutationFn: ({ id, body }: { id: string; body: ArchiveCompanyTeamInput }) =>
+      archiveCompanyTeam(id, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamOptions() });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
     },
   });
 }

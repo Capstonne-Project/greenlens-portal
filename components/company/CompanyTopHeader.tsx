@@ -1,8 +1,9 @@
 'use client';
 
+import { CompanyNotificationBell } from '@/components/company/notifications/CompanyNotificationBell';
 import { getCompanyPageTitle } from '@/lib/constants/companyPageTitles';
 import { useUiStore } from '@/lib/store/uiStore';
-import { Bell, Globe, Moon, Sun } from 'lucide-react';
+import { Globe, Moon, Sun } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const iconButtonClass =
@@ -33,9 +34,7 @@ export function CompanyTopHeader() {
         )}
 
         <div className="flex shrink-0 items-center gap-2 md:gap-2.5">
-          <button type="button" className={iconButtonClass} aria-label="Thông báo (sắp có)">
-            <Bell className="size-[18px]" aria-hidden />
-          </button>
+          <CompanyNotificationBell />
           <button
             type="button"
             onClick={toggleLocale}

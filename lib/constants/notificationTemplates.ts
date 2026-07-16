@@ -22,6 +22,7 @@ export const NOTIFICATION_TEMPLATE_TYPES = [
   'BadgeEarned',
   'ReportOverdue',
   'LevelUp',
+  'DuplicateReviewNeeded',
 ] as const;
 
 export type NotificationTemplateType = (typeof NOTIFICATION_TEMPLATE_TYPES)[number];
@@ -38,6 +39,7 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   BadgeEarned: 'Nhận huy hiệu',
   ReportOverdue: 'Báo cáo quá hạn',
   LevelUp: 'Lên cấp',
+  DuplicateReviewNeeded: 'Cần duyệt trùng lặp',
 };
 
 export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 20;

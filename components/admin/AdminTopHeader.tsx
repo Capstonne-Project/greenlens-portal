@@ -1,8 +1,9 @@
 'use client';
 
+import { AdminNotificationBell } from '@/components/admin/notifications/AdminNotificationBell';
 import { getAdminPageTitle } from '@/lib/constants/adminPageTitles';
 import { useUiStore } from '@/lib/store/uiStore';
-import { Bell, Globe, Moon, Sun } from 'lucide-react';
+import { Globe, Moon, Sun } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const iconButtonClass =
@@ -24,9 +25,7 @@ export function AdminTopHeader() {
         <HeaderBrand title={title} />
 
         <div className="flex shrink-0 items-center gap-2 border-l border-border pl-3 md:gap-2.5 md:pl-4">
-          <button type="button" className={iconButtonClass} aria-label="Thông báo (sắp có)">
-            <Bell className="size-[18px]" aria-hidden />
-          </button>
+          <AdminNotificationBell />
           <button
             type="button"
             onClick={toggleLocale}

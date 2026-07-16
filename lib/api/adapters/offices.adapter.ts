@@ -80,11 +80,11 @@ export async function adaptOfficeDetail(id: string): Promise<ApiEnvelope<OfficeD
 }
 
 export async function adaptAssignOfficeOfficer(
-  officeId: string,
+  id: string,
   body: AssignOfficeOfficerInput
 ): Promise<void> {
   const payload: AssignOfficeOfficerBodyDto = { userId: body.userId };
-  await apiService.put(`/v1/offices/${officeId}/officer`, payload);
+  await apiService.put(`/v1/offices/${id}/officer`, payload);
 }
 
 function buildLeoMyReportsQuery(

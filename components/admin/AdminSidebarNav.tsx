@@ -11,6 +11,7 @@ import {
   ChevronUp,
   Bell,
   Gavel,
+  Inbox,
   Landmark,
   LayoutDashboard,
   Leaf,
@@ -182,6 +183,8 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
   const notificationTemplatesActive =
     pathname === '/admin/notification-templates' ||
     pathname.startsWith('/admin/notification-templates/');
+  const inboxNotificationsActive =
+    pathname === '/admin/notifications' || pathname.startsWith('/admin/notifications/');
 
   const navLinkClass = (active: boolean) =>
     cn(
@@ -407,6 +410,16 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
             </p>
           )}
           <ul className="space-y-1">
+            <li>
+              <Link
+                href="/admin/notifications"
+                title="Hộp thư thông báo"
+                className={navLinkClass(inboxNotificationsActive)}
+              >
+                <Inbox className="size-4 shrink-0" />
+                {!collapsed && <span>Hộp thư</span>}
+              </Link>
+            </li>
             <li>
               <Link href="/admin/profile" title="Hồ sơ" className={navLinkClass(profileActive)}>
                 <UserCircle className="size-4 shrink-0" />
