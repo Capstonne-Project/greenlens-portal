@@ -219,6 +219,52 @@ export interface RenameCompanyTeamInput {
   name: string;
 }
 
+/** PUT /v1/teams/company-teams/{id}/archive — [CompanyManager]. */
+export interface ArchiveCompanyTeamInput {
+  isActive: boolean;
+}
+
+/** GET /v1/companies/my/contract-history — một kỳ hợp đồng. */
+export interface CompanyContractPeriod {
+  id: string;
+  contractNumber: string;
+  contractType: string;
+  startDate: string;
+  endDate: string;
+  renewedByUserId: string | null;
+  renewedByName: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+/** GET /v1/companies/my/contract-history — data envelope. */
+export interface MyCompanyContractHistory {
+  companyId: string;
+  companyName: string;
+  periods: CompanyContractPeriod[];
+}
+
+/** GET /v1/companies/my/kpi — query. */
+export interface MyCompanyKpiParams {
+  from?: string;
+  to?: string;
+  period?: string;
+}
+
+/** GET /v1/companies/my/kpi — data. */
+export interface MyCompanyKpi {
+  companyId: string;
+  companyName: string;
+  periodFrom: string;
+  periodTo: string;
+  totalAssigned: number;
+  totalCompleted: number;
+  totalDeclined: number;
+  completedOnTime: number;
+  slaComplianceRate: number;
+  avgResolutionHours: number;
+}
+
 export interface CompanyTeamOption {
   id: string;
   name: string;

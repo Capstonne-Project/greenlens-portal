@@ -64,10 +64,10 @@ export async function updateOffice(id: string, body: UpdateOfficeInput): Promise
 }
 
 export async function assignOfficeOfficer(
-  officeId: string,
+  id: string,
   body: AssignOfficeOfficerInput
 ): Promise<void> {
-  return adaptAssignOfficeOfficer(officeId, body);
+  return adaptAssignOfficeOfficer(id, body);
 }
 
 /** GET /v1/offices/my/reports — LEO theo dõi báo cáo trong LocalOffice. */

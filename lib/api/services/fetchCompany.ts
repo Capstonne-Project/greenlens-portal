@@ -3,6 +3,7 @@
  */
 import {
   adaptAddCompanyTeamMember,
+  adaptArchiveCompanyTeam,
   adaptAssignCompanyTeam,
   adaptCompanyAssignmentDetail,
   adaptCompanyAssignments,
@@ -11,8 +12,9 @@ import {
   adaptCompanyTeamsList,
   adaptCreateCompanyStaff,
   adaptCreateCompanyTeam,
-  adaptDeactivateCompanyTeam,
   adaptMyCompany,
+  adaptMyCompanyContractHistory,
+  adaptMyCompanyKpi,
   adaptRenameCompanyTeam,
   adaptRemoveCompanyTeamMember,
   adaptUpdateCompanyStaffStatus,
@@ -28,6 +30,7 @@ import {
 } from '@/lib/api/adapters/companies.adapter';
 import type {
   AddCompanyTeamMemberInput,
+  ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
   CompaniesList,
@@ -51,6 +54,9 @@ import type {
   CreateCompanyTeamInput,
   CreatedCompany,
   MyCompany,
+  MyCompanyContractHistory,
+  MyCompanyKpi,
+  MyCompanyKpiParams,
   MyWardCompanies,
   RenameCompanyTeamInput,
   UpdateCompanyServiceAreasInput,
@@ -60,6 +66,7 @@ import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
   AddCompanyTeamMemberInput,
+  ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
   CompaniesList,
@@ -74,6 +81,7 @@ export type {
   CompanyAssignmentTeamDetail,
   CompanyAssignmentTimelineEntry,
   CompanyAssignmentWasteTag,
+  CompanyContractPeriod,
   CompanyContractType,
   COMPANY_CONTRACT_TYPES,
   CompanyDetail,
@@ -102,6 +110,9 @@ export type {
   CreateCompanyTeamInput,
   CreatedCompany,
   MyCompany,
+  MyCompanyContractHistory,
+  MyCompanyKpi,
+  MyCompanyKpiParams,
   MyWardCompanies,
   MyWardCompanyItem,
   RenameCompanyTeamInput,
@@ -233,8 +244,26 @@ export async function renameCompanyTeam(
   return adaptRenameCompanyTeam(id, body);
 }
 
-export async function deactivateCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
-  return adaptDeactivateCompanyTeam(id);
+/** PUT /v1/teams/company-teams/{id}/archive — đóng/mở team công ty. */
+export async function archiveCompanyTeam(
+  id: string,
+  body: ArchiveCompanyTeamInput
+): Promise<ApiEnvelope<string | null>> {
+  return adaptArchiveCompanyTeam(id, body);
+}
+
+/** GET /v1/companies/my/contract-history — lịch sử kỳ hợp đồng công ty CM. */
+export async function fetchMyCompanyContractHistory(): Promise<
+  ApiEnvelope<MyCompanyContractHistory>
+> {
+  return adaptMyCompanyContractHistory();
+}
+
+/** GET /v1/companies/my/kpi — KPI công ty của CM. */
+export async function fetchMyCompanyKpi(
+  params?: MyCompanyKpiParams
+): Promise<ApiEnvelope<MyCompanyKpi>> {
+  return adaptMyCompanyKpi(params);
 }
 
 export async function fetchCompanyQueue(
@@ -284,7 +313,9 @@ const companyApi = {
   fetchCompanyTeams,
   createCompanyTeam,
   renameCompanyTeam,
-  deactivateCompanyTeam,
+  archiveCompanyTeam,
+  fetchMyCompanyContractHistory,
+  fetchMyCompanyKpi,
   fetchCompanyQueue,
   fetchCompanyAssignments,
   fetchCompanyAssignmentDetail,

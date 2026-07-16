@@ -124,7 +124,7 @@ export function OfficeCreateDialog({ open, onClose, onCompleted }: OfficeCreateD
         wardCode: wardCode.trim(),
       });
       await assignOfficer.mutateAsync({
-        officeId: officeEnv.data.id,
+        id: officeEnv.data.id,
         body: { userId: selectedUser.id },
       });
       setAllStepsDone(true);

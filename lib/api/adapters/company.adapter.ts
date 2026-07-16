@@ -15,8 +15,12 @@ import type {
   CompanyTeamsListParams,
   CreateCompanyStaffInput,
   CreateCompanyStaffResult,
+  ArchiveCompanyTeamInput,
   CreateCompanyTeamInput,
   MyCompany,
+  MyCompanyContractHistory,
+  MyCompanyKpi,
+  MyCompanyKpiParams,
   RenameCompanyTeamInput,
   UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
@@ -138,9 +142,43 @@ export async function adaptRenameCompanyTeam(
   return res.data;
 }
 
-export async function adaptDeactivateCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
-  const res = await apiService.delete<ApiEnvelope<string | null>>(
-    `/v1/teams/${encodeURIComponent(id)}`
+/** PUT /v1/teams/company-teams/{id}/archive — đóng/mở team công ty. */
+export async function adaptArchiveCompanyTeam(
+  id: string,
+  body: ArchiveCompanyTeamInput
+): Promise<ApiEnvelope<string | null>> {
+  const res = await apiService.put<ApiEnvelope<string | null>>(
+    `/v1/teams/company-teams/${encodeURIComponent(id)}/archive`,
+    body
+  );
+  return res.data;
+}
+
+/** GET /v1/companies/my/contract-history — lịch sử kỳ hợp đồng công ty CM. */
+export async function adaptMyCompanyContractHistory(): Promise<
+  ApiEnvelope<MyCompanyContractHistory>
+> {
+  const res = await apiService.get<ApiEnvelope<MyCompanyContractHistory>>(
+    '/v1/companies/my/contract-history'
+  );
+  return res.data;
+}
+
+function buildMyKpiQuery(params?: MyCompanyKpiParams): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (params?.from?.trim()) query.from = params.from.trim();
+  if (params?.to?.trim()) query.to = params.to.trim();
+  if (params?.period?.trim()) query.period = params.period.trim();
+  return query;
+}
+
+/** GET /v1/companies/my/kpi — KPI công ty CM. */
+export async function adaptMyCompanyKpi(
+  params?: MyCompanyKpiParams
+): Promise<ApiEnvelope<MyCompanyKpi>> {
+  const res = await apiService.get<ApiEnvelope<MyCompanyKpi>>(
+    '/v1/companies/my/kpi',
+    buildMyKpiQuery(params)
   );
   return res.data;
 }
