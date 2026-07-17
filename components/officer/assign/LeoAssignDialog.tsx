@@ -1,18 +1,11 @@
 'use client';
 
 import { AceternityTabs } from '@/components/ui/aceternity-tabs';
+import { Modal, ModalBody, ModalContent, ModalFooter } from '@/components/ui/animated-modal';
 import UsersGroupIcon from '@/components/ui/users-group-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useMyWardCompanies } from '@/hooks/useCompany';
 import { useAssignReport, useDispatchReportToCompany } from '@/hooks/useOfficer';
 import { TEAMS_ASSIGN_PAGE_SIZE, useTeamsInfiniteList } from '@/hooks/useTeams';
@@ -144,7 +137,7 @@ function TeamRow({
   );
 }
 
-/** LEO phân công — shadcn Dialog + Aceternity tabs (Company | Cleanup Team). */
+/** LEO phân công — animated Modal + Aceternity tabs (Company | Cleanup Team). */
 export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAssignDialogProps) {
   const assignMutation = useAssignReport();
   const dispatchMutation = useDispatchReportToCompany();
@@ -355,78 +348,86 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
   );
 
   return (
-    <Dialog open={open} onOpenChange={next => !next && handleClose()}>
-      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
-        <DialogHeader className="space-y-1 border-b border-border px-6 py-4 text-left">
-          <DialogTitle>Phân công xử lý</DialogTitle>
-          <DialogDescription>
-            Chọn công ty DVMT phục vụ phường/xã và đội dọn dẹp cộng đồng cho{' '}
-            <span className="font-semibold text-foreground">{reportIds.length}</span> báo cáo đã
-            chọn.
-          </DialogDescription>
-        </DialogHeader>
+    <Modal
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen) handleClose();
+      }}
+      dismissible={!isSubmitting}
+    >
+      <ModalBody className="min-h-0 max-h-[90vh] w-full max-w-2xl flex-none overflow-hidden md:max-w-2xl">
+        <ModalContent className="min-h-0 gap-0 overflow-hidden p-0 md:p-0">
+          <div className="space-y-1 border-b border-border px-6 py-4 pr-12 text-left">
+            <h2 className="text-lg font-semibold text-foreground">Phân công xử lý</h2>
+            <p className="text-sm text-muted-foreground">
+              Chọn công ty DVMT phục vụ phường/xã và đội dọn dẹp cộng đồng cho{' '}
+              <span className="font-semibold text-foreground">{reportIds.length}</span> báo cáo đã
+              chọn.
+            </p>
+          </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
-          <AceternityTabs
-            key={formKey}
-            tabs={tabs}
-            onActiveChange={handleTabChange}
-            containerClassName="rounded-full border border-border bg-muted/40 p-1"
-            tabClassName="px-5 py-1.5"
-            contentClassName="min-h-[260px] flex-1"
-          />
-
-          <div>
-            <label
-              htmlFor="assign-note"
-              className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              Ghi chú (tuỳ chọn)
-            </label>
-            <textarea
-              id="assign-note"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              rows={2}
-              placeholder="Yêu cầu cụ thể, deadline, lưu ý an toàn..."
-              className="mt-1.5 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950"
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
+            <AceternityTabs
+              key={formKey}
+              tabs={tabs}
+              onActiveChange={handleTabChange}
+              containerClassName="rounded-full border border-border bg-muted/40 p-1"
+              tabClassName="px-5 py-1.5"
+              contentClassName="min-h-[260px] flex-1"
             />
-          </div>
-        </div>
 
-        <DialogFooter className="flex-row items-center justify-between gap-3 border-t border-border bg-muted/30 px-6 py-3 sm:justify-between">
-          <p className="text-xs text-muted-foreground">
-            {activeTab === 'company' ? (
-              selectedCompany ? (
-                <>
-                  Công ty:{' '}
-                  <span className="font-semibold text-foreground">{selectedCompany.name}</span>
-                </>
-              ) : (
-                'Chưa chọn công ty'
-              )
-            ) : (
-              <>
-                Đã chọn{' '}
-                <span className="font-semibold text-foreground">{selectedTeamIds.size}</span> đội
-              </>
-            )}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
-              Huỷ
-            </Button>
-            <Button
-              onClick={() => void handleSubmit()}
-              disabled={!canSubmit}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
-            >
-              <UserPlus className="mr-1.5 size-4" />
-              {isSubmitting ? 'Đang phân công...' : 'Phân công'}
-            </Button>
+            <div>
+              <label
+                htmlFor="assign-note"
+                className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Ghi chú (tuỳ chọn)
+              </label>
+              <textarea
+                id="assign-note"
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                rows={2}
+                placeholder="Yêu cầu cụ thể, deadline, lưu ý an toàn..."
+                className="mt-1.5 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950"
+              />
+            </div>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+          <ModalFooter className="flex-row items-center justify-between gap-3 border-t border-border bg-muted/30 px-6 py-3 sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              {activeTab === 'company' ? (
+                selectedCompany ? (
+                  <>
+                    Công ty:{' '}
+                    <span className="font-semibold text-foreground">{selectedCompany.name}</span>
+                  </>
+                ) : (
+                  'Chưa chọn công ty'
+                )
+              ) : (
+                <>
+                  Đã chọn{' '}
+                  <span className="font-semibold text-foreground">{selectedTeamIds.size}</span> đội
+                </>
+              )}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+                Huỷ
+              </Button>
+              <Button
+                onClick={() => void handleSubmit()}
+                disabled={!canSubmit}
+                className="bg-emerald-600 text-white hover:bg-emerald-500"
+              >
+                <UserPlus className="mr-1.5 size-4" />
+                {isSubmitting ? 'Đang phân công...' : 'Phân công'}
+              </Button>
+            </div>
+          </ModalFooter>
+        </ModalContent>
+      </ModalBody>
+    </Modal>
   );
 }

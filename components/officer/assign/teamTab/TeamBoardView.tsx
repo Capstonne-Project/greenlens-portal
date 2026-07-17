@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GooeyInput } from '@/components/ui/gooey-input';
+import { Input } from '@/components/ui/input';
 import { PaginationSimple } from '@/components/ui/pagination';
 import { useRemoveTeamMember, useTeamDetail } from '@/hooks/useTeams';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
@@ -22,6 +22,7 @@ import {
   Loader2,
   MoreHorizontal,
   Plus,
+  Search,
   Trash2,
   UserPlus,
   Users,
@@ -452,19 +453,6 @@ export function BoardView({
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Search + filters */}
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <GooeyInput
-          value={search}
-          onValueChange={onSearchChange}
-          placeholder="Tìm tên đội..."
-          collapsedWidth={160}
-          expandedWidth={280}
-          className="justify-start"
-          endAdornment={
-            isFetching && !isLoading ? (
-              <Loader2 className="size-3.5 animate-spin text-slate-400" aria-hidden />
-            ) : null
-          }
-        />
         <TeamFilterDropdowns
           statusFilter={statusFilter}
           teamTypeFilter={teamTypeFilter}
@@ -473,6 +461,25 @@ export function BoardView({
           onTeamTypeChange={onTeamTypeChange}
           onAvailableChange={onAvailableChange}
         />
+        <div className="relative ml-auto w-72 max-w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder="Tìm tên đội..."
+            className={cn(
+              'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+              isFetching && !isLoading && 'pr-8'
+            )}
+            aria-label="Tìm tên đội"
+          />
+          {isFetching && !isLoading ? (
+            <Loader2
+              className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+              aria-hidden
+            />
+          ) : null}
+        </div>
       </div>
 
       {/* Kanban columns — always fill remaining height (0 or N cards) */}
