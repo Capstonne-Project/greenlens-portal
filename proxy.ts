@@ -1,4 +1,4 @@
-import { AUTH_COOKIE_ACCESS } from '@/lib/constants/authCookies';
+import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_REFRESH } from '@/lib/constants/authCookies';
 import { getDashboardPathByRole, mapApiRoleToAuth } from '@/lib/auth/mapUser';
 import type { AuthUser } from '@/lib/store/authStore';
 import { decodeJwt, jwtVerify } from 'jose';
@@ -22,6 +22,13 @@ function getAccessToken(request: NextRequest): string | undefined {
   );
 }
 
+// UX guard only — real auth is enforced by BE. When the access token is
+// missing/expired but a refresh cookie is still present, let the request
+// through so the client can silently refresh (L1) instead of forcing logout.
+function hasRefreshToken(request: NextRequest): boolean {
+  return Boolean(request.cookies.get(AUTH_COOKIE_REFRESH)?.value);
+}
+
 async function getMappedRole(token: string): Promise<AuthUser['role'] | null> {
   const secret = process.env.JWT_SECRET;
   try {
@@ -32,6 +39,11 @@ async function getMappedRole(token: string): Promise<AuthUser['role'] | null> {
         (typeof payload.role === 'string' && payload.role);
       return raw ? mapApiRoleToAuth(raw) : null;
     }
+    // Production: fail closed — require JWT_SECRET to verify signatures.
+    if (process.env.NODE_ENV === 'production') {
+      return null;
+    }
+    // Local/dev UX only — BE still enforces auth on API calls.
     const payload = decodeJwt(token);
     const raw =
       (typeof payload[ROLE_CLAIM] === 'string' && payload[ROLE_CLAIM]) ||
@@ -48,12 +60,14 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === '/') {
     if (!token) {
+      if (hasRefreshToken(request)) return NextResponse.next();
       return NextResponse.redirect(new URL('/login', request.url));
     }
     const mapped = await getMappedRole(token);
     if (mapped && mapped !== 'citizen') {
       return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
     }
+    if (!mapped && hasRefreshToken(request)) return NextResponse.next();
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -70,10 +84,12 @@ export async function proxy(request: NextRequest) {
   for (const { prefix, role: required } of PROTECTED) {
     if (pathname.startsWith(prefix)) {
       if (!token) {
+        if (hasRefreshToken(request)) return NextResponse.next();
         return NextResponse.redirect(new URL('/login', request.url));
       }
       const mapped = await getMappedRole(token);
       if (!mapped) {
+        if (hasRefreshToken(request)) return NextResponse.next();
         return NextResponse.redirect(new URL('/login', request.url));
       }
       if (mapped !== required) {

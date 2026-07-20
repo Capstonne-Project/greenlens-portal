@@ -42,7 +42,7 @@ export function OfficeAssignOfficerDialog({
     }
 
     assignOfficer.mutate(
-      { officeId: office.id, body: { userId: selectedUser.id } },
+      { id: office.id, body: { userId: selectedUser.id } },
       {
         onSuccess: () => {
           toast.success('Đã gán LEO phụ trách văn phòng.');

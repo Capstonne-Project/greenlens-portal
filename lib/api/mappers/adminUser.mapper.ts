@@ -1,4 +1,6 @@
 import type {
+  AdminRoleDto,
+  AdminUserDetailDto,
   AdminUserDto,
   AdminUserMutationDataDto,
   AdminUsersPagedDto,
@@ -6,7 +8,9 @@ import type {
 } from '@/lib/api/dto/adminUser.dto';
 import { normalizeApiRole } from '@/lib/constants/systemRoles';
 import type {
+  AdminRole,
   AdminUser,
+  AdminUserDetail,
   AdminUserMutationResult,
   AdminUsersList,
   PaginationMeta,
@@ -23,6 +27,25 @@ export function mapAdminUserDto(dto: AdminUserDto): AdminUser {
     isEmailVerified: Boolean(dto.isEmailVerified),
     createdAt: dto.createdAt ?? '',
   };
+}
+
+export function mapAdminUserDetailDto(dto: AdminUserDetailDto): AdminUserDetail {
+  return {
+    ...mapAdminUserDto(dto),
+    googleId: dto.googleId ?? null,
+    updatedAt: dto.updatedAt ?? null,
+  };
+}
+
+export function mapAdminRoleDto(dto: AdminRoleDto): AdminRole {
+  return {
+    name: dto.name ?? '',
+    description: dto.description ?? '',
+  };
+}
+
+export function mapAdminRoleDtoList(dtos: AdminRoleDto[]): AdminRole[] {
+  return dtos.map(mapAdminRoleDto);
 }
 
 export function mapPaginationDto(dto: AdminUsersPagedDto['pagination']): PaginationMeta {

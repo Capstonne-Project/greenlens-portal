@@ -1,6 +1,7 @@
 'use client';
 
 import { CompanyStatusBadge } from '@/components/company/CompanyStatusBadge';
+import { CompanyKpiOverviewStrip } from '@/components/company/kpi/CompanyKpiOverviewStrip';
 import { CompanyCommandRail } from '@/components/company/shared/CompanyCommandRail';
 import { useCompanyQueueCount, useMyCompany } from '@/hooks/useCompany';
 import { formatCompanyDate } from '@/utils/companyUi';
@@ -12,7 +13,9 @@ import {
   MapPin,
   Phone,
   RefreshCw,
+  ScrollText,
   Sparkles,
+  Target,
   Users,
   UsersRound,
 } from 'lucide-react';
@@ -197,8 +200,16 @@ export function CompanyOverviewDashboard() {
         </div>
       </section>
 
+      <CompanyKpiOverviewStrip />
+
       <CompanyCommandRail
         items={[
+          {
+            href: '/company/kpi',
+            label: 'KPI công ty',
+            description: 'SLA & hiệu suất kỳ',
+            icon: Target,
+          },
           {
             href: '/company/queue',
             label: 'Điều phối báo cáo',
@@ -224,6 +235,12 @@ export function CompanyOverviewDashboard() {
             label: 'Đội dọn dẹp',
             description: 'Quản lý nguồn lực hiện trường',
             icon: UsersRound,
+          },
+          {
+            href: '/company/contract-history',
+            label: 'Lịch sử hợp đồng',
+            description: 'Các kỳ hợp đồng đã ký',
+            icon: ScrollText,
           },
         ]}
       />

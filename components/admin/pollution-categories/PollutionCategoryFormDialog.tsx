@@ -22,8 +22,8 @@ const formSchema = z.object({
     .string()
     .max(500, 'URL quá dài')
     .optional()
-    .refine(v => !v?.trim() || /^https?:\/\//i.test(v.trim()), {
-      message: 'Icon URL phải bắt đầu bằng http:// hoặc https://',
+    .refine(v => !v?.trim() || /^https:\/\//i.test(v.trim()), {
+      message: 'Icon URL phải bắt đầu bằng https://',
     }),
 });
 

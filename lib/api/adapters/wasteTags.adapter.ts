@@ -96,3 +96,8 @@ export async function adaptToggleWasteTag(id: string, body: ToggleWasteTagInput)
   const payload: ToggleWasteTagBodyDto = { isActive: body.isActive };
   await apiService.patch(`/v1/admin/waste-tags/${id}/toggle`, payload);
 }
+
+/** DELETE /v1/admin/waste-tags/{id} — soft delete (vô hiệu hóa). */
+export async function adaptDeleteWasteTag(id: string): Promise<void> {
+  await apiService.delete(`/v1/admin/waste-tags/${encodeURIComponent(id)}`);
+}

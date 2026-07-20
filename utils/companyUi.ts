@@ -24,6 +24,15 @@ export function companyStatusClasses(status: string): string {
   return COMPANY_STATUS_CLASSES[status] ?? 'bg-muted text-muted-foreground';
 }
 
+const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  Subsidiary: 'Phụ lục',
+  Bidding: 'Đấu thầu',
+};
+
+export function contractTypeLabel(type: string): string {
+  return CONTRACT_TYPE_LABELS[type] ?? type;
+}
+
 export function formatCompanyDate(iso: string | null | undefined): string {
   if (!iso?.trim() || iso.startsWith('0001-01-01')) return '—';
   try {
@@ -156,4 +165,18 @@ export function formatSlaRemaining(hours: number): string {
   if (overdue < 24) return `Quá hạn ${overdue} giờ`;
   const days = Math.floor(overdue / 24);
   return `Quá hạn ${days} ngày`;
+}
+
+/** BE có thể trả 0–1 hoặc 0–100. */
+export function formatSlaComplianceRate(rate: number): string {
+  if (!Number.isFinite(rate)) return '—';
+  const pct = rate <= 1 ? rate * 100 : rate;
+  return `${Math.round(pct * 10) / 10}%`;
+}
+
+export function formatAvgResolutionHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return '—';
+  if (hours < 24) return `${Math.round(hours * 10) / 10} giờ`;
+  const days = hours / 24;
+  return `${Math.round(days * 10) / 10} ngày`;
 }

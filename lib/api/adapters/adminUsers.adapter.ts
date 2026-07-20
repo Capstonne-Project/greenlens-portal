@@ -1,20 +1,27 @@
 import type {
+  AdminRoleDto,
+  AdminUserDetailDto,
   AdminUserDto,
   AdminUserMutationDataDto,
   AdminUsersListParamsDto,
   AdminUsersPagedDto,
+  ChangeUserRoleBodyDto,
   CreateAdminUserBodyDto,
   CreateAdminUserDataDto,
   UpdateAdminUserBodyDto,
 } from '@/lib/api/dto/adminUser.dto';
 import {
+  mapAdminRoleDtoList,
+  mapAdminUserDetailDto,
   mapAdminUserDtoList,
   mapAdminUsersPagedDto,
   mapAdminUserMutationDataDto,
   mapCreateAdminUserDataDto,
 } from '@/lib/api/mappers/adminUser.mapper';
 import type {
+  AdminRole,
   AdminUser,
+  AdminUserDetail,
   AdminUsersList,
   AdminUsersListParams,
   AdminUserMutationResult,
@@ -202,7 +209,34 @@ export async function adaptDeleteAdminUser(
   return mapApiEnvelope(res.data, mapAdminUserMutationDataDto);
 }
 
-/** PUT /v1/admin/users/{id}/role — BE trả 204 No Content. */
-export async function adaptChangeAdminUserRole(id: string, newRole: string): Promise<void> {
-  await apiService.put(`/v1/admin/users/${id}/role`, { newRole });
+/** GET /v1/admin/users/{id} */
+export async function adaptAdminUserDetail(id: string): Promise<ApiEnvelope<AdminUserDetail>> {
+  const res = await apiService.get<ApiEnvelope<AdminUserDetailDto>>(
+    `/v1/admin/users/${encodeURIComponent(id)}`
+  );
+  return mapApiEnvelope(res.data, mapAdminUserDetailDto);
+}
+
+/** GET /v1/admin/roles */
+export async function adaptAdminRoles(): Promise<ApiEnvelope<AdminRole[]>> {
+  const res = await apiService.get<ApiEnvelope<AdminRoleDto[]>>('/v1/admin/roles');
+  return mapApiEnvelope(res.data, mapAdminRoleDtoList);
+}
+
+/** PUT /v1/admin/users/{id}/role — BE trả 200 `{ code, message, status }` (data có thể omit). */
+export async function adaptChangeAdminUserRole(
+  id: string,
+  newRole: string
+): Promise<ApiEnvelope<null>> {
+  const payload: ChangeUserRoleBodyDto = { newRole };
+  const res = await apiService.put<ApiEnvelope<unknown>>(
+    `/v1/admin/users/${encodeURIComponent(id)}/role`,
+    payload
+  );
+  return {
+    code: res.data.code,
+    message: res.data.message,
+    status: res.data.status,
+    data: null,
+  };
 }

@@ -20,12 +20,17 @@ export interface AdminReportListItem {
   provinceCode: string | null;
   reporterId: string | null;
   isAnonymous: boolean;
+  isHidden: boolean;
+  verifiedBy: string | null;
   assignedOfficerId: string | null;
   assignmentCount: number;
   priorityScore: number;
   reporterCount: number;
   reopenedCount: number;
   createdAt: string;
+  verifiedAt: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
 }
 
 export interface PaginationMeta {
@@ -70,6 +75,17 @@ export interface AdminReportAssignment {
   assignedAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
+  progressPercent: number | null;
+  progressNote: string | null;
+  progressUpdatedAt: string | null;
+}
+
+export interface AdminReportWasteTag {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string | null;
+  iconUrl: string | null;
 }
 
 export interface AdminReportDetail extends AdminReportListItem {
@@ -81,10 +97,18 @@ export interface AdminReportDetail extends AdminReportListItem {
   assignedOfficeId: string | null;
   media: AdminReportMedia[];
   assignments: AdminReportAssignment[];
-  verifiedAt: string | null;
-  resolvedAt: string | null;
-  closedAt: string | null;
+  wasteTags: AdminReportWasteTag[];
+  aiSuggestedWasteTagCodes: string | null;
   startedAt: string | null;
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
+}
+
+export interface HideAdminReportInput {
+  reason: string;
+}
+
+export interface UpdateAdminReportStatusInput {
+  newStatus: string;
+  reason: string;
 }

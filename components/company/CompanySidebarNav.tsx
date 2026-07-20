@@ -3,7 +3,17 @@
 import { SidebarCollapseToggle } from '@/components/common/SidebarCollapseToggle';
 import { useCompanyQueueCount } from '@/hooks/useCompany';
 import { cn } from '@/lib/utils';
-import { ClipboardList, LayoutDashboard, Leaf, LineChart, Users, UsersRound } from 'lucide-react';
+import {
+  Bell,
+  ClipboardList,
+  LayoutDashboard,
+  Leaf,
+  LineChart,
+  ScrollText,
+  Target,
+  Users,
+  UsersRound,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -17,6 +27,11 @@ export function CompanySidebarNav({ collapsed = false }: { collapsed?: boolean }
     pathname === '/company/assignments' || pathname.startsWith('/company/assignments/');
   const staffActive = pathname === '/company/staff' || pathname.startsWith('/company/staff/');
   const teamsActive = pathname === '/company/teams' || pathname.startsWith('/company/teams/');
+  const contractHistoryActive =
+    pathname === '/company/contract-history' || pathname.startsWith('/company/contract-history/');
+  const notificationsActive =
+    pathname === '/company/notifications' || pathname.startsWith('/company/notifications/');
+  const kpiActive = pathname === '/company/kpi' || pathname.startsWith('/company/kpi/');
 
   const linkClass = (active: boolean) =>
     cn(
@@ -78,6 +93,12 @@ export function CompanySidebarNav({ collapsed = false }: { collapsed?: boolean }
               </Link>
             </li>
             <li>
+              <Link href="/company/kpi" title="KPI công ty" className={linkClass(kpiActive)}>
+                <Target className="size-4 shrink-0" />
+                {!collapsed && <span>KPI công ty</span>}
+              </Link>
+            </li>
+            <li>
               <Link
                 href="/company/queue"
                 title="Điều phối báo cáo"
@@ -113,6 +134,16 @@ export function CompanySidebarNav({ collapsed = false }: { collapsed?: boolean }
                 {!collapsed && <span>Theo dõi phân công</span>}
               </Link>
             </li>
+            <li>
+              <Link
+                href="/company/notifications"
+                title="Thông báo"
+                className={linkClass(notificationsActive)}
+              >
+                <Bell className="size-4 shrink-0" />
+                {!collapsed && <span>Thông báo</span>}
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -133,6 +164,16 @@ export function CompanySidebarNav({ collapsed = false }: { collapsed?: boolean }
               <Link href="/company/teams" title="Đội dọn dẹp" className={linkClass(teamsActive)}>
                 <UsersRound className="size-4 shrink-0" />
                 {!collapsed && <span>Đội dọn dẹp</span>}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/company/contract-history"
+                title="Lịch sử hợp đồng"
+                className={linkClass(contractHistoryActive)}
+              >
+                <ScrollText className="size-4 shrink-0" />
+                {!collapsed && <span>Lịch sử hợp đồng</span>}
               </Link>
             </li>
           </ul>

@@ -1,17 +1,26 @@
 import {
   adaptAssignOfficeOfficer,
   adaptCreateOffice,
+  adaptFetchLeoMyReports,
+  adaptFetchOfficeStaff,
   adaptOfficeDetail,
   adaptOfficesList,
+  adaptRecruitOfficeStaff,
   adaptUpdateOffice,
 } from '@/lib/api/adapters/offices.adapter';
 import type {
   AssignOfficeOfficerInput,
   CreateOfficeInput,
+  LeoMyReportsData,
+  LeoMyReportsParams,
   Office,
   OfficeDetail,
   OfficesList,
   OfficesListParams,
+  OfficeStaffList,
+  OfficeStaffListParams,
+  RecruitOfficeStaffInput,
+  RecruitOfficeStaffResult,
   UpdateOfficeInput,
 } from '@/lib/api/models/office';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -19,11 +28,22 @@ import type { ApiEnvelope } from '@/lib/api/types/envelope';
 export type {
   AssignOfficeOfficerInput,
   CreateOfficeInput,
+  LeoMyReportAssignment,
+  LeoMyReportItem,
+  LeoMyReportsData,
+  LeoMyReportsParams,
+  LeoMyReportsSeverity,
+  LeoMyReportsSortBy,
+  LeoMyReportsStatus,
   Office,
   OfficeDetail,
   OfficeListItem,
   OfficesList,
   OfficesListParams,
+  OfficeStaffList,
+  OfficeStaffListParams,
+  RecruitOfficeStaffInput,
+  RecruitOfficeStaffResult,
   UpdateOfficeInput,
 } from '@/lib/api/models/office';
 
@@ -44,10 +64,31 @@ export async function updateOffice(id: string, body: UpdateOfficeInput): Promise
 }
 
 export async function assignOfficeOfficer(
-  officeId: string,
+  id: string,
   body: AssignOfficeOfficerInput
 ): Promise<void> {
-  return adaptAssignOfficeOfficer(officeId, body);
+  return adaptAssignOfficeOfficer(id, body);
+}
+
+/** GET /v1/offices/my/reports — LEO theo dõi báo cáo trong LocalOffice. */
+export async function fetchLeoMyReports(
+  params?: LeoMyReportsParams
+): Promise<ApiEnvelope<LeoMyReportsData>> {
+  return adaptFetchLeoMyReports(params);
+}
+
+/** GET /v1/offices/my/staff — danh sách Cleaner/Inspector trong LocalOffice. */
+export async function fetchOfficeStaff(
+  params?: OfficeStaffListParams
+): Promise<ApiEnvelope<OfficeStaffList>> {
+  return adaptFetchOfficeStaff(params);
+}
+
+/** POST /v1/offices/my/staff — LEO tuyển Citizen vào LocalOffice + đội. */
+export async function recruitOfficeStaff(
+  body: RecruitOfficeStaffInput
+): Promise<ApiEnvelope<RecruitOfficeStaffResult>> {
+  return adaptRecruitOfficeStaff(body);
 }
 
 export default {
@@ -56,4 +97,7 @@ export default {
   createOffice,
   updateOffice,
   assignOfficeOfficer,
+  fetchLeoMyReports,
+  fetchOfficeStaff,
+  recruitOfficeStaff,
 };

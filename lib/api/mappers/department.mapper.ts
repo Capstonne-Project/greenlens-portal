@@ -5,6 +5,10 @@ import type {
   DepartmentListItemDto,
   DepartmentOfficeSummaryDto,
   DepartmentsListDataDto,
+  DeoMyReportItemDto,
+  DeoMyReportsDataDto,
+  MyOfficesDataDto,
+  MyOfficesOfficeItemDto,
 } from '@/lib/api/dto/department.dto';
 import type {
   Department,
@@ -13,6 +17,10 @@ import type {
   DepartmentListItem,
   DepartmentOfficeSummary,
   DepartmentsList,
+  DeoMyReportItem,
+  DeoMyReportsData,
+  MyOffices,
+  MyOfficesOfficeItem,
 } from '@/lib/api/models/department';
 
 function mapDepartmentDeoDto(dto: DepartmentDeoDto): DepartmentDeo {
@@ -57,6 +65,7 @@ function mapDepartmentOfficeSummaryDto(dto: DepartmentOfficeSummaryDto): Departm
     officerName: dto.officerName,
     isOnboarded: dto.isOnboarded,
     teamCount: dto.teamCount,
+    // ...(dto.createdAt ? { createdAt: dto.createdAt } : {}),
   };
 }
 
@@ -91,6 +100,77 @@ export function mapDepartmentsListDataDto(data: DepartmentsListDataDto): Departm
       totalPages,
       hasNext: data.page < totalPages,
       hasPrev: data.page > 1,
+    },
+  };
+}
+
+function mapMyOfficesOfficeItemDto(dto: MyOfficesOfficeItemDto): MyOfficesOfficeItem {
+  return {
+    ...mapDepartmentOfficeSummaryDto(dto),
+    createdAt: dto.createdAt,
+  };
+}
+
+export function mapMyOfficesDataDto(dto: MyOfficesDataDto): MyOffices {
+  return {
+    departmentId: dto.departmentId,
+    departmentName: dto.departmentName,
+    provinceCode: dto.provinceCode.trim(),
+    offices: (dto.offices ?? []).map(mapMyOfficesOfficeItemDto),
+    pagination: {
+      page: dto.pagination.page,
+      pageSize: dto.pagination.pageSize,
+      totalItems: dto.pagination.totalItems,
+      totalPages: dto.pagination.totalPages,
+      hasNext: dto.pagination.hasNext,
+      hasPrev: dto.pagination.hasPrev,
+    },
+  };
+}
+
+function mapDeoMyReportItemDto(dto: DeoMyReportItemDto): DeoMyReportItem {
+  return {
+    id: dto.id,
+    code: dto.code,
+    categoryCode: dto.categoryCode,
+    categoryName: dto.categoryName,
+    severity: dto.severity,
+    status: dto.status,
+    latitude: dto.latitude,
+    longitude: dto.longitude,
+    address: dto.address,
+    wardCode: dto.wardCode,
+    wardName: dto.wardName,
+    reporterId: dto.reporterId,
+    reporterName: dto.reporterName,
+    assignedOfficeId: dto.assignedOfficeId ?? null,
+    assignedOfficeName: dto.assignedOfficeName?.trim() ? dto.assignedOfficeName.trim() : null,
+    assignmentCount: dto.assignmentCount,
+    priorityScore: dto.priorityScore,
+    reporterCount: dto.reporterCount,
+    reopenedCount: dto.reopenedCount,
+    createdAt: dto.createdAt,
+    verifiedAt: dto.verifiedAt ?? null,
+    startedAt: dto.startedAt ?? null,
+    resolvedAt: dto.resolvedAt ?? null,
+    closedAt: dto.closedAt ?? null,
+    slaVerifyDueAt: dto.slaVerifyDueAt ?? null,
+    slaResolveDueAt: dto.slaResolveDueAt ?? null,
+  };
+}
+
+export function mapDeoMyReportsDataDto(dto: DeoMyReportsDataDto): DeoMyReportsData {
+  return {
+    departmentId: dto.departmentId,
+    departmentName: dto.departmentName,
+    items: (dto.items ?? []).map(mapDeoMyReportItemDto),
+    pagination: {
+      page: dto.pagination.page,
+      pageSize: dto.pagination.pageSize,
+      totalItems: dto.pagination.totalItems,
+      totalPages: dto.pagination.totalPages,
+      hasNext: dto.pagination.hasNext,
+      hasPrev: dto.pagination.hasPrev,
     },
   };
 }

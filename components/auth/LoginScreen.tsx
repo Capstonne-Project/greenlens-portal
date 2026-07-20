@@ -174,7 +174,7 @@ export function LoginScreen() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
-                    className={`${inputClass} pr-12`}
+                    className={`${inputClass} no-native-reveal pr-12`}
                     placeholder="••••••••"
                     {...register('password')}
                   />

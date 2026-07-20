@@ -1,45 +1,26 @@
-import type {
-  ReportDetailDto,
-  ReportDetailResponseDto,
-  ReportQueueItemDto,
-  ReportQueueResponseDto,
-} from '@/lib/api/dto/report.dto';
-import type {
-  ReportDetail,
-  ReportQueueData,
-  ReportQueueItem,
-  ReportQueueParams,
-} from '@/lib/api/models/report';
+import type { ReportDetailResponseDto } from '@/lib/api/dto/report.dto';
+import type { ReportProgressDataDto } from '@/lib/api/dto/reportProgress.dto';
+import type { ReportDetail } from '@/lib/api/models/report';
+import type { ReportProgress } from '@/lib/api/models/reportProgress';
+import { mapReportDetailDto } from '@/lib/api/mappers/report.mapper';
+import { mapReportProgressDataDto } from '@/lib/api/mappers/reportProgress.mapper';
 import apiService from '@/lib/api/core';
+import type { ApiEnvelope } from '@/lib/api/types/envelope';
 import { normalizeReportStatus } from '@/lib/constants/reportStatus';
-
-function mapQueueItem(dto: ReportQueueItemDto): ReportQueueItem {
-  return {
-    ...dto,
-    status: normalizeReportStatus(String(dto.status)),
-  };
-}
-
-function mapReportDetail(dto: ReportDetailDto): ReportDetail {
-  return {
-    ...dto,
-    status: normalizeReportStatus(String(dto.status)),
-  };
-}
-
-export async function adaptFetchReportQueue(params: ReportQueueParams): Promise<ReportQueueData> {
-  const res = await apiService.get<ReportQueueResponseDto>('/v1/reports/queue', {
-    page: params.page,
-    pageSize: params.pageSize,
-  });
-  const data = res.data.data;
-  return {
-    ...data,
-    items: (data.items ?? []).map(mapQueueItem),
-  };
-}
 
 export async function adaptFetchReportDetail(id: string): Promise<ReportDetail> {
   const res = await apiService.get<ReportDetailResponseDto>(`/v1/reports/${id}`);
-  return mapReportDetail(res.data.data);
+  const mapped = mapReportDetailDto(res.data.data);
+  return {
+    ...mapped,
+    status: normalizeReportStatus(String(mapped.status)),
+  };
+}
+
+/** GET /v1/reports/{id}/progress — [LEO] tiến trình xử lý báo cáo. */
+export async function adaptFetchReportProgress(id: string): Promise<ReportProgress> {
+  const res = await apiService.get<ApiEnvelope<ReportProgressDataDto>>(
+    `/v1/reports/${id}/progress`
+  );
+  return mapReportProgressDataDto(res.data.data);
 }

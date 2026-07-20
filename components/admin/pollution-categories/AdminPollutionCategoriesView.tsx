@@ -6,45 +6,59 @@ import {
 } from '@/components/admin/pollution-categories/PollutionCategoryFormDialog';
 import { PollutionCategoryCard } from '@/components/admin/pollution-categories/PollutionCategoryCard';
 import {
+  useAdminPollutionCategoriesList,
   useArchivePollutionCategory,
   useCreatePollutionCategory,
-  usePollutionCategoriesWithCounts,
+  useDeletePollutionCategory,
   useUpdatePollutionCategory,
 } from '@/hooks/usePollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
+import { ADMIN_POLLUTION_CATEGORIES_PAGE_SIZE } from '@/lib/constants/pollutionCategories';
 import { getPollutionCategoryMutationError } from '@/utils/pollutionCategoryErrors';
-import { AlertTriangle, Loader2, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Plus, Search } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-type StatusFilter = 'active' | 'archived';
+type StatusFilter = 'active' | 'inactive';
 
 export function AdminPollutionCategoriesView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const status: StatusFilter = searchParams.get('status') === 'archived' ? 'archived' : 'active';
+  const status: StatusFilter =
+    searchParams.get('status') === 'inactive' || searchParams.get('status') === 'archived'
+      ? 'inactive'
+      : 'active';
   const searchQ = searchParams.get('q') ?? '';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
 
   const [localSearch, setLocalSearch] = useState(searchQ);
   const [createOpen, setCreateOpen] = useState(false);
   const [editCategory, setEditCategory] = useState<PollutionCategory | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
 
-  const {
-    items: allItems,
-    isPending,
-    isError,
-    error,
-    refetch,
-    totalReports,
-  } = usePollutionCategoriesWithCounts();
+  const listParams = useMemo(
+    () => ({
+      page,
+      pageSize: ADMIN_POLLUTION_CATEGORIES_PAGE_SIZE,
+      ...(searchQ.trim() ? { search: searchQ.trim() } : {}),
+      isActive: status === 'active',
+      sortBy: 'code' as const,
+      sortDesc: false,
+    }),
+    [page, searchQ, status]
+  );
+
+  const listQuery = useAdminPollutionCategoriesList(listParams);
+  const items = listQuery.data?.items ?? [];
+  const pagination = listQuery.data?.pagination;
 
   const createMutation = useCreatePollutionCategory();
   const updateMutation = useUpdatePollutionCategory();
   const archiveMutation = useArchivePollutionCategory();
+  const deleteMutation = useDeletePollutionCategory();
 
   const setQuery = useCallback(
     (patch: Record<string, string | null>) => {
@@ -58,23 +72,8 @@ export function AdminPollutionCategoriesView() {
     [pathname, router, searchParams]
   );
 
-  const activeCount = allItems.filter(i => !i.isArchived).length;
-  const archivedCount = allItems.filter(i => i.isArchived).length;
-
-  const items = useMemo(() => {
-    const byStatus = allItems.filter(c => (status === 'archived' ? c.isArchived : !c.isArchived));
-    const q = searchQ.trim().toLowerCase();
-    if (!q) return byStatus;
-    return byStatus.filter(
-      c =>
-        c.nameVi.toLowerCase().includes(q) ||
-        c.nameEn.toLowerCase().includes(q) ||
-        c.code.toLowerCase().includes(q)
-    );
-  }, [allItems, status, searchQ]);
-
   const applySearch = () => {
-    setQuery({ q: localSearch.trim() || null });
+    setQuery({ q: localSearch.trim() || null, page: '1' });
   };
 
   const handleCreate = (values: PollutionCategoryFormValues) => {
@@ -120,11 +119,24 @@ export function AdminPollutionCategoriesView() {
 
   const handleArchiveToggle = (category: PollutionCategory, archive: boolean) => {
     setArchivingId(category.id);
+    if (archive) {
+      deleteMutation.mutate(category.id, {
+        onSuccess: () => {
+          toast.success('Đã vô hiệu hóa danh mục.');
+          setArchivingId(null);
+        },
+        onError: err => {
+          toast.error(getPollutionCategoryMutationError(err, 'Không thể đổi trạng thái.'));
+          setArchivingId(null);
+        },
+      });
+      return;
+    }
     archiveMutation.mutate(
-      { id: category.id, body: { archive } },
+      { id: category.id, body: { archive: false } },
       {
         onSuccess: () => {
-          toast.success(archive ? 'Đã xóa danh mục.' : 'Đã khôi phục danh mục.');
+          toast.success('Đã kích hoạt danh mục.');
           setArchivingId(null);
         },
         onError: err => {
@@ -136,23 +148,16 @@ export function AdminPollutionCategoriesView() {
   };
 
   const formBusy = createMutation.isPending || updateMutation.isPending;
+  const isPending = listQuery.isPending;
+  const isError = listQuery.isError;
+  const error = listQuery.error;
 
   return (
     <div className="w-full min-w-0">
       <header className="mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">
-          Danh mục
-          {isPending ? (
-            ' · …'
-          ) : (
-            <>
-              {' '}
-              · {activeCount} đang dùng · {archivedCount} đã xóa
-              {typeof totalReports === 'number' ? (
-                <> · tổng {totalReports.toLocaleString('vi-VN')} báo cáo</>
-              ) : null}
-            </>
-          )}
+          Danh mục ô nhiễm · phân trang từ server · kèm số báo cáo đang dùng
+          {pagination ? <> · {pagination.totalItems.toLocaleString('vi-VN')} kết quả</> : null}
         </p>
       </header>
 
@@ -171,7 +176,7 @@ export function AdminPollutionCategoriesView() {
                   value={localSearch}
                   onChange={e => setLocalSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && applySearch()}
-                  placeholder="Không khí, nước, rác…"
+                  placeholder="code, tên VN, tên EN…"
                   className="h-10 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
                 />
               </div>
@@ -190,7 +195,7 @@ export function AdminPollutionCategoriesView() {
             <div className="flex h-10 rounded-lg border border-border bg-background p-1">
               <button
                 type="button"
-                onClick={() => setQuery({ status: null })}
+                onClick={() => setQuery({ status: null, page: '1' })}
                 className={`rounded-md px-4 text-sm font-medium transition ${
                   status === 'active'
                     ? 'bg-emerald-700 text-white'
@@ -198,23 +203,17 @@ export function AdminPollutionCategoriesView() {
                 }`}
               >
                 Đang dùng
-                {!isPending ? (
-                  <span className="ml-1 tabular-nums opacity-90">{activeCount}</span>
-                ) : null}
               </button>
               <button
                 type="button"
-                onClick={() => setQuery({ status: 'archived' })}
+                onClick={() => setQuery({ status: 'inactive', page: '1' })}
                 className={`rounded-md px-4 text-sm font-medium transition ${
-                  status === 'archived'
+                  status === 'inactive'
                     ? 'bg-emerald-700 text-white'
                     : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
-                Đã xóa
-                {!isPending ? (
-                  <span className="ml-1 tabular-nums opacity-90">{archivedCount}</span>
-                ) : null}
+                Ngưng
               </button>
             </div>
           </div>
@@ -244,7 +243,7 @@ export function AdminPollutionCategoriesView() {
           </p>
           <button
             type="button"
-            onClick={() => void refetch()}
+            onClick={() => void listQuery.refetch()}
             className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
           >
             Thử lại
@@ -259,26 +258,52 @@ export function AdminPollutionCategoriesView() {
       )}
 
       {!isPending && !isError && items.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map(category => (
-            <PollutionCategoryCard
-              key={category.id}
-              category={category}
-              onEdit={setEditCategory}
-              onArchiveToggle={handleArchiveToggle}
-              archiveBusy={archivingId === category.id && archiveMutation.isPending}
-            />
-          ))}
-        </div>
-      )}
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {items.map(category => (
+              <PollutionCategoryCard
+                key={category.id}
+                category={category}
+                onEdit={setEditCategory}
+                onArchiveToggle={handleArchiveToggle}
+                archiveBusy={
+                  archivingId === category.id &&
+                  (archiveMutation.isPending || deleteMutation.isPending)
+                }
+              />
+            ))}
+          </div>
 
-      <aside className="mt-8 flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <p>
-          <strong className="font-semibold">Lưu ý:</strong> Không thể xoá cứng một loại đang được
-          dùng bởi báo cáo. Xóa sẽ ẩn loại khỏi lựa chọn mới nhưng vẫn giữ cho các báo cáo cũ.
-        </p>
-      </aside>
+          {pagination && pagination.totalPages > 1 ? (
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-xs text-muted-foreground">
+                Trang {pagination.page}/{Math.max(1, pagination.totalPages)} ·{' '}
+                {pagination.totalItems.toLocaleString('vi-VN')} danh mục
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!pagination.hasPrev}
+                  onClick={() => setQuery({ page: String(Math.max(1, page - 1)) })}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-3.5" aria-hidden />
+                  Trước
+                </button>
+                <button
+                  type="button"
+                  disabled={!pagination.hasNext}
+                  onClick={() => setQuery({ page: String(page + 1) })}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+                >
+                  Sau
+                  <ChevronRight className="size-3.5" aria-hidden />
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
 
       <PollutionCategoryFormDialog
         open={createOpen}

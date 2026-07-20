@@ -1,10 +1,11 @@
-import { VerifyDetailClient } from '@/components/officer/VerifyDetailClient';
+import { VerifyDetailRouteClient } from '@/components/officer/verify/VerifyDetailRouteClient';
 
-interface PageProps {
+type PageProps = {
   params: Promise<{ id: string }>;
-}
+};
 
 export default async function OfficerVerifyDetailPage({ params }: PageProps) {
   const { id } = await params;
-  return <VerifyDetailClient id={id} />;
+
+  return <VerifyDetailRouteClient id={id} />;
 }

@@ -2,6 +2,8 @@ import type {
   AdminReportDetailDto,
   AdminReportsListDataDto,
   AdminReportsListParamsDto,
+  HideAdminReportBodyDto,
+  UpdateAdminReportStatusBodyDto,
 } from '@/lib/api/dto/adminReport.dto';
 import {
   mapAdminReportDetailDto,
@@ -11,6 +13,8 @@ import type {
   AdminReportDetail,
   AdminReportsList,
   AdminReportsListParams,
+  HideAdminReportInput,
+  UpdateAdminReportStatusInput,
 } from '@/lib/api/models/adminReport';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
 import apiService from '@/lib/api/core';
@@ -39,6 +43,60 @@ export async function adaptAdminReportsList(
 }
 
 export async function adaptAdminReportDetail(id: string): Promise<ApiEnvelope<AdminReportDetail>> {
-  const res = await apiService.get<ApiEnvelope<AdminReportDetailDto>>(`/v1/admin/reports/${id}`);
+  const res = await apiService.get<ApiEnvelope<AdminReportDetailDto>>(
+    `/v1/admin/reports/${encodeURIComponent(id)}`
+  );
   return mapApiEnvelope(res.data, mapAdminReportDetailDto);
+}
+
+/** POST /v1/admin/reports/{id}/hide — reversible. */
+export async function adaptHideAdminReport(
+  id: string,
+  body: HideAdminReportInput
+): Promise<ApiEnvelope<null>> {
+  const payload: HideAdminReportBodyDto = { reason: body.reason.trim() };
+  const res = await apiService.post<ApiEnvelope<unknown>>(
+    `/v1/admin/reports/${encodeURIComponent(id)}/hide`,
+    payload
+  );
+  return {
+    code: res.data.code,
+    message: res.data.message,
+    status: res.data.status,
+    data: null,
+  };
+}
+
+/** POST /v1/admin/reports/{id}/unhide */
+export async function adaptUnhideAdminReport(id: string): Promise<ApiEnvelope<null>> {
+  const res = await apiService.post<ApiEnvelope<unknown>>(
+    `/v1/admin/reports/${encodeURIComponent(id)}/unhide`
+  );
+  return {
+    code: res.data.code,
+    message: res.data.message,
+    status: res.data.status,
+    data: null,
+  };
+}
+
+/** PUT /v1/admin/reports/{id}/status — admin override status. */
+export async function adaptUpdateAdminReportStatus(
+  id: string,
+  body: UpdateAdminReportStatusInput
+): Promise<ApiEnvelope<null>> {
+  const payload: UpdateAdminReportStatusBodyDto = {
+    newStatus: body.newStatus,
+    reason: body.reason.trim(),
+  };
+  const res = await apiService.put<ApiEnvelope<unknown>>(
+    `/v1/admin/reports/${encodeURIComponent(id)}/status`,
+    payload
+  );
+  return {
+    code: res.data.code,
+    message: res.data.message,
+    status: res.data.status,
+    data: null,
+  };
 }

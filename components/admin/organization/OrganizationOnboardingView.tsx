@@ -153,7 +153,7 @@ export function OrganizationOnboardingView() {
     if (!ok) return;
 
     assignOfficer.mutate(
-      { officeId: office.id, body: { userId: selectedUser.id } },
+      { id: office.id, body: { userId: selectedUser.id } },
       {
         onSuccess: () => {
           toast.success('Đã gán cán bộ phụ trách phòng.');

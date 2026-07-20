@@ -70,3 +70,75 @@ export interface DepartmentsListDataDto {
   page: number;
   pageSize: number;
 }
+
+export interface MyOfficesOfficeItemDto extends DepartmentOfficeSummaryDto {
+  createdAt: string;
+}
+
+export interface MyOfficesPaginationDto {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+/** GET /v1/departments/my-offices — data envelope. */
+export interface MyOfficesDataDto {
+  departmentId: string;
+  departmentName: string;
+  provinceCode: string;
+  offices: MyOfficesOfficeItemDto[];
+  pagination: MyOfficesPaginationDto;
+}
+
+/** GET /v1/departments/my/reports — query status. */
+export type DeoMyReportsStatusDto =
+  | 'Submitted'
+  | 'Verified'
+  | 'InProgress'
+  | 'Resolved'
+  | 'Closed'
+  | 'Rejected'
+  | 'Duplicate';
+
+export type DeoMyReportsSeverityDto = 'Low' | 'Medium' | 'High' | 'Critical';
+
+/** GET /v1/departments/my/reports — item */
+export interface DeoMyReportItemDto {
+  id: string;
+  code: string;
+  categoryCode: string;
+  categoryName: string;
+  severity: DeoMyReportsSeverityDto;
+  status: DeoMyReportsStatusDto;
+  latitude: number;
+  longitude: number;
+  address: string;
+  wardCode: string;
+  wardName: string;
+  reporterId: string;
+  reporterName: string;
+  assignedOfficeId: string | null;
+  assignedOfficeName: string | null;
+  assignmentCount: number;
+  priorityScore: number;
+  reporterCount: number;
+  reopenedCount: number;
+  createdAt: string;
+  verifiedAt: string | null;
+  startedAt: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  slaVerifyDueAt: string | null;
+  slaResolveDueAt: string | null;
+}
+
+/** GET /v1/departments/my/reports — data envelope */
+export interface DeoMyReportsDataDto {
+  departmentId: string;
+  departmentName: string;
+  items: DeoMyReportItemDto[];
+  pagination: MyOfficesPaginationDto;
+}

@@ -5,7 +5,9 @@ const ROLE_LABEL_VI: Record<string, string> = {
   Citizen: 'Người dân',
   DEO: 'DEO (Cán bộ sở)',
   LEO: 'LEO (Cán bộ phường)',
-  Cleanup: 'Đội dọn dẹp',
+  Cleaner: 'Đội dọn dẹp',
+  CompanyManager: 'Quản lý công ty',
+  CompanyStaff: 'Nhân viên công ty',
   Inspector: 'Thanh tra',
 };
 
@@ -14,7 +16,9 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
   Citizen: 'bg-muted text-foreground',
   DEO: 'bg-violet-100 text-violet-900',
   LEO: 'bg-indigo-100 text-indigo-900',
-  Cleanup: 'bg-emerald-100 text-emerald-900',
+  Cleaner: 'bg-emerald-100 text-emerald-900',
+  CompanyManager: 'bg-amber-100 text-amber-900',
+  CompanyStaff: 'bg-orange-100 text-orange-900',
   Inspector: 'bg-sky-100 text-sky-900',
 };
 

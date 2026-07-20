@@ -1,29 +1,55 @@
 'use client';
 
+import { AdminReportStatusDialog } from '@/components/admin/reports/AdminReportStatusDialog';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
-import { useAdminReportDetail } from '@/hooks/useAdminReports';
+import { useAdminReportDetail, useUnhideAdminReport } from '@/hooks/useAdminReports';
 import type { AdminReportListItem } from '@/lib/api/models/adminReport';
+import { isAdminReportMarkedHidden } from '@/lib/storage/adminHiddenReports';
+import { cn } from '@/lib/utils';
+import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { formatReportRelativeTime, reportListTitle } from '@/utils/adminReportUi';
-import { X } from 'lucide-react';
+import { Eye, Loader2, RefreshCw, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface AdminReportDetailPanelProps {
   reportId: string | null;
   onClose: () => void;
   listItem?: AdminReportListItem | null;
+  onHiddenChange?: (id: string, hidden: boolean) => void;
 }
 
 export function AdminReportDetailPanel({
   reportId,
   onClose,
   listItem,
+  onHiddenChange,
 }: AdminReportDetailPanelProps) {
   const { data, isPending, isError } = useAdminReportDetail(reportId);
-  const report = data ?? listItem;
+  const unhideReport = useUnhideAdminReport();
+  const [hiddenLocal, setHiddenLocal] = useState(() =>
+    reportId ? isAdminReportMarkedHidden(reportId) : false
+  );
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
+  const report = data ?? listItem;
   if (!reportId) return null;
+
+  const isHidden = hiddenLocal || Boolean(report?.isHidden) || isAdminReportMarkedHidden(reportId);
+
+  const onUnhide = () => {
+    unhideReport.mutate(reportId, {
+      onSuccess: env => {
+        setHiddenLocal(false);
+        onHiddenChange?.(reportId, false);
+        toast.success(env.message || 'Đã hiện lại báo cáo.');
+      },
+      onError: err => toast.error(getAdminReportMutationError(err, 'Không thể hiện lại báo cáo.')),
+    });
+  };
 
   return (
     <div
@@ -51,21 +77,33 @@ export function AdminReportDetailPanel({
           </button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          {isPending && (
+        <div
+          className={cn(
+            'flex-1 space-y-4 overflow-y-auto p-4',
+            isHidden && 'bg-muted/20 opacity-60 grayscale'
+          )}
+        >
+          {isPending && !report && (
             <div className="space-y-3">
               <div className="h-6 w-2/3 animate-pulse rounded bg-muted" />
               <div className="h-24 animate-pulse rounded-lg bg-muted" />
             </div>
           )}
 
-          {isError && <p className="text-sm text-destructive">Không tải được chi tiết báo cáo.</p>}
+          {isError && !report && (
+            <p className="text-sm text-destructive">Không tải được chi tiết báo cáo.</p>
+          )}
 
-          {report && !isPending && (
+          {report && (
             <>
               <div>
-                <p className="font-mono text-xs text-muted-foreground">{report.code}</p>
-                <p className="mt-1 text-lg font-semibold">{reportListTitle(report)}</p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  {report.code}
+                  {isHidden ? ' · Đã ẩn' : ''}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {reportListTitle(report)}
+                </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <ReportStatusBadge status={report.status} />
                   <ReportSeverityBars severity={report.severity} />
@@ -78,22 +116,16 @@ export function AdminReportDetailPanel({
               <dl className="grid gap-2 text-sm">
                 <div>
                   <dt className="text-muted-foreground">Khu vực</dt>
-                  <dd>{report.address || '—'}</dd>
+                  <dd className="text-foreground">{report.address || '—'}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Loại</dt>
-                  <dd>{report.categoryName}</dd>
+                  <dd className="text-foreground">{report.categoryName}</dd>
                 </div>
                 {data?.description && (
                   <div>
                     <dt className="text-muted-foreground">Mô tả</dt>
-                    <dd className="whitespace-pre-wrap">{data.description}</dd>
-                  </div>
-                )}
-                {data?.slaVerifyDueAt && (
-                  <div>
-                    <dt className="text-muted-foreground">Hạn xác minh SLA</dt>
-                    <dd>{formatReportRelativeTime(data.slaVerifyDueAt)}</dd>
+                    <dd className="whitespace-pre-wrap text-foreground">{data.description}</dd>
                   </div>
                 )}
               </dl>
@@ -107,8 +139,15 @@ export function AdminReportDetailPanel({
                         key={m.id}
                         className="relative aspect-video overflow-hidden rounded-lg border border-border bg-muted"
                       >
-                        {m.mimeType?.startsWith('image/') ? (
-                          <Image src={m.url} alt="" fill className="object-cover" sizes="200px" />
+                        {m.mimeType?.startsWith('image/') || m.mediaType === 'Image' ? (
+                          <Image
+                            src={m.url}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="200px"
+                            unoptimized
+                          />
                         ) : (
                           <a
                             href={m.url}
@@ -134,6 +173,46 @@ export function AdminReportDetailPanel({
             </>
           )}
         </div>
+
+        {report || isHidden ? (
+          <div className="space-y-2 border-t border-border p-4">
+            {report ? (
+              <button
+                type="button"
+                onClick={() => setStatusDialogOpen(true)}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted"
+              >
+                <RefreshCw className="size-4" aria-hidden />
+                Đổi status
+              </button>
+            ) : null}
+            {isHidden ? (
+              <button
+                type="button"
+                onClick={onUnhide}
+                disabled={unhideReport.isPending}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+              >
+                {unhideReport.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Eye className="size-4" aria-hidden />
+                )}
+                Hiện lại
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {report ? (
+          <AdminReportStatusDialog
+            reportId={reportId}
+            currentStatus={report.status}
+            reportCode={report.code}
+            open={statusDialogOpen}
+            onClose={() => setStatusDialogOpen(false)}
+          />
+        ) : null}
       </div>
     </div>
   );

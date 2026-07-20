@@ -9,13 +9,19 @@ import { cn } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
+  Bell,
+  Gavel,
+  Inbox,
   Landmark,
   LayoutDashboard,
   Leaf,
   Map,
-  Shield,
   Recycle,
+  ScrollText,
+  Shield,
+  ShieldAlert,
   Tags,
+  Trophy,
   UserCircle,
   Users,
   UsersRound,
@@ -161,9 +167,24 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
     pathname.startsWith('/admin/pollution-categories/');
   const wasteTagsActive =
     pathname === '/admin/waste-tags' || pathname.startsWith('/admin/waste-tags/');
+  const penaltyActive =
+    pathname === '/admin/penalty-frameworks' || pathname.startsWith('/admin/penalty-frameworks/');
   const departmentsActive =
     pathname === '/admin/departments' || pathname.startsWith('/admin/departments/');
   const teamsActive = pathname === '/admin/teams' || pathname.startsWith('/admin/teams/');
+  const mapActive = pathname === '/admin/map' || pathname.startsWith('/admin/map/');
+  const auditLogsActive =
+    pathname === '/admin/audit-logs' || pathname.startsWith('/admin/audit-logs/');
+  const spamSuspectsActive =
+    pathname === '/admin/spam-suspects' || pathname.startsWith('/admin/spam-suspects/');
+  const gamificationActive =
+    pathname === '/admin/gamification-configs' ||
+    pathname.startsWith('/admin/gamification-configs/');
+  const notificationTemplatesActive =
+    pathname === '/admin/notification-templates' ||
+    pathname.startsWith('/admin/notification-templates/');
+  const inboxNotificationsActive =
+    pathname === '/admin/notifications' || pathname.startsWith('/admin/notifications/');
 
   const navLinkClass = (active: boolean) =>
     cn(
@@ -270,17 +291,10 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
               </Link>
             </li>
             <li>
-              <span
-                title="Bản đồ quản trị"
-                className={cn(
-                  navLinkClass(false),
-                  'cursor-default opacity-60',
-                  collapsed && 'justify-center'
-                )}
-              >
+              <Link href="/admin/map" title="Bản đồ quản trị" className={navLinkClass(mapActive)}>
                 <Map className="size-4 shrink-0" />
                 {!collapsed && <span>Bản đồ quản trị</span>}
-              </span>
+              </Link>
             </li>
           </ul>
         </div>
@@ -312,6 +326,26 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
                 {!collapsed && <span>Thẻ rác thải</span>}
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin/penalty-frameworks"
+                title="Khung xử phạt"
+                className={navLinkClass(penaltyActive)}
+              >
+                <Gavel className="size-4 shrink-0" />
+                {!collapsed && <span>Khung xử phạt</span>}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/gamification-configs"
+                title="Điểm gamification"
+                className={navLinkClass(gamificationActive)}
+              >
+                <Trophy className="size-4 shrink-0" />
+                {!collapsed && <span>Điểm gamification</span>}
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -332,10 +366,60 @@ export function AdminSidebarNav({ collapsed = false }: { collapsed?: boolean }) 
         <div>
           {!collapsed && (
             <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Hệ thống
+            </p>
+          )}
+          <ul className="space-y-1">
+            <li>
+              <Link
+                href="/admin/notification-templates"
+                title="Mẫu thông báo"
+                className={navLinkClass(notificationTemplatesActive)}
+              >
+                <Bell className="size-4 shrink-0" />
+                {!collapsed && <span>Mẫu thông báo</span>}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/spam-suspects"
+                title="Tài khoản nghi spam"
+                className={navLinkClass(spamSuspectsActive)}
+              >
+                <ShieldAlert className="size-4 shrink-0" />
+                {!collapsed && <span>Nghi spam</span>}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/audit-logs"
+                title="Nhật ký kiểm toán"
+                className={navLinkClass(auditLogsActive)}
+              >
+                <ScrollText className="size-4 shrink-0" />
+                {!collapsed && <span>Nhật ký kiểm toán</span>}
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          {!collapsed && (
+            <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Tài khoản
             </p>
           )}
           <ul className="space-y-1">
+            <li>
+              <Link
+                href="/admin/notifications"
+                title="Hộp thư thông báo"
+                className={navLinkClass(inboxNotificationsActive)}
+              >
+                <Inbox className="size-4 shrink-0" />
+                {!collapsed && <span>Hộp thư</span>}
+              </Link>
+            </li>
             <li>
               <Link href="/admin/profile" title="Hồ sơ" className={navLinkClass(profileActive)}>
                 <UserCircle className="size-4 shrink-0" />
