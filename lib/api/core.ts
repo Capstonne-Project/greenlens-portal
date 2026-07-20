@@ -47,7 +47,7 @@ function shouldSkipRefreshRetry(url: string | undefined): boolean {
   return url.includes('/v1/auth/login') || url.includes('/v1/auth/refresh-token');
 }
 
-async function refreshSessionOnce(): Promise<boolean> {
+export async function refreshSessionOnce(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {

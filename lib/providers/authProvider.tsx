@@ -1,9 +1,10 @@
 'use client';
 
+import { refreshSessionOnce } from '@/lib/api/core';
 import type { LoginSuccessData } from '@/lib/api/types/auth';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getUserFromAccessToken } from '@/lib/auth/userFromAccessToken';
-import { getAccessTokenFromCookie } from '@/lib/storage/authCookies';
+import { getAccessTokenFromCookie, getRefreshTokenFromCookie } from '@/lib/storage/authCookies';
 import type { AuthUser } from '@/lib/store/authStore';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useEffect } from 'react';
@@ -29,10 +30,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       const cookieToken = getAccessTokenFromCookie();
-      if (!cookieToken) return;
-      const user = getUserFromAccessToken(cookieToken);
-      if (!user) return;
-      setAuth(cookieToken, user);
+      if (cookieToken) {
+        const user = getUserFromAccessToken(cookieToken);
+        if (user) setAuth(cookieToken, user);
+        return;
+      }
+      // Access token missing/expired but refresh cookie still valid — silently
+      // refresh once on bootstrap so the session survives across visits.
+      if (getRefreshTokenFromCookie()) {
+        void refreshSessionOnce();
+      }
     });
     return unsub;
   }, [setAuth]);
