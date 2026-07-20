@@ -3,7 +3,17 @@
 import Image from 'next/image';
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { CalendarDays, ChevronDown, Loader2, Mail, Phone, Plus, Shield, Users } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronDown,
+  Loader2,
+  Mail,
+  Phone,
+  Plus,
+  Search,
+  Shield,
+  Users,
+} from 'lucide-react';
 
 import { RecruitStaffDialog } from '@/components/officer/assign/RecruitStaffDialog';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GooeyInput } from '@/components/ui/gooey-input';
+import { Input } from '@/components/ui/input';
 import { MovingBorderButton } from '@/components/ui/moving-border';
 import { PaginationSimple } from '@/components/ui/pagination';
 import {
@@ -421,20 +431,6 @@ export function MembersTab() {
       <header className="mb-6 shrink-0">
         <div className="mt-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <GooeyInput
-              value={search}
-              onValueChange={handleSearch}
-              placeholder="Tìm tên, email..."
-              collapsedWidth={160}
-              expandedWidth={320}
-              className="justify-start"
-              endAdornment={
-                isFetching && !isLoadingMembers ? (
-                  <Loader2 className="size-3.5 animate-spin text-slate-400" aria-hidden />
-                ) : null
-              }
-            />
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
@@ -476,18 +472,40 @@ export function MembersTab() {
             </DropdownMenu>
           </div>
 
-          <MovingBorderButton
-            type="button"
-            onClick={() => setRecruitOpen(true)}
-            borderRadius="0.5rem"
-            duration={2500}
-            containerClassName="h-8 w-auto shrink-0"
-            borderClassName="bg-[radial-gradient(#10b981_40%,transparent_60%)]"
-            className="gap-1.5 border-neutral-200 bg-white px-3 text-[0.8125rem] font-medium text-emerald-700 hover:bg-slate-50"
-          >
-            <Plus className="size-3.5" aria-hidden />
-            Thêm
-          </MovingBorderButton>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="relative w-72 max-w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={search}
+                onChange={e => handleSearch(e.target.value)}
+                placeholder="Tìm tên, email..."
+                className={cn(
+                  'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+                  isFetching && !isLoadingMembers && 'pr-8'
+                )}
+                aria-label="Tìm tên, email thành viên"
+              />
+              {isFetching && !isLoadingMembers ? (
+                <Loader2
+                  className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                  aria-hidden
+                />
+              ) : null}
+            </div>
+
+            <MovingBorderButton
+              type="button"
+              onClick={() => setRecruitOpen(true)}
+              borderRadius="0.5rem"
+              duration={2500}
+              containerClassName="h-8 w-auto shrink-0"
+              borderClassName="bg-[radial-gradient(#10b981_40%,transparent_60%)]"
+              className="gap-1.5 border-neutral-200 bg-white px-3 text-[0.8125rem] font-medium text-emerald-700 hover:bg-slate-50"
+            >
+              <Plus className="size-3.5" aria-hidden />
+              Thêm
+            </MovingBorderButton>
+          </div>
         </div>
       </header>
 
@@ -511,7 +529,7 @@ export function MembersTab() {
 
       <AnimatePresence>
         {active ? (
-          <div className="fixed inset-0 z-[100] grid place-items-center">
+          <div className="fixed inset-0 z-100 grid place-items-center">
             <motion.button
               type="button"
               key={`close-${active.userId}-${id}`}

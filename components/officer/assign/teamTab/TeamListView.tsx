@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GooeyInput } from '@/components/ui/gooey-input';
+import { Input } from '@/components/ui/input';
 import { PaginationSimple } from '@/components/ui/pagination';
 import {
   Table,
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal, Loader2, RefreshCw, Users } from 'lucide-react';
+import { Loader2, MoreHorizontal, RefreshCw, Search, Users } from 'lucide-react';
 import { TeamFilterDropdowns } from './TeamBoardView';
 import {
   formatDate,
@@ -128,19 +128,6 @@ export function TeamListView({
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Toolbar — search + filters */}
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <GooeyInput
-          value={search}
-          onValueChange={onSearchChange}
-          placeholder="Tìm tên đội, văn phòng..."
-          collapsedWidth={180}
-          expandedWidth={320}
-          className="justify-start"
-          endAdornment={
-            isFetching && !isLoading ? (
-              <Loader2 className="size-3.5 animate-spin text-slate-400" aria-hidden />
-            ) : null
-          }
-        />
         <TeamFilterDropdowns
           statusFilter={statusFilter}
           teamTypeFilter={teamTypeFilter}
@@ -149,16 +136,36 @@ export function TeamListView({
           onTeamTypeChange={onTeamTypeChange}
           onAvailableChange={onAvailableChange}
         />
-        <div className="ml-auto" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className="h-8 text-slate-500"
-        >
-          <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="relative w-72 max-w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={search}
+              onChange={e => onSearchChange(e.target.value)}
+              placeholder="Tìm tên đội, văn phòng..."
+              className={cn(
+                'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+                isFetching && !isLoading && 'pr-8'
+              )}
+              aria-label="Tìm tên đội, văn phòng"
+            />
+            {isFetching && !isLoading ? (
+              <Loader2
+                className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                aria-hidden
+              />
+            ) : null}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="h-8 text-slate-500"
+          >
+            <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {/* Table — always fills remaining height (0 or N rows) */}

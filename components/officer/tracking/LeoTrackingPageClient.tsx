@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GooeyInput } from '@/components/ui/gooey-input';
+import { Input } from '@/components/ui/input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -38,6 +38,7 @@ import {
   Loader2,
   MapPin,
   MoreVertical,
+  Search,
   User,
 } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -646,19 +647,25 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
 
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b py-3 sm:gap-3">
           <div className="flex items-center gap-2">
-            <GooeyInput
-              value={search}
-              onValueChange={handleSearchChange}
-              placeholder="Tìm mã báo cáo, địa chỉ..."
-              collapsedWidth={180}
-              expandedWidth={320}
-              className="justify-start"
-              endAdornment={
-                isSearchPending ? (
-                  <Loader2 className="size-3.5 animate-spin text-muted-foreground" aria-hidden />
-                ) : null
-              }
-            />
+            <div className="relative w-72 max-w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={search}
+                onChange={e => handleSearchChange(e.target.value)}
+                placeholder="Tìm mã báo cáo, địa chỉ..."
+                className={cn(
+                  'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+                  isSearchPending && 'pr-8'
+                )}
+                aria-label="Tìm mã báo cáo, địa chỉ"
+              />
+              {isSearchPending ? (
+                <Loader2
+                  className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                  aria-hidden
+                />
+              ) : null}
+            </div>
           </div>
 
           <DropdownMenu>
