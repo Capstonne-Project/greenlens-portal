@@ -8,6 +8,7 @@ import {
   faGaugeHigh,
   faGear,
   faRoute,
+  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { parseOfficerApiRole } from '@/lib/constants/officerRoles';
 import type { UserRole } from '@/lib/constants/systemRoles';
@@ -26,7 +27,7 @@ export type MapShellNavItem = {
   href: string;
   icon?: IconDefinition;
   animatedIcon?: MapShellAnimatedIcon;
-  /** Mục con trong sidebar (dropdown) — LEO Phân công. */
+  /** Mục con trong sidebar (dropdown) — giữ type; hiện LEO không dùng. */
   children?: MapShellNavChildItem[];
 };
 
@@ -94,6 +95,12 @@ const NAV_ITEMS = {
     href: '/officer/tracking',
     icon: faRoute,
   },
+  workforce: {
+    id: 'workforce',
+    label: 'Đội ngũ',
+    href: '/officer/workforce',
+    icon: faUsers,
+  },
   companies: {
     id: 'companies',
     label: 'Doanh nghiệp',
@@ -134,17 +141,7 @@ export function getMapShellNavForRole(
   if (role === 'DEO') {
     mainNav.push(NAV_ITEMS.reports, NAV_ITEMS.companies);
   } else if (role === 'LEO') {
-    mainNav.push(
-      NAV_ITEMS.verify,
-      {
-        ...NAV_ITEMS.assign,
-        children: [
-          { id: 'assign-teams', label: 'Đội xử lý', href: '/officer/assign/teams' },
-          { id: 'assign-members', label: 'Thành viên', href: '/officer/assign/members' },
-        ],
-      },
-      NAV_ITEMS.tracking
-    );
+    mainNav.push(NAV_ITEMS.verify, NAV_ITEMS.assign, NAV_ITEMS.tracking, NAV_ITEMS.workforce);
   }
 
   const brand = role === 'LEO' ? BRAND_LEO : role === 'DEO' ? BRAND_DEO : BRAND_DEFAULT;
