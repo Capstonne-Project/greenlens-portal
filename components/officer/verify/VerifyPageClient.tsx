@@ -22,6 +22,7 @@ import {
 
 import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
 import { Button } from '@/components/ui/button';
+import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import {
   Drawer,
   DrawerClose,
@@ -416,7 +417,7 @@ function DatePartsRow({
     <div>
       <span className="mb-2 block text-xs font-bold text-slate-400">{label}</span>
       <div className="flex w-fit max-w-full items-center gap-1.5">
-        <Select value={d || undefined} onValueChange={v => update(v, m, y)}>
+        <Select value={d} onValueChange={v => update(v, m, y)}>
           <SelectTrigger
             className={cn(DATE_PART_TRIGGER_CLASS, 'w-[4.25rem]')}
             aria-label={`${label} — ngày`}
@@ -436,7 +437,7 @@ function DatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 text-sm text-slate-400">/</span>
-        <Select value={m || undefined} onValueChange={v => update(d, v, y)}>
+        <Select value={m} onValueChange={v => update(d, v, y)}>
           <SelectTrigger
             className={cn(DATE_PART_TRIGGER_CLASS, 'w-[4.25rem]')}
             aria-label={`${label} — tháng`}
@@ -456,7 +457,7 @@ function DatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 text-sm text-slate-400">/</span>
-        <Select value={y || undefined} onValueChange={v => update(d, m, v)}>
+        <Select value={y} onValueChange={v => update(d, m, v)}>
           <SelectTrigger
             className={cn(DATE_PART_TRIGGER_CLASS, 'w-28')}
             aria-label={`${label} — năm`}
@@ -495,7 +496,7 @@ function DateToolbarFilter({
     <div
       role="group"
       aria-label="Lọc nhanh theo thời gian tạo"
-      className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+      className="inline-flex shrink-0 select-none items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
     >
       {DATE_PRESETS.map(opt => {
         const active = opt.key === value;
@@ -506,7 +507,7 @@ function DateToolbarFilter({
             onClick={() => onChange(opt.key)}
             aria-pressed={active}
             className={cn(
-              'h-7 rounded-md px-2.5 text-[0.8125rem] font-medium transition-colors',
+              'h-7 select-none rounded-md px-2.5 text-[0.8125rem] font-medium transition-colors',
               active ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             )}
           >
@@ -708,13 +709,17 @@ function SlaCell({ dueAt }: { dueAt: string | null }) {
 export function VerifyPageClient() {
   const router = useRouter();
   const user = useAuthStore(s => s.user);
+  const fullName = user?.name?.trim() || 'Người dùng';
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
 
   const yearOnlyDefaults = getPresetDateInputs('all');
 
-  /** Filter đã apply lên bảng / API. */
+  /** Filter nhanh trên toolbar — apply ngay, độc lập với drawer. */
+  const [toolbarDatePreset, setToolbarDatePreset] = useState<DatePreset>('all');
+
+  /** Filter đã apply từ drawer (severity, date, category). */
   const [applied, setApplied] = useState({
     severity: 'all' as SeverityFilter,
     datePreset: 'all' as DatePreset,
@@ -748,14 +753,14 @@ export function VerifyPageClient() {
     setFilterOpen(open);
   };
 
-  /** Toolbar ngoài drawer — apply ngay. */
+  /** Toolbar ngoài drawer — apply ngay, reset drawer date filters. */
   const handleToolbarPresetChange = (preset: DatePreset) => {
-    const { from, to } = getPresetDateInputs(preset);
+    setToolbarDatePreset(preset);
     setApplied(prev => ({
       ...prev,
-      datePreset: preset,
-      customFrom: from,
-      customTo: to,
+      datePreset: 'all',
+      customFrom: yearOnlyDefaults.from,
+      customTo: yearOnlyDefaults.to,
     }));
     setPage(1);
   };
@@ -807,6 +812,7 @@ export function VerifyPageClient() {
 
   const handleApplyDraft = () => {
     setApplied(draft);
+    setToolbarDatePreset('all');
     setPage(1);
     setFilterOpen(false);
   };
@@ -814,15 +820,33 @@ export function VerifyPageClient() {
   const { data: catalogCategories = [], isLoading: categoriesLoading } =
     useCatalogPollutionCategories(filterOpen || Boolean(applied.categoryId));
 
-  const countActiveFilters = (f: typeof applied) =>
+  const countDrawerActiveFilters = (f: typeof applied) =>
     (f.severity !== 'all' ? 1 : 0) +
     (f.datePreset !== 'all' || isCompleteDateInput(f.customFrom) || isCompleteDateInput(f.customTo)
       ? 1
       : 0) +
     (f.categoryId ? 1 : 0);
 
-  const appliedFilterCount = countActiveFilters(applied);
-  const draftFilterCount = countActiveFilters(draft);
+  const appliedFilterCount = countDrawerActiveFilters(applied);
+  const draftFilterCount = countDrawerActiveFilters(draft);
+
+  const hasDrawerDateFilter =
+    applied.datePreset !== 'all' ||
+    isCompleteDateInput(applied.customFrom) ||
+    isCompleteDateInput(applied.customTo);
+
+  const effectiveDateRange = useMemo(() => {
+    if (hasDrawerDateFilter) {
+      return getDateRange(applied.datePreset, applied.customFrom, applied.customTo);
+    }
+    return getDateRange(toolbarDatePreset, '', '');
+  }, [
+    hasDrawerDateFilter,
+    applied.datePreset,
+    applied.customFrom,
+    applied.customTo,
+    toolbarDatePreset,
+  ]);
 
   const listParams = useMemo(
     () => ({
@@ -832,11 +856,11 @@ export function VerifyPageClient() {
       sortBy: 'PriorityScore' as const,
       sortDir: 'Desc' as const,
       ...(applied.severity !== 'all' ? { severity: applied.severity } : {}),
-      ...getDateRange(applied.datePreset, applied.customFrom, applied.customTo),
+      ...effectiveDateRange,
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
     }),
-    [page, applied, debouncedSearch]
+    [page, applied.severity, applied.categoryId, effectiveDateRange, debouncedSearch]
   );
 
   const { data, isPending, isFetching, isError, refetch } = useReportQueue(listParams);
@@ -867,11 +891,28 @@ export function VerifyPageClient() {
               <CircleHelp className="size-4" aria-hidden />
             </button>
           </div>
+          <TypewriterEffectSmooth
+            words={[
+              { text: 'Welcome', className: 'font-normal text-slate-500' },
+              { text: 'back,', className: 'font-normal text-slate-500' },
+              {
+                text: fullName,
+                className: 'font-medium text-slate-800 dark:text-slate-100',
+              },
+            ]}
+            className="mt-1 my-0"
+            textClassName="text-sm font-normal sm:text-sm md:text-sm lg:text-sm xl:text-sm"
+            cursorClassName="h-3.5 w-0.5 bg-slate-400 sm:h-3.5 xl:h-3.5"
+            hideCursorOnComplete
+          />
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <DateToolbarFilter value={applied.datePreset} onChange={handleToolbarPresetChange} />
+            <DateToolbarFilter
+              value={hasDrawerDateFilter ? 'all' : toolbarDatePreset}
+              onChange={handleToolbarPresetChange}
+            />
             <Separator orientation="vertical" className="mx-0.5 h-6 shrink-0 bg-slate-400" />
             <Button
               type="button"
@@ -1010,7 +1051,7 @@ export function VerifyPageClient() {
         </div>
 
         {pagination ? (
-          <div className="flex shrink-0 items-center justify-between gap-4 border-t border-slate-200 px-6 py-3">
+          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
             <div className="min-w-0">
               {pagination.totalPages > 1 ? (
                 <PaginationSimple

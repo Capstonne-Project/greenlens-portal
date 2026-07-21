@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
+import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeoMyReports } from '@/hooks/useLeoOffices';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
@@ -631,7 +632,24 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             </button>
           </div>
           {data?.localOfficeName ? (
-            <p className="mt-1 text-xs text-slate-500">{data.localOfficeName}</p>
+            <TypewriterEffectSmooth
+              words={[
+                { text: 'Welcome', className: 'font-normal text-slate-500' },
+                { text: 'back,', className: 'font-normal text-slate-500' },
+                ...data.localOfficeName
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .map(text => ({
+                    text,
+                    className: 'font-medium text-slate-800 dark:text-slate-100',
+                  })),
+              ]}
+              className="mt-1 my-0"
+              textClassName="text-xs font-normal sm:text-xs md:text-xs lg:text-xs xl:text-xs"
+              cursorClassName="h-3 w-0.5 bg-slate-400 sm:h-3 xl:h-3"
+              hideCursorOnComplete
+            />
           ) : null}
         </div>
       </header>

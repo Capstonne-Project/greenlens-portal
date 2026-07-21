@@ -1,24 +1,14 @@
 'use client';
 
-import { CircleHelp, LayoutGrid, List } from 'lucide-react';
-import { useState } from 'react';
+import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
+import { useAuthStore } from '@/lib/store/authStore';
+import { CircleHelp } from 'lucide-react';
 import { AssignReportsTab } from './AssignReportsTab';
 import { LeoAssignDialog } from './LeoAssignDialog';
-import { MembersTab } from './MembersTab';
-import { TeamTab } from './TeamTab';
 
-export type LeoAssignSection = 'reports' | 'teams' | 'members';
-
-type ViewMode = 'list' | 'board';
-
-const SECTION_TITLE: Record<LeoAssignSection, string> = {
-  reports: 'Phân công',
-  teams: 'Đội xử lý',
-  members: 'Thành viên',
-};
-
-export function LeoAssignPageClient({ section = 'reports' }: { section?: LeoAssignSection }) {
-  const [viewMode, setViewMode] = useState<ViewMode>('board');
+export function LeoAssignPageClient() {
+  const user = useAuthStore(s => s.user);
+  const fullName = user?.name?.trim() || 'Người dùng';
 
   return (
     <>
@@ -26,9 +16,7 @@ export function LeoAssignPageClient({ section = 'reports' }: { section?: LeoAssi
         <div className="border-b border-slate-200 pb-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-[0.35rem]">
-              <h1 className="text-lg font-bold tracking-tight text-slate-900">
-                {SECTION_TITLE[section]}
-              </h1>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900">Phân công</h1>
               <button
                 type="button"
                 className="inline-flex cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-[0.15rem] text-slate-500 hover:bg-slate-400/15 hover:text-slate-700"
@@ -37,45 +25,26 @@ export function LeoAssignPageClient({ section = 'reports' }: { section?: LeoAssi
                 <CircleHelp className="size-4" aria-hidden />
               </button>
             </div>
-
-            {section === 'teams' && (
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('board')}
-                  title="Board"
-                  className={`flex size-8 items-center justify-center rounded-lg transition-all ${
-                    viewMode === 'board'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <LayoutGrid className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  title="Danh sách"
-                  className={`flex size-8 items-center justify-center rounded-lg transition-all ${
-                    viewMode === 'list'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <List className="size-4" />
-                </button>
-              </div>
-            )}
           </div>
+          <TypewriterEffectSmooth
+            words={[
+              { text: 'Welcome', className: 'font-normal text-slate-500' },
+              { text: 'back,', className: 'font-normal text-slate-500' },
+              {
+                text: fullName,
+                className: 'font-medium text-slate-800 dark:text-slate-100',
+              },
+            ]}
+            className="mt-1 my-0"
+            textClassName="text-sm font-normal sm:text-sm md:text-sm lg:text-sm xl:text-sm"
+            cursorClassName="h-3.5 w-0.5 bg-slate-400 sm:h-3.5 xl:h-3.5"
+            hideCursorOnComplete
+          />
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {section === 'reports' && (
-          <AssignReportsTab Dialog={LeoAssignDialog} actionLabel="Phân công đội" />
-        )}
-        {section === 'teams' && <TeamTab viewMode={viewMode} />}
-        {section === 'members' && <MembersTab />}
+        <AssignReportsTab Dialog={LeoAssignDialog} actionLabel="Phân công đội" />
       </div>
     </>
   );

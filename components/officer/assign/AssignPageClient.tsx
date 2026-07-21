@@ -4,9 +4,9 @@ import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
 import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
 import { isLeoOfficer } from '@/lib/constants/officerRoles';
 import { useAuthStore } from '@/lib/store/authStore';
-import { LeoAssignPageClient, type LeoAssignSection } from './LeoAssignPageClient';
+import { LeoAssignPageClient } from './LeoAssignPageClient';
 
-export function AssignPageClient({ section = 'reports' }: { section?: LeoAssignSection }) {
+export function AssignPageClient() {
   const user = useAuthStore(s => s.user);
 
   if (!isLeoOfficer(user?.systemRole)) {
@@ -18,5 +18,5 @@ export function AssignPageClient({ section = 'reports' }: { section?: LeoAssignS
     );
   }
 
-  return <LeoAssignPageClient section={section} />;
+  return <LeoAssignPageClient />;
 }
