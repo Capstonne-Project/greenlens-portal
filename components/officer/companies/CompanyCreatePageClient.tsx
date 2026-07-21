@@ -523,7 +523,11 @@ export function CompanyAssignAreaDialog({
             onClose={onClose}
             onAssigned={onAssigned}
           />
-        ) : null}
+        ) : (
+          <DialogDescription className="sr-only">
+            Hộp thoại gán địa bàn vận hành cho doanh nghiệp.
+          </DialogDescription>
+        )}
       </DialogContent>
     </Dialog>
   );

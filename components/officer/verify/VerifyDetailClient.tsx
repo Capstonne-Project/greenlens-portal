@@ -312,6 +312,9 @@ function Gallery({ media, address }: { media: ReportDetail['media']; address: st
 
       <Dialog open={showAll} onOpenChange={setShowAll}>
         <DialogContent className="flex h-[92vh] max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <DialogDescription className="sr-only">
+            Hộp thoại xem tất cả hình ảnh báo cáo theo dạng lưới.
+          </DialogDescription>
           <DialogHeader className="shrink-0 space-y-0 border-b px-12 py-4 text-center">
             <DialogTitle className="truncate text-center text-sm font-semibold tracking-tight text-foreground md:text-base">
               {address || 'Hình ảnh báo cáo'}

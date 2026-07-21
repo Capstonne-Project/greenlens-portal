@@ -296,7 +296,7 @@ function SidebarDatePartsRow({
     <div>
       <span className="mb-1.5 block text-xs font-medium text-slate-500">{label}</span>
       <div className="flex max-w-full items-center gap-1.5">
-        <Select value={d || undefined} onValueChange={v => update(v, m, y)}>
+        <Select value={d} onValueChange={v => update(v, m, y)}>
           <SelectTrigger
             className={cn(SIDEBAR_DATE_TRIGGER_CLASS, 'w-[2.65rem]')}
             aria-label={`${label} — ngày`}
@@ -316,7 +316,7 @@ function SidebarDatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 px-0.5 text-xs text-slate-400">/</span>
-        <Select value={m || undefined} onValueChange={v => update(d, v, y)}>
+        <Select value={m} onValueChange={v => update(d, v, y)}>
           <SelectTrigger
             className={cn(SIDEBAR_DATE_TRIGGER_CLASS, 'w-[2.65rem]')}
             aria-label={`${label} — tháng`}
@@ -336,7 +336,7 @@ function SidebarDatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 px-0.5 text-xs text-slate-400">/</span>
-        <Select value={y || undefined} onValueChange={v => update(d, m, v)}>
+        <Select value={y} onValueChange={v => update(d, m, v)}>
           <SelectTrigger
             className={cn(SIDEBAR_DATE_TRIGGER_CLASS, 'w-[3.35rem]')}
             aria-label={`${label} — năm`}

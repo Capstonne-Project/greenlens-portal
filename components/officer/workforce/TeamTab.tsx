@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { BoardView } from './teamTab/TeamBoardView';
 import { AddMemberDialog, CreateTeamDialog, TeamDetailDialog } from './teamTab/TeamTabDialogs';
 import { TeamListView } from './teamTab/TeamListView';
+import type { WorkforceViewMode } from './WorkforceToolbarActions';
 import {
   buildClientPagination,
   buildSharedTeamsQueryParams,
@@ -19,7 +20,8 @@ import {
   type TeamTypeFilter,
 } from './teamTab/teamTab.shared';
 
-export function TeamTab({ viewMode }: Readonly<{ viewMode: 'list' | 'board' }>) {
+export function TeamTab() {
+  const [viewMode, setViewMode] = useState<WorkforceViewMode>('board');
   const [page, setPage] = useState(1);
   const [cleanupPage, setCleanupPage] = useState(1);
   const [inspectionPage, setInspectionPage] = useState(1);
@@ -167,6 +169,8 @@ export function TeamTab({ viewMode }: Readonly<{ viewMode: 'list' | 'board' }>) 
           onInspectionPageChange={setInspectionPage}
           onAddMember={handleAddMember}
           onCreateTeam={setCreateTeamType}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
       ) : (
         <TeamListView
@@ -195,6 +199,8 @@ export function TeamTab({ viewMode }: Readonly<{ viewMode: 'list' | 'board' }>) 
           onToggleOne={toggleOne}
           onDetailTeam={setDetailTeam}
           onAddMember={handleAddMember}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
       )}
     </>

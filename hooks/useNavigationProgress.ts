@@ -1,59 +1,45 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import { usePathname } from 'next/navigation';
 
 interface NavigationProgressState {
   isNavigating: boolean;
+  /** Kept for API compat — bar animation lives in NavigationProgressAdvanced only. */
   progress: number;
   startNavigation: () => void;
   completeNavigation: () => void;
 }
 
+/**
+ * Tracks in-app link navigations. Intentionally does NOT drive the bar width —
+ * that is owned by NavigationProgressAdvanced to avoid duplicate timers and
+ * setState-during-Router-render (completeNavigation must never sync-setState).
+ */
 export function useNavigationProgress(): NavigationProgressState {
   const [isNavigating, setIsNavigating] = useState(false);
-  const [progress, setProgress] = useState(0);
   const pathname = usePathname();
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isNavigatingRef = useRef(false);
 
   const completeNavigation = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (completionTimerRef.current) {
-      clearTimeout(completionTimerRef.current);
-    }
+    if (!isNavigatingRef.current) return;
     isNavigatingRef.current = false;
-    setProgress(100);
-    completionTimerRef.current = setTimeout(() => {
-      setIsNavigating(false);
-      setProgress(0);
-    }, 400);
+    // Defer past Router render — never setState sync in Router's stack
+    queueMicrotask(() => {
+      startTransition(() => setIsNavigating(false));
+    });
   }, []);
 
   const startNavigation = useCallback(() => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
-    setIsNavigating(true);
-    setProgress(0);
-
-    let step = 0;
-    intervalRef.current = setInterval(() => {
-      step++;
-      let increment: number;
-      if (step < 3) increment = 15 + Math.random() * 10;
-      else if (step < 8) increment = 5 + Math.random() * 8;
-      else increment = 2 + Math.random() * 3;
-      setProgress(prev => Math.min(prev + increment, 90));
-    }, 150);
+    queueMicrotask(() => {
+      startTransition(() => setIsNavigating(true));
+    });
   }, []);
 
-  // Sync completeNavigation into a ref so the pathname effect never captures a stale closure
   const completeRef = useRef(completeNavigation);
   useEffect(() => {
     completeRef.current = completeNavigation;
@@ -89,26 +75,13 @@ export function useNavigationProgress(): NavigationProgressState {
         clickTimerRef.current = setTimeout(() => startNavigation(), 10);
       }
     };
-    const handleUnload = () => {
-      if (isNavigatingRef.current) completeRef.current();
-    };
 
     document.addEventListener('click', handleClick, { passive: true });
-    window.addEventListener('beforeunload', handleUnload);
     return () => {
       document.removeEventListener('click', handleClick);
-      window.removeEventListener('beforeunload', handleUnload);
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
     };
   }, [shouldTrackNavigation, startNavigation]);
 
-  // Cleanup all timers on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
-      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-    };
-  }, []);
-
-  return { isNavigating, progress, startNavigation, completeNavigation };
+  return { isNavigating, progress: 0, startNavigation, completeNavigation };
 }

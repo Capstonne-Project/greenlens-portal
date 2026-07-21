@@ -21,7 +21,7 @@ export const TABLE_HEAD_CLASS =
   'h-9 border-b border-slate-200 bg-slate-50/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500';
 
 export const FILTER_BTN_CLASS =
-  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-sky-700';
+  'h-8 shrink-0 cursor-pointer gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-slate-900';
 
 export const BOARD_COLUMN_PAGE_SIZE = 8;
 

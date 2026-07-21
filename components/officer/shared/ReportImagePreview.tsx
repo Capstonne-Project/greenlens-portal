@@ -57,6 +57,9 @@ export function ReportImagePreviewDialog({
           '[&>button.absolute]:hidden'
         )}
       >
+        <DialogDescription className="sr-only">
+          Hộp thoại xem trước ảnh báo cáo, có thể chuyển ảnh trước và sau.
+        </DialogDescription>
         {current ? (
           <>
             <div className="relative flex min-h-0 flex-1 items-center justify-center">

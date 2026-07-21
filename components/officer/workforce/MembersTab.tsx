@@ -15,7 +15,8 @@ import {
   Users,
 } from 'lucide-react';
 
-import { RecruitStaffDialog } from '@/components/officer/assign/RecruitStaffDialog';
+import { RecruitStaffDialog } from './RecruitStaffDialog';
+import { WorkforceExportCsvButton } from './WorkforceToolbarActions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -429,70 +430,69 @@ export function MembersTab() {
   return (
     <>
       <header className="mb-6 shrink-0">
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
-                  {HAS_TEAM_LABEL[hasTeamFilter]}
-                  <ChevronDown className="size-3.5 opacity-60" aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-44">
-                {(Object.keys(HAS_TEAM_LABEL) as HasTeamFilter[]).map(key => (
-                  <DropdownMenuItem
-                    key={key}
-                    onClick={() => handleHasTeamChange(key)}
-                    className={hasTeamFilter === key ? 'font-medium text-sky-700' : ''}
-                  >
-                    {HAS_TEAM_LABEL[key]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
-                  {ROLE_LABEL[roleFilter]}
-                  <ChevronDown className="size-3.5 opacity-60" aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                {(Object.keys(ROLE_LABEL) as RoleFilter[]).map(key => (
-                  <DropdownMenuItem
-                    key={key}
-                    onClick={() => handleRoleChange(key)}
-                    className={roleFilter === key ? 'font-medium text-sky-700' : ''}
-                  >
-                    {ROLE_LABEL[key]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="relative w-72 max-w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Tìm tên, email..."
+              className={cn(
+                'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+                isFetching && !isLoadingMembers && 'pr-8'
+              )}
+              aria-label="Tìm tên, email thành viên"
+            />
+            {isFetching && !isLoadingMembers ? (
+              <Loader2
+                className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                aria-hidden
+              />
+            ) : null}
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <div className="relative w-72 max-w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={search}
-                onChange={e => handleSearch(e.target.value)}
-                placeholder="Tìm tên, email..."
-                className={cn(
-                  'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
-                  isFetching && !isLoadingMembers && 'pr-8'
-                )}
-                aria-label="Tìm tên, email thành viên"
-              />
-              {isFetching && !isLoadingMembers ? (
-                <Loader2
-                  className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
-                  aria-hidden
-                />
-              ) : null}
-            </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                {HAS_TEAM_LABEL[hasTeamFilter]}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              {(Object.keys(HAS_TEAM_LABEL) as HasTeamFilter[]).map(key => (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() => handleHasTeamChange(key)}
+                  className={hasTeamFilter === key ? 'font-medium text-sky-700' : ''}
+                >
+                  {HAS_TEAM_LABEL[key]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                {ROLE_LABEL[roleFilter]}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              {(Object.keys(ROLE_LABEL) as RoleFilter[]).map(key => (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() => handleRoleChange(key)}
+                  className={roleFilter === key ? 'font-medium text-sky-700' : ''}
+                >
+                  {ROLE_LABEL[key]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <WorkforceExportCsvButton />
             <MovingBorderButton
               type="button"
               onClick={() => setRecruitOpen(true)}
