@@ -3,8 +3,7 @@
 import { PollutionCategoryIcon } from '@/components/admin/pollution-categories/PollutionCategoryIcon';
 import { getPollutionCategoryDisplay } from '@/lib/constants/pollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
-import { ArchiveRestore, CircleOff, MoreHorizontal, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { ArchiveRestore, CircleOff, FileText, Pencil, Zap } from 'lucide-react';
 
 interface PollutionCategoryCardProps {
   category: PollutionCategory;
@@ -13,115 +12,127 @@ interface PollutionCategoryCardProps {
   archiveBusy?: boolean;
 }
 
+function formatShortDate(iso: string | null): string {
+  if (!iso?.trim()) return '—';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(d);
+  } catch {
+    return '—';
+  }
+}
+
 export function PollutionCategoryCard({
   category,
   onEdit,
   onArchiveToggle,
   archiveBusy,
 }: PollutionCategoryCardProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { descriptionVi } = getPollutionCategoryDisplay(category);
+  const { descriptionVi, accent } = getPollutionCategoryDisplay(category);
   const archived = category.isArchived;
+  const reportPct = Math.min(
+    100,
+    Math.max(
+      archived ? 0 : 12,
+      category.reportCount === 0 ? 8 : 18 + Math.min(category.reportCount, 10) * 8
+    )
+  );
 
   return (
     <article
-      className={`flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition ${
-        archived ? 'opacity-75' : ''
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border/70 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+        archived ? 'bg-zinc-50' : 'bg-white'
       }`}
     >
-      <div className="flex items-start gap-3">
-        <PollutionCategoryIcon category={category} dimmed={archived} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold leading-snug text-foreground">{category.nameVi}</h3>
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setMenuOpen(o => !o)}
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
-                aria-label="Tuỳ chọn"
-              >
-                <MoreHorizontal className="size-4" />
-              </button>
-              {menuOpen ? (
-                <>
-                  <button
-                    type="button"
-                    className="fixed inset-0 z-10"
-                    aria-label="Đóng menu"
-                    onClick={() => setMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-border bg-card py-1 text-sm shadow-lg">
-                    <button
-                      type="button"
-                      className="flex w-full px-3 py-2 text-left hover:bg-muted"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onEdit(category);
-                      }}
-                    >
-                      Sửa
-                    </button>
-                  </div>
-                </>
-              ) : null}
-            </div>
-          </div>
+      <div className="flex flex-1 flex-col p-5 pb-4">
+        {/* Header: #CODE · status */}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-semibold tabular-nums text-zinc-800">#{category.code}</span>
+          <span className="text-zinc-300" aria-hidden>
+            ·
+          </span>
           <span
-            className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              archived ? 'bg-muted text-muted-foreground' : 'bg-emerald-100 text-emerald-800'
+            className={`inline-flex items-center gap-1 font-medium ${
+              archived ? 'text-zinc-500' : 'text-zinc-600'
             }`}
           >
-            <span
-              className={`size-1.5 rounded-full ${archived ? 'bg-muted-foreground' : 'bg-emerald-600'}`}
-            />
-            {archived ? 'Đã ngưng' : 'Đang dùng'}
+            {archived ? (
+              <FileText className="size-3.5 shrink-0" aria-hidden />
+            ) : (
+              <Zap className="size-3.5 shrink-0" aria-hidden />
+            )}
+            {archived ? 'Ngưng' : 'Đang dùng'}
           </span>
-          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{descriptionVi}</p>
+        </div>
+
+        <h3 className="mt-4 text-[15px] font-bold leading-snug tracking-tight text-zinc-900">
+          {category.nameVi}
+          {category.nameEn ? (
+            <span className="font-semibold text-zinc-500"> · {category.nameEn}</span>
+          ) : null}
+        </h3>
+        <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-zinc-600">{descriptionVi}</p>
+
+        {/* Timeline */}
+        <div className="mt-6">
+          <div className="mb-2 flex items-end justify-between gap-3 text-[11px] text-zinc-500">
+            <span>Tạo {formatShortDate(category.createdAt)}</span>
+            <span className="font-medium tabular-nums text-zinc-700">
+              {category.reportCount.toLocaleString('vi-VN')} báo cáo
+            </span>
+          </div>
+          <div className="relative flex h-3 items-center">
+            <span className="absolute left-0 z-10 size-2.5 rounded-full border-2 border-zinc-400 bg-white" />
+            <span className="absolute right-0 z-10 size-2.5 rounded-full border-2 border-zinc-300 bg-white" />
+            <div className="mx-1 h-px w-full bg-zinc-300" />
+            <div
+              className={`absolute left-1 top-1/2 h-[3px] -translate-y-1/2 rounded-full ${
+                archived ? 'bg-zinc-400' : 'bg-zinc-900'
+              }`}
+              style={{ width: `calc(${reportPct}% - 4px)` }}
+            />
+          </div>
+        </div>
+
+        {/* Footer: avatar + visible action icons */}
+        <div className="mt-6 flex items-center gap-3">
+          <PollutionCategoryIcon category={category} dimmed={archived} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-zinc-900">{category.nameVi}</p>
+            <p className="truncate text-xs text-zinc-500">
+              {archived ? 'Đã ngưng sử dụng' : 'Via danh mục hệ thống'}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onEdit(category)}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100"
+              title="Sửa"
+              aria-label={`Sửa ${category.nameVi}`}
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              type="button"
+              disabled={archiveBusy}
+              onClick={() => onArchiveToggle(category, !archived)}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+              title={archived ? 'Kích hoạt' : 'Ngưng'}
+              aria-label={archived ? `Kích hoạt ${category.nameVi}` : `Ngưng ${category.nameVi}`}
+            >
+              {archived ? <ArchiveRestore className="size-4" /> : <CircleOff className="size-4" />}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="mt-5 border-t border-border/60 pt-4">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Báo cáo đang dùng
-        </p>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
-          {category.reportCount.toLocaleString('vi-VN')}
-        </p>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => onEdit(category)}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
-        >
-          <Pencil className="size-4" />
-          Sửa
-        </button>
-        <button
-          type="button"
-          disabled={archiveBusy}
-          onClick={() => onArchiveToggle(category, !archived)}
-          className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-60 ${
-            archived
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-              : 'border-border hover:bg-muted'
-          }`}
-        >
-          {archived ? (
-            <>
-              <ArchiveRestore className="size-4" />
-              Kích hoạt
-            </>
-          ) : (
-            <>
-              <CircleOff className="size-4" />
-              Ngưng
-            </>
-          )}
-        </button>
-      </div>
+      <div className={`h-1.5 w-full shrink-0 ${archived ? 'bg-zinc-300' : accent}`} aria-hidden />
     </article>
   );
 }

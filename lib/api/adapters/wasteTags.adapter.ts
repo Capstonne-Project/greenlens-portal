@@ -46,20 +46,11 @@ export async function adaptAdminWasteTags(
     return adaptCatalogWasteTags();
   }
 
-  try {
-    const res = await apiService.get<ApiEnvelope<WasteTagListDataDto>>(
-      '/v1/admin/waste-tags',
-      buildWasteTagsQuery(params)
-    );
-    return mapApiEnvelope(res.data, mapWasteTagListDataDto);
-  } catch {
-    return {
-      code: 'SUCCESS',
-      message: 'OK',
-      status: 200,
-      data: { items: [] },
-    };
-  }
+  const res = await apiService.get<ApiEnvelope<WasteTagListDataDto>>(
+    '/v1/admin/waste-tags',
+    buildWasteTagsQuery(params)
+  );
+  return mapApiEnvelope(res.data, mapWasteTagListDataDto);
 }
 
 export async function adaptCreateWasteTag(

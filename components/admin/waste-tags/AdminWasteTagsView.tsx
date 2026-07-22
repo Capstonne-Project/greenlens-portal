@@ -7,11 +7,11 @@ import {
   WasteTagFormDialog,
   type WasteTagFormValues,
 } from '@/components/admin/waste-tags/WasteTagFormDialog';
+import { WasteTagToggleDialog } from '@/components/admin/waste-tags/WasteTagToggleDialog';
 import {
   useCatalogWasteTags,
   useCreateWasteTag,
   useAdminWasteTagsList,
-  useDeleteWasteTag,
   useToggleWasteTag,
   useUpdateWasteTag,
 } from '@/hooks/useWasteTags';
@@ -52,6 +52,10 @@ export function AdminWasteTagsView() {
   const [editTag, setEditTag] = useState<WasteTag | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [toggleTarget, setToggleTarget] = useState<{
+    tag: WasteTag;
+    isActive: boolean;
+  } | null>(null);
 
   const catalogQuery = useCatalogWasteTags(status === 'active');
   const inactiveQuery = useAdminWasteTagsList({ isActive: false });
@@ -63,7 +67,6 @@ export function AdminWasteTagsView() {
   const createMutation = useCreateWasteTag();
   const updateMutation = useUpdateWasteTag();
   const toggleMutation = useToggleWasteTag();
-  const deleteMutation = useDeleteWasteTag();
 
   const isPending = status === 'active' ? catalogQuery.isPending : inactiveQuery.isPending;
   const isError = status === 'active' ? catalogQuery.isError : inactiveQuery.isError;
@@ -179,28 +182,23 @@ export function AdminWasteTagsView() {
     );
   };
 
-  const handleToggle = (tag: WasteTag, isActive: boolean) => {
+  const requestToggle = (tag: WasteTag, isActive: boolean) => {
+    setToggleTarget({ tag, isActive });
+  };
+
+  const confirmToggle = () => {
+    if (!toggleTarget) return;
+    const { tag, isActive } = toggleTarget;
     setTogglingId(tag.id);
-    if (!isActive) {
-      deleteMutation.mutate(tag.id, {
-        onSuccess: () => {
-          toast.success('Đã vô hiệu hóa thẻ.');
-          setTogglingId(null);
-          if (selectedId === tag.id) setSelectedId(null);
-        },
-        onError: err => {
-          toast.error(getWasteTagMutationError(err, 'Không thể đổi trạng thái.'));
-          setTogglingId(null);
-        },
-      });
-      return;
-    }
     toggleMutation.mutate(
-      { id: tag.id, body: { isActive: true } },
+      { id: tag.id, body: { isActive } },
       {
         onSuccess: () => {
-          toast.success('Đã kích hoạt thẻ.');
+          toast.success(isActive ? 'Đã kích hoạt thẻ.' : 'Đã vô hiệu hóa thẻ.');
           setTogglingId(null);
+          setToggleTarget(null);
+          if (selectedId === tag.id) setSelectedId(null);
+          if (!isActive) handleStatusChange('inactive');
         },
         onError: err => {
           toast.error(getWasteTagMutationError(err, 'Không thể đổi trạng thái.'));
@@ -349,32 +347,32 @@ export function AdminWasteTagsView() {
       )}
 
       {!isPending && !isError && pageItems.length > 0 && status === 'active' && (
-        <div className="rounded-xl border border-border/60 bg-gradient-to-b from-muted/20 to-transparent p-4 sm:p-6">
+        <div>
           <WasteTagCatalogFlow
             tags={pageItems}
             totalFiltered={filteredItems.length}
             selectedId={selectedId}
             togglingId={togglingId}
-            toggleBusy={toggleMutation.isPending || deleteMutation.isPending}
+            toggleBusy={togglingId != null && toggleMutation.isPending}
             onSelect={id => setSelectedId(prev => (prev === id ? null : id))}
             onEdit={setEditTag}
-            onToggle={tag => handleToggle(tag, false)}
+            onToggle={tag => requestToggle(tag, false)}
           />
           {paginationBar}
         </div>
       )}
 
       {!isPending && !isError && pageItems.length > 0 && status === 'inactive' && (
-        <div className="rounded-xl border border-border/60 bg-gradient-to-b from-muted/20 to-transparent p-4 sm:p-6">
+        <div>
           <WasteTagInactiveFlow
             tags={pageItems}
             totalFiltered={filteredItems.length}
             selectedId={selectedId}
             togglingId={togglingId}
-            toggleBusy={toggleMutation.isPending || deleteMutation.isPending}
+            toggleBusy={togglingId != null && toggleMutation.isPending}
             onSelect={id => setSelectedId(prev => (prev === id ? null : id))}
             onEdit={setEditTag}
-            onToggle={(tag, active) => handleToggle(tag, active)}
+            onToggle={(tag, active) => requestToggle(tag, active)}
           />
           {paginationBar}
         </div>
@@ -395,6 +393,15 @@ export function AdminWasteTagsView() {
         busy={formBusy}
         onClose={() => setEditTag(null)}
         onSubmit={handleUpdate}
+      />
+      <WasteTagToggleDialog
+        tag={toggleTarget?.tag ?? null}
+        isActive={toggleTarget?.isActive ?? false}
+        busy={toggleMutation.isPending}
+        onClose={() => {
+          if (!toggleMutation.isPending) setToggleTarget(null);
+        }}
+        onConfirm={confirmToggle}
       />
     </div>
   );

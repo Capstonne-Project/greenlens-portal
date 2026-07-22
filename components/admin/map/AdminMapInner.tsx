@@ -103,7 +103,10 @@ export function AdminMapInner() {
       : null
   );
 
-  const items = reportsQuery.data?.data?.items ?? [];
+  const items = useMemo(
+    () => reportsQuery.data?.data?.items ?? [],
+    [reportsQuery.data?.data?.items]
+  );
 
   const itemsById = useMemo(() => {
     const lookup = new globalThis.Map<string, MapReportDetailItem>();
@@ -234,7 +237,6 @@ export function AdminMapInner() {
           isError={summaryQuery.isError}
           days={days}
           onDaysChange={setDays}
-          pinCount={items.length}
         />
       </div>
     </div>

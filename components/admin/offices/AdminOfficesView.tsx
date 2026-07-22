@@ -1,10 +1,28 @@
 'use client';
 
+import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
 import { OfficeAssignOfficerDialog } from '@/components/admin/offices/OfficeAssignOfficerDialog';
 import { OfficeCreateDialog } from '@/components/admin/offices/OfficeCreateDialog';
 import { OfficeEditDialog } from '@/components/admin/offices/OfficeEditDialog';
 import { OfficeLiveSearch } from '@/components/admin/offices/OfficeLiveSearch';
 import { OfficesHierarchyList } from '@/components/admin/offices/OfficesHierarchyList';
+import { PaginationSimple } from '@/components/ui/pagination';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useOfficesList } from '@/hooks/useOffices';
 import {
   ADMIN_OFFICES_HIERARCHY_PAGE_SIZE,
@@ -12,12 +30,11 @@ import {
   type AdminOfficesViewMode,
 } from '@/lib/constants/adminOffices';
 import type { OfficeListItem } from '@/lib/api/models/office';
+import { cn } from '@/lib/utils';
 import { filterDepartmentGroups, groupOfficesByDepartment } from '@/utils/officeHierarchy';
 import {
   Building2,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Layers,
   Loader2,
   MapPinned,
@@ -106,17 +123,13 @@ export function AdminOfficesView() {
   return (
     <div className="w-full min-w-0">
       <section className="overflow-hidden rounded-card border border-border bg-card shadow-sm">
-        <div className="relative overflow-hidden border-b border-border">
-          <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-emerald-50/90 via-background to-background"
-            aria-hidden
-          />
-          <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-600" aria-hidden />
+        <div className="relative border-b border-border bg-card">
+          <div className="absolute left-0 top-0 h-full w-0.5 bg-teal-700" aria-hidden />
 
           <div className="relative px-4 py-5 sm:px-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 pl-2 sm:pl-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-800/75">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   Quản lý địa phương
                 </p>
                 <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
@@ -130,7 +143,7 @@ export function AdminOfficesView() {
               <button
                 type="button"
                 onClick={() => setCreateOpen(true)}
-                className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-xl bg-emerald-700 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-800"
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-xl bg-teal-700 px-4 text-sm font-medium text-white transition hover:bg-teal-800"
               >
                 <Plus className="size-4" />
                 Tạo văn phòng
@@ -139,10 +152,7 @@ export function AdminOfficesView() {
 
             <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 pl-2 text-sm sm:pl-3">
               <span className="inline-flex items-baseline gap-1.5 text-muted-foreground">
-                <MapPinned
-                  className="size-3.5 shrink-0 translate-y-px text-emerald-700/75"
-                  aria-hidden
-                />
+                <MapPinned className="size-3.5 shrink-0 translate-y-px text-zinc-400" aria-hidden />
                 <span className="text-lg font-semibold tabular-nums text-foreground">
                   {provinceCount}
                 </span>
@@ -152,10 +162,7 @@ export function AdminOfficesView() {
                 ·
               </span>
               <span className="inline-flex items-baseline gap-1.5 text-muted-foreground">
-                <Building2
-                  className="size-3.5 shrink-0 translate-y-px text-emerald-700/75"
-                  aria-hidden
-                />
+                <Building2 className="size-3.5 shrink-0 translate-y-px text-zinc-400" aria-hidden />
                 <span className="text-lg font-semibold tabular-nums text-foreground">
                   {wardCount}
                 </span>
@@ -166,10 +173,10 @@ export function AdminOfficesView() {
               </span>
               <span className="inline-flex items-baseline gap-1.5 text-muted-foreground">
                 <CheckCircle2
-                  className="size-3.5 shrink-0 translate-y-px text-emerald-700/75"
+                  className="size-3.5 shrink-0 translate-y-px text-teal-700"
                   aria-hidden
                 />
-                <span className="text-lg font-semibold tabular-nums text-emerald-800">
+                <span className="text-lg font-semibold tabular-nums text-teal-800">
                   {onboardedTotal}
                 </span>
                 đã onboard
@@ -205,7 +212,7 @@ export function AdminOfficesView() {
                   }
                   className={`rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
                     onboardedFilter === value
-                      ? 'bg-emerald-700 text-white'
+                      ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -223,7 +230,9 @@ export function AdminOfficesView() {
                 type="button"
                 onClick={() => setQuery({ view: null, page: '1' })}
                 className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
-                  isHierarchy ? 'bg-emerald-700 text-white' : 'text-muted-foreground'
+                  isHierarchy
+                    ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <Layers className="size-3.5" />
@@ -233,7 +242,9 @@ export function AdminOfficesView() {
                 type="button"
                 onClick={() => setQuery({ view: 'table', page: '1' })}
                 className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
-                  !isHierarchy ? 'bg-emerald-700 text-white' : 'text-muted-foreground'
+                  !isHierarchy
+                    ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <Table2 className="size-3.5" />
@@ -258,7 +269,7 @@ export function AdminOfficesView() {
             <button
               type="button"
               onClick={() => void refetch()}
-              className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
+              className="mt-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
             >
               Thử lại
             </button>
@@ -288,95 +299,140 @@ export function AdminOfficesView() {
         )}
 
         {!isPending && !isError && !isHierarchy && (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <th className="px-6 py-3">Văn phòng</th>
-                  <th className="px-4 py-3">Ủy ban</th>
-                  <th className="px-4 py-3">Phường/xã</th>
-                  <th className="px-4 py-3">LEO</th>
-                  <th className="px-4 py-3">Onboard</th>
-                  <th className="px-4 py-3 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center text-muted-foreground">
-                      Chưa có văn phòng.
-                    </td>
-                  </tr>
-                )}
-                {items.map(row => (
-                  <tr key={row.id} className="border-b border-border/40 hover:bg-muted/30">
-                    <td className="px-6 py-3 font-medium">{row.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{row.departmentName}</td>
-                    <td className="px-4 py-3">
-                      {row.wardName}
-                      <span className="ml-1 text-xs opacity-60">({row.wardCode})</span>
-                    </td>
-                    <td className="px-4 py-3">{row.officerName ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          row.isOnboarded
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-900'
-                        }`}
+          <div className={ADMIN_TABLE_SHELL}>
+            <div className={ADMIN_TABLE_SCROLL}>
+              <Table className={ADMIN_TABLE_CLASS}>
+                <TableHeader className="sticky top-0 z-10 bg-slate-100">
+                  <TableRow
+                    className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}
+                  >
+                    <TableHead
+                      className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('first', 'head'))}
+                    >
+                      Văn phòng
+                    </TableHead>
+                    <TableHead
+                      className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                    >
+                      Ủy ban
+                    </TableHead>
+                    <TableHead
+                      className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                    >
+                      Phường/xã
+                    </TableHead>
+                    <TableHead
+                      className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                    >
+                      LEO
+                    </TableHead>
+                    <TableHead
+                      className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                    >
+                      Onboard
+                    </TableHead>
+                    <TableHead
+                      className={cn(
+                        ADMIN_TABLE_HEAD_CELL,
+                        adminTableCellPad('last', 'head'),
+                        'text-right'
+                      )}
+                    >
+                      Thao tác
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.length === 0 ? (
+                    <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                      <TableCell colSpan={6} className="h-40 px-6 py-4 text-center">
+                        <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                          <SaveIcon size={32} className="opacity-30" />
+                          <span>Chưa có văn phòng.</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    items.map(row => (
+                      <TableRow
+                        key={row.id}
+                        className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-sky-50/40')}
                       >
-                        {row.isOnboarded ? 'Có' : 'Chưa'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setEditOffice(row)}
-                          className="rounded-md p-2 text-muted-foreground hover:bg-muted"
+                        <TableCell className={cn(adminTableCellPad('first'), 'align-middle')}>
+                          <span className="font-medium text-foreground">{row.name}</span>
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            adminTableCellPad('middle'),
+                            'align-middle text-muted-foreground'
+                          )}
                         >
-                          <Pencil className="size-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAssignOffice(row)}
-                          className="rounded-md p-2 text-muted-foreground hover:bg-muted"
+                          {row.departmentName}
+                        </TableCell>
+                        <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                          {row.wardName}
+                          <span className="ml-1 text-xs opacity-60">({row.wardCode})</span>
+                        </TableCell>
+                        <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                          {row.officerName ?? '—'}
+                        </TableCell>
+                        <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                              row.isOnboarded
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-100 text-amber-900'
+                            }`}
+                          >
+                            {row.isOnboarded ? 'Có' : 'Chưa'}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className={cn(adminTableCellPad('last'), 'text-right align-middle')}
                         >
-                          <UserPlus className="size-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-border px-6 py-3">
-                <span className="text-xs text-muted-foreground">
-                  Trang {pagination.page}/{pagination.totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={!pagination.hasPrev}
-                    onClick={() => setQuery({ page: String(page - 1) })}
-                    className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
-                  >
-                    <ChevronLeft className="size-3.5" />
-                    Trước
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!pagination.hasNext}
-                    onClick={() => setQuery({ page: String(page + 1) })}
-                    className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
-                  >
-                    Sau
-                    <ChevronRight className="size-3.5" />
-                  </button>
+                          <div className="inline-flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditOffice(row)}
+                              className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                              aria-label="Sửa văn phòng"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAssignOffice(row)}
+                              className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                              aria-label="Gán LEO"
+                            >
+                              <UserPlus className="size-4" />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {pagination ? (
+              <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+                <div className="min-w-0">
+                  {pagination.totalPages > 1 ? (
+                    <PaginationSimple
+                      page={pagination.page}
+                      totalPages={pagination.totalPages}
+                      onPageChange={p => setQuery({ page: String(p) })}
+                      className="w-auto"
+                    />
+                  ) : null}
                 </div>
+                <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+                  {pagination.totalItems.toLocaleString('vi-VN')} rows
+                </p>
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </section>

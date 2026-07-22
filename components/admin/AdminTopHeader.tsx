@@ -20,11 +20,11 @@ export function AdminTopHeader() {
   const nextLocaleLabel = locale === 'vi' ? 'EN' : 'VN';
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="flex h-16 items-center justify-between gap-4 px-5">
+    <header className="shrink-0 border-b border-[#e8e8e8] bg-[#fffdfc] pb-3">
+      <div className="flex h-14 items-center justify-between gap-4 md:h-16">
         <HeaderBrand title={title} />
 
-        <div className="flex shrink-0 items-center gap-2 border-l border-border pl-3 md:gap-2.5 md:pl-4">
+        <div className="flex shrink-0 items-center gap-2 border-l border-[#e8e8e8] pl-3 md:gap-2.5 md:pl-4">
           <AdminNotificationBell />
           <button
             type="button"

@@ -2,6 +2,23 @@
 
 import { GamificationConfigEditDialog } from '@/components/admin/gamification-configs/GamificationConfigEditDialog';
 import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   useGamificationConfigsList,
   useUpdateGamificationConfig,
 } from '@/hooks/useGamificationConfigs';
@@ -13,9 +30,33 @@ import {
   formatGamificationPoints,
   getGamificationConfigMutationError,
 } from '@/utils/gamificationConfigUi';
-import { AlertTriangle, Loader2, Pencil, Trophy } from 'lucide-react';
+import { Loader2, Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+
+type GamificationColumnKey = 'action' | 'points' | 'description' | 'status' | 'updated' | 'actions';
+
+const FIRST_COL: GamificationColumnKey = 'action';
+const LAST_COL: GamificationColumnKey = 'actions';
+
+function columnPad(colKey: GamificationColumnKey, layer: 'head' | 'body' = 'body') {
+  if (colKey === FIRST_COL) return adminTableCellPad('first', layer);
+  if (colKey === LAST_COL) return adminTableCellPad('last', layer);
+  return adminTableCellPad('middle', layer);
+}
+
+const COLUMN_DEFS: {
+  key: GamificationColumnKey;
+  label: string;
+  className?: string;
+}[] = [
+  { key: 'action', label: 'Hành động', className: 'w-[18%]' },
+  { key: 'points', label: 'Điểm', className: 'w-[10%]' },
+  { key: 'description', label: 'Mô tả', className: 'w-[28%]' },
+  { key: 'status', label: 'Trạng thái', className: 'w-[12%]' },
+  { key: 'updated', label: 'Cập nhật', className: 'w-[14%]' },
+  { key: 'actions', label: 'Hành động', className: 'w-[12%]' },
+];
 
 export function AdminGamificationConfigsView() {
   const listQuery = useGamificationConfigsList();
@@ -118,60 +159,86 @@ export function AdminGamificationConfigsView() {
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
-        {listQuery.isPending ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            Đang tải cấu hình điểm…
-          </div>
-        ) : listQuery.isError ? (
-          <div className="flex flex-col items-center gap-3 px-4 py-16 text-center">
-            <AlertTriangle className="size-8 text-destructive" aria-hidden />
-            <p className="text-sm text-destructive">{errorMessage}</p>
-            <button
-              type="button"
-              onClick={() => listQuery.refetch()}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-16 text-center text-muted-foreground">
-            <Trophy className="size-8 text-emerald-700/50" aria-hidden />
-            <p className="text-sm font-medium text-foreground">Không có cấu hình phù hợp</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Hành động</th>
-                  <th className="px-4 py-3 font-medium">Điểm</th>
-                  <th className="px-4 py-3 font-medium">Mô tả</th>
-                  <th className="px-4 py-3 font-medium">Trạng thái</th>
-                  <th className="px-4 py-3 font-medium">Cập nhật</th>
-                  <th className="px-4 py-3 text-right font-medium">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(item => (
-                  <tr
+      <div className={ADMIN_TABLE_SHELL}>
+        <div className={ADMIN_TABLE_SCROLL}>
+          <Table className={ADMIN_TABLE_CLASS}>
+            <TableHeader className="sticky top-0 z-10 bg-slate-100">
+              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                {COLUMN_DEFS.map(col => (
+                  <TableHead
+                    key={col.key}
+                    className={cn(
+                      columnPad(col.key, 'head'),
+                      ADMIN_TABLE_HEAD_CELL,
+                      col.key === LAST_COL && 'text-right',
+                      col.className
+                    )}
+                  >
+                    {col.label}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listQuery.isPending ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                  </TableCell>
+                </TableRow>
+              ) : listQuery.isError ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <p className="text-sm text-destructive">{errorMessage}</p>
+                    <button
+                      type="button"
+                      onClick={() => listQuery.refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
+                    >
+                      Thử lại
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <SaveIcon size={32} className="opacity-30" />
+                      <span>Không có cấu hình phù hợp</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map(item => (
+                  <TableRow
                     key={item.id}
                     className={cn(
-                      'border-b border-border last:border-0 hover:bg-muted/30',
+                      ADMIN_TABLE_ROW_BORDER,
+                      'transition-[opacity,background-color] hover:bg-sky-50/40',
                       !item.isActive && 'opacity-60'
                     )}
                   >
-                    <td className="px-4 py-3">
+                    <TableCell
+                      className={cn(
+                        columnPad('action', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[0].className
+                      )}
+                    >
                       <p className="font-semibold text-foreground">
                         {gamificationActionLabel(item.actionType)}
                       </p>
                       <p className="font-mono text-[11px] text-muted-foreground">
                         {item.actionType}
                       </p>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('points', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[1].className
+                      )}
+                    >
                       <span
                         className={cn(
                           'inline-flex rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums',
@@ -184,11 +251,23 @@ export function AdminGamificationConfigsView() {
                       >
                         {formatGamificationPoints(item.points)}
                       </span>
-                    </td>
-                    <td className="max-w-[280px] px-4 py-3 text-muted-foreground">
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('description', 'body'),
+                        'max-w-0 align-middle text-muted-foreground',
+                        COLUMN_DEFS[2].className
+                      )}
+                    >
                       <p className="line-clamp-2">{item.description || '—'}</p>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('status', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[3].className
+                      )}
+                    >
                       <span
                         className={cn(
                           'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold',
@@ -199,11 +278,23 @@ export function AdminGamificationConfigsView() {
                       >
                         {item.isActive ? 'Đang bật' : 'Đã tắt'}
                       </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('updated', 'body'),
+                        'whitespace-nowrap align-middle text-muted-foreground',
+                        COLUMN_DEFS[4].className
+                      )}
+                    >
                       {formatGamificationDate(item.updatedAt ?? item.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('actions', 'body'),
+                        'align-middle text-right',
+                        COLUMN_DEFS[5].className
+                      )}
+                    >
                       <button
                         type="button"
                         onClick={() => setEditTarget(item)}
@@ -212,14 +303,22 @@ export function AdminGamificationConfigsView() {
                         <Pencil className="size-3.5" aria-hidden />
                         Sửa
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {!listQuery.isPending && !listQuery.isError && (listQuery.data ?? []).length > 0 ? (
+          <div className="flex shrink-0 items-center justify-end gap-4 px-6 py-3">
+            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+              {items.length.toLocaleString('vi-VN')} rows
+            </p>
           </div>
-        )}
-      </section>
+        ) : null}
+      </div>
 
       <GamificationConfigEditDialog
         open={editTarget != null}

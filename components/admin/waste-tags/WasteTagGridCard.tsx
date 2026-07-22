@@ -1,6 +1,7 @@
 'use client';
 
 import { WasteTagIcon } from '@/components/admin/waste-tags/WasteTagIcon';
+import { getWasteTagDisplay } from '@/lib/constants/adminWasteTags';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
 import { ArchiveRestore, Pencil, PowerOff } from 'lucide-react';
 
@@ -23,90 +24,65 @@ export function WasteTagGridCard({
   onEdit,
   onToggle,
 }: WasteTagGridCardProps) {
+  const { accent } = getWasteTagDisplay(tag.code);
+
   return (
     <article
-      className={`group relative flex min-h-[210px] flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-all duration-300 ease-out ${
-        inactive
-          ? 'border-dashed border-muted-foreground/25 bg-muted/20'
-          : 'border-border/80 hover:-translate-y-0.5 hover:border-emerald-600/30 hover:shadow-md'
-      } ${selected ? 'border-emerald-600/50 shadow-md ring-2 ring-emerald-600/15' : ''}`}
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+        inactive ? 'border-dashed border-zinc-300 bg-zinc-50' : 'border-border/70 bg-white'
+      } ${selected ? 'ring-2 ring-zinc-900/10' : ''}`}
     >
-      <div
-        className={`h-1 w-full ${
-          inactive
-            ? 'bg-gradient-to-r from-muted-foreground/20 to-transparent'
-            : 'bg-gradient-to-r from-emerald-500/80 via-emerald-400/50 to-transparent'
-        }`}
-        aria-hidden
-      />
-
-      <div className="flex flex-1 flex-col p-4">
-        <header className="mb-3 flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <WasteTagIcon tag={tag} dimmed={inactive} size="sm" />
-            <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-medium text-emerald-800/90">
-              {tag.code}
-            </span>
-          </div>
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums ${
-              inactive ? 'bg-muted text-muted-foreground' : 'bg-emerald-100 text-emerald-800'
-            }`}
-          >
-            Thứ tự {tag.displayOrder}
+      <div className="flex flex-1 flex-col gap-3 p-4 pb-3">
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-semibold tabular-nums text-zinc-800">#{tag.code}</span>
+          <span className="text-zinc-300" aria-hidden>
+            ·
           </span>
-        </header>
+          <span className="tabular-nums text-zinc-500">#{tag.displayOrder}</span>
+          {inactive ? <span className="ml-auto font-medium text-zinc-500">Đã tắt</span> : null}
+        </div>
 
         <button type="button" onClick={onSelect} className="text-left">
-          <h3 className="font-semibold leading-snug text-foreground transition-colors group-hover:text-emerald-800">
+          <h3 className="text-[15px] font-bold leading-snug tracking-tight text-zinc-900">
             {tag.nameVi}
+            {tag.nameEn ? (
+              <span className="font-semibold text-zinc-500"> · {tag.nameEn}</span>
+            ) : null}
           </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">{tag.nameEn}</p>
-        </button>
-
-        <div className="mt-3 flex-1 rounded-md bg-muted/30 px-3 py-2.5">
           {tag.description ? (
-            <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-sm leading-snug text-zinc-600">
               {tag.description}
             </p>
-          ) : (
-            <p className="text-sm text-muted-foreground/60">Chưa có mô tả</p>
-          )}
-        </div>
+          ) : null}
+        </button>
 
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => onEdit(tag)}
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border/80 bg-background py-2 text-sm font-medium text-foreground transition hover:border-emerald-600/30 hover:bg-emerald-50/80 hover:text-emerald-900"
-          >
-            <Pencil className="size-3.5" />
-            Sửa
-          </button>
-          <button
-            type="button"
-            disabled={toggleBusy}
-            onClick={() => onToggle(tag)}
-            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border py-2 text-sm font-medium transition disabled:opacity-50 ${
-              inactive
-                ? 'border-emerald-200/80 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-100/80'
-                : 'border-border/80 bg-background text-muted-foreground hover:border-red-200/80 hover:bg-red-50/50 hover:text-red-700'
-            }`}
-          >
-            {inactive ? (
-              <>
-                <ArchiveRestore className="size-3.5" />
-                Bật lại
-              </>
-            ) : (
-              <>
-                <PowerOff className="size-3.5" />
-                Tắt
-              </>
-            )}
-          </button>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+          <WasteTagIcon tag={tag} dimmed={inactive} size="sm" />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onEdit(tag)}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100"
+              title="Sửa"
+              aria-label={`Sửa ${tag.nameVi}`}
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              type="button"
+              disabled={toggleBusy}
+              onClick={() => onToggle(tag)}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+              title={inactive ? 'Bật lại' : 'Tắt'}
+              aria-label={inactive ? `Bật lại ${tag.nameVi}` : `Tắt ${tag.nameVi}`}
+            >
+              {inactive ? <ArchiveRestore className="size-4" /> : <PowerOff className="size-4" />}
+            </button>
+          </div>
         </div>
       </div>
+
+      <div className={`h-1.5 w-full shrink-0 ${inactive ? 'bg-zinc-300' : accent}`} aria-hidden />
     </article>
   );
 }

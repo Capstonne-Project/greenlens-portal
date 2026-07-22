@@ -1,29 +1,35 @@
 'use client';
 
-import { AdminSidebarNav } from '@/components/admin/AdminSidebarNav';
-import { AdminSidebarProfile } from '@/components/admin/AdminSidebarProfile';
+import { AppSidebar } from '@/components/common/AppSidebar';
 import { AdminTopHeader } from '@/components/admin/AdminTopHeader';
+import { getAdminShellNavConfig } from '@/lib/constants/adminShellNav';
 import { cn } from '@/lib/utils';
-import { useUiStore } from '@/lib/store/uiStore';
 
+const adminNavConfig = getAdminShellNavConfig();
+
+/**
+ * Admin shell — single vertical scroll in the content pane.
+ * Does not nest MapShellContent's overflow-auto (that caused 2–3 scrollbars).
+ */
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
-  const collapsed = useUiStore(s => s.sidebarCollapsed);
-
   return (
-    <div className="flex min-h-screen bg-muted/30">
-      <aside
-        className={cn(
-          'hidden shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out md:flex',
-          collapsed ? 'w-[4.5rem]' : 'w-64'
-        )}
-      >
-        <AdminSidebarNav collapsed={collapsed} />
-        <AdminSidebarProfile collapsed={collapsed} />
-      </aside>
+    <div className="flex h-dvh w-screen overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
+      <AppSidebar config={adminNavConfig} profileHref="/admin/profile" />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AdminTopHeader />
-        <main className="w-full min-w-0 flex-1 px-4 py-5 md:px-5 md:py-6">{children}</main>
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden py-2 pr-2">
+        <div
+          className={cn(
+            'flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-[#fffdfc] p-2 md:p-6',
+            'border border-[#e8e8e8] border-l-2',
+            'shadow-[2px_0_10px_-2px_rgb(0_0_0/10%),0_1px_3px_rgb(0_0_0/4%)]'
+          )}
+        >
+          <AdminTopHeader />
+          {/* Sole content scroller for Admin pages */}
+          <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-4 md:pt-5">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

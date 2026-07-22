@@ -2,6 +2,31 @@
 
 import { NotificationTemplateFormDialog } from '@/components/admin/notification-templates/NotificationTemplateFormDialog';
 import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
+import { PaginationSimple } from '@/components/ui/pagination';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   useCreateNotificationTemplate,
   useDeleteNotificationTemplate,
   useNotificationTemplateDetail,
@@ -25,11 +50,43 @@ import {
   formatNotificationTemplateDate,
   getNotificationTemplateMutationError,
 } from '@/utils/notificationTemplateUi';
-import { AlertTriangle, Bell, Loader2, Pencil, Plus, Power, Upload } from 'lucide-react';
+import { Loader2, Pencil, Plus, Power, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type PublishFilter = 'all' | 'published' | 'draft';
+
+type NotificationTemplateColumnKey =
+  | 'template'
+  | 'channel'
+  | 'type'
+  | 'publish'
+  | 'status'
+  | 'updated'
+  | 'actions';
+
+const FIRST_COL: NotificationTemplateColumnKey = 'template';
+const LAST_COL: NotificationTemplateColumnKey = 'actions';
+
+function columnPad(colKey: NotificationTemplateColumnKey, layer: 'head' | 'body' = 'body') {
+  if (colKey === FIRST_COL) return adminTableCellPad('first', layer);
+  if (colKey === LAST_COL) return adminTableCellPad('last', layer);
+  return adminTableCellPad('middle', layer);
+}
+
+const COLUMN_DEFS: {
+  key: NotificationTemplateColumnKey;
+  label: string;
+  className?: string;
+}[] = [
+  { key: 'template', label: 'Template', className: 'w-[22%]' },
+  { key: 'channel', label: 'Kênh', className: 'w-[10%]' },
+  { key: 'type', label: 'Loại', className: 'w-[14%]' },
+  { key: 'publish', label: 'Publish', className: 'w-[10%]' },
+  { key: 'status', label: 'Trạng thái', className: 'w-[10%]' },
+  { key: 'updated', label: 'Cập nhật', className: 'w-[12%]' },
+  { key: 'actions', label: 'Hành động', className: 'w-[18%]' },
+];
 
 export function AdminNotificationTemplatesView() {
   const [page, setPage] = useState(1);
@@ -225,82 +282,130 @@ export function AdminNotificationTemplatesView() {
 
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Kênh</span>
-          <select
-            value={channel}
-            onChange={e => {
-              setChannel(e.target.value);
+          <Select
+            value={channel || 'all'}
+            onValueChange={v => {
+              setChannel(v === 'all' ? '' : v);
               setPage(1);
             }}
-            className="h-9 rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
           >
-            <option value="">Tất cả</option>
-            {NOTIFICATION_TEMPLATE_CHANNELS.map(ch => (
-              <option key={ch} value={ch}>
-                {notificationChannelLabel(ch)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              className="h-9 w-[9.5rem] rounded-lg"
+              aria-label="Lọc theo kênh thông báo"
+            >
+              <SelectValue placeholder="Tất cả" />
+            </SelectTrigger>
+            <SelectContent position="popper" sideOffset={4}>
+              <SelectItem value="all">Tất cả</SelectItem>
+              {NOTIFICATION_TEMPLATE_CHANNELS.map(ch => (
+                <SelectItem key={ch} value={ch}>
+                  {notificationChannelLabel(ch)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
-        {listQuery.isPending ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            Đang tải mẫu thông báo…
-          </div>
-        ) : listQuery.isError ? (
-          <div className="flex flex-col items-center gap-3 px-4 py-16 text-center">
-            <AlertTriangle className="size-8 text-destructive" aria-hidden />
-            <p className="text-sm text-destructive">{listErrorMessage}</p>
-            <button
-              type="button"
-              onClick={() => listQuery.refetch()}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-16 text-center text-muted-foreground">
-            <Bell className="size-8 text-emerald-700/50" aria-hidden />
-            <p className="text-sm font-medium text-foreground">Không có template phù hợp</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Template</th>
-                  <th className="px-4 py-3 font-medium">Kênh</th>
-                  <th className="px-4 py-3 font-medium">Loại</th>
-                  <th className="px-4 py-3 font-medium">Publish</th>
-                  <th className="px-4 py-3 font-medium">Trạng thái</th>
-                  <th className="px-4 py-3 font-medium">Cập nhật</th>
-                  <th className="px-4 py-3 text-right font-medium">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(item => {
+      <div className={ADMIN_TABLE_SHELL}>
+        <div className={ADMIN_TABLE_SCROLL}>
+          <Table className={ADMIN_TABLE_CLASS}>
+            <TableHeader className="sticky top-0 z-10 bg-slate-100">
+              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                {COLUMN_DEFS.map(col => (
+                  <TableHead
+                    key={col.key}
+                    className={cn(
+                      columnPad(col.key, 'head'),
+                      ADMIN_TABLE_HEAD_CELL,
+                      col.key === LAST_COL && 'text-right',
+                      col.className
+                    )}
+                  >
+                    {col.label}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listQuery.isPending ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" aria-hidden />
+                  </TableCell>
+                </TableRow>
+              ) : listQuery.isError ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <p className="text-sm text-destructive">{listErrorMessage}</p>
+                    <button
+                      type="button"
+                      onClick={() => listQuery.refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
+                    >
+                      Thử lại
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <SaveIcon size={32} className="opacity-30" />
+                      <span>Không có template phù hợp</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map(item => {
                   const rowBusy = busyRowId === item.id;
                   return (
-                    <tr
+                    <TableRow
                       key={item.id}
-                      className="border-b border-border last:border-0 hover:bg-muted/30"
+                      className={cn(
+                        ADMIN_TABLE_ROW_BORDER,
+                        'transition-[opacity,background-color] hover:bg-sky-50/40'
+                      )}
                     >
-                      <td className="px-4 py-3">
+                      <TableCell
+                        className={cn(
+                          columnPad('template', 'body'),
+                          'align-middle',
+                          COLUMN_DEFS[0].className
+                        )}
+                      >
                         <p className="font-semibold text-foreground">{item.titleVi}</p>
                         <p className="font-mono text-[11px] text-muted-foreground">
                           {item.templateKey}
                         </p>
-                      </td>
-                      <td className="px-4 py-3">{notificationChannelLabel(item.channel)}</td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          columnPad('channel', 'body'),
+                          'align-middle',
+                          COLUMN_DEFS[1].className
+                        )}
+                      >
+                        {notificationChannelLabel(item.channel)}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          columnPad('type', 'body'),
+                          'max-w-0 align-middle',
+                          COLUMN_DEFS[2].className
+                        )}
+                      >
                         <span className="line-clamp-1" title={item.type}>
                           {notificationTypeLabel(item.type)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          columnPad('publish', 'body'),
+                          'align-middle',
+                          COLUMN_DEFS[3].className
+                        )}
+                      >
                         <span
                           className={cn(
                             'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold',
@@ -311,16 +416,34 @@ export function AdminNotificationTemplatesView() {
                         >
                           {item.isPublished ? 'Published' : 'Nháp'}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          columnPad('status', 'body'),
+                          'align-middle',
+                          COLUMN_DEFS[4].className
+                        )}
+                      >
                         <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
                           Active
                         </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          columnPad('updated', 'body'),
+                          'whitespace-nowrap align-middle text-muted-foreground',
+                          COLUMN_DEFS[5].className
+                        )}
+                      >
                         {formatNotificationTemplateDate(item.updatedAt ?? item.createdAt)}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          columnPad('actions', 'body'),
+                          'align-middle text-right',
+                          COLUMN_DEFS[6].className
+                        )}
+                      >
                         <div className="flex flex-wrap justify-end gap-1.5">
                           <button
                             type="button"
@@ -358,41 +481,33 @@ export function AdminNotificationTemplatesView() {
                             Vô hiệu
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-        {pagination && pagination.totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
-            <p className="text-muted-foreground">
-              Trang {pagination.page}/{pagination.totalPages} · {pagination.totalItems} template
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={!pagination.hasPrev || listQuery.isFetching}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="rounded-lg border border-border px-3 py-1.5 font-medium hover:bg-muted disabled:opacity-50"
-              >
-                Trước
-              </button>
-              <button
-                type="button"
-                disabled={!pagination.hasNext || listQuery.isFetching}
-                onClick={() => setPage(p => p + 1)}
-                className="rounded-lg border border-border px-3 py-1.5 font-medium hover:bg-muted disabled:opacity-50"
-              >
-                Sau
-              </button>
+        {pagination ? (
+          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+            <div className="min-w-0">
+              {pagination.totalPages > 1 ? (
+                <PaginationSimple
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={setPage}
+                  className="w-auto"
+                />
+              ) : null}
             </div>
+            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+              {pagination.totalItems.toLocaleString('vi-VN')} rows
+            </p>
           </div>
         ) : null}
-      </section>
+      </div>
 
       <NotificationTemplateFormDialog
         open={createOpen}
