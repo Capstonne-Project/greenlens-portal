@@ -61,20 +61,20 @@ export function DepartmentsDataList({
         return (
           <li key={row.id}>
             <article
-              className={`group relative overflow-hidden rounded-xl border bg-background/60 transition-all duration-200 hover:border-emerald-600/25 hover:bg-emerald-50/40 hover:shadow-sm dark:hover:bg-emerald-950/20 ${
-                row.isActive ? 'border-border' : 'border-border/60 opacity-90'
+              className={`group relative overflow-hidden rounded-xl border bg-card transition-colors duration-200 hover:bg-muted/25 ${
+                row.isActive ? 'border-border' : 'border-border/70 opacity-90'
               }`}
             >
               <span
-                className={`absolute inset-y-2 left-0 w-1 rounded-r-full ${
-                  row.isActive ? 'bg-emerald-600' : 'bg-muted-foreground/35'
+                className={`absolute inset-y-2.5 left-0 w-0.5 rounded-full ${
+                  row.isActive ? 'bg-teal-700/70' : 'bg-zinc-300'
                 }`}
                 aria-hidden
               />
 
               <div className="flex flex-col gap-4 py-4 pl-5 pr-4 sm:flex-row sm:items-center sm:gap-5 sm:py-3.5">
                 <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600/15 to-emerald-800/10 text-sm font-bold text-emerald-800 ring-1 ring-emerald-700/10">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-sm font-semibold tracking-wide text-zinc-700 ring-1 ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700">
                     {provinceInitials(row.provinceName)}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -83,8 +83,8 @@ export function DepartmentsDataList({
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                           row.isActive
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-muted text-muted-foreground'
+                            ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-700/15 dark:bg-teal-950/50 dark:text-teal-300'
+                            : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-400'
                         }`}
                       >
                         {row.isActive ? 'Hoạt động' : 'Vô hiệu'}
@@ -92,12 +92,12 @@ export function DepartmentsDataList({
                     </div>
                     <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
-                        <MapPin className="size-3 shrink-0 text-emerald-700/70" aria-hidden />
+                        <MapPin className="size-3 shrink-0 text-zinc-400" aria-hidden />
                         {row.provinceName}
                         <span className="opacity-50">· {row.provinceCode}</span>
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Calendar className="size-3 shrink-0" aria-hidden />
+                        <Calendar className="size-3 shrink-0 text-zinc-400" aria-hidden />
                         {formatCreatedAt(row.createdAt)}
                       </span>
                     </p>
@@ -108,20 +108,20 @@ export function DepartmentsDataList({
                   <div className="flex min-w-[120px] flex-col gap-1.5">
                     <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1 font-medium">
-                        <Landmark className="size-3 text-emerald-700/80" aria-hidden />
+                        <Landmark className="size-3 text-zinc-400" aria-hidden />
                         Văn phòng
                       </span>
-                      <span className="font-bold tabular-nums text-emerald-800">
+                      <span className="font-semibold tabular-nums text-zinc-800 dark:text-zinc-100">
                         {row.officeCount}
                       </span>
                     </div>
                     <div
-                      className="h-1.5 overflow-hidden rounded-full bg-muted"
+                      className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
                       role="presentation"
                       title={`${officePct}% so với đơn vị nhiều VP nhất trên trang`}
                     >
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 transition-all duration-500"
+                        className="h-full rounded-full bg-zinc-400 transition-all duration-500 dark:bg-zinc-500"
                         style={{ width: `${officePct}%` }}
                       />
                     </div>
@@ -132,7 +132,7 @@ export function DepartmentsDataList({
                       type="button"
                       title="Chi tiết"
                       onClick={() => onDetail(row.id)}
-                      className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-emerald-700/10 hover:text-emerald-800"
+                      className="inline-flex size-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                     >
                       <Eye className="size-4" />
                     </button>
@@ -140,7 +140,7 @@ export function DepartmentsDataList({
                       type="button"
                       title="Sửa"
                       onClick={() => onEdit(row)}
-                      className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-emerald-700/10 hover:text-emerald-800"
+                      className="inline-flex size-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                     >
                       <Pencil className="size-4" />
                     </button>
@@ -150,7 +150,7 @@ export function DepartmentsDataList({
                         title="Vô hiệu hóa"
                         disabled={deactivatingId === row.id && isDeactivating}
                         onClick={() => onDeactivate(row)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                        className="inline-flex size-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                       >
                         <Trash2 className="size-4" />
                       </button>

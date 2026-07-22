@@ -148,7 +148,7 @@ export function CompanyTeamsView() {
                 className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-sm">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-lg font-bold text-white shadow-sm">
                     {team.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">

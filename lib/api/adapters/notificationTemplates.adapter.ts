@@ -51,7 +51,7 @@ export async function adaptNotificationTemplatesList(
   params?: NotificationTemplatesListParams
 ): Promise<ApiEnvelope<NotificationTemplatesList>> {
   const page = Math.max(1, params?.page ?? 1);
-  const pageSize = Math.max(1, params?.pageSize ?? 20);
+  const pageSize = Math.max(1, params?.pageSize ?? 10);
   const query = buildQuery({
     page,
     pageSize,

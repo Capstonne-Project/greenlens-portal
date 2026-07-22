@@ -93,7 +93,7 @@ export function DesktopSidebar({
       className={cn(
         // overflow-x clips labels during width tween; overflow-y scrolls long nav.
         // Keep clip at the full sidebar box (incl. padding) so collapsed selected chips aren't cut.
-        'hidden h-full w-[60px] shrink-0 overflow-x-hidden overflow-y-auto bg-[#f7f7f7] px-4 py-4 md:flex md:flex-col',
+        'hidden h-full w-[60px] shrink-0 overflow-hidden bg-[#f7f7f7] px-4 py-4 md:flex md:flex-col',
         className
       )}
       animate={{

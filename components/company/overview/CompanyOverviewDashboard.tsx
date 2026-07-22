@@ -72,11 +72,7 @@ export function CompanyOverviewDashboard() {
   return (
     <div className="relative w-full min-w-0 space-y-6">
       <section className="overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/90 shadow-lg shadow-emerald-900/5 backdrop-blur dark:border-border dark:bg-card/90">
-        <div className="relative bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 px-6 py-8 text-white sm:px-8">
-          <div
-            className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full bg-white/10 blur-2xl"
-            aria-hidden
-          />
+        <div className="relative bg-emerald-700 px-6 py-8 text-white sm:px-8">
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-emerald-100/90">
@@ -140,7 +136,7 @@ export function CompanyOverviewDashboard() {
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-emerald-100 dark:bg-muted">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+              className="h-full rounded-full bg-emerald-600 transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
