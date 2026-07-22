@@ -5,6 +5,13 @@ import {
   useMarkNotificationRead,
   useNotificationsList,
 } from '@/hooks/useNotification';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
   companyNotificationHref,
@@ -112,31 +119,27 @@ export function CompanyNotificationsView() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            { key: 'all', label: 'Tất cả' },
-            { key: 'unread', label: 'Chưa đọc' },
-            { key: 'read', label: 'Đã đọc' },
-          ] as const
-        ).map(opt => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => {
-              setReadFilter(opt.key);
-              setPage(1);
-            }}
-            className={cn(
-              'rounded-full px-4 py-1.5 text-sm font-medium transition',
-              readFilter === opt.key
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-muted-foreground hover:bg-emerald-50 dark:hover:bg-muted'
-            )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={readFilter}
+          onValueChange={v => {
+            setReadFilter(v as ReadFilter);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger
+            id="notifications-read-filter"
+            className="h-10 w-[14rem] rounded-lg"
+            aria-label="Trạng thái đọc"
           >
-            {opt.label}
-          </button>
-        ))}
+            <SelectValue placeholder="Trạng thái: Tất cả" />
+          </SelectTrigger>
+          <SelectContent position="popper" sideOffset={4}>
+            <SelectItem value="all">Trạng thái: Tất cả</SelectItem>
+            <SelectItem value="unread">Chưa đọc</SelectItem>
+            <SelectItem value="read">Đã đọc</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-emerald-100/80 bg-white/90 shadow-sm backdrop-blur dark:border-border dark:bg-card/90">

@@ -14,6 +14,13 @@ import {
   queueSeverityLabel,
 } from '@/utils/companyUi';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -171,21 +178,28 @@ export function CompanyAssignmentsTrackingTab({
               >
                 Trạng thái phân công
               </label>
-              <select
-                id="assign-status"
-                value={status}
-                onChange={e => {
-                  setStatus(e.target.value);
+              <Select
+                value={status || 'all'}
+                onValueChange={v => {
+                  setStatus(v === 'all' ? '' : v);
                   setPage(1);
                 }}
-                className="h-10 w-full rounded-lg border border-emerald-100 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-border dark:bg-background"
               >
-                {ASSIGNMENT_STATUS_OPTIONS.map(opt => (
-                  <option key={opt.value || 'all'} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id="assign-status"
+                  className="h-10 w-full rounded-lg"
+                  aria-label="Trạng thái phân công"
+                >
+                  <SelectValue placeholder="Tất cả trạng thái" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  {ASSIGNMENT_STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value || 'all'} value={opt.value || 'all'}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="min-w-[160px]">
               <label
@@ -194,21 +208,28 @@ export function CompanyAssignmentsTrackingTab({
               >
                 Trạng thái báo cáo
               </label>
-              <select
-                id="report-status"
-                value={reportStatus}
-                onChange={e => {
-                  setReportStatus(e.target.value);
+              <Select
+                value={reportStatus || 'all'}
+                onValueChange={v => {
+                  setReportStatus(v === 'all' ? '' : v);
                   setPage(1);
                 }}
-                className="h-10 w-full rounded-lg border border-emerald-100 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-border dark:bg-background"
               >
-                {REPORT_STATUS_OPTIONS.map(opt => (
-                  <option key={opt.value || 'all'} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id="report-status"
+                  className="h-10 w-full rounded-lg"
+                  aria-label="Trạng thái báo cáo"
+                >
+                  <SelectValue placeholder="Tất cả báo cáo" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  {REPORT_STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value || 'all'} value={opt.value || 'all'}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="flex flex-1 gap-2">
