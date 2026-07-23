@@ -10,7 +10,6 @@ import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
-import { getActiveNavId } from '@/lib/constants/mapShellNav';
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import { MapSidebarUserProfile } from '@/components/common/SidebarUserProfile';
@@ -19,10 +18,46 @@ import { cn } from '@/lib/utils';
 
 type AppSidebarProps = {
   config: MapShellNavConfig;
+  /** Profile / settings menu href — Officer default; Admin passes `/admin/profile`. */
+  profileHref?: string;
 };
 
 const ICON_CLASS = 'h-5 w-5 shrink-0';
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'GreenLens';
+
+/**
+ * Longest-href active match so `/admin` does not steal `/admin/reports`.
+ * Keeps Officer routes correct (their hrefs are already non-prefix-colliding).
+ */
+function resolveActiveNavId(pathname: string, config: MapShellNavConfig): string | null {
+  const path = pathname.split('?')[0] ?? pathname;
+  type Cand = { id: string; href: string; rank: number };
+  const cands: Cand[] = [];
+
+  const pushMatch = (id: string, href: string, rank: number) => {
+    if (path === href || path.startsWith(`${href}/`)) {
+      cands.push({ id, href, rank });
+    }
+  };
+
+  for (const item of config.mainNav) {
+    if (item.children?.length) {
+      for (const child of item.children) {
+        pushMatch(child.id, child.href, 2);
+      }
+      pushMatch(item.id, item.href, 1);
+      continue;
+    }
+    pushMatch(item.id, item.href, 1);
+  }
+
+  pushMatch(config.systemNav.notifications.id, config.systemNav.notifications.href, 1);
+  pushMatch(config.systemNav.settings.id, config.systemNav.settings.href, 1);
+
+  if (!cands.length) return null;
+  cands.sort((a, b) => b.href.length - a.href.length || b.rank - a.rank);
+  return cands[0]?.id ?? null;
+}
 
 function NavIcon({ item }: { item: MapShellNavItem }) {
   if (item.animatedIcon === 'filled-bell') {
@@ -202,21 +237,23 @@ function SidebarLogo() {
   );
 }
 
-export function AppSidebar({ config }: AppSidebarProps) {
+export function AppSidebar({ config, profileHref = '/officer/profile' }: AppSidebarProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const activeId = getActiveNavId(pathname, config);
+  const activeId = resolveActiveNavId(pathname, config);
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const { notifications, settings } = config.systemNav;
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
-      <SidebarBody className="justify-between gap-10">
-        {/* No overflow-x here — it clips to the content box (~28px) and cuts collapsed selected chips.
-            Label wipe + chip bounds are handled by DesktopSidebar overflow-x-hidden (full 60px box). */}
-        <div className="flex min-h-0 flex-1 flex-col">
+      <SidebarBody className="justify-between gap-4">
+        {/* Top scrolls when Users (or any) dropdown expands — never paint over systemNav. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <SidebarLogo />
-          <nav className="mt-8 flex flex-col gap-2" aria-label="Menu chính">
+          <nav
+            className="mt-8 flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            aria-label="Menu chính"
+          >
             {config.mainNav.map(item =>
               item.children?.length ? (
                 <NavDropdown key={item.id} item={item} activeId={activeId} pathname={pathname} />
@@ -235,7 +272,7 @@ export function AppSidebar({ config }: AppSidebarProps) {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="relative z-10 flex shrink-0 flex-col gap-2 bg-[#f7f7f7] pt-2">
           <SidebarLink
             link={{
               label: notifications.label,
@@ -257,7 +294,7 @@ export function AppSidebar({ config }: AppSidebarProps) {
           {isAuthenticated ? (
             <>
               <Separator className="mx-2 my-1 bg-neutral-200 dark:bg-neutral-700" />
-              <MapSidebarUserProfile expanded={open} />
+              <MapSidebarUserProfile expanded={open} profileHref={profileHref} />
             </>
           ) : null}
         </div>

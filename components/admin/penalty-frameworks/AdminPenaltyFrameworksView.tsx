@@ -9,6 +9,31 @@ import {
   type PenaltyFrameworkEditFormValues,
 } from '@/components/admin/penalty-frameworks/PenaltyFrameworkEditDialog';
 import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
+import { PaginationSimple } from '@/components/ui/pagination';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   useCreatePenaltyFramework,
   usePenaltyFrameworksList,
   useTogglePenaltyFramework,
@@ -32,20 +57,39 @@ import {
   getPenaltyMutationError,
   getPenaltyViolationBadgeClass,
 } from '@/utils/penaltyFrameworkUi';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-  Loader2,
-  Pencil,
-  Plus,
-  Power,
-  Scale,
-} from 'lucide-react';
+import { Filter, Loader2, Pencil, Plus, Power } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
+
+type PenaltyColumnKey =
+  | 'category'
+  | 'violationLevel'
+  | 'amount'
+  | 'effective'
+  | 'status'
+  | 'created'
+  | 'actions';
+
+const FIRST_COL: PenaltyColumnKey = 'category';
+const LAST_COL: PenaltyColumnKey = 'actions';
+
+const COLUMN_DEFS: { key: PenaltyColumnKey; label: string; className?: string }[] = [
+  { key: 'category', label: 'Loại ô nhiễm', className: 'w-[16%]' },
+  { key: 'violationLevel', label: 'Cấp vi phạm', className: 'w-[12%]' },
+  { key: 'amount', label: 'Mức phạt', className: 'w-[14%]' },
+  { key: 'effective', label: 'Hiệu lực', className: 'w-[16%]' },
+  { key: 'status', label: 'Trạng thái', className: 'w-[12%]' },
+  { key: 'created', label: 'Ngày tạo', className: 'w-[12%]' },
+  { key: 'actions', label: 'Thao tác', className: 'w-[14%]' },
+];
+
+function columnPad(colKey: PenaltyColumnKey, layer: 'head' | 'body' = 'body') {
+  if (colKey === FIRST_COL) return adminTableCellPad('first', layer);
+  if (colKey === LAST_COL) return adminTableCellPad('last', layer);
+  return adminTableCellPad('middle', layer);
+}
 
 const EMPTY_PAGINATION: PenaltyFrameworkPagination = {
   page: 1,
@@ -111,6 +155,9 @@ export function AdminPenaltyFrameworksView() {
 
   const resetToFirstPage = () => setPage(1);
 
+  const errorMessage =
+    listQuery.error instanceof Error ? listQuery.error.message : 'Không tải được khung xử phạt.';
+
   const handleCreate = (values: PenaltyFrameworkFormValues) => {
     createMutation.mutate(
       {
@@ -173,11 +220,23 @@ export function AdminPenaltyFrameworksView() {
   };
 
   return (
-    <div className="w-full min-w-0 space-y-6">
+    <div className="w-full min-w-0 space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Mức phạt theo loại ô nhiễm, cấp vi phạm và thời gian hiệu lực.
-        </p>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Mức phạt theo loại ô nhiễm, cấp vi phạm và thời gian hiệu lực.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              {pagination.totalItems.toLocaleString('vi-VN')}
+            </span>{' '}
+            khung · <span className="font-semibold text-foreground">{activeOnPage}</span> đang hiệu
+            lực · cao nhất{' '}
+            <span className="font-semibold text-foreground">
+              {formatPenaltyAmount(highestAmount)}
+            </span>
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
@@ -188,83 +247,61 @@ export function AdminPenaltyFrameworksView() {
         </button>
       </header>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Khung phạt
-          </p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-emerald-950">
-            {pagination.totalItems.toLocaleString('vi-VN')}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">Tổng theo bộ lọc hiện tại</p>
-        </div>
-        <div className="rounded-2xl border border-teal-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
-            Đang hiệu lực
-          </p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-teal-950">{activeOnPage}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Trên trang này</p>
-        </div>
-        <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Mức cao nhất
-          </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-emerald-950">
-            {formatPenaltyAmount(highestAmount)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">Trên trang này</p>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
+      <section className="rounded-2xl border border-border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-          <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_220px]">
-            <div className="space-y-2">
+          <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_200px]">
+            <div className="space-y-1.5">
               <label htmlFor="penalty-category-filter" className="text-sm font-medium">
                 Loại ô nhiễm
               </label>
-              <select
-                id="penalty-category-filter"
-                value={categoryId}
-                onChange={event => {
-                  setCategoryId(event.target.value);
+              <Select
+                value={categoryId || 'all'}
+                onValueChange={v => {
+                  setCategoryId(v === 'all' ? '' : v);
                   resetToFirstPage();
                 }}
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
               >
-                <option value="">Tất cả danh mục</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.nameVi}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="penalty-category-filter" className="h-10 w-full rounded-lg">
+                  <SelectValue placeholder="Tất cả danh mục" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
+                  {categories.map(category => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.nameVi}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label htmlFor="penalty-level-filter" className="text-sm font-medium">
                 Cấp vi phạm
               </label>
-              <select
-                id="penalty-level-filter"
-                value={violationLevel}
-                onChange={event => {
-                  setViolationLevel(event.target.value);
+              <Select
+                value={violationLevel || 'all'}
+                onValueChange={v => {
+                  setViolationLevel(v === 'all' ? '' : v);
                   resetToFirstPage();
                 }}
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
               >
-                <option value="">Tất cả cấp</option>
-                {PENALTY_VIOLATION_LEVELS.map(level => (
-                  <option key={level} value={level}>
-                    {PENALTY_VIOLATION_LEVEL_LABEL_VI[level]}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="penalty-level-filter" className="h-10 w-full rounded-lg">
+                  <SelectValue placeholder="Tất cả cấp" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  <SelectItem value="all">Tất cả cấp</SelectItem>
+                  {PENALTY_VIOLATION_LEVELS.map(level => (
+                    <SelectItem key={level} value={level}>
+                      {PENALTY_VIOLATION_LEVEL_LABEL_VI[level]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <span className="inline-flex items-center gap-1.5 text-sm font-medium">
               <Filter className="size-4 text-emerald-700" aria-hidden />
               Trạng thái
@@ -299,177 +336,206 @@ export function AdminPenaltyFrameworksView() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
-        <div className="border-b border-emerald-100 bg-emerald-50/50 px-4 py-3 sm:px-5">
-          <p className="text-sm font-semibold text-emerald-950">Danh sách khung xử phạt</p>
-          <p className="mt-1 text-xs text-emerald-900/65">
-            Mức phạt được hiển thị nổi bật để dễ rà soát nhanh trong quy trình quản trị.
-          </p>
+      <div className={ADMIN_TABLE_SHELL}>
+        <div className={ADMIN_TABLE_SCROLL}>
+          <Table className={ADMIN_TABLE_CLASS}>
+            <TableHeader className="sticky top-0 z-10 bg-slate-100">
+              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                {COLUMN_DEFS.map(col => (
+                  <TableHead
+                    key={col.key}
+                    className={cn(
+                      columnPad(col.key, 'head'),
+                      ADMIN_TABLE_HEAD_CELL,
+                      col.key === LAST_COL && 'text-right',
+                      col.className
+                    )}
+                  >
+                    {col.label}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listQuery.isPending ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" aria-hidden />
+                  </TableCell>
+                </TableRow>
+              ) : listQuery.isError ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <p className="text-sm text-destructive">{errorMessage}</p>
+                    <button
+                      type="button"
+                      onClick={() => void listQuery.refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
+                    >
+                      Thử lại
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <SaveIcon size={32} className="opacity-30" />
+                      <span>Chưa có khung xử phạt phù hợp.</span>
+                      <span className="text-xs">
+                        Hãy thử đổi bộ lọc hoặc tạo khung phạt mới cho danh mục đang dùng.
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map(item => (
+                  <TableRow
+                    key={item.id}
+                    className={cn(
+                      ADMIN_TABLE_ROW_BORDER,
+                      'transition-[opacity,background-color] hover:bg-sky-50/40',
+                      !item.isActive && 'opacity-60'
+                    )}
+                  >
+                    <TableCell
+                      className={cn(
+                        columnPad('category', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[0].className
+                      )}
+                    >
+                      <p className="font-semibold text-foreground">{item.categoryNameVi}</p>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('violationLevel', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[1].className
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold',
+                          getPenaltyViolationBadgeClass(item.violationLevel)
+                        )}
+                      >
+                        {getViolationLabel(item.violationLevel)}
+                      </span>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('amount', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[2].className
+                      )}
+                    >
+                      <p className="text-base font-bold tracking-tight text-foreground">
+                        {formatPenaltyAmountRange(item.minAmount, item.maxAmount, item.currency)}
+                      </p>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('effective', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[3].className
+                      )}
+                    >
+                      <p className="font-medium text-foreground">
+                        {formatAdminDate(item.effectiveFrom)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        đến {formatAdminDate(item.effectiveTo)}
+                      </p>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('status', 'body'),
+                        'align-middle',
+                        COLUMN_DEFS[4].className
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+                          item.isActive
+                            ? 'bg-emerald-100 text-emerald-900'
+                            : 'bg-slate-100 text-slate-700'
+                        )}
+                      >
+                        {item.isActive ? 'Đang hiệu lực' : 'Ngưng'}
+                      </span>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('created', 'body'),
+                        'align-middle text-sm text-muted-foreground',
+                        COLUMN_DEFS[5].className
+                      )}
+                    >
+                      {formatAdminDate(item.createdAt)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        columnPad('actions', 'body'),
+                        'align-middle text-right',
+                        COLUMN_DEFS[6].className
+                      )}
+                    >
+                      <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditTarget(item)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
+                        >
+                          <Pencil className="size-3.5" aria-hidden />
+                          Sửa
+                        </button>
+                        <button
+                          type="button"
+                          disabled={togglingId === item.id}
+                          onClick={() => handleToggle(item)}
+                          className={cn(
+                            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-50',
+                            item.isActive
+                              ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
+                              : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                          )}
+                        >
+                          {togglingId === item.id ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                          ) : (
+                            <Power className="size-3.5" aria-hidden />
+                          )}
+                          {item.isActive ? 'Tắt' : 'Bật'}
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {listQuery.isPending ? (
-          <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            Đang tải khung xử phạt…
-          </div>
-        ) : null}
-
-        {listQuery.isError ? (
-          <div className="py-16 text-center">
-            <p className="text-sm text-destructive">
-              {(listQuery.error as Error)?.message ?? 'Không tải được khung xử phạt.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => void listQuery.refetch()}
-              className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : null}
-
-        {!listQuery.isPending && !listQuery.isError && items.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-              <Scale className="size-6" aria-hidden />
+        {!listQuery.isPending && !listQuery.isError ? (
+          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+            <div className="min-w-0">
+              {pagination.totalPages > 1 ? (
+                <PaginationSimple
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={p => setPage(p)}
+                  className="w-auto"
+                />
+              ) : null}
             </div>
-            <p className="text-sm font-medium text-foreground">Chưa có khung xử phạt phù hợp.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Hãy thử đổi bộ lọc hoặc tạo khung phạt mới cho danh mục đang dùng.
+            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+              {pagination.totalItems.toLocaleString('vi-VN')} rows
             </p>
           </div>
         ) : null}
-
-        {!listQuery.isPending && !listQuery.isError && items.length > 0 ? (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-[920px] w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border/70 text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-5 py-3 font-semibold">Loại ô nhiễm</th>
-                    <th className="px-5 py-3 font-semibold">Cấp vi phạm</th>
-                    <th className="px-5 py-3 font-semibold">Mức phạt</th>
-                    <th className="px-5 py-3 font-semibold">Hiệu lực</th>
-                    <th className="px-5 py-3 font-semibold">Trạng thái</th>
-                    <th className="px-5 py-3 font-semibold">Ngày tạo</th>
-                    <th className="px-5 py-3 text-right font-semibold">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {items.map(item => (
-                    <tr key={item.id} className="transition hover:bg-emerald-50/35">
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-foreground">{item.categoryNameVi}</p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={cn(
-                            'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold',
-                            getPenaltyViolationBadgeClass(item.violationLevel)
-                          )}
-                        >
-                          {getViolationLabel(item.violationLevel)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-lg font-extrabold tracking-tight text-emerald-950">
-                          {formatPenaltyAmountRange(item.minAmount, item.maxAmount, item.currency)}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">{item.currency}</p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="font-medium text-foreground">
-                          {formatAdminDate(item.effectiveFrom)}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          đến {formatAdminDate(item.effectiveTo)}
-                        </p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-                            item.isActive
-                              ? 'bg-emerald-100 text-emerald-900'
-                              : 'bg-slate-100 text-slate-700'
-                          )}
-                        >
-                          {item.isActive ? 'Đang hiệu lực' : 'Ngưng'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-muted-foreground">
-                        {formatAdminDate(item.createdAt)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setEditTarget(item)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
-                          >
-                            <Pencil className="size-3.5" aria-hidden />
-                            Sửa
-                          </button>
-                          <button
-                            type="button"
-                            disabled={togglingId === item.id}
-                            onClick={() => handleToggle(item)}
-                            className={cn(
-                              'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-50',
-                              item.isActive
-                                ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
-                                : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                            )}
-                          >
-                            {togglingId === item.id ? (
-                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                            ) : (
-                              <Power className="size-3.5" aria-hidden />
-                            )}
-                            {item.isActive ? 'Tắt' : 'Bật'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-col gap-2 border-t border-border/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-xs text-muted-foreground">
-                Trang {pagination.page}/{Math.max(1, pagination.totalPages)} ·{' '}
-                <span className="font-medium text-foreground">
-                  {items.length.toLocaleString('vi-VN')}
-                </span>{' '}
-                / {pagination.totalItems.toLocaleString('vi-VN')} khung
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!pagination.hasPrev}
-                  onClick={() => setPage(current => Math.max(1, current - 1))}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                >
-                  <ChevronLeft className="size-3.5" aria-hidden />
-                  Trước
-                </button>
-                <button
-                  type="button"
-                  disabled={!pagination.hasNext}
-                  onClick={() => setPage(current => current + 1)}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                >
-                  Sau
-                  <ChevronRight className="size-3.5" aria-hidden />
-                </button>
-              </div>
-            </div>
-          </>
-        ) : null}
-      </section>
+      </div>
 
       <PenaltyFrameworkCreateDialog
         key={createOpen ? 'penalty-create-open' : 'penalty-create-closed'}

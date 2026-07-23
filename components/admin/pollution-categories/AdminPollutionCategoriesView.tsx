@@ -1,5 +1,6 @@
 'use client';
 
+import { PollutionCategoryArchiveDialog } from '@/components/admin/pollution-categories/PollutionCategoryArchiveDialog';
 import {
   PollutionCategoryFormDialog,
   type PollutionCategoryFormValues,
@@ -9,7 +10,6 @@ import {
   useAdminPollutionCategoriesList,
   useArchivePollutionCategory,
   useCreatePollutionCategory,
-  useDeletePollutionCategory,
   useUpdatePollutionCategory,
 } from '@/hooks/usePollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
@@ -38,6 +38,10 @@ export function AdminPollutionCategoriesView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editCategory, setEditCategory] = useState<PollutionCategory | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<{
+    category: PollutionCategory;
+    archive: boolean;
+  } | null>(null);
 
   const listParams = useMemo(
     () => ({
@@ -58,7 +62,6 @@ export function AdminPollutionCategoriesView() {
   const createMutation = useCreatePollutionCategory();
   const updateMutation = useUpdatePollutionCategory();
   const archiveMutation = useArchivePollutionCategory();
-  const deleteMutation = useDeletePollutionCategory();
 
   const setQuery = useCallback(
     (patch: Record<string, string | null>) => {
@@ -117,27 +120,22 @@ export function AdminPollutionCategoriesView() {
     );
   };
 
-  const handleArchiveToggle = (category: PollutionCategory, archive: boolean) => {
+  const requestArchiveToggle = (category: PollutionCategory, archive: boolean) => {
+    setArchiveTarget({ category, archive });
+  };
+
+  const confirmArchiveToggle = () => {
+    if (!archiveTarget) return;
+    const { category, archive } = archiveTarget;
     setArchivingId(category.id);
-    if (archive) {
-      deleteMutation.mutate(category.id, {
-        onSuccess: () => {
-          toast.success('Đã vô hiệu hóa danh mục.');
-          setArchivingId(null);
-        },
-        onError: err => {
-          toast.error(getPollutionCategoryMutationError(err, 'Không thể đổi trạng thái.'));
-          setArchivingId(null);
-        },
-      });
-      return;
-    }
     archiveMutation.mutate(
-      { id: category.id, body: { archive: false } },
+      { id: category.id, body: { archive } },
       {
         onSuccess: () => {
-          toast.success('Đã kích hoạt danh mục.');
+          toast.success(archive ? 'Đã ngưng danh mục.' : 'Đã kích hoạt danh mục.');
           setArchivingId(null);
+          setArchiveTarget(null);
+          if (archive) setQuery({ status: 'inactive', page: '1' });
         },
         onError: err => {
           toast.error(getPollutionCategoryMutationError(err, 'Không thể đổi trạng thái.'));
@@ -265,11 +263,8 @@ export function AdminPollutionCategoriesView() {
                 key={category.id}
                 category={category}
                 onEdit={setEditCategory}
-                onArchiveToggle={handleArchiveToggle}
-                archiveBusy={
-                  archivingId === category.id &&
-                  (archiveMutation.isPending || deleteMutation.isPending)
-                }
+                onArchiveToggle={requestArchiveToggle}
+                archiveBusy={archivingId === category.id && archiveMutation.isPending}
               />
             ))}
           </div>
@@ -319,6 +314,15 @@ export function AdminPollutionCategoriesView() {
         busy={formBusy}
         onClose={() => setEditCategory(null)}
         onSubmit={handleUpdate}
+      />
+      <PollutionCategoryArchiveDialog
+        category={archiveTarget?.category ?? null}
+        archive={archiveTarget?.archive ?? true}
+        busy={archiveMutation.isPending}
+        onClose={() => {
+          if (!archiveMutation.isPending) setArchiveTarget(null);
+        }}
+        onConfirm={confirmArchiveToggle}
       />
     </div>
   );

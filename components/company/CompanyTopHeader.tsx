@@ -7,7 +7,7 @@ import { Globe, Moon, Sun } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const iconButtonClass =
-  'inline-flex size-10 items-center justify-center rounded-xl border border-emerald-100/80 bg-white/80 text-muted-foreground transition hover:bg-emerald-50 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-border dark:bg-card';
+  'inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 export function CompanyTopHeader() {
   const pathname = usePathname();
@@ -21,19 +21,19 @@ export function CompanyTopHeader() {
   const nextLocaleLabel = locale === 'vi' ? 'EN' : 'VN';
 
   return (
-    <header className="sticky top-0 z-30 border-b border-emerald-100/60 bg-white/70 backdrop-blur-md dark:border-border dark:bg-card/80">
-      <div className="flex h-14 items-center justify-between gap-4 px-5">
+    <header className="shrink-0 border-b border-[#e8e8e8] bg-[#fffdfc] pb-3">
+      <div className="flex h-14 items-center justify-between gap-4 md:h-16">
         {!isOverview ? (
-          <h1 className="min-w-0 truncate text-sm font-semibold tracking-tight text-emerald-950 dark:text-foreground md:text-base">
+          <h1 className="min-w-0 truncate text-sm font-semibold tracking-tight text-foreground md:text-base">
             {title}
           </h1>
         ) : (
-          <span className="text-xs font-medium uppercase tracking-widest text-emerald-700/60">
+          <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             GreenLens Company
           </span>
         )}
 
-        <div className="flex shrink-0 items-center gap-2 md:gap-2.5">
+        <div className="flex shrink-0 items-center gap-2 border-l border-[#e8e8e8] pl-3 md:gap-2.5 md:pl-4">
           <CompanyNotificationBell />
           <button
             type="button"

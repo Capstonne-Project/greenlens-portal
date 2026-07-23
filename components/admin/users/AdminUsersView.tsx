@@ -1,28 +1,46 @@
 'use client';
 
+import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
 import { AdminUserChangeRoleDialog } from '@/components/admin/users/AdminUserChangeRoleDialog';
 import { AdminUserCreateDialog } from '@/components/admin/users/AdminUserCreateDialog';
 import { AdminUserDeleteDialog } from '@/components/admin/users/AdminUserDeleteDialog';
 import { AdminUserDetailDialog } from '@/components/admin/users/AdminUserDetailDialog';
 import { AdminUserEditDialog } from '@/components/admin/users/AdminUserEditDialog';
+import { PaginationSimple } from '@/components/ui/pagination';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useAdminUsersList } from '@/hooks/useAdminUsers';
 import type { AdminUser, AdminUserDetail } from '@/lib/api/models/adminUser';
+import { ADMIN_USERS_PAGE_SIZE } from '@/lib/constants/adminUsersNav';
+import { cn } from '@/lib/utils';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Eye,
-  Pencil,
-  Search,
-  Trash2,
-  UserCog,
-} from 'lucide-react';
+import { Download, Eye, Loader2, Pencil, Search, Trash2, UserCog } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
+
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
@@ -75,7 +93,7 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
   const queryParams = useMemo(
     () => ({
       page,
-      pageSize: 10,
+      pageSize: ADMIN_USERS_PAGE_SIZE,
       ...(searchQ.trim() ? { search: searchQ.trim() } : {}),
       ...(apiRole ? { role: apiRole } : {}),
       ...(isEmailVerified !== undefined ? { isEmailVerified } : {}),
@@ -110,12 +128,12 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
   ];
 
   return (
-    <div className="w-full min-w-0 space-y-6">
-      <p className="border-b border-border pb-6 text-sm text-muted-foreground">
+    <div className="w-full min-w-0 space-y-4">
+      <p className="border-b border-border pb-3 text-sm text-muted-foreground">
         {subtitleParts.join(' · ')}
       </p>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           {
             label: 'Tổng bản ghi',
@@ -125,9 +143,9 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
           },
           {
             label: 'Kích thước trang',
-            value: String(pagination?.pageSize ?? 10),
+            value: String(pagination?.pageSize ?? ADMIN_USERS_PAGE_SIZE),
             hint: 'Mỗi trang',
-            ring: Math.min(100, (pagination?.pageSize ?? 10) * 5),
+            ring: Math.min(100, (pagination?.pageSize ?? ADMIN_USERS_PAGE_SIZE) * 5),
           },
           {
             label: 'Đã xác minh email (trang)',
@@ -203,26 +221,29 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
         </form>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor="verified-filter">
-            Trạng thái xác minh email
-          </label>
-          <select
-            id="verified-filter"
-            value={verifiedParam ?? ''}
-            onChange={e => {
-              const v = e.target.value;
+          <Select
+            value={verifiedParam ?? 'all'}
+            onValueChange={v => {
               const next = new URLSearchParams(searchParams.toString());
-              if (v === '') next.delete('verified');
+              if (v === 'all') next.delete('verified');
               else next.set('verified', v);
               next.set('page', '1');
               router.push(`${pathname}?${next.toString()}`);
             }}
-            className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
           >
-            <option value="">Xác minh email: Tất cả</option>
-            <option value="true">Đã xác minh</option>
-            <option value="false">Chưa xác minh</option>
-          </select>
+            <SelectTrigger
+              id="verified-filter"
+              className="h-10 w-[14rem] rounded-lg"
+              aria-label="Trạng thái xác minh email"
+            >
+              <SelectValue placeholder="Xác minh email: Tất cả" />
+            </SelectTrigger>
+            <SelectContent position="popper" sideOffset={4}>
+              <SelectItem value="all">Xác minh email: Tất cả</SelectItem>
+              <SelectItem value="true">Đã xác minh</SelectItem>
+              <SelectItem value="false">Chưa xác minh</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -244,177 +265,205 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
         </div>
       </div>
 
-      {isError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-        >
-          {getAdminUserMutationError(error, 'Không tải được danh sách người dùng.')}{' '}
-          <button type="button" className="underline" onClick={() => refetch()}>
-            Thử lại
-          </button>
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-card border border-border bg-card shadow-sm">
-        <table className="w-full min-w-[960px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/40 text-muted-foreground">
-              <th className="px-4 py-3 font-medium">Họ tên</th>
-              <th className="px-4 py-3 font-medium">Liên hệ</th>
-              <th className="px-4 py-3 font-medium">Vai trò</th>
-              <th className="px-4 py-3 font-medium">Ngày tạo</th>
-              <th className="px-4 py-3 font-medium">Trạng thái email</th>
-              <th className="px-4 py-3 font-medium text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isPending &&
-              Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} className="border-b border-border">
-                  <td colSpan={6} className="px-4 py-4">
-                    <div className="h-10 animate-pulse rounded-lg bg-muted" />
-                  </td>
-                </tr>
-              ))}
-            {!isPending &&
-              items.map(user => (
-                <tr
-                  key={user.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30"
+      <div className={ADMIN_TABLE_SHELL}>
+        <div className={ADMIN_TABLE_SCROLL}>
+          <Table className={ADMIN_TABLE_CLASS}>
+            <TableHeader className="sticky top-0 z-10 bg-slate-100">
+              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                <TableHead
+                  className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('first', 'head'))}
                 >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {user.avatarUrl ? (
-                        <div className="relative size-10 shrink-0 overflow-hidden rounded-full ring-2 ring-emerald-600/15">
-                          <Image
-                            src={user.avatarUrl}
-                            alt=""
-                            fill
-                            sizes="40px"
-                            className="object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-600/15 text-xs font-bold text-emerald-900"
-                          aria-hidden
-                        >
-                          {initialsFromName(user.fullName || user.email)}
-                        </div>
-                      )}
-                      <span className="font-semibold text-foreground">{user.fullName}</span>
-                    </div>
-                  </td>
-                  <td className="max-w-[220px] px-4 py-3">
-                    <div className="truncate text-muted-foreground">{user.email}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {user.phoneNumber ?? '—'}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${roleBadgeClasses(user.role)}`}
+                  Họ tên
+                </TableHead>
+                <TableHead
+                  className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                >
+                  Liên hệ
+                </TableHead>
+                <TableHead
+                  className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                >
+                  Vai trò
+                </TableHead>
+                <TableHead
+                  className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                >
+                  Ngày tạo
+                </TableHead>
+                <TableHead
+                  className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}
+                >
+                  Trạng thái email
+                </TableHead>
+                <TableHead
+                  className={cn(
+                    ADMIN_TABLE_HEAD_CELL,
+                    adminTableCellPad('last', 'head'),
+                    'w-56 whitespace-nowrap text-right'
+                  )}
+                >
+                  Thao tác
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isPending ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={6} className="h-40 px-6 py-4 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={6} className="h-40 px-6 py-4 text-center">
+                    <p className="text-sm text-destructive">
+                      {getAdminUserMutationError(error, 'Không tải được danh sách người dùng.')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
                     >
-                      {roleDisplayVi(user.role)}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                    {formatCreatedAt(user.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span
-                        className={`size-2 shrink-0 rounded-full ${user.isEmailVerified ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                        aria-hidden
-                      />
-                      {user.isEmailVerified ? 'Đã xác minh' : 'Chưa xác minh'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="inline-flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setDetailUserId(user.id)}
-                        className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Xem chi tiết người dùng"
-                      >
-                        <Eye className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setChangeRoleUser(user)}
-                        className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Đổi vai trò"
-                      >
-                        <UserCog className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditUser(user)}
-                        className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Sửa người dùng"
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteUser(user)}
-                        className="rounded-lg p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Xóa người dùng"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      Thử lại
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <TableCell colSpan={6} className="h-40 px-6 py-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <SaveIcon size={32} className="opacity-30" />
+                      <span>Không có người dùng phù hợp.</span>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            {!isPending && items.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                  Không có người dùng phù hợp.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            disabled={!pagination.hasPrev}
-            onClick={() => setQuery({ page: String(pagination.page - 1) })}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40"
-          >
-            <ChevronLeft className="size-4" />
-            Trước
-          </button>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {pagination.page} / {pagination.totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={!pagination.hasNext}
-            onClick={() => setQuery({ page: String(pagination.page + 1) })}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40"
-          >
-            Sau
-            <ChevronRight className="size-4" />
-          </button>
-          <Link
-            href={`${pathname}?${(() => {
-              const u = new URLSearchParams(searchParams.toString());
-              u.set('page', String(pagination.totalPages));
-              return u.toString();
-            })()}`}
-            className="text-sm text-emerald-800 underline-offset-4 hover:underline"
-          >
-            Trang cuối ({pagination.totalPages})
-          </Link>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map(user => (
+                  <TableRow
+                    key={user.id}
+                    className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-sky-50/40')}
+                  >
+                    <TableCell className={cn(adminTableCellPad('first'), 'align-middle')}>
+                      <div className="flex items-center gap-3">
+                        {user.avatarUrl ? (
+                          <div className="relative size-10 shrink-0 overflow-hidden rounded-full ring-2 ring-emerald-600/15">
+                            <Image
+                              src={user.avatarUrl}
+                              alt=""
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-600/15 text-xs font-bold text-emerald-900"
+                            aria-hidden
+                          >
+                            {initialsFromName(user.fullName || user.email)}
+                          </div>
+                        )}
+                        <span className="font-semibold text-foreground">{user.fullName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell
+                      className={cn(adminTableCellPad('middle'), 'max-w-[220px] align-middle')}
+                    >
+                      <div className="truncate text-muted-foreground">{user.email}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {user.phoneNumber ?? '—'}
+                      </div>
+                    </TableCell>
+                    <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${roleBadgeClasses(user.role)}`}
+                      >
+                        {roleDisplayVi(user.role)}
+                      </span>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        adminTableCellPad('middle'),
+                        'whitespace-nowrap align-middle text-muted-foreground'
+                      )}
+                    >
+                      {formatCreatedAt(user.createdAt)}
+                    </TableCell>
+                    <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className={`size-2 shrink-0 rounded-full ${user.isEmailVerified ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                          aria-hidden
+                        />
+                        {user.isEmailVerified ? 'Đã xác minh' : 'Chưa xác minh'}
+                      </span>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        adminTableCellPad('last'),
+                        'w-56 whitespace-nowrap text-right align-middle'
+                      )}
+                    >
+                      <div className="inline-flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setDetailUserId(user.id)}
+                          className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          aria-label="Xem chi tiết người dùng"
+                        >
+                          <Eye className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setChangeRoleUser(user)}
+                          className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          aria-label="Đổi vai trò"
+                        >
+                          <UserCog className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditUser(user)}
+                          className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                          aria-label="Sửa người dùng"
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteUser(user)}
+                          className="rounded-lg p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Xóa người dùng"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
-      )}
+
+        {pagination ? (
+          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+            <div className="min-w-0">
+              {pagination.totalPages > 1 ? (
+                <PaginationSimple
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={p => setQuery({ page: String(p) })}
+                  className="w-auto"
+                />
+              ) : null}
+            </div>
+            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+              {pagination.totalItems.toLocaleString('vi-VN')} rows
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       <AdminUserCreateDialog
         open={createOpen}

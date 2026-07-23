@@ -34,6 +34,8 @@ function initialsFromUser(name: string | undefined, email: string | undefined): 
 
 type SidebarUserProfileProps = {
   expanded: boolean;
+  /** Account / settings links — Officer default; Admin passes `/admin/profile`. */
+  profileHref?: string;
 };
 
 function isPointerOverDesktopSidebar(): boolean {
@@ -41,7 +43,10 @@ function isPointerOverDesktopSidebar(): boolean {
   return !!el?.matches(':hover');
 }
 
-export function MapSidebarUserProfile({ expanded }: SidebarUserProfileProps) {
+export function MapSidebarUserProfile({
+  expanded,
+  profileHref = '/officer/profile',
+}: SidebarUserProfileProps) {
   const router = useRouter();
   const { setOpen, setHoverLocked } = useSidebar();
   const user = useAuthStore(s => s.user);
@@ -246,7 +251,7 @@ export function MapSidebarUserProfile({ expanded }: SidebarUserProfileProps) {
           style={{ top: menuPos.top, left: menuPos.left }}
         >
           <Link
-            href="/officer/profile"
+            href={profileHref}
             className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
             role="menuitem"
             onClick={closeMenu}
@@ -310,7 +315,7 @@ export function MapSidebarUserProfile({ expanded }: SidebarUserProfileProps) {
             ) : null}
           </div>
           <Link
-            href="/officer/profile"
+            href={profileHref}
             className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
             role="menuitem"
             onClick={closeMenu}

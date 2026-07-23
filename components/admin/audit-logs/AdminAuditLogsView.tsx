@@ -1,5 +1,30 @@
 'use client';
 
+import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
+import { PaginationSimple } from '@/components/ui/pagination';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useAuditLogsList } from '@/hooks/useAuditLogs';
 import type { AuditLogPagination, AuditLogsListParams } from '@/lib/api/models/auditLog';
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES, AUDIT_LOGS_PAGE_SIZE } from '@/lib/constants/auditLogs';
@@ -10,15 +35,7 @@ import {
   getAuditActionBadgeClass,
   truncateUserAgent,
 } from '@/utils/auditLogUi';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Filter,
-  Loader2,
-  RotateCcw,
-  ScrollText,
-} from 'lucide-react';
+import { Eye, Filter, Loader2, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
@@ -108,44 +125,50 @@ export function AdminAuditLogsView() {
             <label htmlFor="audit-entity-filter" className="text-sm font-medium">
               Entity
             </label>
-            <select
-              id="audit-entity-filter"
-              value={entityType}
-              onChange={event => {
-                setEntityType(event.target.value);
+            <Select
+              value={entityType || 'all'}
+              onValueChange={v => {
+                setEntityType(v === 'all' ? '' : v);
                 resetToFirstPage();
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             >
-              <option value="">Tất cả entity</option>
-              {AUDIT_ENTITY_TYPES.map(type => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="audit-entity-filter" className="h-10 w-full rounded-lg">
+                <SelectValue placeholder="Tất cả entity" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={4}>
+                <SelectItem value="all">Tất cả entity</SelectItem>
+                {AUDIT_ENTITY_TYPES.map(type => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
             <label htmlFor="audit-action-filter" className="text-sm font-medium">
               Action
             </label>
-            <select
-              id="audit-action-filter"
-              value={action}
-              onChange={event => {
-                setAction(event.target.value);
+            <Select
+              value={action || 'all'}
+              onValueChange={v => {
+                setAction(v === 'all' ? '' : v);
                 resetToFirstPage();
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             >
-              <option value="">Tất cả action</option>
-              {AUDIT_ACTIONS.map(auditAction => (
-                <option key={auditAction} value={auditAction}>
-                  {auditAction}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="audit-action-filter" className="h-10 w-full rounded-lg">
+                <SelectValue placeholder="Tất cả action" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={4}>
+                <SelectItem value="all">Tất cả action</SelectItem>
+                {AUDIT_ACTIONS.map(auditAction => (
+                  <SelectItem key={auditAction} value={auditAction}>
+                    {auditAction}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -191,151 +214,169 @@ export function AdminAuditLogsView() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
-        <div className="border-b border-emerald-100 bg-emerald-50/50 px-4 py-3 sm:px-5">
-          <p className="text-sm font-semibold text-emerald-950">Danh sách nhật ký kiểm toán</p>
-          <p className="mt-1 text-xs text-emerald-900/65">
-            Dữ liệu chỉ đọc, không hỗ trợ chỉnh sửa hoặc xoá để giữ nguyên tính toàn vẹn kiểm toán.
-          </p>
+      <div className={ADMIN_TABLE_SHELL}>
+        <div className={ADMIN_TABLE_SCROLL}>
+          <Table className={ADMIN_TABLE_CLASS}>
+            <TableHeader className="sticky top-0 z-10 bg-slate-100">
+              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                <TableHead
+                  className={cn(adminTableCellPad('first', 'head'), ADMIN_TABLE_HEAD_CELL)}
+                >
+                  Thời gian
+                </TableHead>
+                <TableHead
+                  className={cn(adminTableCellPad('middle', 'head'), ADMIN_TABLE_HEAD_CELL)}
+                >
+                  Người thực hiện
+                </TableHead>
+                <TableHead
+                  className={cn(adminTableCellPad('middle', 'head'), ADMIN_TABLE_HEAD_CELL)}
+                >
+                  Entity
+                </TableHead>
+                <TableHead
+                  className={cn(adminTableCellPad('middle', 'head'), ADMIN_TABLE_HEAD_CELL)}
+                >
+                  Action
+                </TableHead>
+                <TableHead
+                  className={cn(adminTableCellPad('middle', 'head'), ADMIN_TABLE_HEAD_CELL)}
+                >
+                  IP
+                </TableHead>
+                <TableHead
+                  className={cn(adminTableCellPad('middle', 'head'), ADMIN_TABLE_HEAD_CELL)}
+                >
+                  User agent
+                </TableHead>
+                <TableHead
+                  className={cn(
+                    adminTableCellPad('last', 'head'),
+                    ADMIN_TABLE_HEAD_CELL,
+                    'text-right'
+                  )}
+                >
+                  Chi tiết
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listQuery.isPending ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={7} className="h-40 px-6 py-4 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" aria-hidden />
+                  </TableCell>
+                </TableRow>
+              ) : listQuery.isError ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={7} className="h-40 px-6 py-4 text-center">
+                    <p className="text-sm text-destructive">{errorMessage}</p>
+                    <button
+                      type="button"
+                      onClick={() => void listQuery.refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
+                    >
+                      Thử lại
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <TableCell colSpan={7} className="h-40 px-6 py-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <SaveIcon size={32} className="opacity-30" />
+                      <span>Chưa có nhật ký kiểm toán phù hợp.</span>
+                      <span className="text-xs">
+                        Hãy thử đổi bộ lọc hoặc mở rộng khoảng thời gian tra cứu.
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map(item => (
+                  <TableRow
+                    key={item.id}
+                    className={cn(ADMIN_TABLE_ROW_BORDER, 'transition hover:bg-sky-50/40')}
+                  >
+                    <TableCell className={cn(adminTableCellPad('first'), 'align-middle')}>
+                      <p className="font-medium text-foreground">
+                        {formatAuditDateTime(item.createdAt)}
+                      </p>
+                    </TableCell>
+                    <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                      <p className="max-w-52 truncate font-semibold text-foreground">
+                        {formatActorLabel(item)}
+                      </p>
+                      {item.actorId ? (
+                        <p className="mt-1 max-w-52 truncate font-mono text-xs text-muted-foreground">
+                          {item.actorId}
+                        </p>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                      <p className="font-medium text-foreground">{item.entityType}</p>
+                      <p className="mt-1 max-w-48 truncate font-mono text-xs text-muted-foreground">
+                        {item.entityId ?? '—'}
+                      </p>
+                    </TableCell>
+                    <TableCell className={cn(adminTableCellPad('middle'), 'align-middle')}>
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
+                          getAuditActionBadgeClass(item.action)
+                        )}
+                      >
+                        {item.action}
+                      </span>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        adminTableCellPad('middle'),
+                        'align-middle font-mono text-xs text-muted-foreground'
+                      )}
+                    >
+                      {item.ipAddress ?? '—'}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        adminTableCellPad('middle'),
+                        'align-middle text-xs text-muted-foreground'
+                      )}
+                    >
+                      {truncateUserAgent(item.userAgent)}
+                    </TableCell>
+                    <TableCell className={cn(adminTableCellPad('last'), 'align-middle text-right')}>
+                      <Link
+                        href={`/admin/audit-logs/${item.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
+                      >
+                        <Eye className="size-3.5" aria-hidden />
+                        Chi tiết
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {listQuery.isPending ? (
-          <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            Đang tải nhật ký kiểm toán…
+        <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+          <div className="min-w-0">
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+                className="w-auto"
+              />
+            ) : null}
           </div>
-        ) : null}
-
-        {listQuery.isError ? (
-          <div className="py-16 text-center">
-            <p className="text-sm text-destructive">{errorMessage}</p>
-            <button
-              type="button"
-              onClick={() => void listQuery.refetch()}
-              className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : null}
-
-        {!listQuery.isPending && !listQuery.isError && items.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-              <ScrollText className="size-6" aria-hidden />
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              Chưa có nhật ký kiểm toán phù hợp.
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Hãy thử đổi bộ lọc hoặc mở rộng khoảng thời gian tra cứu.
-            </p>
-          </div>
-        ) : null}
-
-        {!listQuery.isPending && !listQuery.isError && items.length > 0 ? (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-[1080px] w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border/70 text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="px-5 py-3 font-semibold">Thời gian</th>
-                    <th className="px-5 py-3 font-semibold">Người thực hiện</th>
-                    <th className="px-5 py-3 font-semibold">Entity</th>
-                    <th className="px-5 py-3 font-semibold">Action</th>
-                    <th className="px-5 py-3 font-semibold">IP</th>
-                    <th className="px-5 py-3 font-semibold">User agent</th>
-                    <th className="px-5 py-3 text-right font-semibold">Chi tiết</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {items.map(item => (
-                    <tr key={item.id} className="transition hover:bg-emerald-50/35">
-                      <td className="px-5 py-4">
-                        <p className="font-medium text-foreground">
-                          {formatAuditDateTime(item.createdAt)}
-                        </p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="max-w-52 truncate font-semibold text-foreground">
-                          {formatActorLabel(item)}
-                        </p>
-                        {item.actorId ? (
-                          <p className="mt-1 max-w-52 truncate font-mono text-xs text-muted-foreground">
-                            {item.actorId}
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="font-medium text-foreground">{item.entityType}</p>
-                        <p className="mt-1 max-w-48 truncate font-mono text-xs text-muted-foreground">
-                          {item.entityId ?? '—'}
-                        </p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold',
-                            getAuditActionBadgeClass(item.action)
-                          )}
-                        >
-                          {item.action}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 font-mono text-xs text-muted-foreground">
-                        {item.ipAddress ?? '—'}
-                      </td>
-                      <td className="px-5 py-4 text-xs text-muted-foreground">
-                        {truncateUserAgent(item.userAgent)}
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <Link
-                          href={`/admin/audit-logs/${item.id}`}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
-                        >
-                          <Eye className="size-3.5" aria-hidden />
-                          Chi tiết
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-col gap-2 border-t border-border/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-xs text-muted-foreground">
-                Trang {pagination.page}/{Math.max(1, pagination.totalPages)} ·{' '}
-                <span className="font-medium text-foreground">
-                  {items.length.toLocaleString('vi-VN')}
-                </span>{' '}
-                / {pagination.totalItems.toLocaleString('vi-VN')} nhật ký
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!pagination.hasPrev}
-                  onClick={() => setPage(current => Math.max(1, current - 1))}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                >
-                  <ChevronLeft className="size-3.5" aria-hidden />
-                  Trước
-                </button>
-                <button
-                  type="button"
-                  disabled={!pagination.hasNext}
-                  onClick={() => setPage(current => current + 1)}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                >
-                  Sau
-                  <ChevronRight className="size-3.5" aria-hidden />
-                </button>
-              </div>
-            </div>
-          </>
-        ) : null}
-      </section>
+          <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+            {pagination.totalItems.toLocaleString('vi-VN')} rows
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
