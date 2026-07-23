@@ -25,8 +25,8 @@ interface LeoAssignDialogProps {
 }
 
 const CONTRACT_TYPE_LABEL: Record<string, string> = {
-  Subsidiary: 'Công ty con',
-  Bidding: 'Đấu thầu',
+  Subsidiary: 'Công ty trực thuộc',
+  Bidding: 'Công ty đấu thầu',
 };
 
 type AssignTab = 'company' | 'cleanup-team';

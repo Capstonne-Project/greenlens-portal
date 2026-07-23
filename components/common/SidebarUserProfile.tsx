@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,7 @@ import { useUiStore } from '@/lib/store/uiStore';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 import { useSidebar } from '@/components/ui/sidebar';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 
 function initialsFromUser(name: string | undefined, email: string | undefined): string {
   if (name?.trim()) {
@@ -55,13 +56,28 @@ export function MapSidebarUserProfile({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const languageRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLSpanElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const [languagePos, setLanguagePos] = useState({ top: 0, left: 0 });
+  const [nameTruncated, setNameTruncated] = useState(false);
 
   const displayName = user?.name?.trim() || 'Người dùng';
   const initials = initialsFromUser(user?.name, user?.email);
+
+  useLayoutEffect(() => {
+    const el = nameRef.current;
+    if (!el || !expanded) {
+      setNameTruncated(false);
+      return;
+    }
+    const measure = () => setNameTruncated(el.scrollWidth > el.clientWidth + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [expanded, displayName]);
 
   const updateMenuPosition = useCallback(() => {
     const trigger = triggerRef.current;
@@ -187,26 +203,36 @@ export function MapSidebarUserProfile({
         aria-haspopup="menu"
         title={expanded ? undefined : displayName}
       >
-        {user?.avatarUrl ? (
-          <span className="relative flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200">
-            <Image src={user.avatarUrl} alt="" fill sizes="20px" className="object-cover" />
-          </span>
-        ) : (
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[9px] font-bold text-neutral-700">
-            {initials}
-          </span>
-        )}
-        <motion.span
-          initial={false}
-          animate={{ opacity: expanded ? 1 : 0 }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className={cn(
-            'min-w-0 flex-1 truncate text-sm font-medium whitespace-pre text-neutral-800',
-            !expanded && 'pointer-events-none'
+        {/* size-5 slot matches nav/logo icon column; size-8 circle is centered so collapsed align stays true */}
+        <span className="relative flex size-5 shrink-0 items-center justify-center">
+          {user?.avatarUrl ? (
+            <span className="absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-neutral-200">
+              <Image src={user.avatarUrl} alt="" fill sizes="32px" className="object-cover" />
+            </span>
+          ) : (
+            <span className="absolute top-1/2 left-1/2 flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700">
+              {initials}
+            </span>
           )}
+        </span>
+        <AnimatedHoverTooltip
+          name={displayName}
+          disabled={!expanded || !nameTruncated || menuOpen}
+          className={cn('min-w-0 flex-1', expanded && 'ml-1')}
         >
-          {displayName}
-        </motion.span>
+          <motion.span
+            ref={nameRef}
+            initial={false}
+            animate={{ opacity: expanded ? 1 : 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className={cn(
+              'block w-full min-w-0 truncate text-sm font-medium whitespace-pre text-neutral-800',
+              !expanded && 'pointer-events-none'
+            )}
+          >
+            {displayName}
+          </motion.span>
+        </AnimatedHoverTooltip>
         <FontAwesomeIcon
           icon={faChevronDown}
           className={cn(

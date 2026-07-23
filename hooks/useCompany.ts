@@ -11,6 +11,7 @@ import {
   fetchCompanies,
   fetchCompanyAssignmentDetail,
   fetchCompanyAssignments,
+  fetchCompanyContractHistory,
   fetchCompanyDetail,
   fetchCompanyQueue,
   fetchCompanyServiceAreas,
@@ -22,6 +23,9 @@ import {
   fetchMyWardCompanies,
   renameCompanyTeam,
   removeCompanyTeamMember,
+  suspendCompany,
+  reactivateCompany,
+  renewCompanyContract,
   updateCompanyServiceAreas,
   updateCompanyStaffStatus,
 } from '@/lib/api/services/fetchCompany';
@@ -47,11 +51,13 @@ import type {
   MyCompanyKpi,
   MyCompanyKpiParams,
   RenameCompanyTeamInput,
+  RenewCompanyContractInput,
+  SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // ── Officer (LEO) — quản lý doanh nghiệp ────────────────────────────────────
 // Tách key factory khỏi `companyKeys` của company portal (dev) để tránh trùng export.
@@ -63,6 +69,8 @@ const officerCompanyKeys = {
   detail: (companyId: string) => [...officerCompanyKeys.all, 'detail', companyId] as const,
   serviceAreas: (companyId: string) =>
     [...officerCompanyKeys.all, 'service-areas', companyId] as const,
+  contractHistory: (companyId: string) =>
+    [...officerCompanyKeys.all, 'contract-history', companyId] as const,
 };
 
 const LIST_STALE_MS = 3 * 60 * 1000;
@@ -73,6 +81,7 @@ export function useCompaniesList(params: CompaniesListParams) {
     queryFn: () => fetchCompanies(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -114,6 +123,56 @@ export function useDeleteCompany() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
     },
+  });
+}
+
+/** POST /v1/companies/{id}/suspend — [DEO/Admin] tạm ngưng công ty (Active → Suspended). */
+export function useSuspendCompany() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: SuspendCompanyInput }) =>
+      suspendCompany(id, body),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.detail(id) });
+    },
+  });
+}
+
+/** POST /v1/companies/{id}/reactivate — [DEO/Admin] kích hoạt lại (Suspended → Active). */
+export function useReactivateCompany() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => reactivateCompany(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.detail(id) });
+    },
+  });
+}
+
+/** POST /v1/companies/{id}/renew-contract — [DEO/Admin] gia hạn HĐ Bidding (Expired → Active). */
+export function useRenewCompanyContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RenewCompanyContractInput }) =>
+      renewCompanyContract(id, body),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.all });
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: officerCompanyKeys.contractHistory(id) });
+    },
+  });
+}
+
+/** GET /v1/companies/{id}/contract-history — lịch sử kỳ hợp đồng (lazy khi drawer mở). */
+export function useCompanyContractHistory(companyId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: officerCompanyKeys.contractHistory(companyId ?? ''),
+    queryFn: () => fetchCompanyContractHistory(companyId!),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    enabled: Boolean(companyId) && enabled,
   });
 }
 

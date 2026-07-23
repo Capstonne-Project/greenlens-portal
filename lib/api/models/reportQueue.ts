@@ -20,6 +20,12 @@ export interface ReportQueueItem {
   slaResolveDueAt: string | null;
   /** Thumbnail ảnh đầu tiên của báo cáo (có thể null nếu chưa có media). */
   firstImageUrl: string | null;
+  isPossibleDuplicate: boolean;
+  possibleDuplicateOfReportId: string | null;
+  possibleDuplicateOfReportCode: string | null;
+  duplicateDetectionSource: string | null;
+  aiSimilarityScore: number | null;
+  duplicateCandidateCount: number;
 }
 
 /** GET /v1/reports/queue — data envelope. */

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ImageZoomPane } from '@/components/ui/image-zoom-pane';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Eye, X } from 'lucide-react';
 import Image from 'next/image';
@@ -51,14 +52,15 @@ export function ReportImagePreviewDialog({
     <Dialog open={index !== null} onOpenChange={open => !open && onClose()}>
       <DialogContent
         className={cn(
-          'fixed inset-0 left-0 top-0 z-50 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0',
+          'fixed inset-0 left-0 top-0 z-200 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0',
           'flex-col gap-0 overflow-hidden rounded-none border-0 bg-black p-0 text-white shadow-none',
           'data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-0',
           '[&>button.absolute]:hidden'
         )}
       >
         <DialogDescription className="sr-only">
-          Hộp thoại xem trước ảnh báo cáo, có thể chuyển ảnh trước và sau.
+          Hộp thoại xem trước ảnh báo cáo. Cuộn chuột để phóng to hoặc thu nhỏ, kéo để di chuyển,
+          double-click để reset.
         </DialogDescription>
         {current ? (
           <>
@@ -85,15 +87,8 @@ export function ReportImagePreviewDialog({
                   <span className="sr-only">Ảnh trước</span>
                 </Button>
               ) : null}
-              <div className="relative h-full w-full p-4 sm:p-8">
-                <Image
-                  src={current.url}
-                  alt={current.label}
-                  fill
-                  className="object-contain"
-                  sizes="100vw"
-                  priority
-                />
+              <div className="relative h-full w-full">
+                <ImageZoomPane key={current.url} src={current.url} alt={current.label} />
               </div>
               {hasNext ? (
                 <Button
@@ -111,8 +106,9 @@ export function ReportImagePreviewDialog({
             <DialogHeader className="shrink-0 space-y-0.5 border-t border-white/10 bg-black/90 px-4 py-3 text-left sm:px-6">
               <DialogTitle className="text-sm font-medium text-white">{current.label}</DialogTitle>
               <DialogDescription className="text-xs text-white/70">
-                {formatReportImageDateTime(current.uploadedAt)}
+                Cuộn để zoom · kéo để pan · double-click để reset
                 {images.length > 1 ? ` · ${(index ?? 0) + 1}/${images.length}` : ''}
+                {current.uploadedAt ? ` · ${formatReportImageDateTime(current.uploadedAt)}` : ''}
               </DialogDescription>
             </DialogHeader>
           </>

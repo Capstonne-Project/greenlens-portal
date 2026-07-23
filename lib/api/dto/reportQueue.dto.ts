@@ -17,6 +17,12 @@ export interface ReportQueueItemDto {
   slaVerifyDueAt: string;
   slaResolveDueAt: string;
   firstImageUrl: string | null;
+  isPossibleDuplicate: boolean;
+  possibleDuplicateOfReportId: string | null;
+  possibleDuplicateOfReportCode: string | null;
+  duplicateDetectionSource: string | null;
+  aiSimilarityScore: number | null;
+  duplicateCandidateCount: number;
 }
 
 export interface ReportQueuePaginationDto {

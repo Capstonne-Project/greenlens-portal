@@ -104,8 +104,8 @@ export type MyOfficesSortBy = 'name' | 'wardName' | 'officerName' | 'teamCount' 
 /** Page size mặc định cho dropdown phường/xã (khớp BE default 20). */
 export const MY_OFFICES_PAGE_SIZE = 20;
 
-/** Page size danh sách báo cáo DEO (trang /officer/reports). */
-export const DEO_REPORTS_PAGE_SIZE = 20;
+/** Page size danh sách báo cáo DEO (trang /officer/reports) — khớp Verify/Companies. */
+export const DEO_REPORTS_PAGE_SIZE = 10;
 
 export interface MyOfficesParams {
   page?: number;
@@ -171,6 +171,7 @@ export interface DeoMyReportItem {
   closedAt: string | null;
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
+  firstImageUrl: string | null;
 }
 
 export interface DeoMyReportsData {

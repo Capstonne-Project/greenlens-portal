@@ -1,20 +1,25 @@
+import { Skeleton } from '@/components/ui/skeleton';
+
+/** Route-level chrome skeleton — titles/toolbar/table shell (không gắn API). */
 export default function OfficerCompaniesLoading() {
   return (
-    <div className="animate-pulse space-y-3">
+    <div className="space-y-3">
       <div className="border-b border-slate-200 pb-3">
-        <div className="h-7 w-48 rounded bg-slate-200" />
+        <Skeleton className="h-7 w-48" />
       </div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-2">
-          <div className="h-8 w-32 rounded bg-slate-200" />
-          <div className="h-8 w-64 rounded bg-slate-200" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-8 w-56" />
         </div>
-        <div className="h-8 w-20 rounded bg-slate-200" />
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-8 w-20" />
+        </div>
       </div>
-      <div className="h-[420px] rounded border border-slate-200 bg-white" />
+      <Skeleton className="h-[420px] w-full rounded-md border border-slate-200" />
       <div className="flex justify-between">
-        <div className="h-4 w-40 rounded bg-slate-200" />
-        <div className="h-4 w-32 rounded bg-slate-200" />
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-4 w-24" />
       </div>
     </div>
   );
