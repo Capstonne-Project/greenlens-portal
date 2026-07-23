@@ -1,7 +1,19 @@
-import type { ApiEnvelope, LoginSuccessData, LoginUserDto } from '@/lib/api/types/auth';
+import type {
+  ApiEnvelope,
+  ChangePasswordData,
+  ChangePasswordRequest,
+  LoginSuccessData,
+  LoginUserDto,
+} from '@/lib/api/types/auth';
 import apiService from '../core';
 
-export type { ApiEnvelope, LoginSuccessData, LoginUserDto };
+export type {
+  ApiEnvelope,
+  ChangePasswordData,
+  ChangePasswordRequest,
+  LoginSuccessData,
+  LoginUserDto,
+};
 
 export interface LoginRequest {
   email: string;
@@ -22,6 +34,18 @@ export async function loginWithEmailPassword(
   return res.data;
 }
 
+/** Authenticated — POST /v1/auth/change-password */
+export async function changePassword(
+  body: ChangePasswordRequest
+): Promise<ApiEnvelope<ChangePasswordData>> {
+  const res = await apiService.post<ApiEnvelope<ChangePasswordData>>(
+    '/v1/auth/change-password',
+    body
+  );
+  return res.data;
+}
+
 export default {
   loginWithEmailPassword,
+  changePassword,
 };

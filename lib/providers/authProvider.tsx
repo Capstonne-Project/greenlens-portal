@@ -4,13 +4,29 @@ import { refreshSessionOnce } from '@/lib/api/core';
 import type { LoginSuccessData } from '@/lib/api/types/auth';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getUserFromAccessToken } from '@/lib/auth/userFromAccessToken';
-import { getAccessTokenFromCookie, getRefreshTokenFromCookie } from '@/lib/storage/authCookies';
+import {
+  getAccessTokenFromCookie,
+  getMustChangePasswordFromCookie,
+  getRefreshTokenFromCookie,
+  setMustChangePasswordCookie,
+} from '@/lib/storage/authCookies';
 import type { AuthUser } from '@/lib/store/authStore';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useEffect } from 'react';
 
 function sessionToAuthUser(data: LoginSuccessData): AuthUser {
   return buildAuthUserFromApi(data.user);
+}
+
+function withMustChangeFromCookie(user: AuthUser): AuthUser {
+  const fromCookie = getMustChangePasswordFromCookie();
+  const must = Boolean(user.mustChangePassword) || fromCookie;
+  if (must) {
+    // Keep cookie + store aligned (refresh Max-Age after silent refresh / hydrate)
+    setMustChangePasswordCookie(true);
+    return { ...user, mustChangePassword: true };
+  }
+  return { ...user, mustChangePassword: false };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -22,17 +38,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const s = useAuthStore.getState();
       if (s.token && s.user) {
         (window as Window & { __authToken?: string }).__authToken = s.token;
+        const merged = withMustChangeFromCookie(s.user);
+        if (merged.mustChangePassword !== s.user.mustChangePassword) {
+          setAuth(s.token, merged);
+        }
         return;
       }
       if (s.token && !s.user) {
         const user = getUserFromAccessToken(s.token);
-        if (user) setAuth(s.token, user);
+        if (user) setAuth(s.token, withMustChangeFromCookie(user));
         return;
       }
       const cookieToken = getAccessTokenFromCookie();
       if (cookieToken) {
         const user = getUserFromAccessToken(cookieToken);
-        if (user) setAuth(cookieToken, user);
+        if (user) setAuth(cookieToken, withMustChangeFromCookie(user));
         return;
       }
       // Access token missing/expired but refresh cookie still valid — silently
@@ -64,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const ce = e as CustomEvent<LoginSuccessData>;
       const d = ce.detail;
       if (!d?.user) return;
-      setAuth(d.accessToken, sessionToAuthUser(d));
+      setAuth(d.accessToken, withMustChangeFromCookie(sessionToAuthUser(d)));
     };
     window.addEventListener('auth:session', handler);
     return () => window.removeEventListener('auth:session', handler);

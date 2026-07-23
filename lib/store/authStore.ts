@@ -14,6 +14,7 @@ export interface AuthUser {
   /** Role BE (`UserRole`) — 8 human roles; officer portal chỉ DEO/LEO. */
   systemRole?: UserRole;
   avatarUrl?: string;
+  mustChangePassword?: boolean;
 }
 
 interface AuthState {

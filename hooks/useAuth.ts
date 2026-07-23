@@ -1,11 +1,11 @@
 'use client';
 
 import { isAxiosError } from '@/lib/api/core';
-import { loginWithEmailPassword } from '@/lib/api/services/fetchAuth';
+import { changePassword, loginWithEmailPassword } from '@/lib/api/services/fetchAuth';
 import type { ApiErrorEnvelope } from '@/lib/api/services/fetchAuth';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getDashboardPathByRole } from '@/lib/auth/mapUser';
-import { setAuthCookies } from '@/lib/storage/authCookies';
+import { setAuthCookies, setMustChangePasswordCookie } from '@/lib/storage/authCookies';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -25,8 +25,30 @@ export function useLogin() {
       const { accessToken, refreshToken, user } = envelope.data;
       setAuthCookies(accessToken, refreshToken);
       const authUser = buildAuthUserFromApi(user);
+      setMustChangePasswordCookie(Boolean(authUser.mustChangePassword));
       setAuth(accessToken, authUser);
+
+      if (authUser.mustChangePassword) {
+        router.push('/renew-password');
+        return;
+      }
       router.push(getDashboardPathByRole(authUser.role));
+    },
+  });
+}
+
+/** First-login / forced change — POST /v1/auth/change-password (authenticated). */
+export function useChangePassword() {
+  const router = useRouter();
+  const user = useAuthStore(s => s.user);
+  const updateUser = useAuthStore(s => s.updateUser);
+
+  return useMutation({
+    mutationFn: changePassword,
+    onSuccess: () => {
+      setMustChangePasswordCookie(false);
+      updateUser({ mustChangePassword: false });
+      router.push(getDashboardPathByRole(user?.role ?? 'company'));
     },
   });
 }
@@ -44,4 +66,15 @@ export function getLoginErrorMessage(error: unknown): string {
     if (body?.message) return body.message;
   }
   return 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.';
+}
+
+export function getChangePasswordErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const body = error.response?.data as ApiErrorEnvelope | undefined;
+    if (body?.message) return body.message;
+    if (error.response?.status === 422) {
+      return 'Mật khẩu hiện tại không đúng.';
+    }
+  }
+  return 'Không đổi được mật khẩu. Vui lòng thử lại.';
 }

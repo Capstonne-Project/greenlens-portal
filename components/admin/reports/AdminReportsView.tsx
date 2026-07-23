@@ -414,7 +414,8 @@ export function AdminReportsView() {
                             'align-middle',
                             col.className,
                             col.key === LAST_COL && 'text-right',
-                            (col.key === 'category' || col.key === 'address') && 'max-w-0'
+                            (col.key === 'category' || col.key === 'address') &&
+                              'max-w-0 overflow-hidden'
                           )}
                         >
                           {renderAdminCell(col.key, report, ctx)}
@@ -516,11 +517,25 @@ function renderAdminCell(
         </div>
       );
     case 'category':
-      return <span className="truncate text-muted-foreground">{report.categoryName}</span>;
+      return (
+        <span
+          className="block truncate text-muted-foreground"
+          title={report.categoryName || undefined}
+        >
+          {report.categoryName || '—'}
+        </span>
+      );
     case 'severity':
       return <ReportSeverityBars severity={report.severity} />;
-    case 'address':
-      return <span className="truncate text-muted-foreground">{report.address || '—'}</span>;
+    case 'address': {
+      const address = report.address?.trim() || '';
+      if (!address) return <span className="text-muted-foreground">—</span>;
+      return (
+        <span className="block truncate text-muted-foreground" title={address}>
+          {address}
+        </span>
+      );
+    }
     case 'reporter':
       return (
         <span className="text-muted-foreground">

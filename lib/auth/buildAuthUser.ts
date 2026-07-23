@@ -8,6 +8,7 @@ export function buildAuthUserFromApi(dto: {
   email: string;
   fullName: string;
   role: string;
+  mustChangePassword?: boolean;
 }): AuthUser {
   const canonical = normalizeApiRole(dto.role);
   return {
@@ -16,6 +17,7 @@ export function buildAuthUserFromApi(dto: {
     name: dto.fullName,
     role: mapApiRoleToAuth(dto.role),
     systemRole: isSystemRole(canonical) ? canonical : undefined,
+    mustChangePassword: Boolean(dto.mustChangePassword),
   };
 }
 

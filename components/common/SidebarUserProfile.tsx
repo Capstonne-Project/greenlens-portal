@@ -8,7 +8,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronDown,
   faChevronRight,
-  faGear,
   faLanguage,
   faRightFromBracket,
   faUser,
@@ -33,7 +32,7 @@ function initialsFromUser(name: string | undefined, email: string | undefined): 
 
 type SidebarUserProfileProps = {
   expanded: boolean;
-  /** Account / settings links — Officer default; Admin passes `/admin/profile`. */
+  /** Account link — Officer default; Admin `/admin/profile`; Company `/company/account`. */
   profileHref?: string;
 };
 
@@ -288,15 +287,6 @@ export function MapSidebarUserProfile({
               </div>
             ) : null}
           </div>
-          <Link
-            href={profileHref}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
-            role="menuitem"
-            onClick={closeMenu}
-          >
-            <FontAwesomeIcon icon={faGear} className="size-3.5 text-gray-500" />
-            Settings
-          </Link>
           <div className="my-1 h-px bg-gray-200" role="separator" />
           <button
             type="button"

@@ -12,6 +12,7 @@ import {
   faGaugeHigh,
   faGear,
   faScroll,
+  faUser,
   faUserGroup,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -36,6 +37,7 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
     item('staff', 'Nhân sự', '/company/staff', faUsers),
     item('teams', 'Đội dọn dẹp', '/company/teams', faUserGroup),
     item('contract-history', 'Lịch sử hợp đồng', '/company/contract-history', faScroll),
+    item('account', 'Tài khoản', '/company/account', faUser),
   ];
 
   return {

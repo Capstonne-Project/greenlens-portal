@@ -1,7 +1,5 @@
 'use client';
 
-import { useMyCompanyKpi } from '@/hooks/useCompany';
-import type { MyCompanyKpiParams } from '@/lib/api/models/company';
 import {
   Select,
   SelectContent,
@@ -9,6 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useMyCompanyKpi } from '@/hooks/useCompany';
+import type { MyCompanyKpiParams } from '@/lib/api/models/company';
 import { cn } from '@/lib/utils';
 import {
   formatAvgResolutionHours,
@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  Inbox,
   Loader2,
   RefreshCw,
   Target,
@@ -79,19 +80,18 @@ export function CompanyKpiView() {
       ? Math.round((kpi.totalCompleted / kpi.totalAssigned) * 1000) / 10
       : null;
 
+  const onTimeRate =
+    kpi && kpi.totalCompleted > 0
+      ? Math.round((kpi.completedOnTime / kpi.totalCompleted) * 1000) / 10
+      : null;
+
   return (
-    <div className="relative space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+    <div className="relative space-y-6">
+      <div className="flex flex-col gap-4 border-b border-[#e8e8e8] pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">
-            Hiệu suất xử lý task được LEO điều phối về công ty trong kỳ đã chọn.
+            Hiệu suất xử lý task LEO điều phối về công ty trong kỳ đã chọn.
           </p>
-          {kpi && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {kpi.companyName} · {formatCompanyDate(kpi.periodFrom)} →{' '}
-              {formatCompanyDate(kpi.periodTo)}
-            </p>
-          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -114,7 +114,7 @@ export function CompanyKpiView() {
             type="button"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
+            className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-50"
             aria-label="Làm mới"
           >
             <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} aria-hidden />
@@ -123,7 +123,7 @@ export function CompanyKpiView() {
       </div>
 
       {preset === 'custom' && (
-        <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-emerald-100/80 bg-white/90 p-4 dark:border-border dark:bg-card/90">
+        <div className="flex flex-wrap items-end gap-3 border-b border-[#e8e8e8] pb-5">
           <div>
             <label
               htmlFor="kpi-from"
@@ -158,12 +158,12 @@ export function CompanyKpiView() {
       )}
 
       {isPending ? (
-        <div className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-100/80 py-24 text-sm text-muted-foreground dark:border-border">
+        <div className="flex items-center justify-center gap-2 py-24 text-sm text-muted-foreground">
           <Loader2 className="size-5 animate-spin" aria-hidden />
           Đang tải KPI…
         </div>
       ) : isError || !kpi ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-sm">
+        <div className="flex items-start gap-3 border border-destructive/30 bg-destructive/5 p-6 text-sm">
           <AlertTriangle className="size-5 shrink-0 text-destructive" aria-hidden />
           <div className="space-y-3">
             <p className="font-semibold text-destructive">Không tải được KPI công ty</p>
@@ -177,78 +177,85 @@ export function CompanyKpiView() {
             </button>
           </div>
         </div>
+      ) : kpi.totalAssigned === 0 ? (
+        <EmptyKpiPeriod
+          companyName={kpi.companyName}
+          periodFrom={kpi.periodFrom}
+          periodTo={kpi.periodTo}
+        />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <KpiStatCard
-              icon={Target}
-              label="Đã nhận phân công"
-              value={String(kpi.totalAssigned)}
-              hint="Task LEO giao trong kỳ"
-              accent="emerald"
-            />
-            <KpiStatCard
-              icon={CheckCircle2}
-              label="Hoàn thành"
-              value={String(kpi.totalCompleted)}
-              hint={
-                completionRate != null ? `${completionRate}% trên tổng nhận` : 'Chưa có dữ liệu'
-              }
-              accent="teal"
-            />
-            <KpiStatCard
-              icon={ThumbsDown}
-              label="Từ chối"
-              value={String(kpi.totalDeclined)}
-              hint="Đội từ chối task"
-              accent="amber"
-            />
-            <KpiStatCard
-              icon={Timer}
-              label="Hoàn thành đúng hạn"
-              value={String(kpi.completedOnTime)}
-              hint="Trong hạn SLA"
-              accent="sky"
-            />
-            <KpiStatCard
-              icon={TrendingUp}
-              label="Tuân thủ SLA"
-              value={formatSlaComplianceRate(kpi.slaComplianceRate)}
-              hint="Tỷ lệ đạt hạn xử lý"
-              accent="emerald"
-            />
-            <KpiStatCard
-              icon={Clock3}
-              label="TB thời gian xử lý"
-              value={formatAvgResolutionHours(kpi.avgResolutionHours)}
-              hint="Trung bình đến hoàn thành"
-              accent="violet"
-            />
-          </div>
-
-          <section className="overflow-hidden rounded-2xl border border-emerald-100/80 bg-white/90 p-5 shadow-sm dark:border-border dark:bg-card/90 sm:p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-emerald-800/80 dark:text-emerald-400">
-              Tóm tắt kỳ
-            </h2>
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs text-muted-foreground">Kỳ báo cáo</dt>
-                <dd className="mt-1 text-sm font-medium">
+          {/* One composition: outcome hero + volume funnel */}
+          <section className="overflow-hidden rounded-2xl border border-[#e8e8e8] bg-[#f0fdf4] dark:border-border dark:bg-emerald-950/30">
+            <div className="grid gap-8 p-6 md:grid-cols-[1.15fr_0.85fr] md:p-8 lg:gap-10">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-800/70 dark:text-emerald-400/80">
+                  {kpi.companyName}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
                   {formatCompanyDate(kpi.periodFrom)} → {formatCompanyDate(kpi.periodTo)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Công ty</dt>
-                <dd className="mt-1 text-sm font-medium">{kpi.companyName}</dd>
-              </div>
-            </dl>
+                </p>
 
-            {kpi.totalAssigned === 0 && (
-              <p className="mt-5 rounded-xl bg-emerald-50/80 px-4 py-3 text-sm text-muted-foreground dark:bg-muted">
-                Chưa có task nào trong kỳ này. Khi LEO điều phối báo cáo, chỉ số sẽ cập nhật tại
-                đây.
-              </p>
-            )}
+                <div className="mt-8 flex flex-wrap items-end gap-2">
+                  <p className="text-5xl font-bold tabular-nums tracking-tight text-emerald-950 dark:text-foreground md:text-6xl">
+                    {completionRate != null ? `${completionRate}` : '—'}
+                    {completionRate != null && (
+                      <span className="ml-1 text-2xl font-semibold text-emerald-700/80 dark:text-emerald-400 md:text-3xl">
+                        %
+                      </span>
+                    )}
+                  </p>
+                  <p className="pb-1.5 text-sm font-medium text-muted-foreground">
+                    tỷ lệ hoàn thành
+                  </p>
+                </div>
+
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-emerald-900/10 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-emerald-600 transition-[width] duration-500 dark:bg-emerald-400"
+                    style={{ width: `${Math.min(100, completionRate ?? 0)}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {kpi.totalCompleted}/{kpi.totalAssigned} task đã hoàn thành
+                  {onTimeRate != null ? ` · ${onTimeRate}% đúng hạn SLA` : ''}
+                </p>
+              </div>
+
+              <div className="flex flex-col justify-center gap-1 border-t border-emerald-900/10 pt-6 dark:border-border md:border-t-0 md:border-l md:pl-8 md:pt-0">
+                <VolumeRow icon={Target} label="Đã nhận" value={kpi.totalAssigned} />
+                <VolumeRow icon={CheckCircle2} label="Hoàn thành" value={kpi.totalCompleted} />
+                <VolumeRow icon={ThumbsDown} label="Từ chối" value={kpi.totalDeclined} />
+                <VolumeRow icon={Timer} label="Đúng hạn" value={kpi.completedOnTime} />
+              </div>
+            </div>
+          </section>
+
+          {/* Secondary quality metrics — one surface, not six cards */}
+          <section>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Chất lượng xử lý
+            </h2>
+            <dl className="grid divide-y divide-[#e8e8e8] overflow-hidden rounded-2xl border border-[#e8e8e8] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <QualityCell
+                icon={TrendingUp}
+                label="Tuân thủ SLA"
+                value={formatSlaComplianceRate(kpi.slaComplianceRate)}
+                hint="Tỷ lệ đạt hạn xử lý"
+              />
+              <QualityCell
+                icon={Clock3}
+                label="TB thời gian xử lý"
+                value={formatAvgResolutionHours(kpi.avgResolutionHours)}
+                hint="Trung bình đến hoàn thành"
+              />
+              <QualityCell
+                icon={Timer}
+                label="Hoàn thành đúng hạn"
+                value={String(kpi.completedOnTime)}
+                hint={onTimeRate != null ? `${onTimeRate}% trên tổng hoàn thành` : 'Trong hạn SLA'}
+              />
+            </dl>
           </section>
         </>
       )}
@@ -256,46 +263,75 @@ export function CompanyKpiView() {
   );
 }
 
-function KpiStatCard({
+function EmptyKpiPeriod({
+  companyName,
+  periodFrom,
+  periodTo,
+}: {
+  companyName: string;
+  periodFrom: string;
+  periodTo: string;
+}) {
+  return (
+    <section className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafaf9] px-6 py-16 text-center dark:border-border dark:bg-muted/20">
+      <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <Inbox className="size-8" aria-hidden />
+      </div>
+      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {companyName}
+      </p>
+      <h2 className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+        Chưa có task trong kỳ này
+      </h2>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+        {formatCompanyDate(periodFrom)} → {formatCompanyDate(periodTo)}. Khi LEO điều phối báo cáo,
+        tỷ lệ hoàn thành và SLA sẽ hiện tại đây.
+      </p>
+    </section>
+  );
+}
+
+function VolumeRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Target;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition hover:bg-white/60 dark:hover:bg-muted/40">
+      <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+        <Icon className="size-4 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
+        {label}
+      </span>
+      <span className="text-lg font-bold tabular-nums tracking-tight text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function QualityCell({
   icon: Icon,
   label,
   value,
   hint,
-  accent,
 }: {
   icon: typeof Target;
   label: string;
   value: string;
   hint: string;
-  accent: 'emerald' | 'teal' | 'amber' | 'sky' | 'violet';
 }) {
-  const iconWrap: Record<typeof accent, string> = {
-    emerald: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
-    teal: 'bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300',
-    amber: 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300',
-    sky: 'bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-300',
-    violet: 'bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-300',
-  };
-
   return (
-    <div className="rounded-2xl border border-emerald-100/80 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-border dark:bg-card/90 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-        </div>
-        <span
-          className={cn(
-            'flex size-10 shrink-0 items-center justify-center rounded-xl',
-            iconWrap[accent]
-          )}
-        >
-          <Icon className="size-5" aria-hidden />
-        </span>
-      </div>
+    <div className="bg-[#fffdfc] px-5 py-5 dark:bg-card">
+      <dt className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <Icon className="size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
+        {label}
+      </dt>
+      <dd className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-foreground">
+        {value}
+      </dd>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }
