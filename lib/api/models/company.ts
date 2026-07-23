@@ -105,6 +105,25 @@ export interface UpdateCompanyServiceAreasInput {
   wardCodes: string[];
 }
 
+/** POST /v1/companies/{id}/suspend — [DEO/Admin] tạm ngưng công ty (Active → Suspended). */
+export interface SuspendCompanyInput {
+  reason: string;
+}
+
+/** POST /v1/companies/{id}/renew-contract — [DEO/Admin] gia hạn HĐ Bidding (Expired → Active). */
+export interface RenewCompanyContractInput {
+  newStartDate: string;
+  newEndDate: string;
+  newContractNumber: string;
+  note: string;
+}
+
+/** POST /v1/companies/{id}/renew-contract — 200 data */
+export interface RenewCompanyContractResult {
+  contractPeriodId: string;
+  companyStatus: CompanyStatus;
+}
+
 /** GET /v1/companies/{id} — địa bàn phụ trách (phường/xã). */
 export interface CompanyServiceArea {
   id: string;
@@ -224,7 +243,7 @@ export interface ArchiveCompanyTeamInput {
   isActive: boolean;
 }
 
-/** GET /v1/companies/my/contract-history — một kỳ hợp đồng. */
+/** GET /v1/companies/my/contract-history & GET /v1/companies/{id}/contract-history — một kỳ hợp đồng. */
 export interface CompanyContractPeriod {
   id: string;
   contractNumber: string;
@@ -237,12 +256,15 @@ export interface CompanyContractPeriod {
   createdAt: string;
 }
 
-/** GET /v1/companies/my/contract-history — data envelope. */
+/** GET /v1/companies/my/contract-history & GET /v1/companies/{id}/contract-history — data. */
 export interface MyCompanyContractHistory {
   companyId: string;
   companyName: string;
   periods: CompanyContractPeriod[];
 }
+
+/** Alias — DEO xem lịch sử theo companyId. */
+export type CompanyContractHistory = MyCompanyContractHistory;
 
 /** GET /v1/companies/my/kpi — query. */
 export interface MyCompanyKpiParams {

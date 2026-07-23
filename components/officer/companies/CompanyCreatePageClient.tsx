@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -56,6 +57,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+const CONTRACT_TYPE_LABEL: Record<CompanyContractType, string> = {
+  Subsidiary: 'Công ty trực thuộc',
+  Bidding: 'Công ty đấu thầu',
+};
+
 const schema = z
   .object({
     name: z.string().min(1, 'Vui lòng nhập tên doanh nghiệp').max(200, 'Tối đa 200 ký tự'),
@@ -78,7 +84,7 @@ const schema = z
     if (data.contractType === 'Bidding' && !endDate) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Vui lòng chọn ngày kết thúc (bắt buộc với Bidding)',
+        message: 'Vui lòng chọn ngày kết thúc (bắt buộc với công ty đấu thầu)',
         path: ['contractEndDate'],
       });
     }
@@ -138,7 +144,7 @@ const CREATE_SIDEBAR_ITEMS = [
   {
     icon: FileText,
     title: 'Loại hợp đồng',
-    description: 'Subsidiary hoặc Bidding',
+    description: 'Công ty trực thuộc hoặc công ty đấu thầu',
   },
   {
     icon: Building2,
@@ -257,7 +263,7 @@ export function CompanyCreatePageClient() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="mb-6 shrink-0">
+      <header className="shrink-0">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Doanh nghiệp</h1>
         <nav className="mt-1 text-sm text-muted-foreground" aria-label="Breadcrumb">
           <Link href="/officer/companies" className="hover:text-slate-700 hover:underline">
@@ -268,8 +274,10 @@ export function CompanyCreatePageClient() {
         </nav>
       </header>
 
+      <Separator className="my-6" />
+
       <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-0 shadow-none">
           {createdResult ? (
             <CardContent className="p-6 sm:p-8">
               <CompanyCreateSuccess
@@ -392,7 +400,7 @@ export function CompanyCreatePageClient() {
                         <SelectContent>
                           {COMPANY_CONTRACT_TYPES.map(type => (
                             <SelectItem key={type} value={type}>
-                              {type}
+                              {CONTRACT_TYPE_LABEL[type]}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -517,8 +525,9 @@ export function CompanyAssignAreaDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-lg gap-0 overflow-y-auto rounded-2xl p-6 sm:p-8">
-        {open && assignCompany ? (
+        {assignCompany ? (
           <CompanyAssignAreaDialogForm
+            key={assignCompany.id}
             assignCompany={assignCompany}
             onClose={onClose}
             onAssigned={onAssigned}
@@ -567,8 +576,9 @@ function CompanyAssignAreaDialogForm({
       {
         onSuccess: () => {
           toast.success('Đã cập nhật địa bàn phụ trách.');
-          onAssigned?.();
+          // Close first, then refetch — avoids Dialog RemoveScroll racing with list re-render
           onClose();
+          window.setTimeout(() => onAssigned?.(), 0);
         },
         onError: err =>
           toast.error(getCompanyMutationError(err, 'Không thể cập nhật địa bàn phụ trách.')),
