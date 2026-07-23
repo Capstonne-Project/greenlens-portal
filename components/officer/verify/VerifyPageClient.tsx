@@ -1,13 +1,16 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
+  BadgeCheck,
   ChevronDown,
   CircleHelp,
   Cloud,
+  Copy,
   Droplets,
+  Eye,
   Filter,
   FlaskConical,
   ImageIcon,
@@ -19,8 +22,10 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { LayoutGroup, motion } from 'motion/react';
 
 import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
+import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
 import { Button } from '@/components/ui/button';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import {
@@ -51,8 +56,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useReportQueue } from '@/hooks/useOfficer';
+import { useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
+import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/models/report';
@@ -77,11 +83,12 @@ type ColumnKey =
   | 'priority'
   | 'address'
   | 'created'
-  | 'verifySla';
+  | 'verifySla'
+  | 'actions';
 
 /** Vertical rhythm; symmetric edge inset (`ps-6` / `pe-6`) matches page shell `p-6`. */
 const FIRST_COL: ColumnKey = 'image';
-const LAST_COL: ColumnKey = 'verifySla';
+const LAST_COL: ColumnKey = 'actions';
 
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
   const y = layer === 'head' ? 'py-3.5' : 'py-4';
@@ -99,15 +106,15 @@ const ROW_BORDER = 'border-b border-slate-200';
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'image', label: 'Image', className: 'w-20' },
   { key: 'code', label: 'Report Code', className: 'w-[10%]' },
-  { key: 'category', label: 'Category', className: 'w-[12%]' },
-  { key: 'severity', label: 'Severity', className: 'w-[10%]' },
-  { key: 'status', label: 'Status', className: 'w-[10%]' },
+  { key: 'category', label: 'Category', className: 'w-[11%]' },
+  { key: 'severity', label: 'Severity', className: 'w-[9%]' },
+  { key: 'status', label: 'Status', className: 'w-[9%]' },
   { key: 'priority', label: 'Priority', className: 'w-[7%]' },
-  { key: 'address', label: 'Address', className: 'w-[18%]' },
-  { key: 'created', label: 'Created', className: 'w-[11%]' },
-  { key: 'verifySla', label: 'Verify SLA', className: 'w-[12%]' },
+  { key: 'address', label: 'Address', className: 'w-[16%]' },
+  { key: 'created', label: 'Created', className: 'w-[10%]' },
+  { key: 'verifySla', label: 'Verify SLA', className: 'w-[11%]' },
+  { key: 'actions', label: 'Action', className: 'w-[5.5rem]' },
 ];
-
 const BADGE_BASE =
   'inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium';
 
@@ -706,6 +713,87 @@ function SlaCell({ dueAt }: { dueAt: string | null }) {
   );
 }
 
+/** Đưa báo cáo nghi trùng ngay dưới báo cáo gốc (cùng trang). */
+function placeChildBesideParent(
+  list: ReportQueueItem[],
+  childId: string,
+  parentId: string
+): ReportQueueItem[] {
+  const childIdx = list.findIndex(item => item.id === childId);
+  if (childIdx < 0) return list;
+
+  const next = [...list];
+  const [child] = next.splice(childIdx, 1);
+  const parentIdx = next.findIndex(item => item.id === parentId);
+
+  if (parentIdx < 0) {
+    return [child, ...next];
+  }
+
+  next.splice(parentIdx + 1, 0, child);
+  return next;
+}
+
+/** Row actions — luôn hiện BadgeCheck (xác minh) + Eye (chi tiết). */
+function VerifyRowActions({
+  row,
+  isVerifying,
+  onVerify,
+  onOpenDetail,
+}: {
+  row: ReportQueueItem;
+  isVerifying: boolean;
+  onVerify: () => void;
+  onOpenDetail: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+      <button
+        type="button"
+        disabled={isVerifying}
+        title={row.isPossibleDuplicate ? 'Kiểm tra trùng trước khi xác minh' : 'Xác minh ngay'}
+        aria-label={`Xác minh ${row.code}`}
+        onClick={e => {
+          e.stopPropagation();
+          onVerify();
+        }}
+        className={cn(
+          'inline-flex size-8 items-center justify-center rounded-md',
+          'bg-emerald-600 text-white shadow-sm',
+          'transition-[background-color,box-shadow,transform] duration-150',
+          'hover:bg-emerald-500 hover:shadow',
+          'active:scale-[0.97]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-1',
+          'disabled:pointer-events-none disabled:opacity-60'
+        )}
+      >
+        {isVerifying ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+        ) : (
+          <BadgeCheck className="size-4" aria-hidden strokeWidth={2.25} />
+        )}
+      </button>
+      <button
+        type="button"
+        title="Xem chi tiết"
+        aria-label={`Xem chi tiết ${row.code}`}
+        onClick={e => {
+          e.stopPropagation();
+          onOpenDetail();
+        }}
+        className={cn(
+          'inline-flex size-8 items-center justify-center rounded-md',
+          'text-slate-600 transition-colors',
+          'hover:bg-slate-100 hover:text-slate-900',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+        )}
+      >
+        <Eye className="size-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 export function VerifyPageClient() {
   const router = useRouter();
   const user = useAuthStore(s => s.user);
@@ -713,6 +801,13 @@ export function VerifyPageClient() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [duplicateDialogRow, setDuplicateDialogRow] = useState<ReportQueueItem | null>(null);
+  const [pairFocus, setPairFocus] = useState<{ childId: string; parentId: string } | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const highlightClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const verifyMutation = useVerifyReport();
 
   const yearOnlyDefaults = getPresetDateInputs('all');
 
@@ -865,8 +960,100 @@ export function VerifyPageClient() {
 
   const { data, isPending, isFetching, isError, refetch } = useReportQueue(listParams);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
+
+  const displayItems = useMemo(() => {
+    if (!pairFocus) return items;
+    return placeChildBesideParent(items, pairFocus.childId, pairFocus.parentId);
+  }, [items, pairFocus]);
+
+  const parentIdForDialog = duplicateDialogRow?.possibleDuplicateOfReportId ?? null;
+  const parentPreview = useMemo(() => {
+    if (!parentIdForDialog) return null;
+    const found = items.find(item => item.id === parentIdForDialog);
+    if (!found) return null;
+    return {
+      id: found.id,
+      code: found.code,
+      firstImageUrl: found.firstImageUrl,
+    };
+  }, [items, parentIdForDialog]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    };
+  }, []);
+
+  const clearPairFocusSoon = () => {
+    if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    highlightClearRef.current = setTimeout(() => {
+      setHighlightedId(null);
+      setPairFocus(null);
+    }, 3200);
+  };
+
+  const scrollToRow = (id: string) => {
+    requestAnimationFrame(() => {
+      rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  };
+
+  const focusDuplicatePair = (row: ReportQueueItem) => {
+    const parentId = row.possibleDuplicateOfReportId;
+    if (!parentId) return;
+
+    if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    setPairFocus({ childId: row.id, parentId });
+    setHighlightedId(parentId);
+    setDuplicateDialogRow(row);
+
+    // Đợi layout animation + reorder xong rồi scroll tới gốc
+    window.setTimeout(() => scrollToRow(parentId), 280);
+  };
+
+  const handleQuickVerify = async (row: ReportQueueItem) => {
+    if (row.isPossibleDuplicate && row.possibleDuplicateOfReportId) {
+      focusDuplicatePair(row);
+      return;
+    }
+
+    setVerifyingId(row.id);
+    try {
+      const result = await verifyMutation.mutateAsync({ reportId: row.id, body: {} });
+      toastApiSuccess(result, 'Đã xác minh báo cáo.');
+    } catch (error) {
+      toastApiError(error, 'Không thể xác minh báo cáo.');
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const handleDuplicateDialogOpenChange = (open: boolean) => {
+    if (open) return;
+    setDuplicateDialogRow(null);
+    clearPairFocusSoon();
+  };
+
+  const handleGoToDuplicateParent = () => {
+    const parentId = duplicateDialogRow?.possibleDuplicateOfReportId;
+    if (!parentId) return;
+
+    const inPage = items.some(item => item.id === parentId);
+    setDuplicateDialogRow(null);
+
+    if (!inPage) {
+      setPairFocus(null);
+      setHighlightedId(null);
+      router.push(`/officer/verify/${parentId}`);
+      return;
+    }
+
+    setHighlightedId(parentId);
+    scrollToRow(parentId);
+    clearPairFocusSoon();
+  };
 
   if (!canAccessVerifyQueue(user?.systemRole)) {
     return (
@@ -1014,7 +1201,7 @@ export function VerifyPageClient() {
                     </button>
                   </TableCell>
                 </TableRow>
-              ) : items.length === 0 ? (
+              ) : displayItems.length === 0 ? (
                 <TableRow className={cn(ROW_BORDER, 'hover:bg-transparent')}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
@@ -1024,27 +1211,59 @@ export function VerifyPageClient() {
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map(row => (
-                  <TableRow
-                    key={row.id}
-                    className={cn(ROW_BORDER, 'cursor-pointer hover:bg-sky-50/40')}
-                    onClick={() => router.push(`/officer/verify/${row.id}`)}
-                  >
-                    {COLUMN_DEFS.map(col => (
-                      <TableCell
-                        key={col.key}
+                <LayoutGroup>
+                  {displayItems.map(row => {
+                    const isParentHighlight = highlightedId === row.id;
+                    const isChildPair = pairFocus?.childId === row.id;
+                    const isParentPair = pairFocus?.parentId === row.id;
+
+                    return (
+                      <motion.tr
+                        key={row.id}
+                        layout
+                        transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+                        ref={el => {
+                          if (el) rowRefs.current.set(row.id, el);
+                          else rowRefs.current.delete(row.id);
+                        }}
                         className={cn(
-                          tableCellPad(col.key, 'body'),
-                          'align-middle',
-                          col.className,
-                          col.key === 'address' && 'max-w-0'
+                          ROW_BORDER,
+                          'cursor-pointer border-b transition-[background-color,box-shadow] duration-300',
+                          'hover:bg-sky-50/40',
+                          (isParentPair || isChildPair) && 'bg-amber-50/70',
+                          isParentHighlight &&
+                            'bg-amber-50 shadow-[inset_3px_0_0_0_#f59e0b] ring-2 ring-inset ring-amber-400/70',
+                          isChildPair && !isParentHighlight && 'shadow-[inset_3px_0_0_0_#fbbf24]'
                         )}
+                        onClick={() => router.push(`/officer/verify/${row.id}`)}
                       >
-                        {renderVerifyCell(col.key, row)}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                        {COLUMN_DEFS.map(col => (
+                          <TableCell
+                            key={col.key}
+                            className={cn(
+                              tableCellPad(col.key, 'body'),
+                              'align-middle',
+                              col.className,
+                              col.key === 'address' && 'max-w-0'
+                            )}
+                            onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
+                          >
+                            {col.key === 'actions' ? (
+                              <VerifyRowActions
+                                row={row}
+                                isVerifying={verifyingId === row.id}
+                                onVerify={() => void handleQuickVerify(row)}
+                                onOpenDetail={() => router.push(`/officer/verify/${row.id}`)}
+                              />
+                            ) : (
+                              renderVerifyCell(col.key, row)
+                            )}
+                          </TableCell>
+                        ))}
+                      </motion.tr>
+                    );
+                  })}
+                </LayoutGroup>
               )}
             </TableBody>
           </Table>
@@ -1057,7 +1276,11 @@ export function VerifyPageClient() {
                 <PaginationSimple
                   page={page}
                   totalPages={pagination.totalPages}
-                  onPageChange={setPage}
+                  onPageChange={nextPage => {
+                    setPairFocus(null);
+                    setHighlightedId(null);
+                    setPage(nextPage);
+                  }}
                   className="w-auto"
                 />
               ) : null}
@@ -1068,6 +1291,18 @@ export function VerifyPageClient() {
           </div>
         ) : null}
       </div>
+
+      <DuplicateSuspectDialog
+        row={duplicateDialogRow}
+        parentPreview={parentPreview}
+        open={Boolean(duplicateDialogRow)}
+        onOpenChange={handleDuplicateDialogOpenChange}
+        onGoToParent={handleGoToDuplicateParent}
+        onResolved={() => {
+          setPairFocus(null);
+          setHighlightedId(null);
+        }}
+      />
     </>
   );
 }
@@ -1075,7 +1310,13 @@ export function VerifyPageClient() {
 function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
   switch (key) {
     case 'image':
-      return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
+      return (
+        <ReportThumb
+          url={row.firstImageUrl}
+          alt={row.code}
+          isPossibleDuplicate={row.isPossibleDuplicate}
+        />
+      );
     case 'code':
       return <span className="text-xs font-medium text-sky-700">{row.code}</span>;
     case 'category':
@@ -1100,6 +1341,8 @@ function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
       return <CreatedCell iso={row.createdAt} />;
     case 'verifySla':
       return <SlaCell dueAt={row.slaVerifyDueAt} />;
+    case 'actions':
+      return null;
     default:
       return null;
   }
@@ -1109,16 +1352,20 @@ function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
 const THUMB_FRAME =
   'relative h-9 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100 sm:h-10 sm:w-16';
 
-function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
-  if (!url) {
-    return (
-      <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
-        <ImageIcon className="size-3.5 sm:size-4" aria-hidden />
-      </div>
-    );
-  }
-
-  return (
+function ReportThumb({
+  url,
+  alt,
+  isPossibleDuplicate = false,
+}: {
+  url: string | null;
+  alt: string;
+  isPossibleDuplicate?: boolean;
+}) {
+  const thumb = !url ? (
+    <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
+      <ImageIcon className="size-3.5 sm:size-4" aria-hidden />
+    </div>
+  ) : (
     <div className={THUMB_FRAME}>
       <Image
         src={url}
@@ -1128,6 +1375,25 @@ function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
         className="object-cover"
         unoptimized
       />
+    </div>
+  );
+
+  if (!isPossibleDuplicate) return thumb;
+
+  return (
+    <div className="relative inline-flex">
+      {thumb}
+      <span
+        className={cn(
+          'absolute -right-1.5 -top-1.5 z-10 inline-flex size-5 items-center justify-center',
+          'rounded-full bg-amber-500 text-white shadow-sm',
+          'ring-2 ring-white'
+        )}
+        title="Nghi ngờ trùng lặp"
+        aria-label="Nghi ngờ trùng lặp"
+      >
+        <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+      </span>
     </div>
   );
 }

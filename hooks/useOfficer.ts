@@ -2,6 +2,8 @@
 
 import {
   assignReport,
+  confirmDuplicateReport,
+  dismissDuplicateReport,
   dispatchReportToCompany,
   fetchReportDetail,
   fetchReportQueue,
@@ -10,6 +12,7 @@ import {
 } from '@/lib/api/services/fetchReport';
 import type {
   AssignReportInput,
+  ConfirmDuplicateInput,
   DispatchToCompanyInput,
   ReassignReportInput,
   VerifyReportInput,
@@ -168,6 +171,34 @@ export function useVerifyReport() {
   return useMutation({
     mutationFn: ({ reportId, body }: { reportId: string; body: VerifyReportInput }) =>
       verifyReport(reportId, body),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/** POST /v1/reports/{id}/confirm-duplicate — BR-REP-032 xác nhận & gộp trùng. */
+export function useConfirmDuplicateReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: ConfirmDuplicateInput }) =>
+      confirmDuplicateReport(reportId, body),
+    onSuccess: (_data, { reportId, body }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(body.primaryReportId) });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/** POST /v1/reports/{id}/dismiss-duplicate — BR-REP-031 bác bỏ nghi trùng. */
+export function useDismissDuplicateReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId }: { reportId: string }) => dismissDuplicateReport(reportId),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
