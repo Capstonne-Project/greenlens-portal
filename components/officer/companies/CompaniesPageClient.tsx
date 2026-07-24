@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,8 +43,6 @@ import { useCompaniesList, useDeleteCompany, useReactivateCompany } from '@/hook
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import type { CompanyContractType, CompanyListItem, CompanyStatus } from '@/lib/api/models/company';
 import { COMPANIES_PAGE_SIZE } from '@/lib/api/models/company';
-import { canAccessCompanies } from '@/lib/constants/officerRoles';
-import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 import { getCompanyMutationError } from '@/utils/companyErrors';
@@ -296,20 +294,6 @@ function renderCompanyCell(
   }
 }
 
-function CompaniesAccessDenied({ homeHref }: { homeHref: string }) {
-  return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
-      <h2 className="text-lg font-semibold text-slate-900">Không có quyền truy cập</h2>
-      <p className="mt-2 max-w-md text-sm text-slate-500">
-        Danh sách doanh nghiệp chỉ dành cho cán bộ Sở TNMT (DEO).
-      </p>
-      <Button asChild className="mt-6 bg-emerald-600 text-white hover:bg-emerald-500">
-        <Link href={homeHref}>Về trang chính</Link>
-      </Button>
-    </div>
-  );
-}
-
 export function CompaniesPageClient() {
   const user = useAuthStore(s => s.user);
   const fullName = user?.name?.trim() || 'Người dùng';
@@ -427,10 +411,6 @@ export function CompaniesPageClient() {
 
   const items = data?.items ?? [];
   const pagination = data?.pagination;
-
-  if (!canAccessCompanies(user?.systemRole)) {
-    return <CompaniesAccessDenied homeHref={getDefaultOfficerHomePath(user?.systemRole)} />;
-  }
 
   return (
     <>
@@ -715,7 +695,7 @@ export function CompaniesPageClient() {
                 <TableRow className={ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <Loader2
-                      className="mx-auto size-6 animate-spin text-slate-400"
+                      className="mx-auto size-8 animate-spin text-slate-400"
                       aria-label="Đang tải danh sách"
                     />
                   </TableCell>

@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
 
-import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
 import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
@@ -68,8 +67,6 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
-import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
-import { canAccessVerifyQueue } from '@/lib/constants/officerRoles';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
@@ -1074,15 +1071,6 @@ export function VerifyPageClient() {
     clearPairFocusSoon();
   };
 
-  if (!canAccessVerifyQueue(user?.systemRole)) {
-    return (
-      <OfficerAccessDenied
-        message="Hàng đợi xác minh chỉ dành cho cán bộ văn phòng MT phường (LEO)."
-        homeHref={getDefaultOfficerHomePath(user?.systemRole)}
-      />
-    );
-  }
-
   return (
     <>
       <header className="mb-6 shrink-0">
@@ -1218,7 +1206,7 @@ export function VerifyPageClient() {
               {isPending ? (
                 <TableRow className={ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                    <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
@@ -1237,8 +1225,8 @@ export function VerifyPageClient() {
               ) : displayItems.length === 0 ? (
                 <TableRow className={cn(ROW_BORDER, 'hover:bg-transparent')}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
-                      <SaveIcon size={32} className="opacity-30" />
+                    <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
+                      <SaveIcon size={44} className="opacity-30" />
                       <span>Không có báo cáo</span>
                     </div>
                   </TableCell>

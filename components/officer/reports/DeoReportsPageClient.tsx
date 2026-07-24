@@ -19,7 +19,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -62,10 +61,7 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
-import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
-import { canAccessDeoReports } from '@/lib/constants/officerRoles';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
-import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 
 type ColumnKey =
@@ -501,7 +497,6 @@ function buildDeoReportsParams(
 }
 
 export function DeoReportsPageClient() {
-  const user = useAuthStore(s => s.user);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -559,23 +554,11 @@ export function DeoReportsPageClient() {
     [page, debouncedSearch, applied.status, applied.severity, applied.categoryId]
   );
 
-  const { data, isPending, isFetching, isError, error, refetch } = useDeoMyReports(
-    listParams,
-    canAccessDeoReports(user?.systemRole)
-  );
+  const { data, isPending, isFetching, isError, error, refetch } = useDeoMyReports(listParams);
 
   const items = data?.items ?? [];
   const pagination = data?.pagination;
   const departmentName = data?.departmentName;
-
-  if (!canAccessDeoReports(user?.systemRole)) {
-    return (
-      <OfficerAccessDenied
-        message="Danh sách báo cáo chỉ dành cho cán bộ Sở TNMT (DEO)."
-        homeHref={getDefaultOfficerHomePath(user?.systemRole)}
-      />
-    );
-  }
 
   const errorMessage =
     (error as Error | undefined)?.message?.includes('404') ||
@@ -704,7 +687,7 @@ export function DeoReportsPageClient() {
                 <TableRow className={ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <Loader2
-                      className="mx-auto size-6 animate-spin text-slate-400"
+                      className="mx-auto size-8 animate-spin text-slate-400"
                       aria-label="Đang tải danh sách"
                     />
                   </TableCell>
@@ -725,8 +708,8 @@ export function DeoReportsPageClient() {
               ) : items.length === 0 ? (
                 <TableRow className={cn(ROW_BORDER, 'hover:bg-transparent')}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
-                      <SaveIcon size={32} className="opacity-30" />
+                    <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
+                      <SaveIcon size={44} className="opacity-30" />
                       <span>Không có báo cáo</span>
                     </div>
                   </TableCell>

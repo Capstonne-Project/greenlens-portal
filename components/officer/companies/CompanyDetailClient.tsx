@@ -26,9 +26,6 @@ import {
 } from '@/components/ui/table';
 import { useCompanyDetail, useReactivateCompany } from '@/hooks/useCompany';
 import type { CompanyDetail, CompanyStatus } from '@/lib/api/models/company';
-import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
-import { canAccessCompanies } from '@/lib/constants/officerRoles';
-import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 import { getCompanyMutationError } from '@/utils/companyErrors';
 import { ArrowLeft, History, Loader2, MapPin, RefreshCw, RotateCcw } from 'lucide-react';
@@ -379,11 +376,7 @@ function CompanyDetailBody({ company }: { company: CompanyDetail }) {
 }
 
 export function CompanyDetailClient({ companyId }: { companyId: string }) {
-  const user = useAuthStore(s => s.user);
-  const { data, isPending, isError, error, refetch } = useCompanyDetail(
-    companyId,
-    canAccessCompanies(user?.systemRole)
-  );
+  const { data, isPending, isError, error, refetch } = useCompanyDetail(companyId);
   const reactivateMutation = useReactivateCompany();
   const [renewOpen, setRenewOpen] = useState(false);
   const [reactivateOpen, setReactivateOpen] = useState(false);
@@ -404,20 +397,6 @@ export function CompanyDetailClient({ companyId }: { companyId: string }) {
       },
     });
   };
-
-  if (!canAccessCompanies(user?.systemRole)) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-lg font-semibold text-slate-900">Không có quyền truy cập</h2>
-        <p className="mt-2 max-w-md text-sm text-slate-500">
-          Chi tiết doanh nghiệp chỉ dành cho cán bộ Sở TNMT (DEO).
-        </p>
-        <Button asChild className="mt-6 bg-emerald-600 text-white hover:bg-emerald-500">
-          <Link href={getDefaultOfficerHomePath(user?.systemRole)}>Về trang chính</Link>
-        </Button>
-      </div>
-    );
-  }
 
   const contractSubtitle = data
     ? (CONTRACT_TYPE_LABEL[data.contractType] ?? data.contractType)
