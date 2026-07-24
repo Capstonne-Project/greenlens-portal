@@ -27,4 +27,4 @@ export const ADMIN_REPORT_STATUS_TABS: AdminReportStatusTab[] = [
   },
 ];
 
-export const ADMIN_REPORT_PAGE_SIZE = 20;
+export const ADMIN_REPORT_PAGE_SIZE = 10;

@@ -42,7 +42,7 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   DuplicateReviewNeeded: 'Cần duyệt trùng lặp',
 };
 
-export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 20;
+export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 10;
 
 export function notificationChannelLabel(channel: string): string {
   return NOTIFICATION_CHANNEL_LABEL_VI[channel] ?? channel;

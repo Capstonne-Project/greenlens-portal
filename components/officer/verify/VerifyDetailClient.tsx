@@ -38,7 +38,10 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
-import { useReportDetail, useVerifyReport } from '@/hooks/useOfficer';
+import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
+import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
+import { useReportDetail, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
@@ -56,6 +59,7 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  Copy,
   Hourglass,
   LayoutGrid as LayoutGridIcon,
   Layers,
@@ -242,13 +246,31 @@ function formatShort(iso: string): string {
 function HeaderStrip({
   detail,
   pendingCategoryName,
+  isPossibleDuplicate = false,
 }: {
   detail: ReportDetail;
   pendingCategoryName: string;
+  isPossibleDuplicate?: boolean;
 }) {
   return (
-    <CardTitle className="text-2xl font-bold tracking-tight">
-      Khu vực {pendingCategoryName} tại {detail.address}
+    <CardTitle className="flex flex-wrap items-center gap-2 text-2xl font-bold tracking-tight">
+      <span>
+        Khu vực {pendingCategoryName} tại {detail.address}
+      </span>
+      {isPossibleDuplicate ? (
+        <AnimatedHoverTooltip name="Nghi ngờ trùng lặp">
+          <span
+            className={cn(
+              'inline-flex size-5 shrink-0 items-center justify-center',
+              'rounded-full bg-amber-500 text-white shadow-sm',
+              'ring-2 ring-white'
+            )}
+            aria-label="báo cáo trùng lặp"
+          >
+            <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+          </span>
+        </AnimatedHoverTooltip>
+      ) : null}
     </CardTitle>
   );
 }
@@ -312,6 +334,9 @@ function Gallery({ media, address }: { media: ReportDetail['media']; address: st
 
       <Dialog open={showAll} onOpenChange={setShowAll}>
         <DialogContent className="flex h-[92vh] max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <DialogDescription className="sr-only">
+            Hộp thoại xem tất cả hình ảnh báo cáo theo dạng lưới.
+          </DialogDescription>
           <DialogHeader className="shrink-0 space-y-0 border-b px-12 py-4 text-center">
             <DialogTitle className="truncate text-center text-sm font-semibold tracking-tight text-foreground md:text-base">
               {address || 'Hình ảnh báo cáo'}
@@ -666,12 +691,14 @@ function SlaActionCard({
   onToggleEditCategory,
   onVerify,
   isVerifying,
+  isPossibleDuplicate,
 }: {
   detail: ReportDetail;
   editingCategory: boolean;
   onToggleEditCategory: () => void;
   onVerify: () => void;
   isVerifying: boolean;
+  isPossibleDuplicate?: boolean;
 }) {
   const { isOverdue, remainingMs, percentElapsed, level, totalMs, hasSla } = useSlaCountdown(
     detail.createdAt,
@@ -770,6 +797,7 @@ function SlaActionCard({
           type="button"
           disabled={isVerifying}
           onClick={onVerify}
+          title={isPossibleDuplicate ? 'Kiểm tra trùng trước khi xác minh' : 'Xác minh ngay'}
           className={cn('w-full text-white', tokens.verifyBtn)}
         >
           {isVerifying ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
@@ -788,6 +816,7 @@ function ActionCard({
   onToggleEditCategory,
   onVerify,
   isVerifying,
+  isPossibleDuplicate,
 }: {
   detail: ReportDetail;
   onAssignNow: () => void;
@@ -796,6 +825,7 @@ function ActionCard({
   onToggleEditCategory: () => void;
   onVerify: () => void;
   isVerifying: boolean;
+  isPossibleDuplicate?: boolean;
 }) {
   if (status === 'InProgress') {
     return (
@@ -867,6 +897,7 @@ function ActionCard({
       onToggleEditCategory={onToggleEditCategory}
       onVerify={onVerify}
       isVerifying={isVerifying}
+      isPossibleDuplicate={isPossibleDuplicate}
     />
   );
 }
@@ -920,10 +951,32 @@ export function VerifyDetailClient({
   const { data: categories = [], isLoading: catsLoading } = useCatalogPollutionCategories();
   const verifyMutation = useVerifyReport();
 
+  /** Cùng nguồn flag trùng với hàng đợi — mở DuplicateSuspectDialog trước khi verify. */
+  const { data: queueSlice } = useReportQueue(
+    {
+      page: 1,
+      pageSize: 10,
+      status: 'Submitted',
+      ...(detail?.code ? { search: detail.code } : {}),
+    },
+    { enabled: Boolean(detail?.code) }
+  );
+
+  const queueItem = useMemo(
+    () => queueSlice?.items.find(item => item.id === id) ?? null,
+    [queueSlice?.items, id]
+  );
+
+  const isPossibleDuplicate = Boolean(
+    queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId
+  );
+
   const [pendingCategoryId, setPendingCategoryId] = useState<string>('');
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
   const [editingCategory, setEditingCategory] = useState(false);
   const [assignPromptOpen, setAssignPromptOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   // Sync pending state once detail loads (runs once)
   const [synced, setSynced] = useState(false);
@@ -967,19 +1020,26 @@ export function VerifyDetailClient({
   }
 
   const handleAssignNow = () => {
-    if (onBack && detailMode !== 'tracking') {
-      onBack();
-      return;
-    }
-    router.push(`/officer/assign?highlightReportId=${detail.id}`);
+    setAssignDialogOpen(true);
   };
 
   const handleAssignAfterVerify = () => {
     setAssignPromptOpen(false);
-    router.push(`/officer/assign?highlightReportId=${detail.id}`);
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssigned = () => {
+    setAssignDialogOpen(false);
+    void refetch();
   };
 
   const handleVerify = async () => {
+    // Đồng bộ VerifyPageClient.handleQuickVerify — nghi trùng → dialog, không gọi verify ngay
+    if (queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId) {
+      setDuplicateDialogOpen(true);
+      return;
+    }
+
     const body = {
       ...(pendingSeverity !== detail.severity ? { overrideSeverity: pendingSeverity } : {}),
       ...(pendingCategoryId !== detail.categoryId ? { overrideCategoryId: pendingCategoryId } : {}),
@@ -1002,7 +1062,11 @@ export function VerifyDetailClient({
     <div className="space-y-4">
       <BackLink onBack={onBack} />
 
-      <HeaderStrip detail={detail} pendingCategoryName={pendingCategoryName} />
+      <HeaderStrip
+        detail={detail}
+        pendingCategoryName={pendingCategoryName}
+        isPossibleDuplicate={isPossibleDuplicate}
+      />
 
       <Gallery media={detail.media} address={detail.address} />
 
@@ -1062,15 +1126,41 @@ export function VerifyDetailClient({
               onToggleEditCategory={() => setEditingCategory(v => !v)}
               onVerify={() => void handleVerify()}
               isVerifying={verifyMutation.isPending}
+              isPossibleDuplicate={isPossibleDuplicate}
             />
           </div>
         </div>
       </div>
 
+      <DuplicateSuspectDialog
+        row={duplicateDialogOpen ? queueItem : null}
+        parentPreview={null}
+        open={duplicateDialogOpen && Boolean(queueItem)}
+        onOpenChange={open => {
+          if (!open) setDuplicateDialogOpen(false);
+        }}
+        onGoToParent={() => {
+          const parentId = queueItem?.possibleDuplicateOfReportId;
+          setDuplicateDialogOpen(false);
+          if (parentId) router.push(`/officer/verify/${parentId}`);
+        }}
+        onResolved={() => {
+          setDuplicateDialogOpen(false);
+          void refetch();
+        }}
+      />
+
       <VerifyAssignPromptDialog
         open={assignPromptOpen}
         onCancel={() => setAssignPromptOpen(false)}
         onAssign={handleAssignAfterVerify}
+      />
+
+      <LeoAssignDialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        reportIds={[detail.id]}
+        onAssigned={handleAssigned}
       />
     </div>
   );

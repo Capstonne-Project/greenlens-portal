@@ -1,5 +1,23 @@
 'use client';
 
+import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
+import { PaginationSimple } from '@/components/ui/pagination';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useSpamSuspectsList } from '@/hooks/useSpamSuspects';
 import type { SpamSuspectsListParams, SpamSuspectsPagination } from '@/lib/api/models/spamSuspect';
 import { SPAM_SUSPECT_DEFAULTS, SPAM_SUSPECTS_PAGE_SIZE } from '@/lib/constants/spamSuspects';
@@ -10,16 +28,10 @@ import {
   suspectBanBadgeClass,
   suspectBanLabel,
 } from '@/utils/spamSuspectUi';
-import {
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-  Loader2,
-  RotateCcw,
-  ShieldAlert,
-} from 'lucide-react';
+import { Filter, Loader2, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
+
+const COLUMN_COUNT = 6;
 
 const EMPTY_PAGINATION: SpamSuspectsPagination = {
   page: 1,
@@ -186,59 +198,119 @@ export function AdminSpamSuspectsView() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
-        {listQuery.isPending && !listQuery.data ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            Đang tải danh sách nghi spam…
-          </div>
-        ) : listQuery.isError ? (
-          <div className="flex flex-col items-center gap-3 px-4 py-16 text-center">
-            <AlertTriangle className="size-8 text-destructive" aria-hidden />
-            <p className="text-sm text-destructive">{errorMessage}</p>
-            <button
-              type="button"
-              onClick={() => listQuery.refetch()}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-16 text-center text-muted-foreground">
-            <ShieldAlert className="size-8 text-emerald-700/50" aria-hidden />
-            <p className="text-sm font-medium text-foreground">Không có tài khoản nghi spam</p>
-            <p className="text-xs">Thử giảm ngưỡng heuristic nếu cần quét rộng hơn.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-left text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Tài khoản</th>
-                  <th className="px-4 py-3 font-medium">Trạng thái</th>
-                  <th className="px-4 py-3 font-medium tabular-nums">/ giờ</th>
-                  <th className="px-4 py-3 font-medium tabular-nums">Từ chối 7d</th>
-                  <th className="px-4 py-3 font-medium tabular-nums">AI flag</th>
-                  <th className="px-4 py-3 font-medium">Lý do nghi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(item => {
+      <div className={ADMIN_TABLE_SHELL}>
+        <div className={ADMIN_TABLE_SCROLL}>
+          <Table className={ADMIN_TABLE_CLASS}>
+            <TableHeader className="sticky top-0 z-10 bg-slate-100">
+              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                <TableHead
+                  className={cn(
+                    adminTableCellPad('first', 'head'),
+                    ADMIN_TABLE_HEAD_CELL,
+                    'w-[22%]'
+                  )}
+                >
+                  Tài khoản
+                </TableHead>
+                <TableHead
+                  className={cn(
+                    adminTableCellPad('middle', 'head'),
+                    ADMIN_TABLE_HEAD_CELL,
+                    'w-[10%]'
+                  )}
+                >
+                  Trạng thái
+                </TableHead>
+                <TableHead
+                  className={cn(
+                    adminTableCellPad('middle', 'head'),
+                    ADMIN_TABLE_HEAD_CELL,
+                    'w-[8%] tabular-nums'
+                  )}
+                >
+                  / giờ
+                </TableHead>
+                <TableHead
+                  className={cn(
+                    adminTableCellPad('middle', 'head'),
+                    ADMIN_TABLE_HEAD_CELL,
+                    'w-[10%] tabular-nums'
+                  )}
+                >
+                  Từ chối 7d
+                </TableHead>
+                <TableHead
+                  className={cn(
+                    adminTableCellPad('middle', 'head'),
+                    ADMIN_TABLE_HEAD_CELL,
+                    'w-[8%] tabular-nums'
+                  )}
+                >
+                  AI flag
+                </TableHead>
+                <TableHead
+                  className={cn(
+                    adminTableCellPad('last', 'head'),
+                    ADMIN_TABLE_HEAD_CELL,
+                    'w-[28%]'
+                  )}
+                >
+                  Lý do nghi
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listQuery.isPending && !listQuery.data ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_COUNT} className="h-40 px-6 py-4 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                  </TableCell>
+                </TableRow>
+              ) : listQuery.isError ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_COUNT} className="h-40 px-6 py-4 text-center">
+                    <p className="text-sm text-destructive">{errorMessage}</p>
+                    <button
+                      type="button"
+                      onClick={() => listQuery.refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
+                    >
+                      Thử lại
+                    </button>
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <TableCell colSpan={COLUMN_COUNT} className="h-40 px-6 py-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <SaveIcon size={32} className="opacity-30" />
+                      <span>Không có tài khoản nghi spam</span>
+                      <span className="text-xs">
+                        Thử giảm ngưỡng heuristic nếu cần quét rộng hơn.
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map(item => {
                   const reasons = splitSuspectReasons(item.suspectReasons);
                   return (
-                    <tr
+                    <TableRow
                       key={item.userId}
-                      className="border-b border-border last:border-0 hover:bg-muted/30"
+                      className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-sky-50/40')}
                     >
-                      <td className="px-4 py-3">
+                      <TableCell
+                        className={cn(adminTableCellPad('first', 'body'), 'align-middle w-[22%]')}
+                      >
                         <p className="font-semibold text-foreground">{item.fullName}</p>
                         <p className="truncate text-xs text-muted-foreground">{item.email}</p>
                         <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
                           {item.userId}
                         </p>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell
+                        className={cn(adminTableCellPad('middle', 'body'), 'align-middle w-[10%]')}
+                      >
                         <span
                           className={cn(
                             'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold',
@@ -247,17 +319,34 @@ export function AdminSpamSuspectsView() {
                         >
                           {suspectBanLabel(item.isBanned)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 tabular-nums font-medium text-foreground">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          adminTableCellPad('middle', 'body'),
+                          'align-middle tabular-nums font-medium text-foreground w-[8%]'
+                        )}
+                      >
                         {formatSuspectMetric(item.reportsLastHour)}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums font-medium text-foreground">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          adminTableCellPad('middle', 'body'),
+                          'align-middle tabular-nums font-medium text-foreground w-[10%]'
+                        )}
+                      >
                         {formatSuspectMetric(item.rejectedLast7Days)}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums font-medium text-foreground">
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          adminTableCellPad('middle', 'body'),
+                          'align-middle tabular-nums font-medium text-foreground w-[8%]'
+                        )}
+                      >
                         {formatSuspectMetric(item.aiFlaggedCount)}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell
+                        className={cn(adminTableCellPad('last', 'body'), 'align-middle w-[28%]')}
+                      >
                         {reasons.length === 0 ? (
                           <span className="text-muted-foreground">—</span>
                         ) : (
@@ -273,48 +362,31 @@ export function AdminSpamSuspectsView() {
                             ))}
                           </div>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-        {pagination.totalPages > 1 ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              {(pagination.page - 1) * pagination.pageSize + 1}–
-              {Math.min(pagination.page * pagination.pageSize, pagination.totalItems)} /{' '}
-              {pagination.totalItems.toLocaleString('vi-VN')}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!pagination.hasPrev || listQuery.isFetching}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40"
-              >
-                <ChevronLeft className="size-3.5" aria-hidden />
-                Trước
-              </button>
-              <span className="text-sm tabular-nums text-muted-foreground">
-                {pagination.page} / {pagination.totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={!pagination.hasNext || listQuery.isFetching}
-                onClick={() => setPage(p => p + 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40"
-              >
-                Sau
-                <ChevronRight className="size-3.5" aria-hidden />
-              </button>
-            </div>
+        <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+          <div className="min-w-0">
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+                className="w-auto"
+              />
+            ) : null}
           </div>
-        ) : null}
-      </section>
+          <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+            {pagination.totalItems.toLocaleString('vi-VN')} rows
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

@@ -26,7 +26,7 @@ export function PollutionCategoryIcon({ category, dimmed }: PollutionCategoryIco
 
   return (
     <span
-      className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${iconBg} ${
+      className={`flex size-10 shrink-0 items-center justify-center rounded-full ${iconBg} ${
         dimmed ? 'opacity-60' : ''
       }`}
     >

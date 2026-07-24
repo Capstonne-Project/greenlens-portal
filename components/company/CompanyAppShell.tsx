@@ -1,31 +1,34 @@
 'use client';
 
-import { CompanyAmbient } from '@/components/company/shared/CompanyAmbient';
-import { CompanySidebarNav } from '@/components/company/CompanySidebarNav';
-import { CompanySidebarProfile } from '@/components/company/CompanySidebarProfile';
+import { AppSidebar } from '@/components/common/AppSidebar';
 import { CompanyTopHeader } from '@/components/company/CompanyTopHeader';
+import { getCompanyShellNavConfig } from '@/lib/constants/companyShellNav';
 import { cn } from '@/lib/utils';
-import { useUiStore } from '@/lib/store/uiStore';
 
+const companyNavConfig = getCompanyShellNavConfig();
+
+/**
+ * Company shell — AppSidebar + Officer/Admin-matching bordered content panel.
+ * Single vertical scroll in the content pane (same approach as AdminAppShell).
+ */
 export function CompanyAppShell({ children }: { children: React.ReactNode }) {
-  const collapsed = useUiStore(s => s.sidebarCollapsed);
-
   return (
-    <div className="relative flex min-h-screen">
-      <CompanyAmbient />
-      <aside
-        className={cn(
-          'relative hidden shrink-0 flex-col border-r border-emerald-100/60 bg-white/75 backdrop-blur-md transition-[width] duration-200 ease-out dark:border-border dark:bg-card/80 md:flex',
-          collapsed ? 'w-[4.5rem]' : 'w-64'
-        )}
-      >
-        <CompanySidebarNav collapsed={collapsed} />
-        <CompanySidebarProfile collapsed={collapsed} />
-      </aside>
+    <div className="flex h-dvh w-screen overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
+      <AppSidebar config={companyNavConfig} profileHref="/company/notifications/preferences" />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <CompanyTopHeader />
-        <main className="w-full min-w-0 flex-1 px-4 py-5 md:px-5 md:py-6">{children}</main>
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden py-2 pr-2">
+        <div
+          className={cn(
+            'flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-[#fffdfc] p-2 md:p-6',
+            'border border-[#e8e8e8] border-l-2',
+            'shadow-[2px_0_10px_-2px_rgb(0_0_0/10%),0_1px_3px_rgb(0_0_0/4%)]'
+          )}
+        >
+          <CompanyTopHeader />
+          <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-4 md:pt-5">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -24,18 +24,16 @@ export function WasteTagInactiveFlow({
   onEdit,
   onToggle,
 }: WasteTagInactiveFlowProps) {
+  const countLabel =
+    typeof totalFiltered === 'number' && totalFiltered !== tags.length
+      ? `${tags.length} / ${totalFiltered} thẻ`
+      : `${tags.length} thẻ đã tắt`;
+
   return (
     <div className="w-full min-w-0">
-      <header className="mb-6 border-b border-border/60 pb-4">
-        <p className="text-xs font-medium text-muted-foreground">Không còn trên dropdown</p>
-        <h2 className="mt-0.5 text-lg font-semibold text-muted-foreground">
-          {typeof totalFiltered === 'number' && totalFiltered !== tags.length
-            ? `${tags.length} / ${totalFiltered} thẻ trên trang này`
-            : `${tags.length} thẻ đã tắt`}
-        </h2>
-      </header>
+      <p className="mb-3 text-xs text-zinc-500">Đã tắt · {countLabel}</p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {tags.map(tag => (
           <WasteTagGridCard
             key={tag.id}

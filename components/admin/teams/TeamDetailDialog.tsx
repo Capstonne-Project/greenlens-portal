@@ -49,10 +49,10 @@ export function TeamDetailDialog({ open, teamId, onClose }: TeamDetailDialogProp
 
       {data && (
         <div className="space-y-6">
-          <section className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-background p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+          <section className="border-b border-border pb-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                   {data.officeName}
                 </p>
                 <h3 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
@@ -74,7 +74,7 @@ export function TeamDetailDialog({ open, teamId, onClose }: TeamDetailDialogProp
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
                     data.isActive
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 'bg-zinc-100 text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700'
                       : 'bg-muted text-muted-foreground'
                   }`}
                 >
@@ -85,11 +85,9 @@ export function TeamDetailDialog({ open, teamId, onClose }: TeamDetailDialogProp
           </section>
 
           <section>
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between gap-2">
               <h4 className="font-semibold">Thành viên ({data.members.length})</h4>
-              <span className="text-xs text-muted-foreground">
-                Leader được đánh dấu bằng khiên xanh
-              </span>
+              <span className="text-xs text-muted-foreground">Leader được đánh dấu bằng khiên</span>
             </div>
 
             {data.members.length === 0 ? (
@@ -101,35 +99,33 @@ export function TeamDetailDialog({ open, teamId, onClose }: TeamDetailDialogProp
                 </p>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <ul className="divide-y divide-border rounded-xl border border-border">
                 {data.members.map(member => (
-                  <article
-                    key={member.userId}
-                    className="rounded-xl border border-border bg-card p-4 shadow-sm"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">
-                        {member.fullName.slice(0, 2).toUpperCase()}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate font-medium">{member.fullName}</p>
-                          {member.isLeader ? (
-                            <ShieldCheck className="size-4 shrink-0 text-emerald-700" />
-                          ) : null}
-                        </div>
-                        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                          <Mail className="size-3.5" />
-                          <span className="truncate">{member.email}</span>
-                        </p>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Tham gia {formatDate(member.joinedAt)}
-                        </p>
+                  <li key={member.userId} className="flex items-start gap-3 px-4 py-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                      {member.fullName.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-medium">{member.fullName}</p>
+                        {member.isLeader ? (
+                          <ShieldCheck
+                            className="size-4 shrink-0 text-zinc-600 dark:text-zinc-300"
+                            aria-label="Leader"
+                          />
+                        ) : null}
                       </div>
+                      <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <Mail className="size-3.5 shrink-0" />
+                        <span className="truncate">{member.email}</span>
+                      </p>
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        Tham gia {formatDate(member.joinedAt)}
+                      </p>
                     </div>
-                  </article>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </section>
         </div>

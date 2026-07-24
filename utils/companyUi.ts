@@ -25,8 +25,8 @@ export function companyStatusClasses(status: string): string {
 }
 
 const CONTRACT_TYPE_LABELS: Record<string, string> = {
-  Subsidiary: 'Phụ lục',
-  Bidding: 'Đấu thầu',
+  Subsidiary: 'Công ty trực thuộc',
+  Bidding: 'Công ty đấu thầu',
 };
 
 export function contractTypeLabel(type: string): string {

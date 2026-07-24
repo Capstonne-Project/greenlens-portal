@@ -1,16 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import {
-  MAP_SHELL_SIDEBAR_WIDTH_MS,
-  selectPanelContentInsetLeft,
-  useMapShellStore,
-} from '@/lib/store/mapShellStore';
-import {
-  mapOfficerNavPageShellClass,
-  mapShellContentPanelClass,
-  mapShellMapLayerClass,
-} from '@/lib/map/mapShellStyles';
+import { cn } from '@/lib/utils';
 
 type MapShellContentProps = {
   children: ReactNode;
@@ -18,26 +9,28 @@ type MapShellContentProps = {
 };
 
 /**
- * Map: full-bleed — sidebar overlay; MapLibre padding khi pin.
- * Panel: collapsed rail inset; hover expand = overlay; pin = đẩy content theo sidebar rộng.
+ * Floating content panel over `#f7f7f7` canvas (Prody-style):
+ * - Thin 1px border on all sides
+ * - Soft ambient shadow
+ * - Stronger soft shadow on the left edge (casts right) so that edge reads darker/thicker
  */
 export function MapShellContent({ children, variant = 'map' }: MapShellContentProps) {
-  const panelInsetLeft = useMapShellStore(selectPanelContentInsetLeft);
-
   if (variant === 'map') {
-    return <div className={mapShellMapLayerClass()}>{children}</div>;
+    return <div className="absolute inset-0 z-0 size-full">{children}</div>;
   }
 
   return (
-    <div
-      className={mapShellContentPanelClass()}
-      style={{
-        paddingLeft: `${panelInsetLeft}px`,
-        transition: `padding-left ${MAP_SHELL_SIDEBAR_WIDTH_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
-      }}
-    >
-      <div className={mapOfficerNavPageShellClass('outer')}>
-        <div className={mapOfficerNavPageShellClass('inner')}>{children}</div>
+    <div className="flex min-w-0 flex-1 overflow-hidden py-2 pr-2">
+      <div
+        className={cn(
+          'flex h-full w-full min-w-0 flex-1 flex-col overflow-auto rounded-2xl bg-[#fffdfc] p-2 md:p-6',
+          'border border-[#e8e8e8]',
+          'border-l-2',
+          // Left edge emphasis via shadow (not thicker stroke) — matches sample
+          'shadow-[2px_0_10px_-2px_rgb(0_0_0/10%),0_1px_3px_rgb(0_0_0/4%)]'
+        )}
+      >
+        {children}
       </div>
     </div>
   );

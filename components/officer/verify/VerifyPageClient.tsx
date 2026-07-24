@@ -1,13 +1,17 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  BadgeCheck,
   ChevronDown,
   CircleHelp,
   Cloud,
+  Copy,
   Droplets,
+  Eye,
   Filter,
   FlaskConical,
   ImageIcon,
@@ -19,9 +23,12 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { LayoutGroup, motion } from 'motion/react';
 
-import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
+import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
+import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import {
   Drawer,
   DrawerClose,
@@ -50,8 +57,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useReportQueue } from '@/hooks/useOfficer';
+import { useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
+import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/models/report';
@@ -59,8 +67,6 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
-import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
-import { canAccessVerifyQueue } from '@/lib/constants/officerRoles';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
@@ -76,11 +82,12 @@ type ColumnKey =
   | 'priority'
   | 'address'
   | 'created'
-  | 'verifySla';
+  | 'verifySla'
+  | 'actions';
 
 /** Vertical rhythm; symmetric edge inset (`ps-6` / `pe-6`) matches page shell `p-6`. */
 const FIRST_COL: ColumnKey = 'image';
-const LAST_COL: ColumnKey = 'verifySla';
+const LAST_COL: ColumnKey = 'actions';
 
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
   const y = layer === 'head' ? 'py-3.5' : 'py-4';
@@ -98,15 +105,15 @@ const ROW_BORDER = 'border-b border-slate-200';
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'image', label: 'Image', className: 'w-20' },
   { key: 'code', label: 'Report Code', className: 'w-[10%]' },
-  { key: 'category', label: 'Category', className: 'w-[12%]' },
-  { key: 'severity', label: 'Severity', className: 'w-[10%]' },
-  { key: 'status', label: 'Status', className: 'w-[10%]' },
+  { key: 'category', label: 'Category', className: 'w-[11%]' },
+  { key: 'severity', label: 'Severity', className: 'w-[9%]' },
+  { key: 'status', label: 'Status', className: 'w-[9%]' },
   { key: 'priority', label: 'Priority', className: 'w-[7%]' },
-  { key: 'address', label: 'Address', className: 'w-[18%]' },
-  { key: 'created', label: 'Created', className: 'w-[11%]' },
-  { key: 'verifySla', label: 'Verify SLA', className: 'w-[12%]' },
+  { key: 'address', label: 'Address', className: 'w-[16%]' },
+  { key: 'created', label: 'Created', className: 'w-[10%]' },
+  { key: 'verifySla', label: 'Verify SLA', className: 'w-[11%]' },
+  { key: 'actions', label: 'Action', className: 'w-[5.5rem]' },
 ];
-
 const BADGE_BASE =
   'inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium';
 
@@ -416,7 +423,7 @@ function DatePartsRow({
     <div>
       <span className="mb-2 block text-xs font-bold text-slate-400">{label}</span>
       <div className="flex w-fit max-w-full items-center gap-1.5">
-        <Select value={d || undefined} onValueChange={v => update(v, m, y)}>
+        <Select value={d} onValueChange={v => update(v, m, y)}>
           <SelectTrigger
             className={cn(DATE_PART_TRIGGER_CLASS, 'w-[4.25rem]')}
             aria-label={`${label} — ngày`}
@@ -436,7 +443,7 @@ function DatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 text-sm text-slate-400">/</span>
-        <Select value={m || undefined} onValueChange={v => update(d, v, y)}>
+        <Select value={m} onValueChange={v => update(d, v, y)}>
           <SelectTrigger
             className={cn(DATE_PART_TRIGGER_CLASS, 'w-[4.25rem]')}
             aria-label={`${label} — tháng`}
@@ -456,7 +463,7 @@ function DatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 text-sm text-slate-400">/</span>
-        <Select value={y || undefined} onValueChange={v => update(d, m, v)}>
+        <Select value={y} onValueChange={v => update(d, m, v)}>
           <SelectTrigger
             className={cn(DATE_PART_TRIGGER_CLASS, 'w-28')}
             aria-label={`${label} — năm`}
@@ -495,7 +502,7 @@ function DateToolbarFilter({
     <div
       role="group"
       aria-label="Lọc nhanh theo thời gian tạo"
-      className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+      className="inline-flex shrink-0 select-none items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5"
     >
       {DATE_PRESETS.map(opt => {
         const active = opt.key === value;
@@ -506,8 +513,8 @@ function DateToolbarFilter({
             onClick={() => onChange(opt.key)}
             aria-pressed={active}
             className={cn(
-              'h-7 rounded-md px-2.5 text-[0.8125rem] font-medium transition-colors',
-              active ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              'h-7 select-none rounded-md px-2.5 text-[0.8125rem] font-medium transition-colors',
+              active ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-700'
             )}
           >
             {opt.label}
@@ -705,16 +712,105 @@ function SlaCell({ dueAt }: { dueAt: string | null }) {
   );
 }
 
+/** Đưa báo cáo nghi trùng ngay dưới báo cáo gốc (cùng trang). */
+function placeChildBesideParent(
+  list: ReportQueueItem[],
+  childId: string,
+  parentId: string
+): ReportQueueItem[] {
+  const childIdx = list.findIndex(item => item.id === childId);
+  if (childIdx < 0) return list;
+
+  const next = [...list];
+  const [child] = next.splice(childIdx, 1);
+  const parentIdx = next.findIndex(item => item.id === parentId);
+
+  if (parentIdx < 0) {
+    return [child, ...next];
+  }
+
+  next.splice(parentIdx + 1, 0, child);
+  return next;
+}
+
+/** Row actions — luôn hiện BadgeCheck (xác minh) + Eye (chi tiết → VerifyDetailClient). */
+function VerifyRowActions({
+  row,
+  isVerifying,
+  onVerify,
+  detailHref,
+}: {
+  row: ReportQueueItem;
+  isVerifying: boolean;
+  onVerify: () => void;
+  detailHref: string;
+}) {
+  return (
+    <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+      <button
+        type="button"
+        disabled={isVerifying}
+        title={row.isPossibleDuplicate ? 'Kiểm tra trùng trước khi xác minh' : 'Xác minh ngay'}
+        aria-label={`Xác minh ${row.code}`}
+        onClick={e => {
+          e.stopPropagation();
+          onVerify();
+        }}
+        className={cn(
+          'inline-flex size-8 items-center justify-center rounded-md',
+          'bg-emerald-600 text-white shadow-sm',
+          'transition-[background-color,box-shadow,transform] duration-150',
+          'hover:bg-emerald-500 hover:shadow',
+          'active:scale-[0.97]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-1',
+          'disabled:pointer-events-none disabled:opacity-60'
+        )}
+      >
+        {isVerifying ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+        ) : (
+          <BadgeCheck className="size-4" aria-hidden strokeWidth={2.25} />
+        )}
+      </button>
+      <Link
+        href={detailHref}
+        title="Xem chi tiết"
+        aria-label={`Xem chi tiết ${row.code}`}
+        onClick={e => e.stopPropagation()}
+        className={cn(
+          'inline-flex size-8 items-center justify-center rounded-md',
+          'text-slate-600 transition-colors',
+          'hover:bg-slate-100 hover:text-slate-900',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+        )}
+      >
+        <Eye className="size-4" aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
 export function VerifyPageClient() {
   const router = useRouter();
   const user = useAuthStore(s => s.user);
+  const fullName = user?.name?.trim() || 'Người dùng';
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [duplicateDialogRow, setDuplicateDialogRow] = useState<ReportQueueItem | null>(null);
+  const [pairFocus, setPairFocus] = useState<{ childId: string; parentId: string } | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const highlightClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const verifyMutation = useVerifyReport();
 
   const yearOnlyDefaults = getPresetDateInputs('all');
 
-  /** Filter đã apply lên bảng / API. */
+  /** Filter nhanh trên toolbar — apply ngay, độc lập với drawer. */
+  const [toolbarDatePreset, setToolbarDatePreset] = useState<DatePreset>('all');
+
+  /** Filter đã apply từ drawer (severity, date, category). */
   const [applied, setApplied] = useState({
     severity: 'all' as SeverityFilter,
     datePreset: 'all' as DatePreset,
@@ -748,14 +844,14 @@ export function VerifyPageClient() {
     setFilterOpen(open);
   };
 
-  /** Toolbar ngoài drawer — apply ngay. */
+  /** Toolbar ngoài drawer — apply ngay, reset drawer date filters. */
   const handleToolbarPresetChange = (preset: DatePreset) => {
-    const { from, to } = getPresetDateInputs(preset);
+    setToolbarDatePreset(preset);
     setApplied(prev => ({
       ...prev,
-      datePreset: preset,
-      customFrom: from,
-      customTo: to,
+      datePreset: 'all',
+      customFrom: yearOnlyDefaults.from,
+      customTo: yearOnlyDefaults.to,
     }));
     setPage(1);
   };
@@ -794,19 +890,40 @@ export function VerifyPageClient() {
     }));
   };
 
+  /** Đặt lại trong drawer — xóa hết filter ngay (không cần «Xem kết quả»). */
   const handleResetDraft = () => {
     const yearDefaults = getPresetDateInputs('all');
-    setDraft({
-      severity: 'all',
-      datePreset: 'all',
+    const cleared = {
+      severity: 'all' as const,
+      datePreset: 'all' as DatePreset,
       customFrom: yearDefaults.from,
       customTo: yearDefaults.to,
       categoryId: '',
-    });
+    };
+    setDraft(cleared);
+    setApplied(cleared);
+    setPage(1);
+    setFilterOpen(false);
+  };
+
+  /** Xóa nhanh filter đã apply — không cần mở drawer. */
+  const handleClearAllFilters = () => {
+    const yearDefaults = getPresetDateInputs('all');
+    const cleared = {
+      severity: 'all' as const,
+      datePreset: 'all' as DatePreset,
+      customFrom: yearDefaults.from,
+      customTo: yearDefaults.to,
+      categoryId: '',
+    };
+    setApplied(cleared);
+    setDraft(cleared);
+    setPage(1);
   };
 
   const handleApplyDraft = () => {
     setApplied(draft);
+    setToolbarDatePreset('all');
     setPage(1);
     setFilterOpen(false);
   };
@@ -814,15 +931,33 @@ export function VerifyPageClient() {
   const { data: catalogCategories = [], isLoading: categoriesLoading } =
     useCatalogPollutionCategories(filterOpen || Boolean(applied.categoryId));
 
-  const countActiveFilters = (f: typeof applied) =>
+  const countDrawerActiveFilters = (f: typeof applied) =>
     (f.severity !== 'all' ? 1 : 0) +
     (f.datePreset !== 'all' || isCompleteDateInput(f.customFrom) || isCompleteDateInput(f.customTo)
       ? 1
       : 0) +
     (f.categoryId ? 1 : 0);
 
-  const appliedFilterCount = countActiveFilters(applied);
-  const draftFilterCount = countActiveFilters(draft);
+  const appliedFilterCount = countDrawerActiveFilters(applied);
+  const draftFilterCount = countDrawerActiveFilters(draft);
+
+  const hasDrawerDateFilter =
+    applied.datePreset !== 'all' ||
+    isCompleteDateInput(applied.customFrom) ||
+    isCompleteDateInput(applied.customTo);
+
+  const effectiveDateRange = useMemo(() => {
+    if (hasDrawerDateFilter) {
+      return getDateRange(applied.datePreset, applied.customFrom, applied.customTo);
+    }
+    return getDateRange(toolbarDatePreset, '', '');
+  }, [
+    hasDrawerDateFilter,
+    applied.datePreset,
+    applied.customFrom,
+    applied.customTo,
+    toolbarDatePreset,
+  ]);
 
   const listParams = useMemo(
     () => ({
@@ -832,26 +967,109 @@ export function VerifyPageClient() {
       sortBy: 'PriorityScore' as const,
       sortDir: 'Desc' as const,
       ...(applied.severity !== 'all' ? { severity: applied.severity } : {}),
-      ...getDateRange(applied.datePreset, applied.customFrom, applied.customTo),
+      ...effectiveDateRange,
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
     }),
-    [page, applied, debouncedSearch]
+    [page, applied.severity, applied.categoryId, effectiveDateRange, debouncedSearch]
   );
 
   const { data, isPending, isFetching, isError, refetch } = useReportQueue(listParams);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
 
-  if (!canAccessVerifyQueue(user?.systemRole)) {
-    return (
-      <OfficerAccessDenied
-        message="Hàng đợi xác minh chỉ dành cho cán bộ văn phòng MT phường (LEO)."
-        homeHref={getDefaultOfficerHomePath(user?.systemRole)}
-      />
-    );
-  }
+  const displayItems = useMemo(() => {
+    if (!pairFocus) return items;
+    return placeChildBesideParent(items, pairFocus.childId, pairFocus.parentId);
+  }, [items, pairFocus]);
+
+  const parentIdForDialog = duplicateDialogRow?.possibleDuplicateOfReportId ?? null;
+  const parentPreview = useMemo(() => {
+    if (!parentIdForDialog) return null;
+    const found = items.find(item => item.id === parentIdForDialog);
+    if (!found) return null;
+    return {
+      id: found.id,
+      code: found.code,
+      firstImageUrl: found.firstImageUrl,
+    };
+  }, [items, parentIdForDialog]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    };
+  }, []);
+
+  const clearPairFocusSoon = () => {
+    if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    highlightClearRef.current = setTimeout(() => {
+      setHighlightedId(null);
+      setPairFocus(null);
+    }, 3200);
+  };
+
+  const scrollToRow = (id: string) => {
+    requestAnimationFrame(() => {
+      rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  };
+
+  const focusDuplicatePair = (row: ReportQueueItem) => {
+    const parentId = row.possibleDuplicateOfReportId;
+    if (!parentId) return;
+
+    if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    setPairFocus({ childId: row.id, parentId });
+    setHighlightedId(parentId);
+    setDuplicateDialogRow(row);
+
+    // Đợi layout animation + reorder xong rồi scroll tới gốc
+    window.setTimeout(() => scrollToRow(parentId), 280);
+  };
+
+  const handleQuickVerify = async (row: ReportQueueItem) => {
+    if (row.isPossibleDuplicate && row.possibleDuplicateOfReportId) {
+      focusDuplicatePair(row);
+      return;
+    }
+
+    setVerifyingId(row.id);
+    try {
+      const result = await verifyMutation.mutateAsync({ reportId: row.id, body: {} });
+      toastApiSuccess(result, 'Đã xác minh báo cáo.');
+    } catch (error) {
+      toastApiError(error, 'Không thể xác minh báo cáo.');
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  const handleDuplicateDialogOpenChange = (open: boolean) => {
+    if (open) return;
+    setDuplicateDialogRow(null);
+    clearPairFocusSoon();
+  };
+
+  const handleGoToDuplicateParent = () => {
+    const parentId = duplicateDialogRow?.possibleDuplicateOfReportId;
+    if (!parentId) return;
+
+    const inPage = items.some(item => item.id === parentId);
+    setDuplicateDialogRow(null);
+
+    if (!inPage) {
+      setPairFocus(null);
+      setHighlightedId(null);
+      router.push(`/officer/verify/${parentId}`);
+      return;
+    }
+
+    setHighlightedId(parentId);
+    scrollToRow(parentId);
+    clearPairFocusSoon();
+  };
 
   return (
     <>
@@ -867,30 +1085,61 @@ export function VerifyPageClient() {
               <CircleHelp className="size-4" aria-hidden />
             </button>
           </div>
+          <TypewriterEffectSmooth
+            words={[
+              { text: 'Welcome', className: 'font-normal text-slate-500' },
+              { text: 'back,', className: 'font-normal text-slate-500' },
+              {
+                text: fullName,
+                className: 'font-medium text-slate-800 dark:text-slate-100',
+              },
+            ]}
+            className="mt-1 my-0"
+            textClassName="text-sm font-normal sm:text-sm md:text-sm lg:text-sm xl:text-sm"
+            cursorClassName="h-3.5 w-0.5 bg-slate-400 sm:h-3.5 xl:h-3.5"
+            hideCursorOnComplete
+          />
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <DateToolbarFilter value={applied.datePreset} onChange={handleToolbarPresetChange} />
+            <DateToolbarFilter
+              value={hasDrawerDateFilter ? 'all' : toolbarDatePreset}
+              onChange={handleToolbarPresetChange}
+            />
             <Separator orientation="vertical" className="mx-0.5 h-6 shrink-0 bg-slate-400" />
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-sky-700"
+              className="h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand"
               onClick={() => handleFilterOpenChange(true)}
               aria-haspopup="dialog"
               aria-expanded={filterOpen}
             >
-              <Filter className="size-3.5 text-sky-600" aria-hidden />
+              <Filter className="size-3.5 text-brand" aria-hidden />
               Bộ lọc
               {appliedFilterCount > 0 ? (
-                <span className="ml-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-sky-700">
+                <span className="ml-0.5 rounded-full bg-brand/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-brand">
                   {appliedFilterCount}
                 </span>
               ) : null}
               <ChevronDown className="size-3.5 opacity-60" aria-hidden />
             </Button>
+            {appliedFilterCount > 0 ? (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className={cn(
+                  'cursor-pointer shrink-0 text-[0.8125rem] font-medium text-slate-500',
+                  'transition-[font-weight,color]',
+                  'hover:font-bold hover:text-slate-800',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-1'
+                )}
+              >
+                Xóa tất cả
+              </button>
+            ) : null}
           </div>
           <div className="relative w-72 max-w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -957,7 +1206,7 @@ export function VerifyPageClient() {
               {isPending ? (
                 <TableRow className={ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                    <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
@@ -973,50 +1222,88 @@ export function VerifyPageClient() {
                     </button>
                   </TableCell>
                 </TableRow>
-              ) : items.length === 0 ? (
+              ) : displayItems.length === 0 ? (
                 <TableRow className={cn(ROW_BORDER, 'hover:bg-transparent')}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
-                      <SaveIcon size={32} className="opacity-30" />
+                    <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
+                      <SaveIcon size={44} className="opacity-30" />
                       <span>Không có báo cáo</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map(row => (
-                  <TableRow
-                    key={row.id}
-                    className={cn(ROW_BORDER, 'cursor-pointer hover:bg-sky-50/40')}
-                    onClick={() => router.push(`/officer/verify/${row.id}`)}
-                  >
-                    {COLUMN_DEFS.map(col => (
-                      <TableCell
-                        key={col.key}
+                <LayoutGroup>
+                  {displayItems.map((row, rowIndex) => {
+                    const isParentHighlight = highlightedId === row.id;
+                    const isChildPair = pairFocus?.childId === row.id;
+                    const isParentPair = pairFocus?.parentId === row.id;
+
+                    return (
+                      <motion.tr
+                        key={row.id}
+                        layout
+                        transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+                        ref={el => {
+                          if (el) rowRefs.current.set(row.id, el);
+                          else rowRefs.current.delete(row.id);
+                        }}
                         className={cn(
-                          tableCellPad(col.key, 'body'),
-                          'align-middle',
-                          col.className,
-                          col.key === 'address' && 'max-w-0'
+                          ROW_BORDER,
+                          'cursor-pointer border-b transition-[background-color,box-shadow] duration-300',
+                          'hover:bg-sky-50/40',
+                          (isParentPair || isChildPair) && 'bg-amber-50/70',
+                          isParentHighlight &&
+                            'bg-amber-50 shadow-[inset_3px_0_0_0_#f59e0b] ring-2 ring-inset ring-amber-400/70',
+                          isChildPair && !isParentHighlight && 'shadow-[inset_3px_0_0_0_#fbbf24]'
                         )}
+                        onClick={() => router.push(`/officer/verify/${row.id}`)}
                       >
-                        {renderVerifyCell(col.key, row)}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                        {COLUMN_DEFS.map(col => (
+                          <TableCell
+                            key={col.key}
+                            className={cn(
+                              tableCellPad(col.key, 'body'),
+                              'align-middle',
+                              col.className,
+                              col.key === 'address' && 'max-w-0'
+                            )}
+                            onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
+                          >
+                            {col.key === 'actions' ? (
+                              <VerifyRowActions
+                                row={row}
+                                isVerifying={verifyingId === row.id}
+                                onVerify={() => void handleQuickVerify(row)}
+                                detailHref={`/officer/verify/${row.id}`}
+                              />
+                            ) : (
+                              renderVerifyCell(col.key, row, {
+                                imagePriority: rowIndex < 2,
+                              })
+                            )}
+                          </TableCell>
+                        ))}
+                      </motion.tr>
+                    );
+                  })}
+                </LayoutGroup>
               )}
             </TableBody>
           </Table>
         </div>
 
         {pagination ? (
-          <div className="flex shrink-0 items-center justify-between gap-4 border-t border-slate-200 px-6 py-3">
+          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
             <div className="min-w-0">
               {pagination.totalPages > 1 ? (
                 <PaginationSimple
                   page={page}
                   totalPages={pagination.totalPages}
-                  onPageChange={setPage}
+                  onPageChange={nextPage => {
+                    setPairFocus(null);
+                    setHighlightedId(null);
+                    setPage(nextPage);
+                  }}
                   className="w-auto"
                 />
               ) : null}
@@ -1027,16 +1314,39 @@ export function VerifyPageClient() {
           </div>
         ) : null}
       </div>
+
+      <DuplicateSuspectDialog
+        row={duplicateDialogRow}
+        parentPreview={parentPreview}
+        open={Boolean(duplicateDialogRow)}
+        onOpenChange={handleDuplicateDialogOpenChange}
+        onGoToParent={handleGoToDuplicateParent}
+        onResolved={() => {
+          setPairFocus(null);
+          setHighlightedId(null);
+        }}
+      />
     </>
   );
 }
 
-function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
+function renderVerifyCell(
+  key: ColumnKey,
+  row: ReportQueueItem,
+  opts?: { imagePriority?: boolean }
+) {
   switch (key) {
     case 'image':
-      return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
+      return (
+        <ReportThumb
+          url={row.firstImageUrl}
+          alt={row.code}
+          isPossibleDuplicate={row.isPossibleDuplicate}
+          priority={opts?.imagePriority}
+        />
+      );
     case 'code':
-      return <span className="text-xs font-medium text-sky-700">{row.code}</span>;
+      return <span className="text-xs font-medium text-slate-700">{row.code}</span>;
     case 'category':
       return <span className="text-sm text-slate-700">{row.categoryName}</span>;
     case 'severity':
@@ -1059,6 +1369,8 @@ function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
       return <CreatedCell iso={row.createdAt} />;
     case 'verifySla':
       return <SlaCell dueAt={row.slaVerifyDueAt} />;
+    case 'actions':
+      return null;
     default:
       return null;
   }
@@ -1068,16 +1380,23 @@ function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
 const THUMB_FRAME =
   'relative h-9 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100 sm:h-10 sm:w-16';
 
-function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
-  if (!url) {
-    return (
-      <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
-        <ImageIcon className="size-3.5 sm:size-4" aria-hidden />
-      </div>
-    );
-  }
-
-  return (
+function ReportThumb({
+  url,
+  alt,
+  isPossibleDuplicate = false,
+  priority = false,
+}: {
+  url: string | null;
+  alt: string;
+  isPossibleDuplicate?: boolean;
+  /** Above-the-fold thumbs — tránh Next LCP lazy warning. */
+  priority?: boolean;
+}) {
+  const thumb = !url ? (
+    <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
+      <ImageIcon className="size-3.5 sm:size-4" aria-hidden />
+    </div>
+  ) : (
     <div className={THUMB_FRAME}>
       <Image
         src={url}
@@ -1086,7 +1405,28 @@ function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
         sizes="(max-width: 640px) 3.5rem, 4rem"
         className="object-cover"
         unoptimized
+        priority={priority}
       />
+    </div>
+  );
+
+  if (!isPossibleDuplicate) return thumb;
+
+  return (
+    <div className="relative inline-flex">
+      {thumb}
+      <AnimatedHoverTooltip name="báo cáo trùng lặp" className="absolute -right-1.5 -top-1.5 z-10">
+        <span
+          className={cn(
+            'inline-flex size-5 items-center justify-center',
+            'rounded-full bg-amber-500 text-white shadow-sm',
+            'ring-2 ring-white'
+          )}
+          aria-label="báo cáo trùng lặp"
+        >
+          <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+        </span>
+      </AnimatedHoverTooltip>
     </div>
   );
 }

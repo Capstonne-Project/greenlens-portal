@@ -51,25 +51,19 @@ export function OfficeLiveSearch({
       </label>
 
       <div
-        className={`relative flex h-11 items-center gap-2.5 rounded-xl border bg-background/90 px-3 shadow-sm backdrop-blur-sm transition-all ${
+        className={`relative flex h-11 items-center gap-2.5 rounded-xl border bg-white px-3 transition-colors dark:bg-zinc-950 ${
           focused
-            ? 'border-emerald-600/45 shadow-[0_0_0_3px_rgba(16,185,129,0.08)]'
-            : 'border-border/80 hover:border-emerald-600/25'
+            ? 'border-zinc-400 ring-2 ring-zinc-200/80 dark:border-zinc-500 dark:ring-zinc-700/50'
+            : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
-        <span
-          className={`absolute bottom-0 left-3 right-3 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent transition-opacity ${
-            focused || hasQuery ? 'opacity-100' : 'opacity-0'
-          }`}
-          aria-hidden
-        />
         <Search
-          className={`size-4 shrink-0 transition-colors ${focused ? 'text-emerald-700' : 'text-muted-foreground'}`}
+          className={`size-4 shrink-0 ${focused ? 'text-zinc-700 dark:text-zinc-200' : 'text-zinc-400'}`}
           aria-hidden
         />
         <input
           id={inputId}
-          type="search"
+          type="text"
           value={local}
           onChange={e => setLocal(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -99,7 +93,7 @@ export function OfficeLiveSearch({
 
       {matchHint ? (
         <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-          <span className="font-medium text-emerald-800">{matchHint}</span>
+          <span className="font-medium text-foreground">{matchHint}</span>
         </p>
       ) : null}
     </div>

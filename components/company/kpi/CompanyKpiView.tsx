@@ -2,6 +2,13 @@
 
 import { useMyCompanyKpi } from '@/hooks/useCompany';
 import type { MyCompanyKpiParams } from '@/lib/api/models/company';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
   formatAvgResolutionHours,
@@ -88,33 +95,26 @@ export function CompanyKpiView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {(
-            [
-              { key: 'month', label: 'Tháng này' },
-              { key: '7d', label: '7 ngày' },
-              { key: '30d', label: '30 ngày' },
-              { key: 'custom', label: 'Tuỳ chọn' },
-            ] as const
-          ).map(opt => (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => setPreset(opt.key)}
-              className={cn(
-                'rounded-full px-3.5 py-1.5 text-sm font-medium transition',
-                preset === opt.key
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-muted-foreground hover:bg-emerald-50 dark:hover:bg-muted'
-              )}
+          <Select value={preset} onValueChange={v => setPreset(v as PeriodPreset)}>
+            <SelectTrigger
+              id="kpi-period-filter"
+              className="h-10 w-[12rem] rounded-lg"
+              aria-label="Kỳ báo cáo"
             >
-              {opt.label}
-            </button>
-          ))}
+              <SelectValue placeholder="Kỳ báo cáo" />
+            </SelectTrigger>
+            <SelectContent position="popper" sideOffset={4}>
+              <SelectItem value="month">Tháng này</SelectItem>
+              <SelectItem value="7d">7 ngày</SelectItem>
+              <SelectItem value="30d">30 ngày</SelectItem>
+              <SelectItem value="custom">Tuỳ chọn</SelectItem>
+            </SelectContent>
+          </Select>
           <button
             type="button"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="inline-flex size-9 items-center justify-center rounded-full border border-emerald-100 text-muted-foreground hover:bg-emerald-50 disabled:opacity-50 dark:border-border"
+            className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
             aria-label="Làm mới"
           >
             <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} aria-hidden />

@@ -156,6 +156,7 @@ function mapDeoMyReportItemDto(dto: DeoMyReportItemDto): DeoMyReportItem {
     closedAt: dto.closedAt ?? null,
     slaVerifyDueAt: dto.slaVerifyDueAt ?? null,
     slaResolveDueAt: dto.slaResolveDueAt ?? null,
+    firstImageUrl: dto.firstImageUrl?.trim() ? dto.firstImageUrl.trim() : null,
   };
 }
 

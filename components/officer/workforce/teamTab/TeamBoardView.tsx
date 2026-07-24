@@ -28,6 +28,11 @@ import {
   Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import {
+  WorkforceExportCsvButton,
+  WorkforceViewModeSwitch,
+  type WorkforceViewMode,
+} from '../WorkforceToolbarActions';
 import { RemoveMemberConfirmDialog } from './TeamTabDialogs';
 import {
   AVAILABLE_LABEL,
@@ -105,7 +110,7 @@ function TeamCard({
       <button
         type="button"
         onClick={handleToggle}
-        className="flex w-full flex-col gap-3 p-4 text-left transition-colors hover:bg-muted/20"
+        className="flex w-full cursor-pointer flex-col gap-3 p-4 text-left transition-colors hover:bg-muted/20"
       >
         {/* Row 1: name + status + chevron */}
         <div className="flex items-start justify-between gap-2">
@@ -150,7 +155,7 @@ function TeamCard({
               e.stopPropagation();
               onAddMember();
             }}
-            className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
+            className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
           >
             <Plus className="size-3" />
             Thêm thành viên
@@ -180,7 +185,7 @@ function TeamCard({
                   e.stopPropagation();
                   setShowMemberActions(prev => !prev);
                 }}
-                className={`flex size-7 shrink-0 items-center justify-center rounded-lg transition ${
+                className={`flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
                   showMemberActions
                     ? 'bg-muted text-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -230,7 +235,7 @@ function TeamCard({
                         e.stopPropagation();
                         setMemberToRemove({ userId: m.userId, fullName: m.fullName });
                       }}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                       title="Xóa thành viên"
                     >
                       <Trash2 className="size-3.5" />
@@ -247,7 +252,7 @@ function TeamCard({
               e.stopPropagation();
               onAddMember();
             }}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-emerald-300 hover:text-emerald-600"
+            className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-emerald-300 hover:text-emerald-600"
           >
             <UserPlus className="size-3.5" />
             Thêm thành viên vào đội
@@ -308,7 +313,11 @@ export function TeamFilterDropdowns({
             <DropdownMenuItem
               key={key}
               onClick={() => onStatusChange(key)}
-              className={statusFilter === key ? 'font-medium text-sky-700' : ''}
+              className={
+                statusFilter === key
+                  ? 'cursor-pointer font-medium text-slate-900'
+                  : 'cursor-pointer'
+              }
             >
               {STATUS_LABEL[key]}
             </DropdownMenuItem>
@@ -328,7 +337,11 @@ export function TeamFilterDropdowns({
             <DropdownMenuItem
               key={key}
               onClick={() => onTeamTypeChange(key)}
-              className={teamTypeFilter === key ? 'font-medium text-sky-700' : ''}
+              className={
+                teamTypeFilter === key
+                  ? 'cursor-pointer font-medium text-slate-900'
+                  : 'cursor-pointer'
+              }
             >
               {TEAM_TYPE_LABEL[key]}
             </DropdownMenuItem>
@@ -348,7 +361,11 @@ export function TeamFilterDropdowns({
             <DropdownMenuItem
               key={key}
               onClick={() => onAvailableChange(key)}
-              className={availableFilter === key ? 'font-medium text-sky-700' : ''}
+              className={
+                availableFilter === key
+                  ? 'cursor-pointer font-medium text-slate-900'
+                  : 'cursor-pointer'
+              }
             >
               {AVAILABLE_LABEL[key]}
             </DropdownMenuItem>
@@ -377,6 +394,8 @@ type BoardViewProps = {
   onInspectionPageChange: (page: number) => void;
   onAddMember: (team: AddMemberTeamTarget) => void;
   onCreateTeam: (teamType: LeoCreateTeamType) => void;
+  viewMode: WorkforceViewMode;
+  onViewModeChange: (mode: WorkforceViewMode) => void;
 };
 
 export function BoardView({
@@ -397,6 +416,8 @@ export function BoardView({
   onInspectionPageChange,
   onAddMember,
   onCreateTeam,
+  viewMode,
+  onViewModeChange,
 }: BoardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -451,17 +472,9 @@ export function BoardView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Search + filters */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <TeamFilterDropdowns
-          statusFilter={statusFilter}
-          teamTypeFilter={teamTypeFilter}
-          availableFilter={availableFilter}
-          onStatusChange={onStatusChange}
-          onTeamTypeChange={onTeamTypeChange}
-          onAvailableChange={onAvailableChange}
-        />
-        <div className="relative ml-auto w-72 max-w-full sm:w-80">
+      {/* Search (left) + filters + view/export (right) */}
+      <div className="my-2 flex shrink-0 flex-wrap items-center gap-2">
+        <div className="relative w-72 max-w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={search}
@@ -479,6 +492,18 @@ export function BoardView({
               aria-hidden
             />
           ) : null}
+        </div>
+        <TeamFilterDropdowns
+          statusFilter={statusFilter}
+          teamTypeFilter={teamTypeFilter}
+          availableFilter={availableFilter}
+          onStatusChange={onStatusChange}
+          onTeamTypeChange={onTeamTypeChange}
+          onAvailableChange={onAvailableChange}
+        />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
+          <WorkforceExportCsvButton />
         </div>
       </div>
 
@@ -502,14 +527,14 @@ export function BoardView({
                 <button
                   type="button"
                   onClick={() => onCreateTeam('Cleanup')}
-                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   title="Thêm đội dọn dẹp"
                 >
                   <Plus className="size-4" />
                 </button>
                 <button
                   type="button"
-                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
                   <MoreHorizontal className="size-4" />
                 </button>
@@ -612,14 +637,14 @@ export function BoardView({
                 <button
                   type="button"
                   onClick={() => onCreateTeam('Inspection')}
-                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   title="Thêm đội kiểm tra"
                 >
                   <Plus className="size-4" />
                 </button>
                 <button
                   type="button"
-                  className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
                   <MoreHorizontal className="size-4" />
                 </button>

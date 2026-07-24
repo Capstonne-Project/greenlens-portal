@@ -138,13 +138,19 @@ export function CreateTeamDialog({
           </ModalContent>
 
           <ModalFooter className="gap-2 bg-slate-50">
-            <Button type="button" variant="outline" disabled={isBusy} onClick={closeDialog}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isBusy}
+              onClick={closeDialog}
+              className="cursor-pointer"
+            >
               Huỷ
             </Button>
             <Button
               type="submit"
               disabled={isBusy}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
+              className="cursor-pointer bg-emerald-600 text-white hover:bg-emerald-500"
             >
               {isBusy ? (
                 <>
@@ -259,7 +265,7 @@ export function AddMemberDialog({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value || undefined}
+                    value={field.value ?? ''}
                     onValueChange={field.onChange}
                     open={staffSelectOpen}
                     onOpenChange={setStaffSelectOpen}
@@ -325,14 +331,19 @@ export function AddMemberDialog({
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={addMemberMutation.isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={addMemberMutation.isPending}
+                className="cursor-pointer"
+              >
                 Huỷ
               </Button>
             </DialogClose>
             <Button
               type="submit"
               disabled={formBusy || !staffRole || staffError || staffListEmpty}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
+              className="cursor-pointer bg-emerald-600 text-white hover:bg-emerald-500"
             >
               {addMemberMutation.isPending ? (
                 <>
@@ -386,11 +397,22 @@ export function RemoveMemberConfirmDialog({
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={submitting}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              className="cursor-pointer"
+            >
               Huỷ
             </Button>
           </DialogClose>
-          <Button type="button" variant="destructive" disabled={submitting} onClick={onConfirm}>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={submitting}
+            onClick={onConfirm}
+            className="cursor-pointer"
+          >
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -448,7 +470,7 @@ export function TeamDetailDialog({
           <button
             type="button"
             onClick={onClose}
-            className="ml-1 shrink-0 rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="ml-1 shrink-0 cursor-pointer rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <X className="size-4" />
           </button>
@@ -501,7 +523,7 @@ export function TeamDetailDialog({
           <button
             type="button"
             onClick={onAddMember}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-emerald-300 hover:text-emerald-600"
+            className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-emerald-300 hover:text-emerald-600"
           >
             <UserPlus className="size-3.5" />
             Thêm thành viên vào đội

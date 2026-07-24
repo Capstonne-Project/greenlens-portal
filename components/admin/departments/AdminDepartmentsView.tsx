@@ -2,19 +2,18 @@
 
 import { DepartmentAssignOfficerDialog } from '@/components/admin/departments/DepartmentAssignOfficerDialog';
 import { DepartmentCreateDialog } from '@/components/admin/departments/DepartmentCreateDialog';
+import { DepartmentDeactivateDialog } from '@/components/admin/departments/DepartmentDeactivateDialog';
 import { DepartmentDetailDialog } from '@/components/admin/departments/DepartmentDetailDialog';
 import { DepartmentEditDialog } from '@/components/admin/departments/DepartmentEditDialog';
 import { DepartmentLiveSearch } from '@/components/admin/departments/DepartmentLiveSearch';
 import { DepartmentsDataList } from '@/components/admin/departments/DepartmentsDataList';
 import { DepartmentsOverviewSidebar } from '@/components/admin/departments/DepartmentsOverviewSidebar';
-import { useDeactivateDepartment, useDepartmentsList } from '@/hooks/useDepartments';
+import { useDepartmentsList } from '@/hooks/useDepartments';
 import { ADMIN_DEPARTMENTS_PAGE_SIZE } from '@/lib/constants/adminDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
-import { getDepartmentMutationError } from '@/utils/departmentErrors';
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
-import { toast } from 'sonner';
 
 type ActiveFilter = 'active' | 'inactive' | 'all';
 
@@ -42,7 +41,7 @@ export function AdminDepartmentsView() {
   const [editDept, setEditDept] = useState<DepartmentListItem | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [assignDept, setAssignDept] = useState<DepartmentListItem | null>(null);
-  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+  const [deactivateDept, setDeactivateDept] = useState<DepartmentListItem | null>(null);
 
   const listParams = useMemo(
     () => ({
@@ -61,7 +60,6 @@ export function AdminDepartmentsView() {
 
   const { data, isPending, isError, error, refetch } = useDepartmentsList(listParams);
   const overviewQuery = useDepartmentsList(overviewParams);
-  const deactivateMutation = useDeactivateDepartment();
 
   const allForTaken = useDepartmentsList({
     page: 1,
@@ -102,27 +100,6 @@ export function AdminDepartmentsView() {
   const overviewItems = overviewQuery.data?.items ?? [];
   const overviewTotal = overviewQuery.data?.pagination.totalItems ?? 0;
 
-  const handleDeactivate = (dept: DepartmentListItem) => {
-    if (
-      !window.confirm(
-        `Vô hiệu hóa "${dept.name}"? Các văn phòng trực thuộc vẫn được giữ trong hệ thống.`
-      )
-    ) {
-      return;
-    }
-    setDeactivatingId(dept.id);
-    deactivateMutation.mutate(dept.id, {
-      onSuccess: () => {
-        toast.success('Đã vô hiệu hóa ủy ban.');
-        setDeactivatingId(null);
-      },
-      onError: err => {
-        toast.error(getDepartmentMutationError(err, 'Không thể vô hiệu hóa.'));
-        setDeactivatingId(null);
-      },
-    });
-  };
-
   const handleSearchChange = useCallback(
     (q: string) => setQuery({ q: q || null, page: '1' }),
     [setQuery]
@@ -152,8 +129,8 @@ export function AdminDepartmentsView() {
                       }
                       className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition sm:text-sm ${
                         activeFilter === value
-                          ? 'border-emerald-700 bg-emerald-700 text-white'
-                          : 'border-border bg-background text-muted-foreground hover:border-emerald-600/30 hover:text-foreground'
+                          ? 'border-zinc-800 bg-zinc-800 text-white dark:border-zinc-200 dark:bg-zinc-100 dark:text-zinc-900'
+                          : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800'
                       }`}
                     >
                       {label}
@@ -172,7 +149,7 @@ export function AdminDepartmentsView() {
                   <button
                     type="button"
                     onClick={() => setCreateOpen(true)}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-3.5 text-sm font-medium text-white transition hover:bg-emerald-800"
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3.5 text-sm font-medium text-white transition hover:bg-teal-800"
                   >
                     <Plus className="size-4" />
                     <span className="hidden sm:inline">Tạo mới</span>
@@ -205,7 +182,7 @@ export function AdminDepartmentsView() {
                 <button
                   type="button"
                   onClick={() => void refetch()}
-                  className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
+                  className="mt-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
                 >
                   Thử lại
                 </button>
@@ -216,11 +193,11 @@ export function AdminDepartmentsView() {
               <>
                 <DepartmentsDataList
                   items={items}
-                  deactivatingId={deactivatingId}
-                  isDeactivating={deactivateMutation.isPending}
+                  deactivatingId={null}
+                  isDeactivating={false}
                   onDetail={setDetailId}
                   onEdit={setEditDept}
-                  onDeactivate={handleDeactivate}
+                  onDeactivate={setDeactivateDept}
                 />
 
                 {pagination && pagination.totalPages > 1 && (
@@ -290,6 +267,11 @@ export function AdminDepartmentsView() {
         department={assignDept}
         onClose={() => setAssignDept(null)}
         onAssigned={() => void refetch()}
+      />
+      <DepartmentDeactivateDialog
+        department={deactivateDept}
+        onClose={() => setDeactivateDept(null)}
+        onDeactivated={() => void refetch()}
       />
     </div>
   );

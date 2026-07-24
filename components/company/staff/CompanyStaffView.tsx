@@ -12,6 +12,13 @@ import {
 import type { CompanyStaffItem, CreateCompanyStaffResult } from '@/lib/api/models/company';
 import { formatCompanyDate, getCompanyMutationError } from '@/utils/companyUi';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
@@ -110,30 +117,27 @@ export function CompanyStaffView() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            { key: 'all', label: 'Tất cả' },
-            { key: 'active', label: 'Đang hoạt động' },
-            { key: 'inactive', label: 'Ngưng hoạt động' },
-          ] as const
-        ).map(opt => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => {
-              setActiveFilter(opt.key);
-              setPage(1);
-            }}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-              activeFilter === opt.key
-                ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
-                : 'border-emerald-100 bg-white text-muted-foreground hover:border-emerald-300 hover:text-emerald-800 dark:border-border dark:bg-card'
-            }`}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={activeFilter}
+          onValueChange={v => {
+            setActiveFilter(v as ActiveFilter);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger
+            id="staff-active-filter"
+            className="h-10 w-[14rem] rounded-lg"
+            aria-label="Trạng thái nhân sự"
           >
-            {opt.label}
-          </button>
-        ))}
+            <SelectValue placeholder="Trạng thái: Tất cả" />
+          </SelectTrigger>
+          <SelectContent position="popper" sideOffset={4}>
+            <SelectItem value="all">Trạng thái: Tất cả</SelectItem>
+            <SelectItem value="active">Đang hoạt động</SelectItem>
+            <SelectItem value="inactive">Ngưng hoạt động</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-emerald-100/80 bg-white/90 shadow-sm backdrop-blur dark:border-border dark:bg-card/90">

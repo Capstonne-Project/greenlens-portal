@@ -1,7 +1,8 @@
 'use client';
 
 import { ChevronDown, Loader2 } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface SearchableSelectOption {
   value: string;
@@ -40,7 +41,9 @@ export function SearchableSelect({
   const listboxId = `${idProp ?? autoId}-listbox`;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const selected = options.find(o => o.value === value);
 
@@ -56,15 +59,40 @@ export function SearchableSelect({
   const closeDropdown = useCallback(() => {
     setOpen(false);
     setQuery('');
+    setCoords(null);
     onOpenChange?.(false);
   }, [onOpenChange]);
+
+  const updateCoords = useCallback(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setCoords({
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateCoords();
+    const onReposition = () => updateCoords();
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
+    return () => {
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+    };
+  }, [open, updateCoords]);
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        closeDropdown();
-      }
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      closeDropdown();
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
@@ -72,9 +100,56 @@ export function SearchableSelect({
 
   const handleSelect = (next: string) => {
     onChange(next);
-    setOpen(false);
-    setQuery('');
+    closeDropdown();
   };
+
+  const dropdown =
+    open &&
+    coords &&
+    typeof document !== 'undefined' &&
+    createPortal(
+      <div
+        ref={panelRef}
+        id={listboxId}
+        role="listbox"
+        className="fixed z-[100] overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+        style={{
+          top: coords.top,
+          left: coords.left,
+          width: coords.width,
+        }}
+      >
+        <div className="border-b border-border p-2">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40"
+            autoFocus
+          />
+        </div>
+        <ul className="max-h-52 overflow-y-auto py-1">
+          {filtered.length === 0 && (
+            <li className="px-3 py-2 text-sm text-muted-foreground">{emptyMessage}</li>
+          )}
+          {filtered.map(o => (
+            <li key={o.value} role="option" aria-selected={o.value === value}>
+              <button
+                type="button"
+                onClick={() => handleSelect(o.value)}
+                className={`flex w-full px-3 py-2 text-left text-sm hover:bg-muted/60 ${
+                  o.value === value ? 'bg-zinc-100 font-medium text-zinc-900' : ''
+                }`}
+              >
+                {o.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>,
+      document.body
+    );
 
   return (
     <div ref={rootRef} className="relative">
@@ -89,12 +164,25 @@ export function SearchableSelect({
           if (disabled || loading) return;
           setOpen(v => {
             const next = !v;
-            if (!next) setQuery('');
+            if (next) {
+              const el = rootRef.current;
+              if (el) {
+                const rect = el.getBoundingClientRect();
+                setCoords({
+                  top: rect.bottom + 4,
+                  left: rect.left,
+                  width: rect.width,
+                });
+              }
+            } else {
+              setQuery('');
+              setCoords(null);
+            }
             onOpenChange?.(next);
             return next;
           });
         }}
-        className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className={selected ? 'truncate' : 'truncate text-muted-foreground'}>
           {loading ? 'Đang tải…' : (selected?.label ?? placeholder)}
@@ -107,43 +195,7 @@ export function SearchableSelect({
           />
         )}
       </button>
-
-      {open && (
-        <div
-          id={listboxId}
-          role="listbox"
-          className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg"
-        >
-          <div className="border-b border-border p-2">
-            <input
-              type="search"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-              autoFocus
-            />
-          </div>
-          <ul className="max-h-52 overflow-y-auto py-1">
-            {filtered.length === 0 && (
-              <li className="px-3 py-2 text-sm text-muted-foreground">{emptyMessage}</li>
-            )}
-            {filtered.map(o => (
-              <li key={o.value} role="option" aria-selected={o.value === value}>
-                <button
-                  type="button"
-                  onClick={() => handleSelect(o.value)}
-                  className={`flex w-full px-3 py-2 text-left text-sm hover:bg-muted/60 ${
-                    o.value === value ? 'bg-emerald-50 font-medium text-emerald-900' : ''
-                  }`}
-                >
-                  {o.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }

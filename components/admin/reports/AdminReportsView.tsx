@@ -5,10 +5,36 @@ import { AdminReportHideDialog } from '@/components/admin/reports/AdminReportHid
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
 import {
+  ADMIN_TABLE_CLASS,
+  ADMIN_TABLE_HEAD_CELL,
+  ADMIN_TABLE_ROW_BORDER,
+  ADMIN_TABLE_SCROLL,
+  ADMIN_TABLE_SHELL,
+  adminTableCellPad,
+} from '@/components/admin/shared/adminDataTableChrome';
+import { PaginationSimple } from '@/components/ui/pagination';
+import SaveIcon from '@/components/ui/save-icon';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   useAdminReportsList,
   usePollutionCategories,
   useUnhideAdminReport,
 } from '@/hooks/useAdminReports';
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { ADMIN_REPORT_PAGE_SIZE, ADMIN_REPORT_STATUS_TABS } from '@/lib/constants/adminReports';
 import type { AdminReportListItem } from '@/lib/api/models/adminReport';
 import {
@@ -20,18 +46,7 @@ import { cn } from '@/lib/utils';
 import { OPEN_REPORT_STATUSES } from '@/utils/adminOverview';
 import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { formatReportRelativeTime, reportListTitle } from '@/utils/adminReportUi';
-import {
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Eye,
-  EyeOff,
-  FileWarning,
-  Loader2,
-  MoreHorizontal,
-  Search,
-} from 'lucide-react';
+import { Download, Eye, EyeOff, FileWarning, Loader2, MoreHorizontal, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
@@ -40,6 +55,76 @@ import { toast } from 'sonner';
 function categoryInitial(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || '?';
 }
+
+type AdminColumnKey =
+  | 'report'
+  | 'category'
+  | 'severity'
+  | 'address'
+  | 'reporter'
+  | 'status'
+  | 'ai'
+  | 'received'
+  | 'actions';
+
+const FIRST_COL: AdminColumnKey = 'report';
+const LAST_COL: AdminColumnKey = 'actions';
+
+const COLUMN_DEFS: { key: AdminColumnKey; label: string; className?: string }[] = [
+  { key: 'report', label: 'Báo cáo', className: 'w-[22%]' },
+  { key: 'category', label: 'Loại', className: 'w-[10%]' },
+  { key: 'severity', label: 'Mức độ', className: 'w-[8%]' },
+  { key: 'address', label: 'Khu vực', className: 'w-[14%]' },
+  { key: 'reporter', label: 'Người gửi', className: 'w-[10%]' },
+  { key: 'status', label: 'Trạng thái', className: 'w-[10%]' },
+  { key: 'ai', label: 'AI', className: 'w-[8%]' },
+  { key: 'received', label: 'Nhận', className: 'w-[8%]' },
+  { key: 'actions', label: 'Hành động', className: 'w-[14%]' },
+];
+
+function colPad(key: AdminColumnKey, layer: 'head' | 'body' = 'body') {
+  const position = key === FIRST_COL ? 'first' : key === LAST_COL ? 'last' : 'middle';
+  return adminTableCellPad(position, layer);
+}
+
+/** Local draft + debounce; remount via `key={searchQ}` when URL search changes. */
+function AdminReportsSearchField({
+  searchQ,
+  onCommit,
+}: {
+  searchQ: string;
+  onCommit: (trimmed: string) => void;
+}) {
+  const [searchInput, setSearchInput] = useState(searchQ);
+
+  useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS, value => {
+    const next = value.trim();
+    if (next === searchQ.trim()) return;
+    onCommit(next);
+  });
+
+  return (
+    <div className="relative min-w-[12rem] flex-1">
+      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <input
+        type="search"
+        value={searchInput}
+        onChange={e => setSearchInput(e.target.value)}
+        placeholder="Mã, tiêu đề, khu vực, người gửi..."
+        className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+        aria-label="Tìm báo cáo"
+      />
+    </div>
+  );
+}
+
+type RenderAdminCellCtx = {
+  hidden: boolean;
+  unhiding: boolean;
+  onUnhide: (report: AdminReportListItem) => void;
+  setHideTarget: (report: AdminReportListItem | null) => void;
+  openDetail: (item: AdminReportListItem) => void;
+};
 
 export function AdminReportsView() {
   const router = useRouter();
@@ -107,12 +192,6 @@ export function AdminReportsView() {
   const submittedOnPage = items.filter(r => r.status === 'Submitted').length;
   const anonymousOnPage = items.filter(r => r.isAnonymous).length;
 
-  const subtitleParts = [
-    'Báo cáo',
-    pagination ? `${pagination.totalItems.toLocaleString('vi-VN')} tổng` : '…',
-    `Trang ${pagination?.page ?? page}${pagination ? ` / ${pagination.totalPages}` : ''}`,
-  ];
-
   const openDetail = (item: AdminReportListItem) => {
     setDetailListItem(item);
     setDetailId(item.id);
@@ -130,18 +209,8 @@ export function AdminReportsView() {
   };
 
   return (
-    <div className="w-full min-w-0 space-y-6">
-      <p className="border-b border-border pb-6 text-sm text-muted-foreground">
-        {subtitleParts.join(' · ')}
-        {pagination && (
-          <>
-            {' '}
-            · {openOnPage} đang mở (trang) · {submittedOnPage} chờ xác minh (trang)
-          </>
-        )}
-      </p>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="w-full min-w-0 space-y-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           {
             label: 'Tổng báo cáo',
@@ -170,16 +239,16 @@ export function AdminReportsView() {
         ].map(card => (
           <article
             key={card.label}
-            className="rounded-card border border-border bg-card p-5 shadow-sm"
+            className="rounded-card border border-border bg-card p-4 shadow-sm"
           >
             <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-            <div className="mt-3 flex items-end justify-between gap-3">
+            <div className="mt-2 flex items-end justify-between gap-3">
               <div>
                 <p className="text-2xl font-bold tracking-tight">{card.value}</p>
-                <p className="mt-1 text-xs text-emerald-800/90">{card.hint}</p>
+                <p className="mt-0.5 text-xs text-emerald-800/90">{card.hint}</p>
               </div>
               <div
-                className="flex size-14 shrink-0 items-center justify-center rounded-full border-4 border-emerald-100 bg-emerald-50 text-[11px] font-bold text-emerald-800"
+                className="flex size-12 shrink-0 items-center justify-center rounded-full border-4 border-emerald-100 bg-emerald-50 text-[11px] font-bold text-emerald-800"
                 aria-hidden
               >
                 {card.ring}%
@@ -189,53 +258,40 @@ export function AdminReportsView() {
         ))}
       </section>
 
-      <div className="flex flex-col gap-4 rounded-card border border-border bg-card p-4 shadow-sm">
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const q = String(formData.get('q') ?? '').trim();
-            setQuery({ search: q || null, page: '1' });
-          }}
-          className="flex min-w-[220px] flex-1 flex-wrap items-center gap-2"
-        >
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              name="q"
-              defaultValue={searchQ}
-              placeholder="Mã, tiêu đề, khu vực, người gửi..."
-              className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-              aria-label="Tìm báo cáo"
-            />
-          </div>
-          <button
-            type="submit"
-            className="h-10 shrink-0 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
-          >
-            Tìm
-          </button>
+      <div className="rounded-card border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <AdminReportsSearchField
+            key={searchQ}
+            searchQ={searchQ}
+            onCommit={next => setQuery({ search: next || null, page: '1' })}
+          />
 
-          <select
-            value={categoryId}
-            onChange={e => setQuery({ categoryId: e.target.value || null, page: '1' })}
-            className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-            aria-label="Loại ô nhiễm"
+          <Select
+            value={categoryId || 'all'}
+            onValueChange={v => setQuery({ categoryId: v === 'all' ? null : v, page: '1' })}
           >
-            <option value="">Loại: Tất cả</option>
-            {(categories ?? []).map(c => (
-              <option key={c.id} value={c.id}>
-                {c.nameVi}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              className="h-10 w-[11.5rem] shrink-0 rounded-lg"
+              aria-label="Loại ô nhiễm"
+            >
+              <SelectValue placeholder="Loại: Tất cả" />
+            </SelectTrigger>
+            <SelectContent position="popper" sideOffset={4}>
+              <SelectItem value="all">Loại: Tất cả</SelectItem>
+              {(categories ?? []).map(c => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nameVi}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <input
             type="text"
             defaultValue={provinceCode}
             placeholder="Mã tỉnh"
             onBlur={e => setQuery({ provinceCode: e.target.value.trim() || null, page: '1' })}
-            className="h-10 w-28 rounded-lg border border-input bg-background px-3 text-sm"
+            className="h-10 w-24 shrink-0 rounded-lg border border-input bg-background px-3 text-sm"
             aria-label="Mã tỉnh"
           />
           <input
@@ -243,26 +299,14 @@ export function AdminReportsView() {
             defaultValue={wardCode}
             placeholder="Mã phường"
             onBlur={e => setQuery({ wardCode: e.target.value.trim() || null, page: '1' })}
-            className="h-10 w-28 rounded-lg border border-input bg-background px-3 text-sm"
+            className="h-10 w-28 shrink-0 rounded-lg border border-input bg-background px-3 text-sm"
             aria-label="Mã phường"
           />
-        </form>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">
-            <AlertTriangle className="size-3.5" aria-hidden />
-            AI gắn cờ: —
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800">
-            Ẩn danh:{' '}
-            {pagination && items.length
-              ? `${Math.round((anonymousOnPage / items.length) * 100)}%`
-              : '—'}
-          </span>
           <button
             type="button"
             disabled
-            className="ml-auto inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground"
           >
             <Download className="size-4" />
             Xuất CSV
@@ -287,227 +331,121 @@ export function AdminReportsView() {
         ))}
       </div>
 
-      {isError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-        >
-          Không tải được danh sách báo cáo.{' '}
-          <button type="button" className="underline" onClick={() => refetch()}>
-            Thử lại
-          </button>
-          {error instanceof Error && (
-            <span className="mt-1 block text-xs opacity-80">{error.message}</span>
-          )}
-        </div>
-      )}
-
-      <div className="overflow-x-auto rounded-card border border-border bg-card shadow-sm">
-        <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/40 text-muted-foreground">
-              <th className="w-10 px-3 py-3">
-                <input type="checkbox" className="rounded border-input" aria-label="Chọn tất cả" />
-              </th>
-              <th className="px-4 py-3 font-medium">Báo cáo</th>
-              <th className="px-4 py-3 font-medium">Loại</th>
-              <th className="px-4 py-3 font-medium">Mức độ</th>
-              <th className="px-4 py-3 font-medium">Khu vực</th>
-              <th className="px-4 py-3 font-medium">Người gửi</th>
-              <th className="px-4 py-3 font-medium">Trạng thái</th>
-              <th className="px-4 py-3 font-medium">AI</th>
-              <th className="px-4 py-3 font-medium">Nhận</th>
-              <th className="px-4 py-3 text-right font-medium">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isPending &&
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i} className="border-b border-border">
-                  <td colSpan={10} className="px-4 py-4">
-                    <div className="h-10 animate-pulse rounded-lg bg-muted" />
-                  </td>
-                </tr>
-              ))}
-            {!isPending &&
-              items.map(report => {
-                const hidden = isReportHidden(report);
-                const unhiding = unhideReport.isPending && unhideReport.variables === report.id;
-
-                return (
-                  <tr
-                    key={report.id}
+      <div className={ADMIN_TABLE_SHELL}>
+        <div className={ADMIN_TABLE_SCROLL}>
+          <Table className={ADMIN_TABLE_CLASS}>
+            <TableHeader className="sticky top-0 z-10 bg-slate-100">
+              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                {COLUMN_DEFS.map(col => (
+                  <TableHead
+                    key={col.key}
                     className={cn(
-                      'border-b border-border last:border-0 transition-[opacity,filter]',
-                      hidden
-                        ? 'bg-muted/50 opacity-60 grayscale hover:opacity-75'
-                        : 'hover:bg-muted/30'
+                      colPad(col.key, 'head'),
+                      ADMIN_TABLE_HEAD_CELL,
+                      col.key === LAST_COL && 'text-right',
+                      col.className
                     )}
                   >
-                    <td className="px-3 py-3">
-                      <input type="checkbox" className="rounded border-input" aria-label="Chọn" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            'flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold',
-                            hidden
-                              ? 'bg-muted text-muted-foreground'
-                              : 'bg-emerald-600/10 text-emerald-900'
-                          )}
-                          aria-hidden
-                        >
-                          {categoryInitial(report.categoryName)}
-                        </div>
-                        <div className="min-w-0">
-                          <p
-                            className={cn(
-                              'truncate font-semibold',
-                              hidden ? 'text-muted-foreground' : 'text-foreground'
-                            )}
-                          >
-                            {reportListTitle(report)}
-                          </p>
-                          <p className="truncate font-mono text-xs text-muted-foreground">
-                            {report.code}
-                            {hidden ? ' · Đã ẩn' : ''}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="max-w-[140px] truncate px-4 py-3 text-muted-foreground">
-                      {report.categoryName}
-                    </td>
-                    <td className="px-4 py-3">
-                      <ReportSeverityBars severity={report.severity} />
-                    </td>
-                    <td className="max-w-[160px] truncate px-4 py-3 text-muted-foreground">
-                      {report.address || '—'}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {report.isAnonymous ? (
-                        <span className="text-amber-800">Ẩn danh</span>
-                      ) : (
-                        <span className="truncate">Người gửi #{report.reporterCount}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <ReportStatusBadge status={report.status} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {report.status === 'Duplicate' ? (
-                        <span className="text-amber-700">Trùng?</span>
-                      ) : report.reopenedCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-red-700">
-                          <FileWarning className="size-3.5" />
-                          Bất thường
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                      {formatReportRelativeTime(report.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        {hidden ? (
-                          <button
-                            type="button"
-                            onClick={() => onUnhide(report)}
-                            disabled={unhiding}
-                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
-                          >
-                            {unhiding ? (
-                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                            ) : (
-                              <Eye className="size-3.5" aria-hidden />
-                            )}
-                            Hiện lại
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setHideTarget(report)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
-                          >
-                            <EyeOff className="size-3.5" aria-hidden />
-                            Ẩn
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openDetail(report)}
-                          className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
-                        >
-                          Chi tiết
-                        </button>
-                        <Link
-                          href={`/admin/reports/${report.id}`}
-                          className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                          aria-label="Mở trang chi tiết"
-                        >
-                          <MoreHorizontal className="size-4" />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            {!isPending && items.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
-                  Không có báo cáo phù hợp.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                    {col.label}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isPending ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <p className="text-sm text-destructive">Không tải được danh sách báo cáo.</p>
+                    <button
+                      type="button"
+                      onClick={() => refetch()}
+                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
+                    >
+                      Thử lại
+                    </button>
+                    {error instanceof Error && (
+                      <span className="mt-1 block text-xs text-slate-500">{error.message}</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                      <SaveIcon size={32} className="opacity-30" />
+                      <span>Không có báo cáo phù hợp.</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                items.map(report => {
+                  const hidden = isReportHidden(report);
+                  const unhiding = unhideReport.isPending && unhideReport.variables === report.id;
+                  const ctx: RenderAdminCellCtx = {
+                    hidden,
+                    unhiding,
+                    onUnhide,
+                    setHideTarget,
+                    openDetail,
+                  };
 
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Hiển thị {(pagination.page - 1) * pagination.pageSize + 1}–
-            {Math.min(pagination.page * pagination.pageSize, pagination.totalItems)} /{' '}
-            {pagination.totalItems.toLocaleString('vi-VN')} báo cáo
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={!pagination.hasPrev}
-              onClick={() => setQuery({ page: String(pagination.page - 1) })}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40"
-            >
-              <ChevronLeft className="size-4" />
-              Trước
-            </button>
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {pagination.page} / {pagination.totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={!pagination.hasNext}
-              onClick={() => setQuery({ page: String(pagination.page + 1) })}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40"
-            >
-              Sau
-              <ChevronRight className="size-4" />
-            </button>
-            <Link
-              href={`${pathname}?${(() => {
-                const u = new URLSearchParams(searchParams.toString());
-                u.set('page', String(pagination.totalPages));
-                return u.toString();
-              })()}`}
-              className="text-sm text-emerald-800 underline-offset-4 hover:underline"
-            >
-              Trang cuối ({pagination.totalPages})
-            </Link>
-          </div>
+                  return (
+                    <TableRow
+                      key={report.id}
+                      className={cn(
+                        ADMIN_TABLE_ROW_BORDER,
+                        'transition-[opacity,filter]',
+                        hidden
+                          ? 'bg-muted/50 opacity-60 grayscale hover:opacity-75'
+                          : 'hover:bg-sky-50/40'
+                      )}
+                    >
+                      {COLUMN_DEFS.map(col => (
+                        <TableCell
+                          key={col.key}
+                          className={cn(
+                            colPad(col.key, 'body'),
+                            'align-middle',
+                            col.className,
+                            col.key === LAST_COL && 'text-right',
+                            (col.key === 'category' || col.key === 'address') && 'max-w-0'
+                          )}
+                        >
+                          {renderAdminCell(col.key, report, ctx)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
         </div>
-      )}
+
+        {pagination ? (
+          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+            <div className="min-w-0">
+              {pagination.totalPages > 1 ? (
+                <PaginationSimple
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={p => setQuery({ page: String(p) })}
+                  className="w-auto"
+                />
+              ) : null}
+            </div>
+            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+              {pagination.totalItems.toLocaleString('vi-VN')} rows
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       <AdminReportDetailPanel
         reportId={detailId}
@@ -539,4 +477,125 @@ export function AdminReportsView() {
       />
     </div>
   );
+}
+
+function renderAdminCell(
+  key: AdminColumnKey,
+  report: AdminReportListItem,
+  ctx: RenderAdminCellCtx
+) {
+  const { hidden, unhiding, onUnhide, setHideTarget, openDetail } = ctx;
+
+  switch (key) {
+    case 'report':
+      return (
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              'flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold',
+              hidden ? 'bg-muted text-muted-foreground' : 'bg-emerald-600/10 text-emerald-900'
+            )}
+            aria-hidden
+          >
+            {categoryInitial(report.categoryName)}
+          </div>
+          <div className="min-w-0">
+            <p
+              className={cn(
+                'truncate font-semibold',
+                hidden ? 'text-muted-foreground' : 'text-foreground'
+              )}
+            >
+              {reportListTitle(report)}
+            </p>
+            <p className="truncate font-mono text-xs text-muted-foreground">
+              {report.code}
+              {hidden ? ' · Đã ẩn' : ''}
+            </p>
+          </div>
+        </div>
+      );
+    case 'category':
+      return <span className="truncate text-muted-foreground">{report.categoryName}</span>;
+    case 'severity':
+      return <ReportSeverityBars severity={report.severity} />;
+    case 'address':
+      return <span className="truncate text-muted-foreground">{report.address || '—'}</span>;
+    case 'reporter':
+      return (
+        <span className="text-muted-foreground">
+          {report.isAnonymous ? (
+            <span className="text-amber-800">Ẩn danh</span>
+          ) : (
+            <span className="truncate">Người gửi #{report.reporterCount}</span>
+          )}
+        </span>
+      );
+    case 'status':
+      return <ReportStatusBadge status={report.status} />;
+    case 'ai':
+      return (
+        <span className="text-xs text-muted-foreground">
+          {report.status === 'Duplicate' ? (
+            <span className="text-amber-700">Trùng?</span>
+          ) : report.reopenedCount > 0 ? (
+            <span className="inline-flex items-center gap-1 text-red-700">
+              <FileWarning className="size-3.5" />
+              Bất thường
+            </span>
+          ) : (
+            '—'
+          )}
+        </span>
+      );
+    case 'received':
+      return (
+        <span className="whitespace-nowrap text-muted-foreground">
+          {formatReportRelativeTime(report.createdAt)}
+        </span>
+      );
+    case 'actions':
+      return (
+        <div className="inline-flex items-center gap-1">
+          {hidden ? (
+            <button
+              type="button"
+              onClick={() => onUnhide(report)}
+              disabled={unhiding}
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+            >
+              {unhiding ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Eye className="size-3.5" aria-hidden />
+              )}
+              Hiện lại
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setHideTarget(report)}
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+            >
+              <EyeOff className="size-3.5" aria-hidden />
+              Ẩn
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => openDetail(report)}
+            className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+          >
+            Chi tiết
+          </button>
+          <Link
+            href={`/admin/reports/${report.id}`}
+            className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+            aria-label="Mở trang chi tiết"
+          >
+            <MoreHorizontal className="size-4" />
+          </Link>
+        </div>
+      );
+  }
 }

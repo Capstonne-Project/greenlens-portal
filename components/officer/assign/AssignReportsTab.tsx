@@ -62,8 +62,13 @@ type ColumnKey = 'select' | DataColumnKey;
 /** Uniform horizontal pad so adjacent headers (e.g. Priority | Address) don’t collide. */
 const CELL_PAD = 'px-3 py-3';
 
+/** Badge shell — size scales via `compact` (filter open) + `@container/assign-table`. */
 const BADGE_BASE =
-  'inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium';
+  'inline-flex max-w-full items-center truncate rounded-lg font-medium leading-none';
+
+const BADGE_SIZE_COMPACT = 'px-2 py-0.5 text-[10px] tracking-tight';
+const BADGE_SIZE_DEFAULT =
+  'px-2.5 py-1 text-[11px] @[40rem]/assign-table:px-2.5 @[40rem]/assign-table:text-xs';
 
 /**
  * Widths as % of table (sum ≈ 100%). Priority widened so header isn’t flush against Address.
@@ -296,7 +301,7 @@ function SidebarDatePartsRow({
     <div>
       <span className="mb-1.5 block text-xs font-medium text-slate-500">{label}</span>
       <div className="flex max-w-full items-center gap-1.5">
-        <Select value={d || undefined} onValueChange={v => update(v, m, y)}>
+        <Select value={d} onValueChange={v => update(v, m, y)}>
           <SelectTrigger
             className={cn(SIDEBAR_DATE_TRIGGER_CLASS, 'w-[2.65rem]')}
             aria-label={`${label} — ngày`}
@@ -316,7 +321,7 @@ function SidebarDatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 px-0.5 text-xs text-slate-400">/</span>
-        <Select value={m || undefined} onValueChange={v => update(d, v, y)}>
+        <Select value={m} onValueChange={v => update(d, v, y)}>
           <SelectTrigger
             className={cn(SIDEBAR_DATE_TRIGGER_CLASS, 'w-[2.65rem]')}
             aria-label={`${label} — tháng`}
@@ -336,7 +341,7 @@ function SidebarDatePartsRow({
           </SelectContent>
         </Select>
         <span className="shrink-0 px-0.5 text-xs text-slate-400">/</span>
-        <Select value={y || undefined} onValueChange={v => update(d, m, v)}>
+        <Select value={y} onValueChange={v => update(d, m, v)}>
           <SelectTrigger
             className={cn(SIDEBAR_DATE_TRIGGER_CLASS, 'w-[3.35rem]')}
             aria-label={`${label} — năm`}
@@ -442,29 +447,57 @@ function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
   );
 }
 
-function SeverityBadge({ severity }: { severity: ReportSeverity }) {
+function SeverityBadge({
+  severity,
+  compact = false,
+}: {
+  severity: ReportSeverity;
+  compact?: boolean;
+}) {
   return (
-    <span className={cn(BADGE_BASE, REPORT_SEVERITY_BADGE_CLASSES[severity])}>
+    <span
+      className={cn(
+        BADGE_BASE,
+        compact ? BADGE_SIZE_COMPACT : BADGE_SIZE_DEFAULT,
+        REPORT_SEVERITY_BADGE_CLASSES[severity]
+      )}
+    >
       {REPORT_SEVERITY_LABEL_VI[severity]}
     </span>
   );
 }
 
-function StatusBadge({ status }: { status: ReportQueueItem['status'] }) {
+function StatusBadge({
+  status,
+  compact = false,
+}: {
+  status: ReportQueueItem['status'];
+  compact?: boolean;
+}) {
   return (
-    <span className={cn(BADGE_BASE, REPORT_STATUS_BADGE_CLASSES[status])} title={status}>
+    <span
+      className={cn(
+        BADGE_BASE,
+        compact ? BADGE_SIZE_COMPACT : BADGE_SIZE_DEFAULT,
+        REPORT_STATUS_BADGE_CLASSES[status]
+      )}
+      title={status}
+    >
       {reportStatusLabelVi(status)}
     </span>
   );
 }
 
-function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
+function renderDataCell(key: DataColumnKey, row: ReportQueueItem, compactBadges = false) {
   switch (key) {
     case 'image':
       return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
     case 'code':
       return (
-        <span className="block min-w-0 truncate text-xs font-medium text-sky-700" title={row.code}>
+        <span
+          className="block min-w-0 truncate text-xs font-medium text-slate-700"
+          title={row.code}
+        >
           {row.code}
         </span>
       );
@@ -475,9 +508,9 @@ function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
         </span>
       );
     case 'severity':
-      return <SeverityBadge severity={row.severity} />;
+      return <SeverityBadge severity={row.severity} compact={compactBadges} />;
     case 'status':
-      return <StatusBadge status={row.status} />;
+      return <StatusBadge status={row.status} compact={compactBadges} />;
     case 'priority':
       return (
         <span className="block min-w-0 truncate text-xs font-medium tabular-nums text-slate-700">
@@ -710,19 +743,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   const handleAssigned = () => setSelected(new Set());
 
   if (detailReportId) {
-    return (
-      <>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <VerifyDetailClient id={detailReportId} onBack={() => setDetailReportId(null)} />
-        </div>
-        <Dialog
-          open={assignOpen}
-          onClose={() => setAssignOpen(false)}
-          reportIds={[...selected]}
-          onAssigned={handleAssigned}
-        />
-      </>
-    );
+    return <VerifyDetailClient id={detailReportId} onBack={() => setDetailReportId(null)} />;
   }
 
   return (
@@ -871,7 +892,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
             </button>
           </div>
 
-          <div className="scrollbar-smooth min-h-0 flex-1 overflow-x-auto overflow-y-auto">
+          <div className="@container/assign-table scrollbar-smooth min-h-0 flex-1 overflow-x-auto overflow-y-auto">
             <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -906,7 +927,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                       colSpan={TABLE_COLS.length}
                       className={cn(CELL_PAD, 'h-40 text-center')}
                     >
-                      <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                      <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
                     </TableCell>
                   </TableRow>
                 ) : isError ? (
@@ -926,8 +947,8 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                       colSpan={TABLE_COLS.length}
                       className={cn(CELL_PAD, 'h-40 text-center')}
                     >
-                      <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
-                        <SaveIcon size={32} className="opacity-30" />
+                      <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
+                        <SaveIcon size={44} className="opacity-30" />
                         <span>Không có báo cáo nào</span>
                       </div>
                     </TableCell>
@@ -986,7 +1007,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                                 col.className
                               )}
                             >
-                              {renderDataCell(col.key, report)}
+                              {renderDataCell(col.key, report, filterOpen)}
                             </TableCell>
                           );
                         })}

@@ -70,6 +70,11 @@
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
+  /* Brand green — officer accent (filters, CTAs) */
+  --color-brand: #3f6b32;
+  --color-brand-dark: #325528;
+  --color-brand-foreground: #ffffff;
+
   /* Background images */
   --background-image-gradient-radial: radial-gradient(var(--tw-gradient-stops));
   --background-image-gradient-conic: conic-gradient(

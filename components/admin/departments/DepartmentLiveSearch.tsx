@@ -50,19 +50,19 @@ export function DepartmentLiveSearch({
       </label>
 
       <div
-        className={`flex h-10 items-center gap-2 rounded-xl border bg-background px-3 transition-colors ${
+        className={`flex h-10 items-center gap-2 rounded-xl border bg-white px-3 transition-colors dark:bg-zinc-950 ${
           focused
-            ? 'border-emerald-600/40 ring-2 ring-emerald-500/10'
-            : 'border-border hover:border-emerald-600/20'
+            ? 'border-zinc-400 ring-2 ring-zinc-200/80 dark:border-zinc-500 dark:ring-zinc-700/50'
+            : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
         }`}
       >
         <Search
-          className={`size-4 shrink-0 ${focused ? 'text-emerald-700' : 'text-muted-foreground'}`}
+          className={`size-4 shrink-0 ${focused ? 'text-zinc-700 dark:text-zinc-200' : 'text-zinc-400'}`}
           aria-hidden
         />
         <input
           id={inputId}
-          type="search"
+          type="text"
           value={local}
           onChange={e => setLocal(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -92,7 +92,7 @@ export function DepartmentLiveSearch({
 
       {typeof resultCount === 'number' && hasQuery ? (
         <p className="absolute -bottom-5 right-0 text-[11px] text-muted-foreground">
-          <span className="font-medium text-emerald-800">{resultCount}</span> kết quả
+          <span className="font-medium text-foreground">{resultCount}</span> kết quả
         </p>
       ) : null}
     </div>

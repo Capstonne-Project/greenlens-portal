@@ -150,6 +150,7 @@ export function OfficeCreateDialog({ open, onClose, onCompleted }: OfficeCreateD
       titleId="office-create-title"
       onClose={handleClose}
       size="full"
+      placement="top"
     >
       <p className="mb-4 text-sm text-muted-foreground">
         Tạo ủy ban (Sở) → văn phòng (phường/xã) → gán LEO phụ trách. Dữ liệu chỉ lưu khi bấm{' '}

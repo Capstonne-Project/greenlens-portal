@@ -5,6 +5,9 @@ import type {
   CreateCompanyBodyDto,
   CreateCompanyDataDto,
   MyWardCompaniesDataDto,
+  RenewCompanyContractBodyDto,
+  RenewCompanyContractDataDto,
+  SuspendCompanyBodyDto,
   UpdateCompanyServiceAreasBodyDto,
 } from '@/lib/api/dto/company.dto';
 import {
@@ -17,10 +20,14 @@ import {
 import type {
   CompaniesList,
   CompaniesListParams,
+  CompanyContractHistory,
   CompanyDetail,
   CompanyServiceAreas,
   CreateCompanyInput,
   CreatedCompany,
+  RenewCompanyContractInput,
+  RenewCompanyContractResult,
+  SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
   MyWardCompanies,
 } from '@/lib/api/models/company';
@@ -119,4 +126,56 @@ export async function adaptUpdateCompanyServiceAreas(
 /** DELETE /v1/companies/{id} — [DEO/Admin] soft delete (vô hiệu hóa công ty). */
 export async function adaptDeleteCompany(id: string): Promise<void> {
   await apiService.delete(`/v1/companies/${encodeURIComponent(id)}`);
+}
+
+/** POST /v1/companies/{id}/suspend — [DEO/Admin] tạm ngưng công ty (Active → Suspended). */
+export async function adaptSuspendCompany(
+  id: string,
+  body: SuspendCompanyInput
+): Promise<ApiEnvelope<string | null>> {
+  const payload: SuspendCompanyBodyDto = { reason: body.reason.trim() };
+  const res = await apiService.post<ApiEnvelope<string | null>>(
+    `/v1/companies/${encodeURIComponent(id)}/suspend`,
+    payload
+  );
+  return res.data;
+}
+
+/** POST /v1/companies/{id}/reactivate — [DEO/Admin] kích hoạt lại (Suspended → Active). */
+export async function adaptReactivateCompany(id: string): Promise<ApiEnvelope<string | null>> {
+  const res = await apiService.post<ApiEnvelope<string | null>>(
+    `/v1/companies/${encodeURIComponent(id)}/reactivate`
+  );
+  return res.data;
+}
+
+/** POST /v1/companies/{id}/renew-contract — [DEO/Admin] gia hạn HĐ Bidding. */
+export async function adaptRenewCompanyContract(
+  id: string,
+  body: RenewCompanyContractInput
+): Promise<ApiEnvelope<RenewCompanyContractResult>> {
+  const payload: RenewCompanyContractBodyDto = {
+    newStartDate: body.newStartDate,
+    newEndDate: body.newEndDate,
+    newContractNumber: body.newContractNumber.trim(),
+    note: body.note.trim(),
+  };
+  const res = await apiService.post<ApiEnvelope<RenewCompanyContractDataDto>>(
+    `/v1/companies/${encodeURIComponent(id)}/renew-contract`,
+    payload
+  );
+  return mapApiEnvelope(res.data, data => ({
+    contractPeriodId: data.contractPeriodId,
+    companyStatus: data.companyStatus,
+  }));
+}
+
+/** GET /v1/companies/{id}/contract-history — [DEO/Admin] lịch sử kỳ hợp đồng (mới nhất trước). */
+export async function adaptCompanyContractHistory(
+  companyId: string
+): Promise<ApiEnvelope<CompanyContractHistory>> {
+  const res = await apiService.get<ApiEnvelope<CompanyContractHistory>>(
+    `/v1/companies/${encodeURIComponent(companyId)}/contract-history`
+  );
+  return res.data;
 }

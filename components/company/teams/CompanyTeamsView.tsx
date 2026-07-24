@@ -7,6 +7,13 @@ import {
 import { CompanyTeamCreateDialog } from '@/components/company/teams/CompanyTeamCreateDialog';
 import { CompanyTeamRenameDialog } from '@/components/company/teams/CompanyTeamRenameDialog';
 import { useArchiveCompanyTeam, useCompanyTeamsList } from '@/hooks/useCompany';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { formatCompanyDate, getCompanyMutationError } from '@/utils/companyUi';
 import {
@@ -87,31 +94,27 @@ export function CompanyTeamsView() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            { key: 'active', label: 'Hoạt động' },
-            { key: 'inactive', label: 'Vô hiệu' },
-            { key: 'all', label: 'Tất cả' },
-          ] as const
-        ).map(opt => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => {
-              setActiveFilter(opt.key);
-              setPage(1);
-            }}
-            className={cn(
-              'rounded-full px-4 py-1.5 text-sm font-medium transition',
-              activeFilter === opt.key
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-muted-foreground hover:bg-emerald-50 dark:hover:bg-muted'
-            )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={activeFilter}
+          onValueChange={v => {
+            setActiveFilter(v as ActiveFilter);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger
+            id="teams-active-filter"
+            className="h-10 w-[14rem] rounded-lg"
+            aria-label="Trạng thái đội"
           >
-            {opt.label}
-          </button>
-        ))}
+            <SelectValue placeholder="Trạng thái: Tất cả" />
+          </SelectTrigger>
+          <SelectContent position="popper" sideOffset={4}>
+            <SelectItem value="active">Hoạt động</SelectItem>
+            <SelectItem value="inactive">Vô hiệu</SelectItem>
+            <SelectItem value="all">Trạng thái: Tất cả</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-emerald-100/80 bg-white/90 shadow-sm backdrop-blur dark:border-border dark:bg-card/90">
@@ -148,7 +151,7 @@ export function CompanyTeamsView() {
                 className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-bold text-white shadow-sm">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-lg font-bold text-white shadow-sm">
                     {team.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
