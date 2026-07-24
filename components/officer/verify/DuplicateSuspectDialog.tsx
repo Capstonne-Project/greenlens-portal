@@ -12,6 +12,7 @@ import {
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
 import { Button } from '@/components/ui/button';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,6 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
-import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 
 export type DuplicateParentPreview = {
@@ -70,6 +70,43 @@ function formatShortDate(iso: string | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatCoords(lat: number | null | undefined, lng: number | null | undefined): string {
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return '—';
+  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
+/** Link Google Maps — không cần API key; mobile thường mở app Maps. */
+function googleMapsUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+function CoordsLink({
+  lat,
+  lng,
+}: {
+  lat: number | null | undefined;
+  lng: number | null | undefined;
+}) {
+  const label = formatCoords(lat, lng);
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
+    return label;
+  }
+  return (
+    <a
+      href={googleMapsUrl(lat, lng)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Mở vị trí trên Google Maps"
+      className={cn(
+        'underline-offset-2 transition-colors hover:underline',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
+      )}
+    >
+      {label}
+    </a>
+  );
 }
 
 async function copyCode(code: string) {
@@ -261,84 +298,292 @@ function LinkPulse({ tall }: { tall?: boolean }) {
   );
 }
 
-function MetaRow({ label, children }: { label: string; children: ReactNode }) {
+function formatWasteTags(detail: ReportDetail): string {
+  if (!detail.wasteTags?.length) return '—';
   return (
-    <div className="grid grid-cols-[4.5rem_1fr] gap-x-2 gap-y-0.5 text-xs">
-      <span className="text-slate-500">{label}</span>
-      <div className="min-w-0 text-slate-800">{children}</div>
-    </div>
+    detail.wasteTags
+      .map(t => t.nameVi?.trim() || t.code)
+      .filter(Boolean)
+      .join(', ') || '—'
   );
 }
 
-function ReportCompareCard({
-  detail,
-  imageUrl,
-  imageLoading,
-  tone,
+function formatAiClassifiedType(detail: ReportDetail): string {
+  return detail.aiClassifiedType?.trim() || '—';
+}
+
+/** Haversine (m) — tín hiệu quan trọng khi quyết định gộp trùng cùng điểm. */
+function metersBetween(a: ReportDetail, b: ReportDetail): number | null {
+  if (
+    a.latitude == null ||
+    a.longitude == null ||
+    b.latitude == null ||
+    b.longitude == null ||
+    Number.isNaN(a.latitude) ||
+    Number.isNaN(a.longitude) ||
+    Number.isNaN(b.latitude) ||
+    Number.isNaN(b.longitude)
+  ) {
+    return null;
+  }
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));
+}
+
+function formatMeters(meters: number): string {
+  if (meters < 1000) return `${meters} m`;
+  return `${(meters / 1000).toFixed(2)} km`;
+}
+
+function formatSimilarity(score: number | null | undefined): string | null {
+  if (score == null || Number.isNaN(score)) return null;
+  const pct = score <= 1 ? Math.round(score * 100) : Math.round(score);
+  return `${pct}%`;
+}
+
+function SeverityPill({ severity }: { severity: ReportDetail['severity'] }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold',
+        REPORT_SEVERITY_BADGE_CLASSES[severity]
+      )}
+    >
+      {REPORT_SEVERITY_LABEL_VI[severity]}
+    </span>
+  );
+}
+
+type CompareField = {
+  key: string;
+  label: string;
+  render: (detail: ReportDetail) => ReactNode;
+  /** Chuỗi chuẩn hóa để tô khác biệt giữa 2 cột. */
+  compareValue: (detail: ReportDetail) => string;
+  /** Mặc định true — tắt với field luôn khác nhau (vd. thời điểm). */
+  highlightDiff?: boolean;
+};
+
+/**
+ * Field đủ để cán bộ quyết định gộp / bác bỏ.
+ * Ảnh đã so ở trên. Chip AI tương đồng vẫn ở banner.
+ */
+const COMPARE_FIELDS: CompareField[] = [
+  {
+    key: 'address',
+    label: 'Địa chỉ',
+    render: d => d.address?.trim() || '—',
+    compareValue: d => (d.address?.trim() || '').toLowerCase(),
+  },
+  {
+    key: 'coords',
+    label: 'Tọa độ GPS',
+    render: d => <CoordsLink lat={d.latitude} lng={d.longitude} />,
+    compareValue: d => formatCoords(d.latitude, d.longitude),
+  },
+  {
+    key: 'category',
+    label: 'Loại rác thải',
+    render: d => d.categoryName?.trim() || d.categoryCode || '—',
+    compareValue: d => (d.categoryId || d.categoryCode || d.categoryName || '').toLowerCase(),
+  },
+  {
+    key: 'wasteTags',
+    label: 'Thành phần rác',
+    render: d => formatWasteTags(d),
+    compareValue: d =>
+      d.wasteTags
+        ?.map(t => t.code)
+        .sort()
+        .join('|') ?? '',
+  },
+  {
+    key: 'severity',
+    label: 'Mức độ',
+    render: d => <SeverityPill severity={d.severity} />,
+    compareValue: d => d.severity,
+  },
+  {
+    key: 'aiClassifiedType',
+    label: 'AI phân loại',
+    render: d => formatAiClassifiedType(d),
+    compareValue: d => (d.aiClassifiedType?.trim() || '').toLowerCase(),
+  },
+  {
+    key: 'createdAt',
+    label: 'Thời điểm báo cáo',
+    render: d => formatShortDate(d.createdAt),
+    compareValue: d => d.createdAt || '',
+    highlightDiff: false,
+  },
+];
+
+function VerifiedRecordsCompare({
+  suspect,
+  parent,
+  suspectImageUrl,
+  parentImageUrl,
+  suspectLoading,
+  similarityScore,
   onPreview,
 }: {
-  detail: ReportDetail;
-  imageUrl: string | null;
-  imageLoading?: boolean;
-  tone: 'suspect' | 'original';
+  suspect: ReportDetail;
+  parent: ReportDetail;
+  suspectImageUrl: string | null;
+  parentImageUrl: string | null;
+  suspectLoading?: boolean;
+  similarityScore?: number | null;
   onPreview: ReportPreviewHandler;
 }) {
-  const label = tone === 'suspect' ? 'Đang xác minh' : 'Báo cáo gốc';
+  const distanceM = metersBetween(suspect, parent);
+  const similarityLabel = formatSimilarity(similarityScore ?? null);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
-      className={cn(
-        'min-w-0 flex-1 rounded-xl border bg-white p-3 shadow-sm',
-        tone === 'suspect' ? 'border-amber-200/80' : 'border-sky-200/80'
-      )}
+      className="flex min-h-0 flex-1 flex-col gap-5"
     >
-      <CompareThumb
-        url={imageUrl}
-        alt={`${detail.code} · ${label}`}
-        loading={imageLoading}
-        tone={tone}
-        onPreview={onPreview}
-      />
-      <ReportCodeChip code={detail.code} label={label} />
+      <div className="flex shrink-0 items-stretch gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <CompareThumb
+            url={suspectImageUrl}
+            alt={`${suspect.code} · Đang xác minh`}
+            loading={suspectLoading}
+            tone="suspect"
+            onPreview={onPreview}
+          />
+        </div>
+        <LinkPulse tall />
+        <div className="min-w-0 flex-1">
+          <CompareThumb
+            url={parentImageUrl}
+            alt={`${parent.code} · Báo cáo gốc`}
+            tone="original"
+            onPreview={onPreview}
+          />
+        </div>
+      </div>
 
-      <div className="mt-3 space-y-2.5">
-        <div className="flex flex-wrap gap-1.5">
-          <span
-            className={cn(
-              'inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium',
-              REPORT_STATUS_BADGE_CLASSES[detail.status]
-            )}
-          >
-            {reportStatusLabelVi(detail.status)}
-          </span>
-          <span
-            className={cn(
-              'inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium',
-              REPORT_SEVERITY_BADGE_CLASSES[detail.severity]
-            )}
-          >
-            {REPORT_SEVERITY_LABEL_VI[detail.severity]}
-          </span>
+      {(distanceM != null || similarityLabel || parent.reporterCount > 1) && (
+        <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+          {distanceM != null ? (
+            <AnimatedHoverTooltip name="Khoảng cách GPS giữa vị trí hai báo cáo">
+              <span
+                className={cn(
+                  'inline-flex cursor-help items-center rounded-lg px-3 py-1 text-xs font-semibold',
+                  distanceM <= 200
+                    ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
+                    : distanceM <= 1000
+                      ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-200/80'
+                      : 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80'
+                )}
+              >
+                Cách nhau ~{formatMeters(distanceM)}
+              </span>
+            </AnimatedHoverTooltip>
+          ) : null}
+          {similarityLabel ? (
+            <AnimatedHoverTooltip
+              name="Điểm tương đồng AI"
+              designation="Chỉ tham khảo — cán bộ quyết định cuối"
+            >
+              <span className="inline-flex cursor-help items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/80">
+                AI tương đồng {similarityLabel}
+              </span>
+            </AnimatedHoverTooltip>
+          ) : null}
+          {parent.reporterCount > 1 ? (
+            <AnimatedHoverTooltip name="Số người đã báo cáo trùng vào báo cáo gốc này">
+              <span className="inline-flex cursor-help items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200/80">
+                Gốc có {parent.reporterCount} người báo
+              </span>
+            </AnimatedHoverTooltip>
+          ) : null}
+        </div>
+      )}
+
+      {/* Mỗi hàng border-r bên trái → đường dọc liên tục giữa 2 cột (như mẫu) */}
+      <div>
+        <div className="grid grid-cols-2">
+          <div className="border-r border-slate-200 px-2 pb-1 text-center sm:px-5">
+            <button
+              type="button"
+              onClick={() => void copyCode(suspect.code)}
+              title="Sao chép mã báo cáo"
+              className={cn(
+                'max-w-full truncate text-lg font-bold tracking-tight text-slate-900 tabular-nums',
+                'transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
+              )}
+            >
+              {suspect.code}
+            </button>
+            <p className="mt-1 text-xs font-medium text-slate-500">Đang xác minh</p>
+          </div>
+          <div className="px-2 pb-1 text-center sm:px-5">
+            <button
+              type="button"
+              onClick={() => void copyCode(parent.code)}
+              title="Sao chép mã báo cáo"
+              className={cn(
+                'max-w-full truncate text-lg font-bold tracking-tight text-slate-900 tabular-nums',
+                'transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
+              )}
+            >
+              {parent.code}
+            </button>
+            <p className="mt-1 text-xs font-medium text-slate-500">Báo cáo gốc · Verified</p>
+          </div>
         </div>
 
-        <MetaRow label="Danh mục">{detail.categoryName || '—'}</MetaRow>
-        <MetaRow label="Địa chỉ">
-          <span className="line-clamp-2" title={detail.address}>
-            {detail.address || '—'}
-          </span>
-        </MetaRow>
-        <MetaRow label="Mô tả">
-          <span className="line-clamp-3" title={detail.description}>
-            {detail.description?.trim() || '—'}
-          </span>
-        </MetaRow>
-        <MetaRow label="Ưu tiên">
-          <span className="tabular-nums">{detail.priorityScore.toFixed(2)}</span>
-        </MetaRow>
-        <MetaRow label="Tạo lúc">{formatShortDate(detail.createdAt)}</MetaRow>
+        {COMPARE_FIELDS.map(field => {
+          const shouldHighlight = field.highlightDiff !== false;
+          const differs =
+            shouldHighlight && field.compareValue(suspect) !== field.compareValue(parent);
+          return (
+            <div
+              key={field.key}
+              className={cn(
+                'grid grid-cols-2 transition-colors duration-150',
+                differs ? 'bg-amber-50/50 hover:bg-amber-50/80' : 'hover:bg-slate-50/90'
+              )}
+            >
+              <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
+                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
+                  {field.label}
+                </p>
+                <div
+                  className={cn(
+                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
+                    differs && 'text-amber-950'
+                  )}
+                >
+                  {field.render(suspect)}
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
+                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
+                  {field.label}
+                </p>
+                <div
+                  className={cn(
+                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
+                    differs && 'text-amber-950'
+                  )}
+                >
+                  {field.render(parent)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </motion.div>
   );
@@ -428,8 +673,9 @@ export function DuplicateSuspectDialog({
         <DialogContent
           className={cn(
             'flex flex-col gap-0 overflow-hidden border-slate-200 p-0',
-            'max-h-[min(90vh,52rem)]',
-            dialogWide ? 'w-[calc(100%-1.5rem)] sm:max-w-4xl' : 'sm:max-w-lg'
+            dialogWide
+              ? 'h-[min(92vh,56rem)] w-[calc(100%-1rem)] sm:max-w-5xl lg:max-w-6xl'
+              : 'max-h-[min(90vh,52rem)] sm:max-w-lg'
           )}
         >
           {row ? (
@@ -445,7 +691,9 @@ export function DuplicateSuspectDialog({
                       <div
                         className={cn(
                           'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                          'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
+                          isParentVerified
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
                         )}
                         aria-hidden
                       >
@@ -453,7 +701,7 @@ export function DuplicateSuspectDialog({
                       </div>
                       <div className="min-w-0 space-y-1.5 pt-0.5">
                         <DialogTitle className="text-lg leading-snug text-slate-900">
-                          Nghi ngờ báo cáo trùng lặp
+                          {isParentVerified ? 'So sánh 2 báo cáo' : 'Nghi ngờ báo cáo trùng lặp'}
                         </DialogTitle>
                         <DialogDescription className="text-sm leading-relaxed text-slate-600">
                           {isParentVerified ? (
@@ -490,28 +738,22 @@ export function DuplicateSuspectDialog({
 
                 <div
                   className={cn(
-                    'min-h-0 flex-1 overflow-y-auto overscroll-contain',
-                    'px-6 py-5 sm:px-7',
-                    '[scrollbar-gutter:stable]'
+                    'min-h-0 flex-1',
+                    dialogWide
+                      ? 'flex flex-col overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [scrollbar-gutter:stable]'
+                      : 'overflow-y-auto overscroll-contain px-6 py-5 sm:px-7 [scrollbar-gutter:stable]'
                   )}
                 >
                   {isParentVerified && parentDetail && suspectDetail ? (
-                    <div className="flex items-stretch gap-2 sm:gap-3">
-                      <ReportCompareCard
-                        detail={suspectDetail}
-                        imageUrl={suspectImageUrl}
-                        imageLoading={suspectLoading}
-                        tone="suspect"
-                        onPreview={openPreview}
-                      />
-                      <LinkPulse tall />
-                      <ReportCompareCard
-                        detail={parentDetail}
-                        imageUrl={parentImageUrl}
-                        tone="original"
-                        onPreview={openPreview}
-                      />
-                    </div>
+                    <VerifiedRecordsCompare
+                      suspect={suspectDetail}
+                      parent={parentDetail}
+                      suspectImageUrl={suspectImageUrl}
+                      parentImageUrl={parentImageUrl}
+                      suspectLoading={suspectLoading}
+                      similarityScore={row.aiSimilarityScore}
+                      onPreview={openPreview}
+                    />
                   ) : (
                     <div className="flex items-stretch gap-2 sm:gap-3">
                       <div className="min-w-0 flex-1">
@@ -548,7 +790,11 @@ export function DuplicateSuspectDialog({
                         variant="outline"
                         disabled={actionPending}
                         onClick={() => void handleDismiss()}
-                        className="border-slate-300 text-slate-700"
+                        className={cn(
+                          'border-slate-300 text-slate-700',
+                          'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700',
+                          'focus-visible:ring-rose-400/40'
+                        )}
                       >
                         {dismissMutation.isPending ? (
                           <Loader2 className="size-4 animate-spin" aria-hidden />
