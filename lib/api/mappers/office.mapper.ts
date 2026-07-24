@@ -160,6 +160,7 @@ function mapLeoMyReportItemDto(dto: LeoMyReportItemDto): LeoMyReportItem {
     resolvedAt: dto.resolvedAt ?? null,
     closedAt: dto.closedAt ?? null,
     slaResolveDueAt: dto.slaResolveDueAt ?? null,
+    thumbnails: dto.thumbnails ?? [],
     assignments: (dto.assignments ?? []).map(mapLeoMyReportAssignmentDto),
   };
 }
