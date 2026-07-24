@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
+import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
 import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { useReportDetail, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
@@ -974,6 +975,7 @@ export function VerifyDetailClient({
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
   const [editingCategory, setEditingCategory] = useState(false);
   const [assignPromptOpen, setAssignPromptOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   // Sync pending state once detail loads (runs once)
@@ -1018,16 +1020,17 @@ export function VerifyDetailClient({
   }
 
   const handleAssignNow = () => {
-    if (onBack && detailMode !== 'tracking') {
-      onBack();
-      return;
-    }
-    router.push(`/officer/assign?highlightReportId=${detail.id}`);
+    setAssignDialogOpen(true);
   };
 
   const handleAssignAfterVerify = () => {
     setAssignPromptOpen(false);
-    router.push(`/officer/assign?highlightReportId=${detail.id}`);
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssigned = () => {
+    setAssignDialogOpen(false);
+    void refetch();
   };
 
   const handleVerify = async () => {
@@ -1151,6 +1154,13 @@ export function VerifyDetailClient({
         open={assignPromptOpen}
         onCancel={() => setAssignPromptOpen(false)}
         onAssign={handleAssignAfterVerify}
+      />
+
+      <LeoAssignDialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        reportIds={[detail.id]}
+        onAssigned={handleAssigned}
       />
     </div>
   );

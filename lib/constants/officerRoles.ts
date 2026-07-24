@@ -10,6 +10,26 @@ export const OFFICER_ROLE_LABEL_VI: Record<OfficerApiRole, string> = {
   LEO: 'Cán bộ phường (LEO)',
 };
 
+/** Default home khi sai sub-role ACL (proxy redirect). */
+export const OFFICER_ACL_FALLBACK_PATH = '/officer/map';
+
+/**
+ * Sub-route ACL trong cổng `/officer` — UX guard (proxy).
+ * Path không khớp rule nào → cho cả DEO + LEO (shared: map, dashboard, kpi, …).
+ * Match longest prefix.
+ */
+export const OFFICER_ROUTE_ACL: ReadonlyArray<{
+  prefix: string;
+  roles: readonly OfficerApiRole[];
+}> = [
+  { prefix: '/officer/verify', roles: ['LEO'] },
+  { prefix: '/officer/assign', roles: ['LEO'] },
+  { prefix: '/officer/tracking', roles: ['LEO'] },
+  { prefix: '/officer/workforce', roles: ['LEO'] },
+  { prefix: '/officer/companies', roles: ['DEO'] },
+  { prefix: '/officer/reports', roles: ['DEO'] },
+];
+
 export function parseOfficerApiRole(role: string | undefined): OfficerApiRole | null {
   if (!role?.trim()) return null;
   const canonical = normalizeApiRole(role);
@@ -53,4 +73,30 @@ export function isLeoOfficer(systemRole: UserRole | string | undefined): boolean
 /** Hàng đợi xác minh — chỉ LEO (DEO xác minh qua bản đồ). */
 export function canAccessVerifyQueue(systemRole: UserRole | string | undefined): boolean {
   return isLeoOfficer(systemRole);
+}
+
+/**
+ * UX ACL cho `/officer/*`.
+ * - `allow`: role được vào (hoặc path shared / chưa liệt kê)
+ * - `deny`: path có rule và role không khớp → proxy redirect
+ * - `skip`: chưa parse được DEO/LEO (để silent-refresh / token lạ qua, BE vẫn enforce)
+ */
+export function matchOfficerRouteAcl(
+  pathname: string,
+  systemRole: string | undefined
+): 'allow' | 'deny' | 'skip' {
+  const role = parseOfficerApiRole(systemRole);
+  if (!role) return 'skip';
+
+  let best: (typeof OFFICER_ROUTE_ACL)[number] | null = null;
+  for (const rule of OFFICER_ROUTE_ACL) {
+    if (pathname === rule.prefix || pathname.startsWith(`${rule.prefix}/`)) {
+      if (!best || rule.prefix.length > best.prefix.length) {
+        best = rule;
+      }
+    }
+  }
+
+  if (!best) return 'allow';
+  return best.roles.includes(role) ? 'allow' : 'deny';
 }

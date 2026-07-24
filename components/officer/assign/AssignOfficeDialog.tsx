@@ -1,7 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Building2, UserPlus, X } from 'lucide-react';
+import { faBuilding, faUserPlus } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface AssignOfficeDialogProps {
@@ -17,22 +19,8 @@ export function AssignOfficeDialog({ open, ...props }: AssignOfficeDialogProps) 
   return <AssignOfficeDialogContent {...props} />;
 }
 
-function AssignOfficeDialogContent({
-  onClose,
-  // onSubmit,
-  submitting,
-}: Omit<AssignOfficeDialogProps, 'open'>) {
-  // const [selectedOfficeIds, setSelectedOfficeIds] = useState<string[]>([]);
+function AssignOfficeDialogContent({ onClose, submitting }: Omit<AssignOfficeDialogProps, 'open'>) {
   const [note, setNote] = useState('');
-  // const [departmentName, setDepartmentName] = useState<string | undefined>();
-
-  // const canSubmit = selectedOfficeIds.length > 0 && !submitting;
-
-  /* const toggleOffice = (officeId: string) => {
-    setSelectedOfficeIds(prev =>
-      prev.includes(officeId) ? prev.filter(id => id !== officeId) : [...prev, officeId]
-    );
-  }; */
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -44,10 +32,7 @@ function AssignOfficeDialogContent({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, submitting]);
 
-  const handleSubmit = () => {
-    // if (!canSubmit) return;
-    // void onSubmit(selectedOfficeIds, note.trim());
-  };
+  const handleSubmit = () => {};
 
   return (
     <div
@@ -59,19 +44,16 @@ function AssignOfficeDialogContent({
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
     >
-      <div className="flex max-h-[90dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-        <div className="flex shrink-0 items-start justify-between border-b border-border px-5 py-4">
-          <div className="min-w-0">
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+        <div className="flex shrink-0 items-start justify-between border-b border-border px-6 pb-4 pt-6">
+          <div className="min-w-0 pr-3">
             <h2
               id="assign-office-dialog-title"
-              className="flex items-center gap-2 text-base font-semibold text-foreground"
+              className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-foreground"
             >
-              <Building2 className="size-4 text-emerald-600" />
+              <FontAwesomeIcon icon={faBuilding} className="size-4 text-foreground" aria-hidden />
               Phân công đơn vị xử lý
             </h2>
-            {/* {departmentName ? (
-              <p className="mt-1 truncate text-xs text-muted-foreground">{departmentName}</p>
-            ) : null} */}
           </div>
           <button
             type="button"
@@ -82,7 +64,7 @@ function AssignOfficeDialogContent({
           </button>
         </div>
 
-        <div className="shrink-0 border-t border-border px-5 py-3">
+        <div className="shrink-0 px-6 py-5">
           <label
             htmlFor="assign-office-note"
             className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
@@ -95,23 +77,19 @@ function AssignOfficeDialogContent({
             onChange={e => setNote(e.target.value)}
             rows={2}
             placeholder="Yêu cầu xử lý, deadline, lưu ý..."
-            className="mt-1.5 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+            className="mt-2 h-18 w-full resize-none rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10"
           />
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/30 px-5 py-3">
-          <Button
-            variant="outline"
-            onClick={onClose} // disabled={submitting}
-          >
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/20 px-6 py-4">
+          <Button variant="outline" onClick={onClose}>
             Huỷ
           </Button>
           <Button
             onClick={handleSubmit}
-            // disabled={!canSubmit}
-            className="bg-emerald-600 text-white hover:bg-emerald-500"
+            className="bg-foreground text-background hover:bg-foreground/90"
           >
-            <UserPlus className="mr-1.5 size-4" />
+            <FontAwesomeIcon icon={faUserPlus} className="mr-1.5 size-3.5" aria-hidden />
             {submitting ? 'Đang phân công...' : 'Phân công'}
           </Button>
         </div>

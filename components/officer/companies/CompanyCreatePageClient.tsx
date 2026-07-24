@@ -33,9 +33,6 @@ import {
   type CompanyListItem,
   type CreatedCompany,
 } from '@/lib/api/models/company';
-import { canAccessCompanies } from '@/lib/constants/officerRoles';
-import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
-import { useAuthStore } from '@/lib/store/authStore';
 import { getCompanyMutationError } from '@/utils/companyErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -155,7 +152,6 @@ const CREATE_SIDEBAR_ITEMS = [
 
 export function CompanyCreatePageClient() {
   const router = useRouter();
-  const user = useAuthStore(s => s.user);
 
   const [createdResult, setCreatedResult] = useState<CreatedCompany | null>(null);
   const [copied, setCopied] = useState(false);
@@ -246,20 +242,6 @@ export function CompanyCreatePageClient() {
       toast.error('Không thể sao chép. Vui lòng sao chép thủ công.');
     }
   };
-
-  if (!canAccessCompanies(user?.systemRole)) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-lg font-semibold text-slate-900">Không có quyền truy cập</h2>
-        <p className="mt-2 max-w-md text-sm text-slate-500">
-          Danh sách doanh nghiệp chỉ dành cho cán bộ Sở TNMT (DEO).
-        </p>
-        <Button asChild className="mt-6 bg-emerald-600 text-white hover:bg-emerald-500">
-          <Link href={getDefaultOfficerHomePath(user?.systemRole)}>Về trang chính</Link>
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

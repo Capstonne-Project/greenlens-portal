@@ -13,34 +13,57 @@ function sessionToAuthUser(data: LoginSuccessData): AuthUser {
   return buildAuthUserFromApi(data.user);
 }
 
+function syncAuthAfterHydration(setAuth: (token: string, user: AuthUser) => void) {
+  const s = useAuthStore.getState();
+
+  if (s.token && s.user) {
+    (window as Window & { __authToken?: string }).__authToken = s.token;
+    // Persist cũ có thể thiếu systemRole — backfill từ JWT.
+    if (!s.user.systemRole) {
+      const fromJwt = getUserFromAccessToken(s.token);
+      if (fromJwt?.systemRole) {
+        setAuth(s.token, { ...s.user, systemRole: fromJwt.systemRole });
+      }
+    }
+    return;
+  }
+
+  if (s.token && !s.user) {
+    const user = getUserFromAccessToken(s.token);
+    if (user) setAuth(s.token, user);
+    return;
+  }
+
+  const cookieToken = getAccessTokenFromCookie();
+  if (cookieToken) {
+    const user = getUserFromAccessToken(cookieToken);
+    if (user) setAuth(cookieToken, user);
+    return;
+  }
+
+  // Access token missing/expired but refresh cookie still valid — silently
+  // refresh once on bootstrap so the session survives across visits.
+  if (getRefreshTokenFromCookie()) {
+    void refreshSessionOnce();
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { token, logout, setAuth } = useAuthStore();
 
-  // After persist rehydrates from localStorage, sync window token; if empty, restore from cookie (browser revisit).
+  // After persist rehydrates from localStorage, sync window token; if empty, restore from cookie.
   useEffect(() => {
-    const unsub = useAuthStore.persist.onFinishHydration(() => {
-      const s = useAuthStore.getState();
-      if (s.token && s.user) {
-        (window as Window & { __authToken?: string }).__authToken = s.token;
-        return;
-      }
-      if (s.token && !s.user) {
-        const user = getUserFromAccessToken(s.token);
-        if (user) setAuth(s.token, user);
-        return;
-      }
-      const cookieToken = getAccessTokenFromCookie();
-      if (cookieToken) {
-        const user = getUserFromAccessToken(cookieToken);
-        if (user) setAuth(cookieToken, user);
-        return;
-      }
-      // Access token missing/expired but refresh cookie still valid — silently
-      // refresh once on bootstrap so the session survives across visits.
-      if (getRefreshTokenFromCookie()) {
-        void refreshSessionOnce();
-      }
+    const persistApi = useAuthStore.persist;
+    if (!persistApi) {
+      syncAuthAfterHydration(setAuth);
+      return;
+    }
+    const unsub = persistApi.onFinishHydration(() => {
+      syncAuthAfterHydration(setAuth);
     });
+    if (persistApi.hasHydrated()) {
+      syncAuthAfterHydration(setAuth);
+    }
     return unsub;
   }, [setAuth]);
 
