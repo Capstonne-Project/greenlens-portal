@@ -71,7 +71,7 @@ const ASSIGNMENT_STATUS_LABEL: Record<LeoReportAssignmentStatus, string> = {
 };
 
 const FILTER_BTN_CLASS =
-  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-sky-700';
+  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand';
 
 const LEO_VIEW_TOGGLE_CLASS = (active: boolean) =>
   cn(
@@ -696,7 +696,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuItem
                 onClick={() => handleCategoryChange('all')}
-                className={categoryFilter === 'all' ? 'font-medium text-sky-700' : ''}
+                className={categoryFilter === 'all' ? 'font-medium text-brand' : ''}
               >
                 Loại ô nhiễm
               </DropdownMenuItem>
@@ -704,7 +704,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
                 <DropdownMenuItem
                   key={cat.id}
                   onClick={() => handleCategoryChange(cat.id)}
-                  className={categoryFilter === cat.id ? 'font-medium text-sky-700' : ''}
+                  className={categoryFilter === cat.id ? 'font-medium text-brand' : ''}
                 >
                   {cat.nameVi}
                 </DropdownMenuItem>
@@ -722,7 +722,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             <DropdownMenuContent align="start" className="w-44">
               <DropdownMenuItem
                 onClick={() => handleSeverityChange('all')}
-                className={severityFilter === 'all' ? 'font-medium text-sky-700' : ''}
+                className={severityFilter === 'all' ? 'font-medium text-brand' : ''}
               >
                 Mức độ
               </DropdownMenuItem>
@@ -730,7 +730,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
                 <DropdownMenuItem
                   key={level}
                   onClick={() => handleSeverityChange(level)}
-                  className={severityFilter === level ? 'font-medium text-sky-700' : ''}
+                  className={severityFilter === level ? 'font-medium text-brand' : ''}
                 >
                   {SEVERITY_LABEL[level]}
                 </DropdownMenuItem>
@@ -748,7 +748,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             <DropdownMenuContent align="start" className="w-48">
               <DropdownMenuItem
                 onClick={() => handleAssignmentStatusChange('all')}
-                className={assignmentStatusFilter === 'all' ? 'font-medium text-sky-700' : ''}
+                className={assignmentStatusFilter === 'all' ? 'font-medium text-brand' : ''}
               >
                 Trạng thái đội
               </DropdownMenuItem>
@@ -756,7 +756,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
                 <DropdownMenuItem
                   key={status}
                   onClick={() => handleAssignmentStatusChange(status)}
-                  className={assignmentStatusFilter === status ? 'font-medium text-sky-700' : ''}
+                  className={assignmentStatusFilter === status ? 'font-medium text-brand' : ''}
                 >
                   {ASSIGNMENT_STATUS_LABEL[status]}
                 </DropdownMenuItem>

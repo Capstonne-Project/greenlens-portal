@@ -128,6 +128,8 @@ export interface LeoMyReportItemDto {
   resolvedAt?: string | null;
   closedAt?: string | null;
   slaResolveDueAt?: string | null;
+  /** Thumbnail URLs for report media (Swagger: string[]). */
+  thumbnails?: string[];
   assignments: LeoMyReportAssignmentDto[];
 }
 

@@ -60,7 +60,7 @@ function TooltipBubble({
         ...style,
       }}
       className={cn(
-        'z-50 flex -translate-x-1/2 flex-col items-center justify-center rounded-md bg-black px-3 py-1.5 text-xs shadow-xl',
+        'z-100 flex -translate-x-1/2 flex-col items-center justify-center rounded-md bg-black px-3 py-1.5 text-xs shadow-xl',
         className
       )}
       role="tooltip"
