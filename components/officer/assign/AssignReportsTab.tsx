@@ -464,7 +464,10 @@ function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
       return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
     case 'code':
       return (
-        <span className="block min-w-0 truncate text-xs font-medium text-sky-700" title={row.code}>
+        <span
+          className="block min-w-0 truncate text-xs font-medium text-slate-700"
+          title={row.code}
+        >
           {row.code}
         </span>
       );
