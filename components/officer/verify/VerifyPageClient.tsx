@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   BadgeCheck,
@@ -26,6 +27,7 @@ import { LayoutGroup, motion } from 'motion/react';
 
 import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
 import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import {
@@ -515,7 +517,7 @@ function DateToolbarFilter({
             aria-pressed={active}
             className={cn(
               'h-7 select-none rounded-md px-2.5 text-[0.8125rem] font-medium transition-colors',
-              active ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              active ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-700'
             )}
           >
             {opt.label}
@@ -734,17 +736,17 @@ function placeChildBesideParent(
   return next;
 }
 
-/** Row actions — luôn hiện BadgeCheck (xác minh) + Eye (chi tiết). */
+/** Row actions — luôn hiện BadgeCheck (xác minh) + Eye (chi tiết → VerifyDetailClient). */
 function VerifyRowActions({
   row,
   isVerifying,
   onVerify,
-  onOpenDetail,
+  detailHref,
 }: {
   row: ReportQueueItem;
   isVerifying: boolean;
   onVerify: () => void;
-  onOpenDetail: () => void;
+  detailHref: string;
 }) {
   return (
     <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
@@ -773,14 +775,11 @@ function VerifyRowActions({
           <BadgeCheck className="size-4" aria-hidden strokeWidth={2.25} />
         )}
       </button>
-      <button
-        type="button"
+      <Link
+        href={detailHref}
         title="Xem chi tiết"
         aria-label={`Xem chi tiết ${row.code}`}
-        onClick={e => {
-          e.stopPropagation();
-          onOpenDetail();
-        }}
+        onClick={e => e.stopPropagation()}
         className={cn(
           'inline-flex size-8 items-center justify-center rounded-md',
           'text-slate-600 transition-colors',
@@ -789,7 +788,7 @@ function VerifyRowActions({
         )}
       >
         <Eye className="size-4" aria-hidden />
-      </button>
+      </Link>
     </div>
   );
 }
@@ -894,15 +893,35 @@ export function VerifyPageClient() {
     }));
   };
 
+  /** Đặt lại trong drawer — xóa hết filter ngay (không cần «Xem kết quả»). */
   const handleResetDraft = () => {
     const yearDefaults = getPresetDateInputs('all');
-    setDraft({
-      severity: 'all',
-      datePreset: 'all',
+    const cleared = {
+      severity: 'all' as const,
+      datePreset: 'all' as DatePreset,
       customFrom: yearDefaults.from,
       customTo: yearDefaults.to,
       categoryId: '',
-    });
+    };
+    setDraft(cleared);
+    setApplied(cleared);
+    setPage(1);
+    setFilterOpen(false);
+  };
+
+  /** Xóa nhanh filter đã apply — không cần mở drawer. */
+  const handleClearAllFilters = () => {
+    const yearDefaults = getPresetDateInputs('all');
+    const cleared = {
+      severity: 'all' as const,
+      datePreset: 'all' as DatePreset,
+      customFrom: yearDefaults.from,
+      customTo: yearDefaults.to,
+      categoryId: '',
+    };
+    setApplied(cleared);
+    setDraft(cleared);
+    setPage(1);
   };
 
   const handleApplyDraft = () => {
@@ -1105,20 +1124,34 @@ export function VerifyPageClient() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-sky-700"
+              className="h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand"
               onClick={() => handleFilterOpenChange(true)}
               aria-haspopup="dialog"
               aria-expanded={filterOpen}
             >
-              <Filter className="size-3.5 text-sky-600" aria-hidden />
+              <Filter className="size-3.5 text-brand" aria-hidden />
               Bộ lọc
               {appliedFilterCount > 0 ? (
-                <span className="ml-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-sky-700">
+                <span className="ml-0.5 rounded-full bg-brand/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-brand">
                   {appliedFilterCount}
                 </span>
               ) : null}
               <ChevronDown className="size-3.5 opacity-60" aria-hidden />
             </Button>
+            {appliedFilterCount > 0 ? (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className={cn(
+                  'cursor-pointer shrink-0 text-[0.8125rem] font-medium text-slate-500',
+                  'transition-[font-weight,color]',
+                  'hover:font-bold hover:text-slate-800',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-1'
+                )}
+              >
+                Xóa tất cả
+              </button>
+            ) : null}
           </div>
           <div className="relative w-72 max-w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -1212,7 +1245,7 @@ export function VerifyPageClient() {
                 </TableRow>
               ) : (
                 <LayoutGroup>
-                  {displayItems.map(row => {
+                  {displayItems.map((row, rowIndex) => {
                     const isParentHighlight = highlightedId === row.id;
                     const isChildPair = pairFocus?.childId === row.id;
                     const isParentPair = pairFocus?.parentId === row.id;
@@ -1253,10 +1286,12 @@ export function VerifyPageClient() {
                                 row={row}
                                 isVerifying={verifyingId === row.id}
                                 onVerify={() => void handleQuickVerify(row)}
-                                onOpenDetail={() => router.push(`/officer/verify/${row.id}`)}
+                                detailHref={`/officer/verify/${row.id}`}
                               />
                             ) : (
-                              renderVerifyCell(col.key, row)
+                              renderVerifyCell(col.key, row, {
+                                imagePriority: rowIndex < 2,
+                              })
                             )}
                           </TableCell>
                         ))}
@@ -1307,7 +1342,11 @@ export function VerifyPageClient() {
   );
 }
 
-function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
+function renderVerifyCell(
+  key: ColumnKey,
+  row: ReportQueueItem,
+  opts?: { imagePriority?: boolean }
+) {
   switch (key) {
     case 'image':
       return (
@@ -1315,10 +1354,11 @@ function renderVerifyCell(key: ColumnKey, row: ReportQueueItem) {
           url={row.firstImageUrl}
           alt={row.code}
           isPossibleDuplicate={row.isPossibleDuplicate}
+          priority={opts?.imagePriority}
         />
       );
     case 'code':
-      return <span className="text-xs font-medium text-sky-700">{row.code}</span>;
+      return <span className="text-xs font-medium text-slate-700">{row.code}</span>;
     case 'category':
       return <span className="text-sm text-slate-700">{row.categoryName}</span>;
     case 'severity':
@@ -1356,10 +1396,13 @@ function ReportThumb({
   url,
   alt,
   isPossibleDuplicate = false,
+  priority = false,
 }: {
   url: string | null;
   alt: string;
   isPossibleDuplicate?: boolean;
+  /** Above-the-fold thumbs — tránh Next LCP lazy warning. */
+  priority?: boolean;
 }) {
   const thumb = !url ? (
     <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
@@ -1374,6 +1417,7 @@ function ReportThumb({
         sizes="(max-width: 640px) 3.5rem, 4rem"
         className="object-cover"
         unoptimized
+        priority={priority}
       />
     </div>
   );
@@ -1383,17 +1427,18 @@ function ReportThumb({
   return (
     <div className="relative inline-flex">
       {thumb}
-      <span
-        className={cn(
-          'absolute -right-1.5 -top-1.5 z-10 inline-flex size-5 items-center justify-center',
-          'rounded-full bg-amber-500 text-white shadow-sm',
-          'ring-2 ring-white'
-        )}
-        title="Nghi ngờ trùng lặp"
-        aria-label="Nghi ngờ trùng lặp"
-      >
-        <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
-      </span>
+      <AnimatedHoverTooltip name="báo cáo trùng lặp" className="absolute -right-1.5 -top-1.5 z-10">
+        <span
+          className={cn(
+            'inline-flex size-5 items-center justify-center',
+            'rounded-full bg-amber-500 text-white shadow-sm',
+            'ring-2 ring-white'
+          )}
+          aria-label="báo cáo trùng lặp"
+        >
+          <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+        </span>
+      </AnimatedHoverTooltip>
     </div>
   );
 }
