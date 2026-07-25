@@ -788,7 +788,7 @@ export function CompaniesPageClient() {
               ) : null}
             </div>
             <p className="shrink-0 text-xs text-slate-500 tabular-nums">
-              {pagination.totalItems.toLocaleString('vi-VN')} rows
+              {pagination.totalItems.toLocaleString('vi-VN')} dòng
             </p>
           </div>
         ) : null}

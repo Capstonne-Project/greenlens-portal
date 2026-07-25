@@ -1,7 +1,8 @@
 'use client';
 
+import { TYPE_LABEL as TEAM_TYPE_LABEL_VI } from '@/components/officer/workforce/teamTab/teamTab.shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
+import { AnimatedHoverTooltip, AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Card, CardDescription, CardTitle, HoverEffect } from '@/components/ui/card-hover-effect';
 import { Input } from '@/components/ui/input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
@@ -28,24 +30,29 @@ import {
   LEO_MY_REPORTS_STATUSES,
   LEO_REPORT_ASSIGNMENT_STATUSES,
 } from '@/lib/api/models/office';
-import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { reportStatusLabelVi, REPORT_STATUS_BADGE_CLASSES } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { faCalendar } from '@fortawesome/free-regular-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   ChevronDown,
   CircleHelp,
   Clock,
+  ImageIcon,
   LayoutGrid,
   List,
   Loader2,
-  MapPin,
-  MoreVertical,
   Search,
-  User,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-/** Số báo cáo mỗi trang — query `pageSize` gửi lên GET /v1/offices/my/reports. */
-const LEO_PAGE_SIZE = 10;
+/**
+ * Page size theo view — board denser để quét nhiều case;
+ * list vừa phải để đọc hàng. Query `pageSize` → GET /v1/offices/my/reports.
+ */
+const LEO_BOARD_PAGE_SIZE = 20;
+const LEO_LIST_PAGE_SIZE = 15;
 
 /** Swagger GET /v1/offices/my/reports — query `status`. */
 const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES;
@@ -105,6 +112,12 @@ function getInitials(name: string): string {
   return (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase();
 }
 
+function teamTypeLabelVi(teamType: string | null | undefined): string {
+  const key = teamType?.trim();
+  if (!key) return 'Đội xử lý';
+  return TEAM_TYPE_LABEL_VI[key] ?? key;
+}
+
 // ─── SLA → deadline badge ──────────────────────────────────────────────────
 
 type DeadlineTone = 'critical' | 'warning' | 'safe';
@@ -118,6 +131,21 @@ const DEADLINE_TONE_CLASS: Record<DeadlineTone, string> = {
   critical: 'bg-red-50 text-red-600',
   warning: 'bg-amber-50 text-amber-700',
   safe: 'bg-sky-50 text-sky-700',
+};
+
+/** Severity accent — scan nhanh trên board đông. */
+const SEVERITY_DOT_CLASS: Record<LeoMyReportsSeverity, string> = {
+  Low: 'bg-slate-400',
+  Medium: 'bg-amber-400',
+  High: 'bg-orange-500',
+  Critical: 'bg-red-500',
+};
+
+const SEVERITY_CHIP_CLASS: Record<LeoMyReportsSeverity, string> = {
+  Low: 'bg-slate-100 text-slate-700',
+  Medium: 'bg-amber-50 text-amber-800',
+  High: 'bg-orange-50 text-orange-800',
+  Critical: 'bg-red-50 text-red-700',
 };
 
 function getDeadlineInfo(slaIso: string | null): DeadlineInfo {
@@ -140,6 +168,29 @@ function getDeadlineInfo(slaIso: string | null): DeadlineInfo {
   if (absDays < 7) return { label: `${absDays} ngày còn lại`, tone: 'safe' };
   const weeks = Math.floor(absDays / 7);
   return { label: `${weeks} tuần còn lại`, tone: 'safe' };
+}
+
+/** Datetime VI không giây — dùng tooltip hạn xử lý. */
+function formatSlaDateTime(slaIso: string): string {
+  return new Date(slaIso).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Ngày hạn SLA kiểu listing — tiếng Việt, vd. "25 thg 7, 26". */
+function formatSlaDate(slaIso: string | null): string {
+  if (!slaIso) return '—';
+  const d = new Date(slaIso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: 'short',
+    year: '2-digit',
+  });
 }
 
 // ─── Status tab bar (giống DeoTrackingPageClient) ───────────────────────────
@@ -263,162 +314,208 @@ function LeoStatusTabBar({
   );
 }
 
-// ─── Project card (grid view) ──────────────────────────────────────────────
+// ─── Board / list cards ────────────────────────────────────────────────────
 
-interface ProjectCardProps {
-  item: LeoMyReportItem;
-  onOpen: () => void;
+/** Compact media strip — 1–3 thumbs từ `LeoMyReportItem.thumbnails`. */
+function ReportThumbStrip({
+  urls,
+  alt,
+  className,
+  aspectClassName = 'aspect-[16/10]',
+}: {
+  urls: string[];
+  alt: string;
+  className?: string;
+  aspectClassName?: string;
+}) {
+  const thumbs = urls.filter(Boolean).slice(0, 3);
+
+  if (thumbs.length === 0) {
+    return (
+      <div
+        className={cn(
+          'flex w-full items-center justify-center bg-muted/60 text-muted-foreground',
+          aspectClassName,
+          className
+        )}
+      >
+        <ImageIcon className="size-7 opacity-40" aria-hidden />
+      </div>
+    );
+  }
+
+  if (thumbs.length === 1) {
+    return (
+      <div className={cn('relative w-full overflow-hidden bg-muted', aspectClassName, className)}>
+        <Image
+          src={thumbs[0]!}
+          alt={alt}
+          fill
+          sizes="(max-width: 640px) 100vw, 25vw"
+          className="object-cover"
+          unoptimized
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        'grid w-full gap-0.5 overflow-hidden bg-muted',
+        aspectClassName,
+        thumbs.length === 2 ? 'grid-cols-2' : 'grid-cols-[1.35fr_1fr]',
+        className
+      )}
+    >
+      <div className={cn('relative min-h-0', thumbs.length >= 3 && 'row-span-2')}>
+        <Image src={thumbs[0]!} alt={alt} fill sizes="18vw" className="object-cover" unoptimized />
+      </div>
+      {thumbs.length === 2 ? (
+        <div className="relative min-h-0">
+          <Image src={thumbs[1]!} alt="" fill sizes="12vw" className="object-cover" unoptimized />
+        </div>
+      ) : (
+        <div className="grid min-h-0 grid-rows-2 gap-0.5">
+          {thumbs.slice(1, 3).map((url, i) => (
+            <div key={`${url}-${i}`} className="relative min-h-0">
+              <Image src={url} alt="" fill sizes="10vw" className="object-cover" unoptimized />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function ProjectCard({ item, onOpen }: ProjectCardProps) {
+/** Board card body — shadcn Card + thumb + tín hiệu scan (severity / status / progress). */
+function ProjectCard({ item }: { item: LeoMyReportItem }) {
   const progress = Math.max(0, Math.min(100, Math.round(item.overallProgressPercent ?? 0)));
-  const deadline = getDeadlineInfo(item.slaResolveDueAt);
+  const title = item.categoryName;
+  const meta = item.address?.trim() || item.code;
+  const slaDateLabel = formatSlaDate(item.slaResolveDueAt);
+  const slaDeadline = getDeadlineInfo(item.slaResolveDueAt);
+  const slaTooltipDesignation = item.slaResolveDueAt
+    ? `${formatSlaDateTime(item.slaResolveDueAt)} · ${slaDeadline.label}`
+    : 'Chưa có hạn xử lý';
+  const statusLabel = reportStatusLabelVi(item.status);
+  const statusBadgeClass =
+    REPORT_STATUS_BADGE_CLASSES[item.status as keyof typeof REPORT_STATUS_BADGE_CLASSES] ??
+    'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/80';
 
-  const visibleTeams = item.assignments.slice(0, 4);
+  const visibleTeams = item.assignments.slice(0, 3);
   const extraTeams = Math.max(0, item.assignments.length - visibleTeams.length);
   const teamTooltipItems = visibleTeams.map((assignment, index) => ({
     id: index + 1,
     name: assignment.teamName,
-    designation: assignment.teamType || 'Đội xử lý',
+    designation: teamTypeLabelVi(assignment.teamType),
     initials: getInitials(assignment.teamName),
     fallbackClassName:
       AVATAR_PALETTE[hashIndex(assignment.teamId, AVATAR_PALETTE.length)] ??
       'bg-muted text-foreground',
   }));
 
-  // const severityLabel = SEVERITY_LABEL[item.severity];
-  // const severityClass = SEVERITY_BADGE_CLASS[item.severity];
-
   return (
-    <article
-      onClick={onOpen}
-      onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      className="group relative flex cursor-pointer flex-col rounded-[20px] border border-border/60 bg-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.04)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(15,23,42,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span
-            className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200"
+    <Card className="overflow-hidden border-border/50 bg-card shadow-none transition-colors group-hover:bg-card">
+      <div className="relative">
+        <ReportThumbStrip urls={item.thumbnails ?? []} alt={item.code} />
+        <span
+          className={cn(
+            'absolute right-2 top-2 inline-flex max-w-[75%] items-center truncate rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm backdrop-blur-sm',
+            statusBadgeClass
+          )}
+          title={statusLabel}
+        >
+          <span className="truncate">{statusLabel}</span>
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+        <div className="min-w-0">
+          <div
+            className="mb-2 mt-0.5 flex items-center gap-1.5 py-0.5"
             title={`Mức độ: ${SEVERITY_LABEL[item.severity]}`}
           >
-            {SEVERITY_LABEL[item.severity]}
-          </span>
-          <span
-            className="inline-flex max-w-48 items-center truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700"
-            title={item.categoryName}
-          >
-            #{item.categoryName}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={e => e.stopPropagation()}
-          className="-mr-1 -mt-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Tuỳ chọn"
-        >
-          <MoreVertical className="size-4" aria-hidden />
-        </button>
-      </div>
-
-      <div className="mt-3 flex items-start gap-1.5">
-        <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-        <h3
-          className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground"
-          title={item.address}
-        >
-          {item.address || item.code}
-        </h3>
-      </div>
-
-      <p
-        className="mt-2 line-clamp-2 text-[13px] italic leading-relaxed text-muted-foreground"
-        title={item.description ?? undefined}
-      >
-        {item.description?.trim() ? `Ghi chú: ${item.description}` : 'Ghi chú: Chưa có mô tả'}
-      </p>
-
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-[13px]">
-          <span className="font-medium text-foreground/80">Progress</span>
-          <span className="tabular-nums font-semibold text-foreground">{progress}%</span>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-        <div
-          className="flex items-center"
-          title={`${item.assignmentCount} đội đã được phân công`}
-          onClick={e => e.stopPropagation()}
-          onKeyDown={e => e.stopPropagation()}
-        >
-          {visibleTeams.length === 0 ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              Chưa có đội
+            <span
+              className={cn('size-1.5 shrink-0 rounded-full', SEVERITY_DOT_CLASS[item.severity])}
+              aria-hidden
+            />
+            <span
+              className={cn(
+                'text-[11px] font-medium',
+                item.severity === 'Low' && 'text-slate-600',
+                item.severity === 'Medium' && 'text-amber-700',
+                item.severity === 'High' && 'text-orange-700',
+                item.severity === 'Critical' && 'text-red-700'
+              )}
+            >
+              {SEVERITY_LABEL[item.severity]}
             </span>
-          ) : (
-            <>
-              <AnimatedTooltip items={teamTooltipItems} />
-              {extraTeams > 0 ? (
-                <span
-                  className="relative z-10 -ml-1 flex size-7 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground ring-2 ring-white"
-                  title={item.assignments
-                    .slice(4)
-                    .map(a => `${a.teamName} · ${a.teamType}`)
-                    .join('\n')}
-                >
-                  +{extraTeams}
-                </span>
-              ) : null}
-            </>
-          )}
+          </div>
+          <CardTitle className="line-clamp-2 text-md font-semibold leading-snug" title={title}>
+            {title}
+          </CardTitle>
+          <CardDescription className="mt-1 line-clamp-1 text-xs" title={meta}>
+            {meta}
+          </CardDescription>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span
-            className="inline-flex items-center gap-1"
-            title={
-              item.reporterCount > 0
-                ? `${item.reporterCount} người báo cáo`
-                : 'Chưa có người báo cáo'
-            }
+        <div className="mt-2">
+          <div className="mb-1 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Tiến độ</span>
+            <span className="tabular-nums font-semibold text-foreground">{progress}%</span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-2 pt-0.5">
+          <div
+            className="flex min-w-0 items-center"
+            onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.stopPropagation()}
           >
-            <User className="size-3.5" aria-hidden />
-            <span className="tabular-nums">{item.reporterCount}</span>
-          </span>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${DEADLINE_TONE_CLASS[deadline.tone]}`}
-            title={
-              item.slaResolveDueAt
-                ? `Hạn xử lý: ${new Date(item.slaResolveDueAt).toLocaleString('vi-VN')}`
-                : undefined
-            }
+            {visibleTeams.length === 0 ? (
+              <span className="truncate text-[10px] text-muted-foreground">Chưa có đội</span>
+            ) : (
+              <>
+                <AnimatedTooltip items={teamTooltipItems} />
+                {extraTeams > 0 ? (
+                  <span className="relative z-10 -ml-1 flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground ring-2 ring-card">
+                    +{extraTeams}
+                  </span>
+                ) : null}
+              </>
+            )}
+          </div>
+          <AnimatedHoverTooltip
+            name="Hạn xử lý"
+            designation={slaTooltipDesignation}
+            className="shrink-0"
           >
-            <Clock className="size-3.5" aria-hidden />
-            {deadline.label}
-          </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <FontAwesomeIcon
+                icon={faCalendar}
+                className="size-3.5 text-muted-foreground/80"
+                aria-hidden
+              />
+              <span className="tabular-nums">{slaDateLabel}</span>
+            </span>
+          </AnimatedHoverTooltip>
         </div>
       </div>
-    </article>
+    </Card>
   );
 }
 
 function TeamAvatar({ assignment }: { assignment: LeoMyReportAssignment }) {
   const colorClass = AVATAR_PALETTE[hashIndex(assignment.teamId, AVATAR_PALETTE.length)]!;
   const tooltip = assignment.teamType
-    ? `${assignment.teamName} · ${assignment.teamType}`
+    ? `${assignment.teamName} · ${teamTypeLabelVi(assignment.teamType)}`
     : assignment.teamName;
   return (
     <span className="relative" title={tooltip}>
@@ -431,11 +528,12 @@ function TeamAvatar({ assignment }: { assignment: LeoMyReportAssignment }) {
   );
 }
 
-// ─── List view row ─────────────────────────────────────────────────────────
-
+/** List row — mật độ cao, thumb nhỏ + cột tín hiệu cố định. */
 function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () => void }) {
   const progress = Math.max(0, Math.min(100, Math.round(item.overallProgressPercent ?? 0)));
   const deadline = getDeadlineInfo(item.slaResolveDueAt);
+  const title = item.address?.trim() || item.code;
+  const thumb = (item.thumbnails ?? []).find(Boolean);
   const visibleTeams = item.assignments.slice(0, 3);
   const extraTeams = Math.max(0, item.assignments.length - visibleTeams.length);
 
@@ -443,24 +541,50 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-4 rounded-xl border border-border/60 bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+      className="flex w-full items-center gap-3 rounded-xl border border-border/50 bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4"
     >
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground" title={item.address}>
-            {item.address || item.code}
-          </p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.categoryName}</p>
-        </div>
+      <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-14">
+        {thumb ? (
+          <Image src={thumb} alt="" fill sizes="56px" className="object-cover" unoptimized />
+        ) : (
+          <div className="flex size-full items-center justify-center text-muted-foreground">
+            <ImageIcon className="size-4 opacity-40" aria-hidden />
+          </div>
+        )}
       </div>
 
-      <div className="hidden w-32 shrink-0 sm:block">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn('size-1.5 shrink-0 rounded-full', SEVERITY_DOT_CLASS[item.severity])}
+            aria-hidden
+          />
+          <p className="truncate text-sm font-semibold text-foreground" title={title}>
+            {title}
+          </p>
+        </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {item.categoryName}
+          <span className="mx-1 text-border">·</span>
+          <span className="font-mono">#{item.code}</span>
+        </p>
+      </div>
+
+      <span
+        className={cn(
+          'hidden shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium md:inline-flex',
+          SEVERITY_CHIP_CLASS[item.severity]
+        )}
+      >
+        {SEVERITY_LABEL[item.severity]}
+      </span>
+
+      <div className="hidden w-28 shrink-0 sm:block">
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-muted-foreground">Progress</span>
+          <span className="text-muted-foreground">Tiến độ</span>
           <span className="tabular-nums font-semibold text-foreground">{progress}%</span>
         </div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
         </div>
       </div>
@@ -469,15 +593,18 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
         {visibleTeams.map(a => (
           <TeamAvatar key={a.assignmentId} assignment={a} />
         ))}
-        {extraTeams > 0 && (
+        {extraTeams > 0 ? (
           <span className="flex size-7 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground ring-2 ring-card">
             +{extraTeams}
           </span>
-        )}
+        ) : null}
       </div>
 
       <span
-        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${DEADLINE_TONE_CLASS[deadline.tone]}`}
+        className={cn(
+          'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium',
+          DEADLINE_TONE_CLASS[deadline.tone]
+        )}
       >
         <Clock className="size-3.5" aria-hidden />
         {deadline.label}
@@ -490,11 +617,11 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
 
 function SkeletonGrid() {
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 xl:grid-cols-5">
-      {['a', 'b', 'c', 'd', 'e', 'f'].map(k => (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(k => (
         <div
           key={k}
-          className="h-[280px] animate-pulse rounded-[20px] border border-border/60 bg-muted/30"
+          className="h-[240px] animate-pulse rounded-2xl border border-border/50 bg-muted/30"
         />
       ))}
     </div>
@@ -531,6 +658,13 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     'all' | LeoReportAssignmentStatus
   >('all');
 
+  const pageSize = viewMode === 'board' ? LEO_BOARD_PAGE_SIZE : LEO_LIST_PAGE_SIZE;
+
+  const handleViewModeChange = (mode: LeoViewMode) => {
+    setViewMode(mode);
+    setPage(1);
+  };
+
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const isSearchPending = search.trim() !== debouncedSearch;
 
@@ -559,7 +693,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
 
   const { data, isLoading, isError } = useLeoMyReports({
     page,
-    pageSize: LEO_PAGE_SIZE,
+    pageSize,
     sortBy: 'createdAt',
     sortDesc: true,
     search: debouncedSearch || undefined,
@@ -660,10 +794,10 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           activeKey={statusTab}
           onChange={handleStatusTabChange}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
         />
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b py-3 sm:gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 py-3 sm:gap-3">
           <div className="flex items-center gap-2">
             <div className="relative w-72 max-w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -782,11 +916,27 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
                 </p>
               </div>
             ) : (
-              <section className="grid gap-4 grid-cols-1 sm:grid-cols-3 xl:grid-cols-5">
-                {items.map(item => (
-                  <ProjectCard key={item.id} item={item} onOpen={() => onOpenDetail(item.id)} />
-                ))}
-              </section>
+              <HoverEffect
+                layoutId="leo-tracking-hover"
+                className="grid-cols-1 gap-1 py-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+                items={items.map(item => {
+                  const title = item.address?.trim() || item.code;
+                  const description = [
+                    item.categoryName,
+                    SEVERITY_LABEL[item.severity],
+                    `#${item.code}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ');
+                  return {
+                    key: item.id,
+                    title,
+                    description,
+                    onClick: () => onOpenDetail(item.id),
+                    content: <ProjectCard item={item} />,
+                  };
+                })}
+              />
             )
           ) : isLoading ? (
             <SkeletonList />
@@ -808,15 +958,20 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
         </div>
 
         {data?.pagination ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
-            {totalPages > 1 ? (
-              <PaginationSimple
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                className="w-auto"
-              />
-            ) : null}
+          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
+            <div className="min-w-0">
+              {totalPages > 1 ? (
+                <PaginationSimple
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  className="w-auto"
+                />
+              ) : null}
+            </div>
+            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+              {data.pagination.totalItems.toLocaleString('vi-VN')} dòng
+            </p>
           </div>
         ) : null}
       </div>
