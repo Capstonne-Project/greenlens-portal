@@ -91,6 +91,25 @@ export interface UpdateCompanyServiceAreasBodyDto {
   wardCodes: string[];
 }
 
+/** POST /v1/companies/{id}/suspend — request body */
+export interface SuspendCompanyBodyDto {
+  reason: string;
+}
+
+/** POST /v1/companies/{id}/renew-contract — request body */
+export interface RenewCompanyContractBodyDto {
+  newStartDate: string;
+  newEndDate: string;
+  newContractNumber: string;
+  note: string;
+}
+
+/** POST /v1/companies/{id}/renew-contract — 200 data */
+export interface RenewCompanyContractDataDto {
+  contractPeriodId: string;
+  companyStatus: string;
+}
+
 /** GET /v1/companies/{id}/service-areas — item */
 export interface CompanyServiceAreaDto {
   id: string;

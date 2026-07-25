@@ -577,7 +577,7 @@ export function MembersTab() {
               {isLoadingMembers ? (
                 <TableRow>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                    <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
@@ -596,8 +596,8 @@ export function MembersTab() {
               ) : members.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
-                      <UsersIcon size={32} className="opacity-30" />
+                    <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
+                      <UsersIcon size={44} className="opacity-30" />
                       <span>Không có thành viên.</span>
                     </div>
                   </TableCell>

@@ -34,3 +34,12 @@ export interface VerifyReportResult {
   status: number;
   data: string;
 }
+
+/** POST /v1/reports/{id}/confirm-duplicate — BR-REP-032 gộp vào báo cáo gốc. */
+export interface ConfirmDuplicateInput {
+  /** ID báo cáo gốc (primary). */
+  primaryReportId: string;
+}
+
+/** Envelope dùng chung cho confirm / dismiss duplicate. */
+export type DuplicateActionResult = VerifyReportResult;

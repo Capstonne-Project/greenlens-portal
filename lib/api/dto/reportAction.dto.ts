@@ -33,3 +33,11 @@ export type VerifyReportResponseDto = {
   status: number;
   data: string;
 };
+
+/** POST /v1/reports/{id}/confirm-duplicate — body Swagger. */
+export interface ConfirmDuplicateBodyDto {
+  primaryReportId: string;
+}
+
+/** POST confirm/dismiss-duplicate — envelope response. */
+export type DuplicateActionResponseDto = VerifyReportResponseDto;

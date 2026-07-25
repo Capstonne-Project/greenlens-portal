@@ -42,6 +42,15 @@ function mapReportQueueItemDto(dto: ReportQueueItemDto): ReportQueueItem {
     slaVerifyDueAt: dto.slaVerifyDueAt || null,
     slaResolveDueAt: dto.slaResolveDueAt || null,
     firstImageUrl: dto.firstImageUrl || null,
+    isPossibleDuplicate: Boolean(dto.isPossibleDuplicate),
+    possibleDuplicateOfReportId: dto.possibleDuplicateOfReportId || null,
+    possibleDuplicateOfReportCode: dto.possibleDuplicateOfReportCode || null,
+    duplicateDetectionSource: dto.duplicateDetectionSource || null,
+    aiSimilarityScore:
+      dto.aiSimilarityScore == null || Number.isNaN(Number(dto.aiSimilarityScore))
+        ? null
+        : Number(dto.aiSimilarityScore),
+    duplicateCandidateCount: dto.duplicateCandidateCount ?? 0,
   };
 }
 

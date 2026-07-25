@@ -1,13 +1,17 @@
 import type {
   AssignReportBodyDto,
+  ConfirmDuplicateBodyDto,
   DispatchToCompanyBodyDto,
+  DuplicateActionResponseDto,
   ReassignReportBodyDto,
   VerifyReportBodyDto,
   VerifyReportResponseDto,
 } from '@/lib/api/dto/reportAction.dto';
 import type {
   AssignReportInput,
+  ConfirmDuplicateInput,
   DispatchToCompanyInput,
+  DuplicateActionResult,
   ReassignReportInput,
   VerifyReportInput,
   VerifyReportResult,
@@ -77,4 +81,34 @@ export async function adaptVerifyReport(
     payload
   );
   return mapVerifyReportResponse(res.data);
+}
+
+function mapDuplicateActionResponse(dto: DuplicateActionResponseDto): DuplicateActionResult {
+  return {
+    code: dto.code,
+    message: dto.message,
+    status: dto.status,
+    data: dto.data,
+  };
+}
+
+/** POST /v1/reports/{id}/confirm-duplicate — BR-REP-032 xác nhận & gộp trùng. */
+export async function adaptConfirmDuplicate(
+  reportId: string,
+  body: ConfirmDuplicateInput
+): Promise<DuplicateActionResult> {
+  const payload: ConfirmDuplicateBodyDto = { primaryReportId: body.primaryReportId };
+  const res = await apiService.post<DuplicateActionResponseDto>(
+    `/v1/reports/${reportId}/confirm-duplicate`,
+    payload
+  );
+  return mapDuplicateActionResponse(res.data);
+}
+
+/** POST /v1/reports/{id}/dismiss-duplicate — BR-REP-031 bác bỏ nghi trùng. */
+export async function adaptDismissDuplicate(reportId: string): Promise<DuplicateActionResult> {
+  const res = await apiService.post<DuplicateActionResponseDto>(
+    `/v1/reports/${reportId}/dismiss-duplicate`
+  );
+  return mapDuplicateActionResponse(res.data);
 }

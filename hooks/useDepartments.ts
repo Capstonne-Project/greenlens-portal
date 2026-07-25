@@ -15,6 +15,7 @@ import { fetchProvinces } from '@/lib/api/services/fetchLocationCatalog';
 import type { AdminUsersListParams } from '@/lib/api/models/adminUser';
 import { useMemo } from 'react';
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -95,6 +96,8 @@ export function useDeoMyReports(params: DeoMyReportsParams, enabled = true) {
     queryFn: () => fetchDeoMyReports(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
+    /** Giữ data filter trước khi đổi status/severity — khớp useReportQueue (Verify). */
+    placeholderData: keepPreviousData,
     enabled,
   });
 }

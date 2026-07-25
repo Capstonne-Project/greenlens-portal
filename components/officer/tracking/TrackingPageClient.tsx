@@ -1,9 +1,5 @@
 'use client';
 
-import { OfficerAccessDenied } from '@/components/officer/OfficerAccessDenied';
-import { getDefaultOfficerHomePath } from '@/lib/constants/officerNav';
-import { isLeoOfficer } from '@/lib/constants/officerRoles';
-import { useAuthStore } from '@/lib/store/authStore';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { LeoTrackingReportDetail } from './LeoTrackingReportDetail';
@@ -25,18 +21,9 @@ const LeoTrackingPageClient = dynamic(
   { ssr: false, loading: TrackingFallback }
 );
 
+/** ACL LEO do proxy — không render Access Denied trên client. */
 export function TrackingPageClient() {
-  const user = useAuthStore(s => s.user);
   const [detailReportId, setDetailReportId] = useState<string | null>(null);
-
-  if (!isLeoOfficer(user?.systemRole)) {
-    return (
-      <OfficerAccessDenied
-        message="Theo dõi xử lý chỉ dành cho cán bộ văn phòng MT phường (LEO)."
-        homeHref={getDefaultOfficerHomePath(user?.systemRole)}
-      />
-    );
-  }
 
   if (detailReportId) {
     return (

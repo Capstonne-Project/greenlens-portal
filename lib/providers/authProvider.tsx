@@ -21,46 +21,96 @@ function sessionToAuthUser(data: LoginSuccessData): AuthUser {
 function withMustChangeFromCookie(user: AuthUser): AuthUser {
   const fromCookie = getMustChangePasswordFromCookie();
   const must = Boolean(user.mustChangePassword) || fromCookie;
+
   if (must) {
     // Keep cookie + store aligned (refresh Max-Age after silent refresh / hydrate)
     setMustChangePasswordCookie(true);
     return { ...user, mustChangePassword: true };
   }
+
   return { ...user, mustChangePassword: false };
+}
+
+function syncAuthAfterHydration(setAuth: (token: string, user: AuthUser) => void) {
+  const s = useAuthStore.getState();
+
+  if (s.token && s.user) {
+    (window as Window & { __authToken?: string }).__authToken = s.token;
+
+    if (!s.user.systemRole) {
+      const fromJwt = getUserFromAccessToken(s.token);
+      if (fromJwt?.systemRole) {
+        setAuth(
+          s.token,
+          withMustChangeFromCookie({
+            ...s.user,
+            systemRole: fromJwt.systemRole,
+          })
+        );
+      }
+    }
+    return;
+  }
+
+  if (s.token && !s.user) {
+    const user = getUserFromAccessToken(s.token);
+    if (user) {
+      setAuth(s.token, withMustChangeFromCookie(user));
+    }
+    return;
+  }
+
+  const cookieToken = getAccessTokenFromCookie();
+  if (cookieToken) {
+    const user = getUserFromAccessToken(cookieToken);
+    if (user) {
+      setAuth(cookieToken, withMustChangeFromCookie(user));
+    }
+    return;
+  }
+
+  if (getRefreshTokenFromCookie()) {
+    void refreshSessionOnce();
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { token, logout, setAuth } = useAuthStore();
 
-  // After persist rehydrates from localStorage, sync window token; if empty, restore from cookie (browser revisit).
+  // After persist rehydrates from localStorage, sync window token; if empty, restore from cookie.
   useEffect(() => {
-    const unsub = useAuthStore.persist.onFinishHydration(() => {
+    const persistApi = useAuthStore.persist;
+
+    if (!persistApi) {
+      syncAuthAfterHydration(setAuth);
+      return;
+    }
+
+    const unsub = persistApi.onFinishHydration(() => {
+      syncAuthAfterHydration(setAuth);
+
+      // Đồng bộ mustChangePassword từ cookie sau khi hydrate
       const s = useAuthStore.getState();
       if (s.token && s.user) {
-        (window as Window & { __authToken?: string }).__authToken = s.token;
         const merged = withMustChangeFromCookie(s.user);
         if (merged.mustChangePassword !== s.user.mustChangePassword) {
           setAuth(s.token, merged);
         }
-        return;
-      }
-      if (s.token && !s.user) {
-        const user = getUserFromAccessToken(s.token);
-        if (user) setAuth(s.token, withMustChangeFromCookie(user));
-        return;
-      }
-      const cookieToken = getAccessTokenFromCookie();
-      if (cookieToken) {
-        const user = getUserFromAccessToken(cookieToken);
-        if (user) setAuth(cookieToken, withMustChangeFromCookie(user));
-        return;
-      }
-      // Access token missing/expired but refresh cookie still valid — silently
-      // refresh once on bootstrap so the session survives across visits.
-      if (getRefreshTokenFromCookie()) {
-        void refreshSessionOnce();
       }
     });
+
+    if (persistApi.hasHydrated()) {
+      syncAuthAfterHydration(setAuth);
+
+      const s = useAuthStore.getState();
+      if (s.token && s.user) {
+        const merged = withMustChangeFromCookie(s.user);
+        if (merged.mustChangePassword !== s.user.mustChangePassword) {
+          setAuth(s.token, merged);
+        }
+      }
+    }
+
     return unsub;
   }, [setAuth]);
 

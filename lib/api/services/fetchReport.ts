@@ -5,6 +5,8 @@ import {
 import { adaptFetchReportQueue } from '@/lib/api/adapters/reportQueue.adapter';
 import {
   adaptAssignReport,
+  adaptConfirmDuplicate,
+  adaptDismissDuplicate,
   adaptDispatchToCompany,
   adaptReassignReport,
   adaptVerifyReport,
@@ -14,7 +16,9 @@ import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/report
 import type { ReportProgress } from '@/lib/api/models/reportProgress';
 import type {
   AssignReportInput,
+  ConfirmDuplicateInput,
   DispatchToCompanyInput,
+  DuplicateActionResult,
   ReassignReportInput,
   VerifyReportInput,
   VerifyReportResult,
@@ -49,7 +53,9 @@ export type {
 export type {
   AssignReportInput,
   AssignTeamEntry,
+  ConfirmDuplicateInput,
   DispatchToCompanyInput,
+  DuplicateActionResult,
   ReassignReportInput,
   VerifyReportInput,
   VerifyReportResult,
@@ -108,6 +114,19 @@ export async function verifyReport(
   return adaptVerifyReport(reportId, body);
 }
 
+/** POST /v1/reports/{id}/confirm-duplicate — BR-REP-032 xác nhận & gộp trùng. */
+export async function confirmDuplicateReport(
+  reportId: string,
+  body: ConfirmDuplicateInput
+): Promise<DuplicateActionResult> {
+  return adaptConfirmDuplicate(reportId, body);
+}
+
+/** POST /v1/reports/{id}/dismiss-duplicate — BR-REP-031 bác bỏ nghi trùng. */
+export async function dismissDuplicateReport(reportId: string): Promise<DuplicateActionResult> {
+  return adaptDismissDuplicate(reportId);
+}
+
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
@@ -116,5 +135,7 @@ const reportService = {
   dispatchReportToCompany,
   reassignReport,
   verifyReport,
+  confirmDuplicateReport,
+  dismissDuplicateReport,
 };
 export default reportService;

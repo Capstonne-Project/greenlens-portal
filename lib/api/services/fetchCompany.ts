@@ -21,11 +21,15 @@ import {
 } from '@/lib/api/adapters/company.adapter';
 import {
   adaptCompaniesList,
+  adaptCompanyContractHistory,
   adaptCompanyDetail,
   adaptCreateCompany,
   adaptDeleteCompany,
   adaptFetchCompanyServiceAreas,
   adaptMyWardCompanies,
+  adaptReactivateCompany,
+  adaptRenewCompanyContract,
+  adaptSuspendCompany,
   adaptUpdateCompanyServiceAreas,
 } from '@/lib/api/adapters/companies.adapter';
 import type {
@@ -38,6 +42,7 @@ import type {
   CompanyAssignmentDetail,
   CompanyAssignmentsList,
   CompanyAssignmentsParams,
+  CompanyContractHistory,
   CompanyDetail,
   CompanyQueueList,
   CompanyQueueParams,
@@ -59,6 +64,9 @@ import type {
   MyCompanyKpiParams,
   MyWardCompanies,
   RenameCompanyTeamInput,
+  RenewCompanyContractInput,
+  RenewCompanyContractResult,
+  SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
@@ -116,6 +124,9 @@ export type {
   MyWardCompanies,
   MyWardCompanyItem,
   RenameCompanyTeamInput,
+  RenewCompanyContractInput,
+  RenewCompanyContractResult,
+  SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
@@ -162,6 +173,34 @@ export async function updateCompanyServiceAreas(
 /** DELETE /v1/companies/{id} — soft delete (vô hiệu hóa công ty). */
 export async function deleteCompany(id: string): Promise<void> {
   return adaptDeleteCompany(id);
+}
+
+/** POST /v1/companies/{id}/suspend — [DEO/Admin] tạm ngưng công ty (Active → Suspended). */
+export async function suspendCompany(
+  id: string,
+  body: SuspendCompanyInput
+): Promise<ApiEnvelope<string | null>> {
+  return adaptSuspendCompany(id, body);
+}
+
+/** POST /v1/companies/{id}/reactivate — [DEO/Admin] kích hoạt lại (Suspended → Active). */
+export async function reactivateCompany(id: string): Promise<ApiEnvelope<string | null>> {
+  return adaptReactivateCompany(id);
+}
+
+/** POST /v1/companies/{id}/renew-contract — [DEO/Admin] gia hạn HĐ Bidding. */
+export async function renewCompanyContract(
+  id: string,
+  body: RenewCompanyContractInput
+): Promise<ApiEnvelope<RenewCompanyContractResult>> {
+  return adaptRenewCompanyContract(id, body);
+}
+
+/** GET /v1/companies/{id}/contract-history — lịch sử kỳ hợp đồng (DEO/Admin). */
+export async function fetchCompanyContractHistory(
+  companyId: string
+): Promise<ApiEnvelope<CompanyContractHistory>> {
+  return adaptCompanyContractHistory(companyId);
 }
 
 export async function fetchMyCompany(): Promise<ApiEnvelope<MyCompany>> {
@@ -301,6 +340,10 @@ const companyApi = {
   fetchCompanyDetail,
   createCompany,
   deleteCompany,
+  suspendCompany,
+  reactivateCompany,
+  renewCompanyContract,
+  fetchCompanyContractHistory,
   fetchCompanyServiceAreas,
   updateCompanyServiceAreas,
   fetchMyCompany,

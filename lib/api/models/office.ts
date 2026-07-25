@@ -151,6 +151,8 @@ export interface LeoMyReportItem {
   resolvedAt: string | null;
   closedAt: string | null;
   slaResolveDueAt: string | null;
+  /** Thumbnail URLs for report media; empty when BE omits the field. */
+  thumbnails: string[];
   assignments: LeoMyReportAssignment[];
 }
 

@@ -133,6 +133,7 @@ export interface DeoMyReportItemDto {
   closedAt: string | null;
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
+  firstImageUrl: string | null;
 }
 
 /** GET /v1/departments/my/reports — data envelope */

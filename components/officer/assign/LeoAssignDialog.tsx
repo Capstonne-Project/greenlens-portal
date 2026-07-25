@@ -13,7 +13,9 @@ import type { MyWardCompanyItem } from '@/lib/api/models/company';
 import type { TeamListItem } from '@/lib/api/services/fetchTeam';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
-import { Building2, Loader2, UserPlus } from 'lucide-react';
+import { faBuilding, faClipboardList, faUserPlus } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Loader2 } from 'lucide-react';
 import type { ReactNode, UIEvent } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -25,8 +27,8 @@ interface LeoAssignDialogProps {
 }
 
 const CONTRACT_TYPE_LABEL: Record<string, string> = {
-  Subsidiary: 'Công ty con',
-  Bidding: 'Đấu thầu',
+  Subsidiary: 'Công ty trực thuộc',
+  Bidding: 'Công ty đấu thầu',
 };
 
 type AssignTab = 'company' | 'cleanup-team';
@@ -46,7 +48,7 @@ function SelectionListShell({
 }) {
   if (loading) {
     return (
-      <div className="flex h-full min-h-[240px] items-center justify-center gap-2 text-sm text-muted-foreground">
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
         Đang tải...
       </div>
@@ -55,11 +57,11 @@ function SelectionListShell({
 
   return (
     <div
-      className="h-full min-h-[240px] overflow-y-auto rounded-xl border border-border bg-muted/20"
+      className="h-full overflow-y-auto overscroll-contain rounded-xl border border-border bg-background"
       onScroll={onScroll}
     >
       {children ?? (
-        <div className="flex h-full min-h-[240px] items-center justify-center px-4 text-center text-sm text-muted-foreground">
+        <div className="flex h-full min-h-[200px] items-center justify-center px-5 text-center text-sm text-muted-foreground">
           {emptyMessage}
         </div>
       )}
@@ -80,19 +82,19 @@ function CompanyRow({
   return (
     <label
       className={cn(
-        'flex cursor-pointer items-center gap-3 px-3 py-3 transition',
-        checked ? 'bg-emerald-50/70 dark:bg-emerald-950/20' : 'hover:bg-muted/40'
+        'flex cursor-pointer items-center gap-3 px-4 py-3.5 transition',
+        checked ? 'bg-muted/70' : 'hover:bg-muted/40'
       )}
     >
       <Checkbox checked={checked} onCheckedChange={onToggle} />
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-          <Building2 className="size-4" />
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-foreground">
+          <FontAwesomeIcon icon={faBuilding} className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-semibold text-foreground">{company.name}</p>
-            <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px]">
+            <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px] font-normal">
               {CONTRACT_TYPE_LABEL[company.contractType] ?? company.contractType}
             </Badge>
           </div>
@@ -117,14 +119,14 @@ function TeamRow({
   return (
     <label
       className={cn(
-        'flex cursor-pointer items-center gap-3 px-3 py-3 transition',
-        checked ? 'bg-emerald-50/70 dark:bg-emerald-950/20' : 'hover:bg-muted/40'
+        'flex cursor-pointer items-center gap-3 px-4 py-3.5 transition',
+        checked ? 'bg-muted/70' : 'hover:bg-muted/40'
       )}
     >
       <Checkbox checked={checked} onCheckedChange={onToggle} />
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-          <UsersGroupIcon size={16} />
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-foreground">
+          <UsersGroupIcon size={16} className="text-foreground" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">{team.name}</p>
@@ -355,28 +357,37 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
       }}
       dismissible={!isSubmitting}
     >
-      <ModalBody className="min-h-0 max-h-[90vh] w-full max-w-2xl flex-none overflow-hidden md:max-w-2xl">
-        <ModalContent className="min-h-0 gap-0 overflow-hidden p-0 md:p-0">
-          <div className="space-y-1 border-b border-border px-6 py-4 pr-12 text-left">
-            <h2 className="text-lg font-semibold text-foreground">Phân công xử lý</h2>
-            <p className="text-sm text-muted-foreground">
+      <ModalBody className="h-auto min-h-0 max-h-[90vh] w-full max-w-2xl flex-none overflow-hidden md:max-w-2xl">
+        <ModalContent className="flex h-auto min-h-0 flex-none flex-col gap-0 overflow-hidden p-0 md:p-0">
+          <div className="shrink-0 space-y-2 border-b border-border px-8 pb-4 pt-7 pr-14 text-left">
+            <h2 className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-foreground">
+              <FontAwesomeIcon
+                icon={faClipboardList}
+                className="size-4 shrink-0 text-foreground"
+                aria-hidden
+              />
+              Phân công xử lý
+            </h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Chọn công ty DVMT phục vụ phường/xã và đội dọn dẹp cộng đồng cho{' '}
-              <span className="font-semibold text-foreground">{reportIds.length}</span> báo cáo đã
+              <span className="font-medium text-foreground">{reportIds.length}</span> báo cáo đã
               chọn.
             </p>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-6 py-4">
+          {/* Fixed slots — list không đẩy/che ghi chú; dialog không cần scroll. */}
+          <div className="flex shrink-0 flex-col gap-4 px-8 py-5">
             <AceternityTabs
               key={formKey}
               tabs={tabs}
               onActiveChange={handleTabChange}
-              containerClassName="rounded-full border border-border bg-muted/40 p-1"
+              containerClassName="shrink-0 rounded-full border border-border bg-muted/30 p-1"
+              activeTabClassName="bg-muted"
               tabClassName="px-5 py-1.5"
-              contentClassName="min-h-[260px] flex-1"
+              contentClassName="h-[200px] shrink-0"
             />
 
-            <div>
+            <div className="shrink-0">
               <label
                 htmlFor="assign-note"
                 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
@@ -389,18 +400,18 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
                 onChange={e => setNote(e.target.value)}
                 rows={2}
                 placeholder="Yêu cầu cụ thể, deadline, lưu ý an toàn..."
-                className="mt-1.5 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950"
+                className="mt-2 h-18 w-full resize-none rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10"
               />
             </div>
           </div>
 
-          <ModalFooter className="flex-row items-center justify-between gap-3 border-t border-border bg-muted/30 px-6 py-3 sm:justify-between">
+          <ModalFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-border bg-muted/20 px-8 py-4 sm:justify-between">
             <p className="text-xs text-muted-foreground">
               {activeTab === 'company' ? (
                 selectedCompany ? (
                   <>
                     Công ty:{' '}
-                    <span className="font-semibold text-foreground">{selectedCompany.name}</span>
+                    <span className="font-medium text-foreground">{selectedCompany.name}</span>
                   </>
                 ) : (
                   'Chưa chọn công ty'
@@ -408,7 +419,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
               ) : (
                 <>
                   Đã chọn{' '}
-                  <span className="font-semibold text-foreground">{selectedTeamIds.size}</span> đội
+                  <span className="font-medium text-foreground">{selectedTeamIds.size}</span> đội
                 </>
               )}
             </p>
@@ -419,9 +430,9 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
               <Button
                 onClick={() => void handleSubmit()}
                 disabled={!canSubmit}
-                className="bg-emerald-600 text-white hover:bg-emerald-500"
+                className="bg-foreground text-background hover:bg-foreground/90"
               >
-                <UserPlus className="mr-1.5 size-4" />
+                <FontAwesomeIcon icon={faUserPlus} className="mr-1.5 size-3.5" aria-hidden />
                 {isSubmitting ? 'Đang phân công...' : 'Phân công'}
               </Button>
             </div>
