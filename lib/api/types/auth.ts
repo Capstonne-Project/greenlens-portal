@@ -8,10 +8,22 @@ export interface LoginUserDto {
   fullName: string;
   role: string;
   isEmailVerified: boolean;
+  mustChangePassword?: boolean;
 }
 
 export interface LoginSuccessData {
   accessToken: string;
   refreshToken: string;
   user: LoginUserDto;
+}
+
+/** POST /v1/auth/change-password — ChangePasswordCommand */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/** ChangePasswordResponse data payload */
+export interface ChangePasswordData {
+  message: string;
 }

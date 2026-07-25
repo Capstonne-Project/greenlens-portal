@@ -10,11 +10,12 @@ const companyNavConfig = getCompanyShellNavConfig();
 /**
  * Company shell — AppSidebar + Officer/Admin-matching bordered content panel.
  * Single vertical scroll in the content pane (same approach as AdminAppShell).
+ * Force-change password is gated by proxy (`gl_must_change_password`) + login redirect.
  */
 export function CompanyAppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-dvh w-screen overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
-      <AppSidebar config={companyNavConfig} profileHref="/company/notifications/preferences" />
+      <AppSidebar config={companyNavConfig} profileHref="/company/account" />
 
       <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden py-2 pr-2">
         <div
