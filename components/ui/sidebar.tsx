@@ -92,8 +92,8 @@ export function DesktopSidebar({
       data-sidebar-desktop=""
       className={cn(
         // overflow-x clips labels during width tween; overflow-y scrolls long nav.
-        // Keep clip at the full sidebar box (incl. padding) so collapsed selected chips aren't cut.
-        'hidden h-full w-[60px] shrink-0 overflow-hidden bg-[#f7f7f7] px-4 py-4 md:flex md:flex-col',
+        // Collapsed rail is 60px — use px-3 so content ≥36px and size-9 active chips aren't clipped.
+        'hidden h-full w-[60px] shrink-0 overflow-hidden bg-[#f7f7f7] px-3 py-4 md:flex md:flex-col',
         className
       )}
       animate={{
@@ -202,7 +202,7 @@ export function SidebarLink({
         {collapsedActive ? (
           <span
             aria-hidden
-            className="pointer-events-none absolute top-1/2 left-1/2 size-9 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-neutral-100 bg-white shadow-[0_1px_2px_rgb(15_23_42/5%)]"
+            className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-neutral-100 bg-white shadow-[0_1px_2px_rgb(15_23_42/5%)]"
           />
         ) : null}
         <span className="relative z-1">{link.icon}</span>

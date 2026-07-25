@@ -164,13 +164,23 @@ export function AnimatedHoverTooltip({
   );
 }
 
+/**
+ * Stacked avatar tooltips.
+ * Uses `fixed` so overflow parents (cards with overflow-hidden) do not clip the bubble.
+ */
 export function AnimatedTooltip({
   items,
   avatarClassName = 'h-7 w-7',
   className,
 }: AnimatedTooltipProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState({ top: 0, left: 0 });
   const { rotate, translateX, handleMouseMove } = useTooltipMotion();
+
+  const updateAnchor = (el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    setAnchor({ top: rect.top - 8, left: rect.left + rect.width / 2 });
+  };
 
   return (
     <div className={cn('flex flex-row items-center', className)}>
@@ -178,7 +188,10 @@ export function AnimatedTooltip({
         <div
           className="group relative -mr-2"
           key={item.id}
-          onMouseEnter={() => setHoveredIndex(item.id)}
+          onMouseEnter={e => {
+            updateAnchor(e.currentTarget);
+            setHoveredIndex(item.id);
+          }}
           onMouseLeave={() => setHoveredIndex(null)}
         >
           <AnimatePresence>
@@ -188,7 +201,8 @@ export function AnimatedTooltip({
                 designation={item.designation}
                 translateX={translateX}
                 rotate={rotate}
-                className="absolute -top-14 left-1/2"
+                className="pointer-events-none fixed z-100 -translate-y-full"
+                style={{ top: anchor.top, left: anchor.left }}
               />
             ) : null}
           </AnimatePresence>
