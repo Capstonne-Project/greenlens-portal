@@ -1,6 +1,7 @@
 /** Tiêu đề header Company Manager theo pathname. */
 export function getCompanyPageTitle(pathname: string): string {
   if (pathname === '/company') return 'Tổng quan công ty';
+  if (pathname === '/company/account') return 'Tài khoản của tôi';
   if (pathname === '/company/staff') return 'Quản lý nhân sự';
   if (pathname === '/company/teams') return 'Đội dọn dẹp';
   if (pathname === '/company/contract-history') return 'Lịch sử hợp đồng';

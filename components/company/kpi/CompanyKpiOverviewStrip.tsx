@@ -12,10 +12,10 @@ export function CompanyKpiOverviewStrip() {
   if (isError) return null;
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-emerald-100/80 bg-white/90 shadow-sm backdrop-blur dark:border-border dark:bg-card/90">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-50 px-5 py-4 dark:border-border sm:px-6">
+    <section className="overflow-hidden rounded-2xl border border-[#e8e8e8] bg-[#fffdfc] dark:border-border dark:bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e8e8] px-5 py-4 dark:border-border sm:px-6">
         <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
             <Target className="size-4" aria-hidden />
           </span>
           <div>
@@ -37,7 +37,7 @@ export function CompanyKpiOverviewStrip() {
           Đang tải…
         </div>
       ) : (
-        <dl className="grid grid-cols-2 gap-px bg-emerald-50/80 dark:bg-border sm:grid-cols-4">
+        <dl className="grid grid-cols-2 divide-x divide-y divide-[#e8e8e8] sm:grid-cols-4 sm:divide-y-0 dark:divide-border">
           {[
             { label: 'Nhận', value: String(kpi.totalAssigned) },
             { label: 'Hoàn thành', value: String(kpi.totalCompleted) },
