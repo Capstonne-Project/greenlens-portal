@@ -95,14 +95,9 @@ export interface AdminReportStatusItem {
   percentage: number;
 }
 
-export interface AdminReportTrendPoint {
-  date: string;
-  created: number;
-  resolved: number;
-}
-
-export interface AdminReportTrendParams extends AdminDashboardDateRangeParams {
-  groupBy?: string;
+export interface AdminPollutionAnalyticsItem {
+  category: string;
+  count: number;
 }
 
 export interface AdminResolutionDistributionItem {
@@ -127,14 +122,6 @@ function buildRecentActivitiesQuery(
   const query: Record<string, number> = {};
   if (params.page != null) query.page = params.page;
   if (params.pageSize != null) query.pageSize = params.pageSize;
-  return Object.keys(query).length > 0 ? query : undefined;
-}
-
-function buildReportTrendQuery(
-  params?: AdminReportTrendParams
-): Record<string, string> | undefined {
-  const query: Record<string, string> = { ...buildDateRangeQuery(params) };
-  if (params?.groupBy?.trim()) query.groupBy = params.groupBy.trim();
   return Object.keys(query).length > 0 ? query : undefined;
 }
 
@@ -231,13 +218,13 @@ export async function fetchAdminDashboardReportStatus(
   return res.data;
 }
 
-/** GET /v1/dashboard/admin/report-trend */
-export async function fetchAdminDashboardReportTrend(
-  params?: AdminReportTrendParams
-): Promise<ApiEnvelope<AdminReportTrendPoint[]>> {
-  const res = await apiService.get<ApiEnvelope<AdminReportTrendPoint[]>>(
-    '/v1/dashboard/admin/report-trend',
-    buildReportTrendQuery(params)
+/** GET /v1/dashboard/admin/pollution-analytics */
+export async function fetchAdminDashboardPollutionAnalytics(
+  params?: AdminDashboardDateRangeParams
+): Promise<ApiEnvelope<AdminPollutionAnalyticsItem[]>> {
+  const res = await apiService.get<ApiEnvelope<AdminPollutionAnalyticsItem[]>>(
+    '/v1/dashboard/admin/pollution-analytics',
+    buildDateRangeQuery(params)
   );
   return res.data;
 }
@@ -263,7 +250,7 @@ const adminDashboardApi = {
   fetchAdminDashboardRecentActivities,
   fetchAdminDashboardReportFunnel,
   fetchAdminDashboardReportStatus,
-  fetchAdminDashboardReportTrend,
+  fetchAdminDashboardPollutionAnalytics,
   fetchAdminDashboardResolutionDistribution,
 };
 

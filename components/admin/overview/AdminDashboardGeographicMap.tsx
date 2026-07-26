@@ -12,6 +12,7 @@ import {
   type ReportStatus,
 } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { ArrowLeft, Maximize2 } from 'lucide-react';
 import type {
   Feature,
   FeatureCollection,
@@ -288,11 +289,19 @@ function enrichProvincesWithDensity(
 interface AdminDashboardGeographicMapProps {
   geographic: AdminGeographicData | undefined;
   className?: string;
+  /** Fill parent height instead of fixed 240px (embedded / fullscreen). */
+  fillHeight?: boolean;
+  /** Fullscreen overlay mode — parent should be fixed inset-0. */
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 export function AdminDashboardGeographicMap({
   geographic,
   className,
+  fillHeight = false,
+  expanded = false,
+  onToggleExpand,
 }: AdminDashboardGeographicMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
@@ -373,11 +382,21 @@ export function AdminDashboardGeographicMap({
 
   const selectedKey = selectedProvince ?? NONE_PROVINCE;
 
-  const fitNationwide = useCallback((duration = 0) => {
-    const map = mapRef.current?.getMap();
-    if (!map) return;
-    map.fitBounds(VIETNAM_BOUNDS, { padding: 36, maxZoom: 5.8, duration });
-  }, []);
+  const fitNationwide = useCallback(
+    (duration = 0) => {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      // Tight fit so the tall S-shape of Vietnam fills a portrait panel with minimal empty space
+      map.fitBounds(VIETNAM_BOUNDS, {
+        padding: expanded
+          ? { top: 40, bottom: 56, left: 40, right: 40 }
+          : { top: 8, bottom: 12, left: 8, right: 8 },
+        maxZoom: expanded ? 6.4 : 6,
+        duration,
+      });
+    },
+    [expanded]
+  );
 
   const handleLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -395,6 +414,32 @@ export function AdminDashboardGeographicMap({
     }
     fitNationwide(0);
   }, [fitNationwide]);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const id = window.setTimeout(() => {
+      map.resize();
+      if (!selectedProvince) {
+        fitNationwide(0);
+      }
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [expanded, fillHeight, fitNationwide, selectedProvince]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onToggleExpand?.();
+    };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [expanded, onToggleExpand]);
 
   const handleProvinceClick = useCallback((event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
@@ -430,9 +475,17 @@ export function AdminDashboardGeographicMap({
   }, [fitNationwide]);
 
   return (
-    <div className={cn('space-y-1.5', className)}>
+    <div
+      className={cn(
+        fillHeight || expanded ? 'flex h-full min-h-0 flex-col' : 'space-y-1.5',
+        className
+      )}
+    >
       <div
-        className="relative h-[240px] overflow-hidden rounded-lg border border-border bg-muted"
+        className={cn(
+          'relative overflow-hidden rounded-lg border border-border bg-muted',
+          fillHeight || expanded ? 'min-h-0 flex-1' : 'h-[280px]'
+        )}
         role="application"
         aria-label="Bản đồ tỉnh thành Việt Nam tô màu theo mật độ báo cáo"
       >
@@ -502,7 +555,27 @@ export function AdminDashboardGeographicMap({
           </Source>
         </Map>
 
-        <div className="absolute top-2 right-2 z-10 flex max-w-[min(100%,280px)] flex-col items-end gap-1.5">
+        <div className="absolute top-2 right-2 z-10 flex max-w-[min(100%,300px)] flex-col items-end gap-1.5">
+          {onToggleExpand ? (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/95 px-2 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur hover:bg-muted"
+              aria-label={expanded ? 'Thu nhỏ bản đồ' : 'Phóng to bản đồ toàn màn hình'}
+            >
+              {expanded ? (
+                <>
+                  <ArrowLeft className="size-3.5" aria-hidden />
+                  Quay lại
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="size-3.5" aria-hidden />
+                  Phóng to
+                </>
+              )}
+            </button>
+          ) : null}
           {selectedProvince ? (
             <div className="flex items-center gap-1.5 rounded-md border border-border bg-card/95 px-2 py-1 text-xs shadow-sm backdrop-blur">
               <span className="truncate text-foreground" title={selectedProvince}>
@@ -581,10 +654,12 @@ export function AdminDashboardGeographicMap({
         ) : null}
       </div>
 
-      <p className="text-[10px] leading-snug text-muted-foreground">
-        Bản đồ toàn quốc 34 tỉnh/thành (post-2025): Free GIS Data — tô màu theo số báo cáo trong
-        tỉnh. Click tỉnh để focus · Toàn quốc để thu phóng lại. Bản đồ nền © OpenStreetMap.
-      </p>
+      {!expanded ? (
+        <p className="mt-1.5 shrink-0 text-[10px] leading-snug text-muted-foreground">
+          Bản đồ toàn quốc 34 tỉnh/thành (post-2025): Free GIS Data — tô màu theo số báo cáo trong
+          tỉnh. Click tỉnh để focus · Toàn quốc để thu phóng lại. Bản đồ nền © OpenStreetMap.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -6,11 +6,11 @@ import {
 import type {
   AdminCompanyPerformanceItem,
   AdminOfficerPerformanceItem,
+  AdminPollutionAnalyticsItem,
   AdminQueueAgingItem,
   AdminRecentActivityItem,
   AdminReportFunnelStage,
   AdminReportStatusItem,
-  AdminReportTrendPoint,
   AdminResolutionDistributionItem,
 } from '@/lib/api/services/fetchAdminDashboard';
 import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
@@ -29,6 +29,7 @@ const STATUS_COLORS = [
   '#94a3b8',
 ];
 const QUEUE_COLORS = ['#22c55e', '#facc15', '#f97316', '#dc2626'];
+const POLLUTION_COLORS = ['#059669', '#0ea5e9', '#f59e0b', '#f97316', '#ef4444', '#8b5cf6'];
 
 function CardShell({
   title,
@@ -108,92 +109,72 @@ export function OverviewLifecycleFunnel({
   );
 }
 
-/** Line chart created vs resolved from /report-trend */
-export function OverviewReportTrend({ points }: { points: AdminReportTrendPoint[] | undefined }) {
-  const data = points ?? [];
-  const W = 320;
-  const H = 140;
-  const PAD = { t: 10, r: 8, b: 22, l: 28 };
-  const iw = W - PAD.l - PAD.r;
-  const ih = H - PAD.t - PAD.b;
-  const maxY = Math.max(1, ...data.flatMap(p => [p.created, p.resolved]));
-
-  const xAt = (i: number) =>
-    data.length <= 1 ? PAD.l + iw / 2 : PAD.l + (i / (data.length - 1)) * iw;
-  const yAt = (v: number) => PAD.t + ih - (v / maxY) * ih;
-
-  const pathFor = (key: 'created' | 'resolved') =>
-    data.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(p[key])}`).join(' ');
+/** Vertical column chart from /pollution-analytics — one column per pollution category. */
+export function OverviewPollutionAnalytics({
+  items,
+}: {
+  items: AdminPollutionAnalyticsItem[] | undefined;
+}) {
+  const data = [...(items ?? [])].sort((a, b) => b.count - a.count);
+  const maxCount = Math.max(1, ...data.map(item => Math.max(0, item.count)));
+  const total = data.reduce((sum, item) => sum + Math.max(0, item.count), 0);
+  const gridSteps = [1, 0.5, 0];
 
   return (
-    <CardShell title="Xu hướng báo cáo" subtitle="Tạo mới vs đã giải quyết">
+    <CardShell
+      title="Báo cáo theo loại ô nhiễm"
+      subtitle={`Tổng ${formatOverviewNumber(total)} báo cáo`}
+    >
       {data.length === 0 ? (
-        <EmptyHint text="Chưa có chuỗi thời gian" />
+        <EmptyHint text="Chưa có dữ liệu loại ô nhiễm" />
       ) : (
-        <>
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            className="h-[140px] w-full"
-            role="img"
-            aria-label="Xu hướng"
-          >
-            {[0, 0.5, 1].map(t => {
-              const y = yAt(t * maxY);
-              return (
-                <g key={t}>
-                  <line
-                    x1={PAD.l}
-                    x2={W - PAD.r}
-                    y1={y}
-                    y2={y}
-                    className="stroke-border"
-                    strokeWidth={1}
-                  />
-                  <text
-                    x={PAD.l - 4}
-                    y={y + 3}
-                    textAnchor="end"
-                    className="fill-muted-foreground text-[9px]"
-                  >
-                    {Math.round(t * maxY)}
-                  </text>
-                </g>
-              );
-            })}
-            {data.length > 1 ? (
-              <>
-                <path d={pathFor('created')} fill="none" stroke="#4f46e5" strokeWidth={2} />
-                <path d={pathFor('resolved')} fill="none" stroke="#059669" strokeWidth={2} />
-              </>
-            ) : null}
-            {data.map((p, i) => (
-              <g key={p.date}>
-                <circle cx={xAt(i)} cy={yAt(p.created)} r={3} fill="#4f46e5">
-                  <title>{`${p.date} tạo: ${p.created}`}</title>
-                </circle>
-                <circle cx={xAt(i)} cy={yAt(p.resolved)} r={3} fill="#059669">
-                  <title>{`${p.date} giải quyết: ${p.resolved}`}</title>
-                </circle>
-                <text
-                  x={xAt(i)}
-                  y={H - 6}
-                  textAnchor="middle"
-                  className="fill-muted-foreground text-[8px]"
-                >
-                  {p.date.slice(5)}
-                </text>
-              </g>
+        <div className="flex h-[150px] gap-2">
+          <div className="flex w-6 shrink-0 flex-col justify-between py-0.5 text-[9px] tabular-nums text-muted-foreground">
+            {gridSteps.map(step => (
+              <span key={step} className="text-right">
+                {Math.round(step * maxCount)}
+              </span>
             ))}
-          </svg>
-          <div className="mt-1 flex gap-3 text-[10px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-indigo-600" aria-hidden /> Tạo mới
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-emerald-600" aria-hidden /> Giải quyết
-            </span>
           </div>
-        </>
+
+          <div className="relative min-w-0 flex-1">
+            <div className="absolute inset-0 flex flex-col justify-between" aria-hidden>
+              {gridSteps.map(step => (
+                <span key={step} className="border-t border-border" />
+              ))}
+            </div>
+
+            <ul
+              className="relative flex h-full items-end justify-around gap-1.5"
+              aria-label="Số báo cáo theo loại ô nhiễm"
+            >
+              {data.map((item, index) => {
+                const height = Math.max(3, (Math.max(0, item.count) / maxCount) * 100);
+                return (
+                  <li
+                    key={`${item.category}-${index}`}
+                    className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+                    title={`${item.category}: ${formatOverviewNumber(item.count)} báo cáo`}
+                  >
+                    <span className="text-[9px] font-semibold tabular-nums text-foreground">
+                      {formatOverviewNumber(item.count)}
+                    </span>
+                    <span
+                      className="w-full max-w-9 rounded-t"
+                      style={{
+                        height: `${height}%`,
+                        backgroundColor: POLLUTION_COLORS[index % POLLUTION_COLORS.length],
+                      }}
+                    />
+                    <span className="w-full truncate text-center text-[9px] text-muted-foreground">
+                      {item.category}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
       )}
     </CardShell>
   );

@@ -6,29 +6,17 @@ export function AdminOverviewSkeleton() {
       aria-busy="true"
       aria-label="Đang tải tổng quan"
     >
-      <div className="flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:justify-between">
-        <div className="space-y-2">
-          <div className="h-5 w-40 rounded bg-muted" />
-          <div className="h-3 w-72 rounded bg-muted" />
-        </div>
-        <div className="h-8 w-56 rounded-lg bg-muted" />
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-3">
-        <div className="h-40 rounded-card bg-muted" />
-        <div className="h-40 rounded-card bg-muted" />
-        <div className="h-40 rounded-card bg-muted" />
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-12">
-        <div className="h-[280px] rounded-card bg-muted lg:col-span-5" />
-        <div className="h-[280px] rounded-card bg-muted lg:col-span-3" />
-        <div className="h-[280px] rounded-card bg-muted lg:col-span-4" />
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="h-40 rounded-card bg-muted" />
-        <div className="h-40 rounded-card bg-muted" />
+      <div className="grid gap-3 lg:grid-cols-12 lg:auto-rows-[minmax(150px,1fr)]">
+        {/* Column 1 — left stack */}
+        <div className="min-h-[150px] rounded-card bg-muted lg:col-span-3 lg:col-start-1 lg:row-start-1" />
+        <div className="min-h-[150px] rounded-card bg-muted lg:col-span-3 lg:col-start-1 lg:row-start-2" />
+        <div className="min-h-[150px] rounded-card bg-muted lg:col-span-3 lg:col-start-1 lg:row-start-3" />
+        {/* Column 2 — trend + alerts */}
+        <div className="min-h-[150px] rounded-card bg-muted lg:col-span-5 lg:col-start-4 lg:row-start-1" />
+        <div className="min-h-[300px] rounded-card bg-muted lg:col-span-5 lg:col-start-4 lg:row-start-2 lg:row-span-2" />
+        {/* Column 3 — portrait map + queue aging */}
+        <div className="h-[420px] rounded-card bg-muted lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2 lg:h-auto" />
+        <div className="min-h-[150px] rounded-card bg-muted lg:col-span-4 lg:col-start-9 lg:row-start-3" />
       </div>
     </div>
   );

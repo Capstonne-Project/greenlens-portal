@@ -37,15 +37,15 @@ function CardShell({
   return (
     <article
       className={cn(
-        'flex h-full min-h-0 flex-col rounded-card border border-border bg-card p-3 shadow-sm',
+        'flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2 shadow-sm sm:p-2.5',
         className
       )}
     >
-      <header className="mb-2 shrink-0">
-        <h2 className="text-xs font-semibold text-foreground sm:text-sm">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-[10px] text-muted-foreground">{subtitle}</p> : null}
+      <header className="mb-1.5 shrink-0">
+        <h2 className="text-[11px] font-semibold text-foreground sm:text-xs">{title}</h2>
+        {subtitle ? <p className="mt-0.5 text-[9px] text-muted-foreground">{subtitle}</p> : null}
       </header>
-      <div className="min-h-0 flex-1">{children}</div>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </article>
   );
 }
@@ -87,9 +87,9 @@ export function CompanyOverviewSummaryCharts({ overview }: { overview: CompanyDa
   const gaugeFilled = (slaPct / 100) * gaugeC;
 
   return (
-    <section className="grid min-h-0 gap-3 lg:grid-cols-3">
+    <section className="grid h-full min-h-0 gap-2 lg:grid-cols-3">
       <CardShell title="Khối lượng nhiệm vụ" subtitle="Đã giao · hoàn thành · đang chờ">
-        <div className="flex h-[120px] items-end gap-3 px-2">
+        <div className="flex h-full min-h-[72px] items-end gap-3 px-1">
           {taskBars.map(bar => (
             <div key={bar.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
               <span className="text-[10px] font-semibold tabular-nums text-foreground">
@@ -110,7 +110,7 @@ export function CompanyOverviewSummaryCharts({ overview }: { overview: CompanyDa
       </CardShell>
 
       <CardShell title="Năng lực vận hành" subtitle="Đội và nhân sự đang hoạt động">
-        <div className="flex h-[120px] flex-col justify-center gap-3 px-1">
+        <div className="flex h-full min-h-[72px] flex-col justify-center gap-2 px-1">
           {capacityBars.map(bar => (
             <div key={bar.label}>
               <div className="mb-1 flex items-center justify-between text-[10px]">
@@ -210,7 +210,7 @@ export function CompanyWorkloadTrend({
         <>
           <svg
             viewBox={`0 0 ${W} ${H}`}
-            className="h-[140px] w-full"
+            className="h-full max-h-[110px] w-full"
             role="img"
             aria-label="Xu hướng"
           >
@@ -305,7 +305,7 @@ export function CompanyTaskStatusDonut({ items }: { items: CompanyTaskStatusItem
         <EmptyHint text="Chưa có phân bố trạng thái" />
       ) : (
         <div className="flex items-center gap-3">
-          <div className="relative size-28 shrink-0">
+          <div className="relative size-20 shrink-0 sm:size-24">
             <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="size-full">
               <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
                 {segments.map(segment => (
@@ -442,9 +442,9 @@ export function CompanyTeamPerformanceTable({
       {rows.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu đội" />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[320px] text-left text-[10px]">
-            <thead className="text-muted-foreground">
+        <div className="h-full overflow-auto">
+          <table className="w-full min-w-[280px] text-left text-[10px]">
+            <thead className="sticky top-0 bg-card text-muted-foreground">
               <tr className="border-b border-border">
                 <th className="pb-1.5 font-semibold">Đội</th>
                 <th className="pb-1.5 text-right font-semibold">Giao</th>
@@ -490,9 +490,9 @@ export function CompanyStaffPerformanceTable({
       {rows.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu nhân sự" />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[280px] text-left text-[10px]">
-            <thead className="text-muted-foreground">
+        <div className="h-full overflow-auto">
+          <table className="w-full min-w-[240px] text-left text-[10px]">
+            <thead className="sticky top-0 bg-card text-muted-foreground">
               <tr className="border-b border-border">
                 <th className="pb-1.5 font-semibold">Nhân sự</th>
                 <th className="pb-1.5 text-right font-semibold">Xong</th>
@@ -536,7 +536,7 @@ export function CompanyUpcomingDeadlines({
       {rows.length === 0 ? (
         <EmptyHint text="Không có deadline sắp tới" />
       ) : (
-        <ul className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
+        <ul className="h-full space-y-1.5 overflow-y-auto pr-1">
           {rows.map(row => (
             <li
               key={row.taskId}
@@ -580,7 +580,7 @@ export function CompanyRecentActivities({
       {list.length === 0 ? (
         <EmptyHint text="Chưa có sự kiện" />
       ) : (
-        <ul className="max-h-[180px] space-y-2 overflow-y-auto pr-1">
+        <ul className="h-full space-y-2 overflow-y-auto pr-1">
           {list.map((item, index) => (
             <li
               key={`${item.time}-${item.type}-${index}`}

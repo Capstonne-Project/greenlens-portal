@@ -6,11 +6,11 @@ import {
   fetchAdminDashboardGeographic,
   fetchAdminDashboardOfficerPerformance,
   fetchAdminDashboardOverview,
+  fetchAdminDashboardPollutionAnalytics,
   fetchAdminDashboardQueueAging,
   fetchAdminDashboardRecentActivities,
   fetchAdminDashboardReportFunnel,
   fetchAdminDashboardReportStatus,
-  fetchAdminDashboardReportTrend,
   fetchAdminDashboardResolutionDistribution,
 } from '@/lib/api/services/fetchAdminDashboard';
 import type {
@@ -20,11 +20,11 @@ import type {
   AdminDashboardOverview,
   AdminGeographicData,
   AdminOfficerPerformanceItem,
+  AdminPollutionAnalyticsItem,
   AdminQueueAgingItem,
   AdminRecentActivityItem,
   AdminReportFunnelStage,
   AdminReportStatusItem,
-  AdminReportTrendPoint,
   AdminResolutionDistributionItem,
 } from '@/lib/api/services/fetchAdminDashboard';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -54,8 +54,8 @@ export const adminOverviewKeys = {
     [...adminOverviewKeys.all, 'report-funnel', range] as const,
   reportStatus: (range: AdminOverviewDateRangeKey) =>
     [...adminOverviewKeys.all, 'report-status', range] as const,
-  reportTrend: (range: AdminOverviewDateRangeKey) =>
-    [...adminOverviewKeys.all, 'report-trend', range] as const,
+  pollutionAnalytics: (range: AdminOverviewDateRangeKey) =>
+    [...adminOverviewKeys.all, 'pollution-analytics', range] as const,
   resolutionDistribution: (range: AdminOverviewDateRangeKey) =>
     [...adminOverviewKeys.all, 'resolution-distribution', range] as const,
 };
@@ -106,7 +106,7 @@ export function useAdminOverview(params?: AdminDashboardDateRangeParams) {
     recentActivitiesQuery,
     reportFunnelQuery,
     reportStatusQuery,
-    reportTrendQuery,
+    pollutionAnalyticsQuery,
     resolutionDistributionQuery,
   ] = useQueries({
     queries: [
@@ -172,9 +172,9 @@ export function useAdminOverview(params?: AdminDashboardDateRangeParams) {
         staleTime: DASHBOARD_STALE_MS,
       },
       {
-        queryKey: adminOverviewKeys.reportTrend(rangeKey),
-        queryFn: () => fetchAdminDashboardReportTrend(dateParams),
-        select: (envelope: ApiEnvelope<AdminReportTrendPoint[]>) => envelope.data,
+        queryKey: adminOverviewKeys.pollutionAnalytics(rangeKey),
+        queryFn: () => fetchAdminDashboardPollutionAnalytics(dateParams),
+        select: (envelope: ApiEnvelope<AdminPollutionAnalyticsItem[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
       },
       {
@@ -196,7 +196,7 @@ export function useAdminOverview(params?: AdminDashboardDateRangeParams) {
     recentActivitiesQuery,
     reportFunnelQuery,
     reportStatusQuery,
-    reportTrendQuery,
+    pollutionAnalyticsQuery,
     resolutionDistributionQuery,
   ] as const;
 
@@ -214,7 +214,7 @@ export function useAdminOverview(params?: AdminDashboardDateRangeParams) {
     recentActivities: recentActivitiesQuery.data,
     reportFunnel: reportFunnelQuery.data,
     reportStatus: reportStatusQuery.data,
-    reportTrend: reportTrendQuery.data,
+    pollutionAnalytics: pollutionAnalyticsQuery.data,
     resolutionDistribution: resolutionDistributionQuery.data,
     updatedAtMs: Math.max(0, ...queries.map(q => q.dataUpdatedAt)),
     // Gate the full-page skeleton on overview only so charts can load independently.
