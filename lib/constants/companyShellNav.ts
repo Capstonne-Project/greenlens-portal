@@ -31,7 +31,7 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
     item('dashboard', 'Tổng quan', '/company', faGaugeHigh),
     item('kpi', 'KPI công ty', '/company/kpi', faBullseye),
     item('queue', 'Điều phối báo cáo', '/company/queue', faClipboardList),
-    item('assignments', 'Theo dõi phân công', '/company/assignments', faChartLine),
+    item('assignments', 'Phân công', '/company/assignments', faChartLine),
     item('notifications', 'Thông báo', '/company/notifications', faBell),
     // Nguồn lực
     item('staff', 'Nhân sự', '/company/staff', faUsers),

@@ -2,11 +2,12 @@
 
 import { AppSidebar } from '@/components/common/AppSidebar';
 import { CompanyTopHeader } from '@/components/company/CompanyTopHeader';
+import { useCompanyAssignmentsNewCount, useCompanyQueueCount } from '@/hooks/useCompany';
 import { getCompanyShellNavConfig } from '@/lib/constants/companyShellNav';
+import type { MapShellNavConfig } from '@/lib/constants/mapShellNav';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
-
-const companyNavConfig = getCompanyShellNavConfig();
+import { useMemo } from 'react';
 
 /**
  * Company shell — AppSidebar + Officer/Admin-matching bordered content panel.
@@ -16,6 +17,29 @@ const companyNavConfig = getCompanyShellNavConfig();
 export function CompanyAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isOverview = pathname === '/company';
+  const isAssignments = pathname === '/company/assignments';
+  const { data: queueCount } = useCompanyQueueCount();
+  const { data: assignmentsNewCount } = useCompanyAssignmentsNewCount();
+
+  const companyNavConfig = useMemo((): MapShellNavConfig => {
+    const base = getCompanyShellNavConfig();
+    return {
+      ...base,
+      mainNav: base.mainNav.map(item => {
+        if (item.id === 'queue' && typeof queueCount === 'number' && queueCount > 0) {
+          return { ...item, badge: queueCount };
+        }
+        if (
+          item.id === 'assignments' &&
+          typeof assignmentsNewCount === 'number' &&
+          assignmentsNewCount > 0
+        ) {
+          return { ...item, badge: assignmentsNewCount };
+        }
+        return item;
+      }),
+    };
+  }, [queueCount, assignmentsNewCount]);
 
   return (
     <div className="flex h-dvh w-screen overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
@@ -35,7 +59,8 @@ export function CompanyAppShell({ children }: { children: React.ReactNode }) {
               'min-h-0 min-w-0 flex-1 overscroll-contain',
               isOverview
                 ? 'overflow-hidden pt-2 md:pt-3'
-                : 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5'
+                : 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5',
+              isAssignments && 'scrollbar-hide'
             )}
           >
             {children}

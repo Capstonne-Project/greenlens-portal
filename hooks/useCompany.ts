@@ -220,6 +220,8 @@ export const companyKeys = {
   queueCount: () => [...companyKeys.all, 'queue', 'count'] as const,
   assignments: (params: CompanyAssignmentsParams) =>
     [...companyKeys.all, 'assignments', params] as const,
+  /** Newly assigned tasks awaiting attention — sidebar badge. */
+  assignmentsNewCount: () => [...companyKeys.all, 'assignments', 'new-count'] as const,
   assignmentDetail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'detail', reportId] as const,
   contractHistory: () => [...companyKeys.all, 'contract-history'] as const,
@@ -297,6 +299,16 @@ export function useCompanyQueueCount() {
     queryKey: companyKeys.queueCount(),
     queryFn: () => fetchCompanyQueue({ page: 1, pageSize: 1 }),
     select: (envelope: ApiEnvelope<CompanyQueueList>) => envelope.data.pagination.totalItems,
+    staleTime: 60 * 1000,
+  });
+}
+
+/** Count of newly assigned tasks (`Assigned`) — sidebar badge on Theo dõi phân công. */
+export function useCompanyAssignmentsNewCount() {
+  return useQuery({
+    queryKey: companyKeys.assignmentsNewCount(),
+    queryFn: () => fetchCompanyAssignments({ page: 1, pageSize: 1, status: 'Assigned' }),
+    select: (envelope: ApiEnvelope<CompanyAssignmentsList>) => envelope.data.pagination.totalItems,
     staleTime: 60 * 1000,
   });
 }
