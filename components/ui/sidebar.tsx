@@ -10,6 +10,7 @@ type Links = {
   label: string;
   href: string;
   icon: React.JSX.Element | React.ReactNode;
+  badge?: number;
 };
 
 type SidebarContextProps = {
@@ -175,6 +176,12 @@ export function SidebarLink({
   // Collapsed: label stays in layout for width-clip animation, so row chip looks offset.
   // Put selected chip on the icon only; expanded keeps full-row chip.
   const collapsedActive = active && !showLabel;
+  const badgeCount =
+    typeof link.badge === 'number' && link.badge > 0
+      ? link.badge > 99
+        ? '99+'
+        : String(link.badge)
+      : null;
 
   return (
     <Link
@@ -206,6 +213,14 @@ export function SidebarLink({
           />
         ) : null}
         <span className="relative z-1">{link.icon}</span>
+        {badgeCount && !showLabel ? (
+          <span
+            className="absolute -top-1.5 -right-1.5 z-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white"
+            aria-label={`${badgeCount} mới`}
+          >
+            {badgeCount}
+          </span>
+        ) : null}
       </span>
       <motion.span
         initial={false}
@@ -213,13 +228,21 @@ export function SidebarLink({
         transition={{ duration: 0.2, ease: 'easeInOut' }}
         className={cn(
           // transition-transform ONLY — never bare `transition` (that also tweens opacity → giật)
-          'm-0! inline-block p-0! text-sm whitespace-pre transition-transform duration-150 group-hover/sidebar:translate-x-1',
+          'm-0! inline-block min-w-0 flex-1 truncate p-0! text-sm whitespace-pre transition-transform duration-150 group-hover/sidebar:translate-x-1',
           active ? 'text-neutral-900' : 'text-neutral-600',
           !showLabel && 'pointer-events-none'
         )}
       >
         {link.label}
       </motion.span>
+      {badgeCount && showLabel ? (
+        <span
+          className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[10px] font-bold tabular-nums text-white"
+          aria-label={`${badgeCount} mới`}
+        >
+          {badgeCount}
+        </span>
+      ) : null}
     </Link>
   );
 }

@@ -27,6 +27,8 @@ export type MapShellNavItem = {
   href: string;
   icon?: IconDefinition;
   animatedIcon?: MapShellAnimatedIcon;
+  /** Optional count badge (e.g. queue / unread). */
+  badge?: number;
   /** Mục con trong sidebar (dropdown) — giữ type; hiện LEO không dùng. */
   children?: MapShellNavChildItem[];
 };
