@@ -4,15 +4,19 @@ import { AppSidebar } from '@/components/common/AppSidebar';
 import { CompanyTopHeader } from '@/components/company/CompanyTopHeader';
 import { getCompanyShellNavConfig } from '@/lib/constants/companyShellNav';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 const companyNavConfig = getCompanyShellNavConfig();
 
 /**
  * Company shell — AppSidebar + Officer/Admin-matching bordered content panel.
- * Single vertical scroll in the content pane (same approach as AdminAppShell).
- * Force-change password is gated by proxy (`gl_must_change_password`) + login redirect.
+ * Overview (`/company`) locks to one viewport page (no outer scroll).
+ * Other tabs keep a single vertical scroller in the content pane.
  */
 export function CompanyAppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isOverview = pathname === '/company';
+
   return (
     <div className="flex h-dvh w-screen overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
       <AppSidebar config={companyNavConfig} profileHref="/company/account" />
@@ -26,7 +30,14 @@ export function CompanyAppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <CompanyTopHeader />
-          <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-4 md:pt-5">
+          <div
+            className={cn(
+              'min-h-0 min-w-0 flex-1 overscroll-contain',
+              isOverview
+                ? 'overflow-hidden pt-2 md:pt-3'
+                : 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5'
+            )}
+          >
             {children}
           </div>
         </div>
