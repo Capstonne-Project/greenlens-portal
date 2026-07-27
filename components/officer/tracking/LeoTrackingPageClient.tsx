@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  TrackingDateRangePicker,
+  type TrackingDateRangeValue,
+} from '@/components/officer/tracking/TrackingDateRangePicker';
 import { TYPE_LABEL as TEAM_TYPE_LABEL_VI } from '@/components/officer/workforce/teamTab/teamTab.shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AnimatedHoverTooltip, AnimatedTooltip } from '@/components/ui/animated-tooltip';
@@ -54,12 +58,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 const LEO_BOARD_PAGE_SIZE = 20;
 const LEO_LIST_PAGE_SIZE = 15;
 
-/** Swagger GET /v1/offices/my/reports — query `status`. */
-const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES;
+/** Tab trạng thái theo dõi — bỏ Submitted (đã gửi); luồng đó thuộc hàng đợi xác minh. */
+const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES.filter(
+  (status): status is Exclude<LeoMyReportsStatus, 'Submitted'> => status !== 'Submitted'
+);
 
 const LEO_TRACKING_STATUS_SET = new Set<string>(LEO_TRACKING_STATUSES);
 
-type LeoTrackingStatus = LeoMyReportsStatus;
+type LeoTrackingStatus = (typeof LEO_TRACKING_STATUSES)[number];
 type LeoStatusTab = 'All' | LeoTrackingStatus;
 type LeoViewMode = 'list' | 'board';
 
@@ -75,8 +81,8 @@ const ASSIGNMENT_STATUS_LABEL: Record<LeoReportAssignmentStatus, string> = {
   InProgress: 'Đang xử lý',
   Completed: 'Hoàn thành',
   Declined: 'Từ chối',
+  Escalated: 'Chuyển cấp',
 };
-
 const FILTER_BTN_CLASS =
   'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand';
 
@@ -657,6 +663,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
   const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<
     'all' | LeoReportAssignmentStatus
   >('all');
+  const [dateRange, setDateRange] = useState<TrackingDateRangeValue>({ preset: 'all' });
 
   const pageSize = viewMode === 'board' ? LEO_BOARD_PAGE_SIZE : LEO_LIST_PAGE_SIZE;
 
@@ -689,6 +696,28 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     setPage(1);
   };
 
+  const handleDateRangeChange = (next: TrackingDateRangeValue) => {
+    setDateRange(next);
+    setPage(1);
+  };
+
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    dateRange.preset !== 'all' ||
+    Boolean(dateRange.fromDate || dateRange.toDate) ||
+    categoryFilter !== 'all' ||
+    severityFilter !== 'all' ||
+    assignmentStatusFilter !== 'all';
+
+  const handleClearAllFilters = () => {
+    setSearch('');
+    setDateRange({ preset: 'all' });
+    setCategoryFilter('all');
+    setSeverityFilter('all');
+    setAssignmentStatusFilter('all');
+    setPage(1);
+  };
+
   const { data: catalogCategories = [] } = useCatalogPollutionCategories();
 
   const { data, isLoading, isError } = useLeoMyReports({
@@ -701,6 +730,8 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
     severity: severityFilter === 'all' ? undefined : severityFilter,
     assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
+    fromDate: dateRange.fromDate,
+    toDate: dateRange.toDate,
   });
 
   const items = useMemo(() => data?.items ?? EMPTY_LEO_ITEMS, [data?.items]);
@@ -818,6 +849,8 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
                 />
               ) : null}
             </div>
+
+            <TrackingDateRangePicker value={dateRange} onChange={handleDateRangeChange} />
           </div>
 
           <DropdownMenu>
@@ -897,6 +930,21 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={handleClearAllFilters}
+              className={cn(
+                'cursor-pointer shrink-0 text-[0.8125rem] font-medium text-slate-500',
+                'transition-[font-weight,color]',
+                'hover:font-bold hover:text-slate-800',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-1'
+              )}
+            >
+              Xóa tất cả
+            </button>
+          ) : null}
         </div>
 
         <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
@@ -970,7 +1018,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
               ) : null}
             </div>
             <p className="shrink-0 text-xs text-slate-500 tabular-nums">
-              {data.pagination.totalItems.toLocaleString('vi-VN')} dòng
+              {data.pagination.totalItems.toLocaleString('vi-VN')} báo cáo
             </p>
           </div>
         ) : null}
