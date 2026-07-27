@@ -264,6 +264,7 @@ export function AppSidebar({ config, profileHref = '/officer/profile' }: AppSide
                     label: item.label,
                     href: item.href,
                     icon: <NavIcon item={item} />,
+                    badge: item.badge,
                   }}
                   active={activeId === item.id}
                 />

@@ -3,26 +3,17 @@
 import {
   OverviewLifecycleFunnel,
   OverviewPerformanceBars,
+  OverviewPollutionAnalytics,
   OverviewQueueAging,
-  OverviewRecentActivities,
-  OverviewReportTrend,
   OverviewResolutionBars,
-  OverviewStatusDonut,
 } from '@/components/admin/overview/OverviewAnalyticsCharts';
 import { OverviewAlertsCard } from '@/components/admin/overview/OverviewAlertsCard';
 import { AdminOverviewSkeleton } from '@/components/admin/overview/AdminOverviewSkeleton';
-import {
-  formatOverviewNumber,
-  formatRatePercent,
-  formatHours,
-  formatUpdatedAt,
-} from '@/components/admin/overview/adminDashboardFormat';
 import { useAdminOverview } from '@/hooks/useAdminOverview';
-import type { AdminDashboardDateRangeParams } from '@/lib/api/services/fetchAdminDashboard';
-import { cn } from '@/lib/utils';
+import { useAdminOverviewUiStore } from '@/lib/store/adminOverviewUiStore';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 const AdminDashboardGeographicMap = dynamic(
   () =>
@@ -33,36 +24,16 @@ const AdminDashboardGeographicMap = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="h-[240px] animate-pulse rounded-lg border border-border bg-muted"
+        className="h-full min-h-[240px] animate-pulse rounded-lg border border-border bg-muted"
         aria-hidden
       />
     ),
   }
 );
 
-type DatePreset = 'all' | '7d' | '30d' | '90d';
-
-const DATE_PRESETS: { value: DatePreset; label: string }[] = [
-  { value: 'all', label: 'Tất cả' },
-  { value: '7d', label: '7 ngày' },
-  { value: '30d', label: '30 ngày' },
-  { value: '90d', label: '90 ngày' },
-];
-
-function buildDateRangeParams(preset: DatePreset): AdminDashboardDateRangeParams | undefined {
-  if (preset === 'all') return undefined;
-  const days = preset === '7d' ? 7 : preset === '30d' ? 30 : 90;
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
-  return {
-    from: from.toISOString(),
-    to: to.toISOString(),
-  };
-}
-
 export function AdminOverviewDashboard() {
-  const [preset, setPreset] = useState<DatePreset>('30d');
-  const dateParams = useMemo(() => buildDateRangeParams(preset), [preset]);
+  const dateParams = useAdminOverviewUiStore(s => s.dateParams);
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   const {
     overview,
@@ -70,15 +41,11 @@ export function AdminOverviewDashboard() {
     companyPerformance,
     geographic,
     officerPerformance,
+    pollutionAnalytics,
     reportFunnel,
-    reportTrend,
-    reportStatus,
     queueAging,
     resolutionDistribution,
-    recentActivities,
-    updatedAtMs,
     isPending,
-    isFetching,
     isError,
     error,
     isAlertsError,
@@ -86,8 +53,6 @@ export function AdminOverviewDashboard() {
     refetch,
     refetchAlerts,
   } = useAdminOverview(dateParams);
-
-  const updatedAt = updatedAtMs > 0 ? new Date(updatedAtMs) : null;
 
   if (isPending && !overview) {
     return <AdminOverviewSkeleton />;
@@ -121,99 +86,82 @@ export function AdminOverviewDashboard() {
     return <AdminOverviewSkeleton />;
   }
 
+  const mapNode = (
+    <AdminDashboardGeographicMap
+      geographic={geographic}
+      fillHeight
+      expanded={mapExpanded}
+      onToggleExpand={() => setMapExpanded(prev => !prev)}
+    />
+  );
+
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
-      <header className="flex shrink-0 flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-base font-semibold tracking-tight text-foreground md:text-lg">
-            Tổng quan hệ thống
-          </h1>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {updatedAt ? `Cập nhật ${formatUpdatedAt(updatedAt)}` : 'Đang đồng bộ…'}
-            {isFetching ? ' · làm mới' : ''}
-            {' · '}
-            {formatOverviewNumber(overview.totalUsers)} người dùng
-            {' · '}
-            {formatOverviewNumber(overview.totalReports)} báo cáo
-            {' · '}
-            SLA {formatRatePercent(overview.slaComplianceRate, 0)}
-            {' · '}
-            TB {formatHours(overview.averageResolutionHours, 1)}
-          </p>
+      {/*
+        Wireframe grid (lg) — 3 columns, 3 rows:
+        col1 (3)          col2 (5)              col3 (4, map dọc)
+        [ Phễu ]          [ Đường ]             [ Map ......... ]
+        [ Xử lý ]         [ Cảnh báo ......... ][ Map (dọc) .... ]
+        [ Thời gian ]     [ Cảnh báo ......... ][ Tuổi hàng đợi  ]
+      */}
+      <section className="grid min-h-0 gap-3 lg:grid-cols-12 lg:auto-rows-[minmax(150px,1fr)]">
+        {/* Column 1 — left stack */}
+        <div className="min-h-0 lg:col-span-3 lg:col-start-1 lg:row-start-1">
+          <OverviewLifecycleFunnel stages={reportFunnel} />
+        </div>
+        <div className="min-h-0 lg:col-span-3 lg:col-start-1 lg:row-start-2">
+          <OverviewResolutionBars items={resolutionDistribution} />
+        </div>
+        <div className="min-h-0 lg:col-span-3 lg:col-start-1 lg:row-start-3">
+          <OverviewPerformanceBars companies={companyPerformance} officers={officerPerformance} />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div
-            className="flex flex-wrap rounded-lg border border-border bg-muted/30 p-0.5"
-            role="radiogroup"
-            aria-label="Khoảng thời gian"
-          >
-            {DATE_PRESETS.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={preset === option.value}
-                onClick={() => setPreset(option.value)}
-                className={cn(
-                  'rounded-md px-2 py-1 text-[11px] font-semibold transition',
-                  preset === option.value
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold transition hover:bg-muted disabled:opacity-60"
-            aria-label="Làm mới dữ liệu"
-          >
-            <RefreshCw className={cn('size-3.5', isFetching && 'animate-spin')} aria-hidden />
-            Làm mới
-          </button>
+        {/* Column 2 — trend + alerts */}
+        <div className="min-h-0 lg:col-span-5 lg:col-start-4 lg:row-start-1">
+          <OverviewPollutionAnalytics items={pollutionAnalytics} />
         </div>
-      </header>
+        <div className="min-h-0 lg:col-span-5 lg:col-start-4 lg:row-start-2 lg:row-span-2">
+          <OverviewAlertsCard
+            alerts={alerts}
+            isError={isAlertsError}
+            error={alertsError instanceof Error ? alertsError : null}
+            onRetry={refetchAlerts}
+          />
+        </div>
 
-      {/* Row 1: funnel · trend · status — equal thirds */}
-      <section className="grid min-h-0 gap-3 lg:grid-cols-3">
-        <OverviewLifecycleFunnel stages={reportFunnel} />
-        <OverviewReportTrend points={reportTrend} />
-        <OverviewStatusDonut items={reportStatus} />
-      </section>
-
-      {/* Row 2: map · queue · activities */}
-      <section className="grid min-h-0 gap-3 lg:grid-cols-12">
-        <article className="rounded-card border border-border bg-card p-3 shadow-sm lg:col-span-5">
-          <header className="mb-2">
+        {/* Column 3 — portrait map + queue aging */}
+        <article className="flex min-h-[420px] flex-col rounded-card border border-border bg-card p-3 shadow-sm lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2 lg:min-h-0">
+          <header className="mb-2 shrink-0">
             <h2 className="text-xs font-semibold text-foreground sm:text-sm">Bản đồ Việt Nam</h2>
-            <p className="text-[10px] text-muted-foreground">Tô màu theo tỉnh · click để focus</p>
+            <p className="text-[10px] text-muted-foreground">
+              Toàn quốc hình chữ S · click tỉnh để focus · phóng to che sidebar
+            </p>
           </header>
-          <AdminDashboardGeographicMap geographic={geographic} />
+          <div className="min-h-0 flex-1">{mapExpanded ? null : mapNode}</div>
         </article>
-        <div className="lg:col-span-3">
+        <div className="min-h-0 lg:col-span-4 lg:col-start-9 lg:row-start-3">
           <OverviewQueueAging items={queueAging} />
         </div>
-        <div className="lg:col-span-4">
-          <OverviewRecentActivities items={recentActivities} />
-        </div>
       </section>
 
-      {/* Row 3: resolution · performance · alerts */}
-      <section className="grid min-h-0 gap-3 lg:grid-cols-3">
-        <OverviewResolutionBars items={resolutionDistribution} />
-        <OverviewPerformanceBars companies={companyPerformance} officers={officerPerformance} />
-        <OverviewAlertsCard
-          alerts={alerts}
-          isError={isAlertsError}
-          error={alertsError instanceof Error ? alertsError : null}
-          onRetry={refetchAlerts}
-        />
-      </section>
+      {mapExpanded ? (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col bg-background p-3"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Bản đồ Việt Nam toàn màn hình"
+        >
+          <div className="mb-2 shrink-0">
+            <h2 className="text-sm font-semibold text-foreground">
+              Bản đồ Việt Nam — toàn màn hình
+            </h2>
+            <p className="text-[11px] text-muted-foreground">
+              Esc hoặc Quay lại để thu nhỏ · click tỉnh để xem ranh giới
+            </p>
+          </div>
+          <div className="min-h-0 flex-1">{mapNode}</div>
+        </div>
+      ) : null}
     </div>
   );
 }
