@@ -33,6 +33,7 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
+import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 
 export type DuplicateParentPreview = {
@@ -539,7 +540,9 @@ function VerifiedRecordsCompare({
             >
               {parent.code}
             </button>
-            <p className="mt-1 text-xs font-medium text-slate-500">Báo cáo gốc · Verified</p>
+            <p className="mt-1 text-xs font-medium text-slate-500">
+              Báo cáo gốc · {reportStatusLabelVi(parent.status)}
+            </p>
           </div>
         </div>
 
@@ -612,7 +615,7 @@ export function DuplicateSuspectDialog({
   const actionPending = confirmMutation.isPending || dismissMutation.isPending;
 
   const parentStatus = parentDetail?.status;
-  const isParentVerified = parentStatus === 'Verified';
+  const canCompareWithParent = parentStatus === 'Verified' || parentStatus === 'InProgress';
 
   const parentCode =
     parentDetail?.code ??
@@ -665,7 +668,7 @@ export function DuplicateSuspectDialog({
   };
 
   const showLoading = open && Boolean(parentId) && parentLoading;
-  const dialogWide = isParentVerified;
+  const dialogWide = canCompareWithParent;
 
   return (
     <>
@@ -691,7 +694,7 @@ export function DuplicateSuspectDialog({
                       <div
                         className={cn(
                           'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                          isParentVerified
+                          canCompareWithParent
                             ? 'bg-slate-900 text-white shadow-sm'
                             : 'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
                         )}
@@ -701,17 +704,22 @@ export function DuplicateSuspectDialog({
                       </div>
                       <div className="min-w-0 space-y-1.5 pt-0.5">
                         <DialogTitle className="text-lg leading-snug text-slate-900">
-                          {isParentVerified ? 'So sánh 2 báo cáo' : 'Nghi ngờ báo cáo trùng lặp'}
+                          {canCompareWithParent
+                            ? 'So sánh 2 báo cáo'
+                            : 'Nghi ngờ báo cáo trùng lặp'}
                         </DialogTitle>
                         <DialogDescription className="text-sm leading-relaxed text-slate-600">
-                          {isParentVerified ? (
+                          {canCompareWithParent ? (
                             <>
                               Báo cáo gốc{' '}
                               <span className="font-semibold tabular-nums text-slate-800">
                                 {parentCode}
                               </span>{' '}
-                              đã <span className="font-semibold text-emerald-700">Verified</span>.
-                              Đối chiếu thông tin hai bên rồi chọn{' '}
+                              đang ở trạng thái{' '}
+                              <span className="font-semibold text-emerald-700">
+                                {reportStatusLabelVi(parentStatus ?? '')}
+                              </span>
+                              . Đối chiếu thông tin hai bên rồi chọn{' '}
                               <span className="font-semibold text-slate-800">bác bỏ</span> hoặc{' '}
                               <span className="font-semibold text-slate-800">gộp trùng</span>.
                             </>
@@ -744,7 +752,7 @@ export function DuplicateSuspectDialog({
                       : 'overflow-y-auto overscroll-contain px-6 py-5 sm:px-7 [scrollbar-gutter:stable]'
                   )}
                 >
-                  {isParentVerified && parentDetail && suspectDetail ? (
+                  {canCompareWithParent && parentDetail && suspectDetail ? (
                     <VerifiedRecordsCompare
                       suspect={suspectDetail}
                       parent={parentDetail}
@@ -783,7 +791,7 @@ export function DuplicateSuspectDialog({
                 </div>
 
                 <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:gap-2 sm:px-7">
-                  {isParentVerified ? (
+                  {canCompareWithParent ? (
                     <>
                       <Button
                         type="button"

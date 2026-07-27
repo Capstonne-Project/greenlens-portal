@@ -71,7 +71,12 @@ export interface AssignOfficeOfficerBodyDto {
  * GET /v1/offices/my/reports — items[].assignments[]
  * Mỗi report có thể có nhiều assignment (re-assign / multi-team).
  */
-export type LeoReportAssignmentStatusDto = 'Assigned' | 'InProgress' | 'Completed' | 'Declined';
+export type LeoReportAssignmentStatusDto =
+  | 'Assigned'
+  | 'InProgress'
+  | 'Completed'
+  | 'Declined'
+  | 'Escalated';
 
 /** Swagger query/response `status`. */
 export type LeoMyReportsStatusDto =
