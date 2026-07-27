@@ -99,6 +99,8 @@ function buildLeoMyReportsQuery(
   if (params?.categoryId?.trim()) query.categoryId = params.categoryId.trim();
   if (params?.severity) query.severity = params.severity;
   if (params?.assignmentStatus) query.assignmentStatus = params.assignmentStatus;
+  if (params?.fromDate?.trim()) query.fromDate = params.fromDate.trim();
+  if (params?.toDate?.trim()) query.toDate = params.toDate.trim();
   if (params?.sortBy) query.sortBy = params.sortBy;
   if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
   return query;

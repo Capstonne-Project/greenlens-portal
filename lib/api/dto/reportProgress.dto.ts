@@ -7,7 +7,8 @@ export interface ReportProgressImageDto {
 }
 
 export interface ReportProgressSlaDto {
-  resolveDueAt: string;
+  /** Null khi report đã Duplicate (gộp vào gốc — không còn SLA riêng). */
+  resolveDueAt: string | null;
   hoursRemaining: number;
   isBreached: boolean;
   severityLabel: string;

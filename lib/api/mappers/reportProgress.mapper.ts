@@ -67,7 +67,7 @@ export function mapReportProgressDataDto(dto: ReportProgressDataDto): ReportProg
     wardCode: dto.wardCode,
     description: dto.description,
     sla: {
-      resolveDueAt: dto.sla.resolveDueAt,
+      resolveDueAt: dto.sla.resolveDueAt || null,
       hoursRemaining: dto.sla.hoursRemaining,
       isBreached: dto.sla.isBreached,
       severityLabel: dto.sla.severityLabel,
