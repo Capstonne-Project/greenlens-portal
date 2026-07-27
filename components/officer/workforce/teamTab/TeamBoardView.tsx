@@ -135,7 +135,7 @@ function TeamCard({
         {/* Row 2: office */}
         <div className="flex items-center gap-1.5 text-xs text-slate-600">
           <Building2 className="size-3 shrink-0" />
-          <span className="truncate">{team.officeName}</span>
+          <span className="truncate">{team.officeName ?? 'Đội công ty'}</span>
         </div>
       </button>
 

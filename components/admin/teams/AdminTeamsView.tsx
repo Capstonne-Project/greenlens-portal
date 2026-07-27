@@ -236,7 +236,7 @@ export function AdminTeamsView() {
     return base.filter(
       team =>
         team.name.toLowerCase().includes(q) ||
-        team.officeName.toLowerCase().includes(q) ||
+        (team.officeName?.toLowerCase().includes(q) ?? false) ||
         team.teamType.toLowerCase().includes(q)
     );
   }, [data, searchQ]);
