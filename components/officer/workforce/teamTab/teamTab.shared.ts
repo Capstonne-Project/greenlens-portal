@@ -148,7 +148,7 @@ export function buildClientPagination(
   };
 }
 
-export function filterTeamsBySearch<T extends { name: string; officeName?: string }>(
+export function filterTeamsBySearch<T extends { name: string; officeName?: string | null }>(
   items: T[],
   query: string
 ): T[] {

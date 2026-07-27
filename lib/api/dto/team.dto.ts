@@ -33,7 +33,8 @@ export interface TeamListItemDto {
   name: string;
   teamType: string;
   localOfficeId: string;
-  officeName: string;
+  /** null cho company team (không gắn LocalOffice) — BE lược bỏ key khi null. */
+  officeName: string | null;
   isActive: boolean;
   memberCount: number;
   createdAt: string;
@@ -60,7 +61,8 @@ export interface TeamDetailDto {
   name: string;
   teamType: string;
   localOfficeId: string;
-  officeName: string;
+  /** null cho company team (không gắn LocalOffice) — BE lược bỏ key khi null. */
+  officeName: string | null;
   isActive: boolean;
   members: TeamMemberDto[];
   createdAt: string;

@@ -10,7 +10,8 @@ export interface TeamListItem {
   name: string;
   teamType: TeamType;
   localOfficeId: string;
-  officeName: string;
+  /** null cho company team (không gắn LocalOffice). */
+  officeName: string | null;
   isActive: boolean;
   memberCount: number;
   createdAt: string;
@@ -35,7 +36,8 @@ export interface TeamDetail {
   name: string;
   teamType: TeamType;
   localOfficeId: string;
-  officeName: string;
+  /** null cho company team (không gắn LocalOffice). */
+  officeName: string | null;
   isActive: boolean;
   members: TeamMember[];
   createdAt: string;
