@@ -1021,11 +1021,12 @@ export function VerifyPageClient() {
     if (!parentId) return;
 
     if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    // Child (isPossibleDuplicate) trượt ngay dưới parent; highlight child
     setPairFocus({ childId: row.id, parentId });
-    setHighlightedId(parentId);
+    setHighlightedId(row.id);
     setDuplicateDialogRow(row);
 
-    // Đợi layout animation + reorder xong rồi scroll tới gốc
+    // Đợi layout animation + reorder xong rồi scroll tới cặp (gốc → nghi trùng bên dưới)
     window.setTimeout(() => scrollToRow(parentId), 280);
   };
 
@@ -1052,23 +1053,15 @@ export function VerifyPageClient() {
     clearPairFocusSoon();
   };
 
+  /** Mở detail báo cáo gốc (`possibleDuplicateOfReportId`) để xác minh trước. */
   const handleGoToDuplicateParent = () => {
     const parentId = duplicateDialogRow?.possibleDuplicateOfReportId;
     if (!parentId) return;
 
-    const inPage = items.some(item => item.id === parentId);
     setDuplicateDialogRow(null);
-
-    if (!inPage) {
-      setPairFocus(null);
-      setHighlightedId(null);
-      router.push(`/officer/verify/${parentId}`);
-      return;
-    }
-
-    setHighlightedId(parentId);
-    scrollToRow(parentId);
-    clearPairFocusSoon();
+    setPairFocus(null);
+    setHighlightedId(null);
+    router.push(`/officer/verify/${parentId}`);
   };
 
   return (
@@ -1234,7 +1227,7 @@ export function VerifyPageClient() {
               ) : (
                 <LayoutGroup>
                   {displayItems.map((row, rowIndex) => {
-                    const isParentHighlight = highlightedId === row.id;
+                    const isChildHighlight = highlightedId === row.id;
                     const isChildPair = pairFocus?.childId === row.id;
                     const isParentPair = pairFocus?.parentId === row.id;
 
@@ -1252,9 +1245,9 @@ export function VerifyPageClient() {
                           'cursor-pointer border-b transition-[background-color,box-shadow] duration-300',
                           'hover:bg-sky-50/40',
                           (isParentPair || isChildPair) && 'bg-amber-50/70',
-                          isParentHighlight &&
+                          isChildHighlight &&
                             'bg-amber-50 shadow-[inset_3px_0_0_0_#f59e0b] ring-2 ring-inset ring-amber-400/70',
-                          isChildPair && !isParentHighlight && 'shadow-[inset_3px_0_0_0_#fbbf24]'
+                          isParentPair && !isChildHighlight && 'shadow-[inset_3px_0_0_0_#fbbf24]'
                         )}
                         onClick={() => router.push(`/officer/verify/${row.id}`)}
                       >
@@ -1309,7 +1302,7 @@ export function VerifyPageClient() {
               ) : null}
             </div>
             <p className="shrink-0 text-xs text-slate-500 tabular-nums">
-              {pagination.totalItems.toLocaleString('vi-VN')} dòng
+              {pagination.totalItems.toLocaleString('vi-VN')} báo cáo
             </p>
           </div>
         ) : null}
