@@ -76,7 +76,7 @@ export function TeamTab() {
     if (!debouncedSearch) return allTeams;
     const q = debouncedSearch.toLowerCase();
     return allTeams.filter(
-      t => t.name.toLowerCase().includes(q) || t.officeName.toLowerCase().includes(q)
+      t => t.name.toLowerCase().includes(q) || (t.officeName?.toLowerCase().includes(q) ?? false)
     );
   }, [allTeams, debouncedSearch]);
 
