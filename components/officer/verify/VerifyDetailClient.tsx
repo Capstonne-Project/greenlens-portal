@@ -49,7 +49,7 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
-import { REPORT_STATUS_BADGE_CLASSES } from '@/lib/constants/reportStatus';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -83,20 +83,7 @@ const SEVERITY_SET_BY_LABEL: Record<string, string> = {
   Officer: 'Cán bộ',
 };
 
-/** Nhãn status theo ngữ cảnh màn xác minh (Submitted = chờ xử lý). */
-const STATUS_LABEL: Record<ReportStatus, string> = {
-  Submitted: 'Chờ xác minh',
-  Verified: 'Đã xác minh',
-  Dispatched: 'Chờ phân công',
-  Assigned: 'Đã phân công',
-  InProgress: 'Đang xử lý',
-  Resolved: 'Đã giải quyết',
-  Closed: 'Đã đóng',
-  Rejected: 'Từ chối',
-  Duplicate: 'Trùng lặp',
-  PenaltyIssued: 'Đã xử phạt',
-  ClosedNoViolation: 'Đóng — không vi phạm',
-};
+/** Nhãn status — dùng chung REPORT_STATUS_LABEL_VI (đồng bộ bảng Verify / Assign / Leo). */
 
 function SeverityBadge({ severity }: { severity: ReportSeverity }) {
   return (
@@ -115,7 +102,7 @@ function StatusBadge({ status }: { status: ReportStatus }) {
       variant="outline"
       className={cn('border-0 font-semibold', REPORT_STATUS_BADGE_CLASSES[status])}
     >
-      {STATUS_LABEL[status]}
+      {reportStatusLabelVi(status)}
     </Badge>
   );
 }
@@ -724,7 +711,7 @@ function SlaActionCard({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <Shield className="size-4" />
-          Thời hạn xác minh
+          Hạn xác minh
         </CardTitle>
       </CardHeader>
 

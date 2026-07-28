@@ -61,6 +61,7 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
+import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 
@@ -88,15 +89,15 @@ function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
 const ROW_BORDER = 'border-b border-slate-200';
 
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
-  { key: 'image', label: 'Image', className: 'w-20' },
-  { key: 'code', label: 'Report Code', className: 'w-[10%]' },
-  { key: 'category', label: 'Category', className: 'w-[12%]' },
-  { key: 'severity', label: 'Severity', className: 'w-[10%]' },
-  { key: 'status', label: 'Status', className: 'w-[10%]' },
-  { key: 'priority', label: 'Priority', className: 'w-[7%]' },
-  { key: 'address', label: 'Address', className: 'w-[18%]' },
-  { key: 'created', label: 'Created', className: 'w-[11%]' },
-  { key: 'verifySla', label: 'Verify SLA', className: 'w-[12%]' },
+  { key: 'image', label: REPORT_QUEUE_COLUMN_LABEL.image, className: 'w-20' },
+  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[10%]' },
+  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[12%]' },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[10%]' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%]' },
+  { key: 'priority', label: REPORT_QUEUE_COLUMN_LABEL.priority, className: 'w-[7%]' },
+  { key: 'address', label: REPORT_QUEUE_COLUMN_LABEL.address, className: 'w-[18%]' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[11%]' },
+  { key: 'verifySla', label: REPORT_QUEUE_COLUMN_LABEL.verifySla, className: 'w-[12%]' },
 ];
 
 const BADGE_BASE =
