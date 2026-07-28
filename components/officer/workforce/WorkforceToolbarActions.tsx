@@ -6,7 +6,13 @@ import { FileOutput, LayoutGrid, List } from 'lucide-react';
 
 export type WorkforceViewMode = 'board' | 'list';
 
-/** Segmented board/list switch — khớp toolbar mẫu (joined, outer radius only). */
+const VIEW_TOGGLE_CLASS = (active: boolean) =>
+  cn(
+    'flex size-8 cursor-pointer items-center justify-center rounded-lg transition-all',
+    active ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+  );
+
+/** Board/list switch — cùng style LeoTracking (emerald), board bên trái. */
 export function WorkforceViewModeSwitch({
   value,
   onChange,
@@ -15,36 +21,24 @@ export function WorkforceViewModeSwitch({
   onChange: (mode: WorkforceViewMode) => void;
 }) {
   return (
-    <div
-      className="inline-flex h-8 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white"
-      role="group"
-      aria-label="Chế độ xem"
-    >
+    <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Chế độ xem">
       <button
         type="button"
         onClick={() => onChange('board')}
         title="Board"
         aria-pressed={value === 'board'}
-        className={cn(
-          'flex size-8 cursor-pointer items-center justify-center border-r border-slate-200 transition-colors',
-          value === 'board'
-            ? 'bg-slate-800 text-white'
-            : 'bg-white text-slate-600 hover:bg-slate-50'
-        )}
+        className={VIEW_TOGGLE_CLASS(value === 'board')}
       >
-        <LayoutGrid className="size-3.5" aria-hidden />
+        <LayoutGrid className="size-4" aria-hidden />
       </button>
       <button
         type="button"
         onClick={() => onChange('list')}
         title="Danh sách"
         aria-pressed={value === 'list'}
-        className={cn(
-          'flex size-8 cursor-pointer items-center justify-center transition-colors',
-          value === 'list' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
-        )}
+        className={VIEW_TOGGLE_CLASS(value === 'list')}
       >
-        <List className="size-3.5" aria-hidden />
+        <List className="size-4" aria-hidden />
       </button>
     </div>
   );
