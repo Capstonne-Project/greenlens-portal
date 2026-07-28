@@ -1,4 +1,4 @@
-/** FE models — user notifications (BR-NTF-001). */
+/** FE models — user notifications (BR-NTF-001 / BR-NTF-002). */
 
 export type NotificationType =
   | 'ReportStatusChanged'
@@ -6,13 +6,28 @@ export type NotificationType =
   | 'BadgeEarned'
   | 'LevelUp'
   | 'SlaBreachWarning'
+  | 'SlaVerificationBreachedLeo'
+  | 'SlaVerificationEscalatedDeo'
+  | 'SlaResolutionBreached'
+  | 'SlaInspectionBreached'
+  | 'CleanupProgressStale'
+  | 'CleanupTaskAssigned'
   | 'NearbyReport'
   | 'PenaltyIssued'
   | 'ContractExpiry'
+  | 'ContractExpired'
+  | 'ContractExpiryWarning'
+  | 'CompanyReportDispatched'
   | 'ReportOverdue'
   | 'ReportUnassigned'
   | 'ReportAutoClosed'
   | 'DuplicateReviewNeeded'
+  | 'ReopenReviewNeeded'
+  | 'ReopenRequestDecided'
+  | 'ReportVerificationNeeded'
+  | 'StaffInvitationReceived'
+  | 'StaffInvitationAccepted'
+  | 'StaffInvitationDeclined'
   | string;
 
 export interface NotificationItem {
@@ -24,6 +39,10 @@ export interface NotificationItem {
   isRead: boolean;
   readAt: string | null;
   createdAt: string;
+  /** Loại ô nhiễm liên quan (nếu có). */
+  categoryName: string | null;
+  /** Ảnh thu nhỏ báo cáo (nếu có). */
+  thumbnailUrl: string | null;
 }
 
 export interface NotificationsList {
@@ -35,6 +54,7 @@ export interface NotificationsList {
 export interface NotificationsListParams {
   page?: number;
   pageSize?: number;
+  /** `undefined` = tất cả; `false` = chưa đọc; `true` = đã đọc. */
   isRead?: boolean;
 }
 
@@ -53,3 +73,6 @@ export interface UpdateNotificationPreferencesInput {
 export interface MarkAllNotificationsReadResult {
   markedCount: number;
 }
+
+/** Drawer / inbox mặc định — khớp Swagger default pageSize. */
+export const NOTIFICATION_PAGE_SIZE = 20;
