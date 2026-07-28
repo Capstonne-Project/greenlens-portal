@@ -1,11 +1,18 @@
 'use client';
 
 import { AceternityTabs } from '@/components/ui/aceternity-tabs';
-import { Modal, ModalBody, ModalContent, ModalFooter } from '@/components/ui/animated-modal';
 import UsersGroupIcon from '@/components/ui/users-group-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useMyWardCompanies } from '@/hooks/useCompany';
 import { useAssignReport, useDispatchReportToCompany } from '@/hooks/useOfficer';
 import { TEAMS_ASSIGN_PAGE_SIZE, useTeamsInfiniteList } from '@/hooks/useTeams';
@@ -139,7 +146,7 @@ function TeamRow({
   );
 }
 
-/** LEO phân công — animated Modal + Aceternity tabs (Company | Cleanup Team). */
+/** LEO phân công — Dialog + Aceternity tabs (Company | Cleanup Team). */
 export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAssignDialogProps) {
   const assignMutation = useAssignReport();
   const dispatchMutation = useDispatchReportToCompany();
@@ -280,7 +287,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
   const tabs = useMemo(
     () => [
       {
-        title: 'Company',
+        title: 'Công ty',
         value: 'company',
         content: (
           <SelectionListShell
@@ -304,7 +311,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
         ),
       },
       {
-        title: 'Cleanup Team',
+        title: 'Đội dọn dẹp',
         value: 'cleanup-team',
         content: (
           <SelectionListShell
@@ -350,95 +357,99 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
   );
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onOpenChange={nextOpen => {
-        if (!nextOpen) handleClose();
+        if (!nextOpen && !isSubmitting) handleClose();
       }}
-      dismissible={!isSubmitting}
     >
-      <ModalBody className="h-auto min-h-0 max-h-[90vh] w-full max-w-2xl flex-none overflow-hidden md:max-w-2xl">
-        <ModalContent className="flex h-auto min-h-0 flex-none flex-col gap-0 overflow-hidden p-0 md:p-0">
-          <div className="shrink-0 space-y-2 border-b border-border px-8 pb-4 pt-7 pr-14 text-left">
-            <h2 className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-foreground">
-              <FontAwesomeIcon
-                icon={faClipboardList}
-                className="size-4 shrink-0 text-foreground"
-                aria-hidden
-              />
-              Phân công xử lý
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Chọn công ty DVMT phục vụ phường/xã và đội dọn dẹp cộng đồng cho{' '}
-              <span className="font-medium text-foreground">{reportIds.length}</span> báo cáo đã
-              chọn.
-            </p>
-          </div>
-
-          {/* Fixed slots — list không đẩy/che ghi chú; dialog không cần scroll. */}
-          <div className="flex shrink-0 flex-col gap-4 px-8 py-5">
-            <AceternityTabs
-              key={formKey}
-              tabs={tabs}
-              onActiveChange={handleTabChange}
-              containerClassName="shrink-0 rounded-full border border-border bg-muted/30 p-1"
-              activeTabClassName="bg-muted"
-              tabClassName="px-5 py-1.5"
-              contentClassName="h-[200px] shrink-0"
+      <DialogContent
+        className="flex h-auto max-h-[90vh] w-full max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+        onInteractOutside={e => {
+          if (isSubmitting) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isSubmitting) e.preventDefault();
+        }}
+      >
+        <DialogHeader className="shrink-0 space-y-2 border-b border-border px-8 pb-4 pt-7 pr-14 text-left">
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-foreground">
+            <FontAwesomeIcon
+              icon={faClipboardList}
+              className="size-4 shrink-0 text-foreground"
+              aria-hidden
             />
+            Phân công xử lý
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+            Chọn công ty DVMT phục vụ phường/xã và đội dọn dẹp cộng đồng cho{' '}
+            <span className="font-medium text-foreground">{reportIds.length}</span> báo cáo đã chọn.
+          </DialogDescription>
+        </DialogHeader>
 
-            <div className="shrink-0">
-              <label
-                htmlFor="assign-note"
-                className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                Ghi chú (tuỳ chọn)
-              </label>
-              <textarea
-                id="assign-note"
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                rows={2}
-                placeholder="Yêu cầu cụ thể, deadline, lưu ý an toàn..."
-                className="mt-2 h-18 w-full resize-none rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10"
-              />
-            </div>
+        {/* Fixed slots — list không đẩy/che ghi chú; dialog không cần scroll. */}
+        <div className="flex shrink-0 flex-col gap-4 px-8 py-5">
+          <AceternityTabs
+            key={formKey}
+            tabs={tabs}
+            onActiveChange={handleTabChange}
+            containerClassName="shrink-0 rounded-full border border-border bg-muted/30 p-1"
+            activeTabClassName="bg-muted"
+            tabClassName="px-5 py-1.5"
+            contentClassName="h-[200px] shrink-0"
+          />
+
+          <div className="shrink-0">
+            <label
+              htmlFor="assign-note"
+              className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              Ghi chú (tuỳ chọn)
+            </label>
+            <textarea
+              id="assign-note"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              rows={2}
+              placeholder="Yêu cầu cụ thể, deadline, lưu ý an toàn..."
+              className="mt-2 h-18 w-full resize-none rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10"
+            />
           </div>
+        </div>
 
-          <ModalFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-border bg-muted/20 px-8 py-4 sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              {activeTab === 'company' ? (
-                selectedCompany ? (
-                  <>
-                    Công ty:{' '}
-                    <span className="font-medium text-foreground">{selectedCompany.name}</span>
-                  </>
-                ) : (
-                  'Chưa chọn công ty'
-                )
-              ) : (
+        <DialogFooter className="shrink-0 flex-row items-center justify-between gap-3 border-t border-border bg-muted/20 px-8 py-4 sm:justify-between sm:space-x-0">
+          <p className="text-xs text-muted-foreground">
+            {activeTab === 'company' ? (
+              selectedCompany ? (
                 <>
-                  Đã chọn{' '}
-                  <span className="font-medium text-foreground">{selectedTeamIds.size}</span> đội
+                  Công ty:{' '}
+                  <span className="font-medium text-foreground">{selectedCompany.name}</span>
                 </>
-              )}
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
-                Huỷ
-              </Button>
-              <Button
-                onClick={() => void handleSubmit()}
-                disabled={!canSubmit}
-                className="bg-foreground text-background hover:bg-foreground/90"
-              >
-                <FontAwesomeIcon icon={faUserPlus} className="mr-1.5 size-3.5" aria-hidden />
-                {isSubmitting ? 'Đang phân công...' : 'Phân công'}
-              </Button>
-            </div>
-          </ModalFooter>
-        </ModalContent>
-      </ModalBody>
-    </Modal>
+              ) : (
+                'Chưa chọn công ty'
+              )
+            ) : (
+              <>
+                Đã chọn <span className="font-medium text-foreground">{selectedTeamIds.size}</span>{' '}
+                đội
+              </>
+            )}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+              Huỷ
+            </Button>
+            <Button
+              onClick={() => void handleSubmit()}
+              disabled={!canSubmit}
+              className="bg-foreground text-background hover:bg-foreground/90"
+            >
+              <FontAwesomeIcon icon={faUserPlus} className="mr-1.5 size-3.5" aria-hidden />
+              {isSubmitting ? 'Đang phân công...' : 'Phân công'}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
