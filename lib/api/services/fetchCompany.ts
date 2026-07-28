@@ -317,6 +317,7 @@ export async function fetchCompanyAssignments(
   return adaptCompanyAssignments(params);
 }
 
+/** GET /v1/reports/company-assignments/{reportId} — chi tiết tiến độ báo cáo [CompanyManager]. */
 export async function fetchCompanyAssignmentDetail(
   reportId: string
 ): Promise<ApiEnvelope<CompanyAssignmentDetail>> {

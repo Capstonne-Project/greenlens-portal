@@ -1,9 +1,12 @@
 import { ADMIN_USERS_NAV } from '@/lib/constants/adminUsersNav';
+import { getProfilePageTitleByPath } from '@/lib/constants/profilePortal';
 
 /** Tiêu đề header admin theo pathname (tiếng Việt). */
 export function getAdminPageTitle(pathname: string): string {
+  const profileTitle = getProfilePageTitleByPath(pathname);
+  if (profileTitle) return profileTitle;
+
   if (pathname === '/admin') return 'Tổng quan quản trị';
-  if (pathname === '/admin/profile') return 'Hồ sơ cá nhân';
   if (pathname === '/admin/offices' || pathname === '/admin/organization')
     return 'Văn phòng địa phương';
   if (pathname === '/admin/pollution-categories') return 'Danh mục ô nhiễm';

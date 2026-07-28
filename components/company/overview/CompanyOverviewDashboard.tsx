@@ -1,5 +1,6 @@
 'use client';
 
+import { CompanyActiveAssignmentsPanel } from '@/components/company/overview/CompanyActiveAssignmentsPanel';
 import {
   CompanyOverviewSummaryCharts,
   CompanyQueueAgingDonut,
@@ -11,10 +12,23 @@ import {
   CompanyWorkloadTrend,
 } from '@/components/company/overview/CompanyAnalyticsCharts';
 import { formatUpdatedAt } from '@/components/admin/overview/adminDashboardFormat';
+import { useCompanyDashboardAssignments, useMyCompany } from '@/hooks/useCompany';
 import { useCompanyOverview } from '@/hooks/useCompanyOverview';
-import { useMyCompany } from '@/hooks/useCompany';
 import { useCompanyOverviewUiStore } from '@/lib/store/companyOverviewUiStore';
+import {
+  assignmentsToRecentActivities,
+  assignmentsToTaskStatusItems,
+  assignmentsToTeamPerformance,
+  assignmentsToUpcomingDeadlines,
+  supplementOverviewFromAssignments,
+} from '@/utils/companyAssignmentDashboard';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { useMemo } from 'react';
+
+function pickWithFallback<T>(primary: T[] | undefined, fallback: T[]): T[] {
+  if (primary && primary.length > 0) return primary;
+  return fallback;
+}
 
 export function CompanyOverviewDashboard() {
   const dateParams = useCompanyOverviewUiStore(s => s.dateParams);
@@ -44,7 +58,50 @@ export function CompanyOverviewDashboard() {
     refetch: refetchDash,
   } = useCompanyOverview(dateParams);
 
+  const {
+    data: assignmentsData,
+    isPending: assignmentsPending,
+    isError: assignmentsError,
+    refetch: refetchAssignments,
+  } = useCompanyDashboardAssignments();
+
+  const assignmentItems = assignmentsData?.items ?? [];
+  const assignmentTotal = assignmentsData?.pagination.totalItems ?? assignmentItems.length;
+
+  const mergedOverview = useMemo(
+    () =>
+      overview
+        ? supplementOverviewFromAssignments(overview, assignmentItems, assignmentTotal)
+        : undefined,
+    [overview, assignmentItems, assignmentTotal]
+  );
+
+  const mergedTaskStatus = useMemo(
+    () => pickWithFallback(taskStatus, assignmentsToTaskStatusItems(assignmentItems)),
+    [taskStatus, assignmentItems]
+  );
+
+  const mergedUpcomingDeadlines = useMemo(
+    () => pickWithFallback(upcomingDeadlines, assignmentsToUpcomingDeadlines(assignmentItems)),
+    [upcomingDeadlines, assignmentItems]
+  );
+
+  const mergedTeamPerformance = useMemo(
+    () => pickWithFallback(teamPerformance, assignmentsToTeamPerformance(assignmentItems)),
+    [teamPerformance, assignmentItems]
+  );
+
+  const mergedRecentActivities = useMemo(
+    () => pickWithFallback(recentActivities, assignmentsToRecentActivities(assignmentItems)),
+    [recentActivities, assignmentItems]
+  );
+
   const updatedAt = updatedAtMs > 0 ? new Date(updatedAtMs) : null;
+
+  const handleRefreshAll = () => {
+    refetchDash();
+    refetchAssignments();
+  };
 
   if (companyPending && !company) {
     return <CompanyOverviewSkeleton />;
@@ -86,49 +143,54 @@ export function CompanyOverviewDashboard() {
           </p>
           <button
             type="button"
-            onClick={() => refetchDash()}
+            onClick={handleRefreshAll}
             className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted"
           >
             <RefreshCw className="size-3.5" aria-hidden />
             Thử lại analytics
           </button>
         </div>
-      ) : overview ? (
+      ) : mergedOverview ? (
         <>
           <p className="shrink-0 text-[10px] text-muted-foreground">
             {updatedAt ? `Cập nhật ${formatUpdatedAt(updatedAt)}` : 'Đang đồng bộ…'}
-            {isFetching ? ' · làm mới' : ''}
+            {isFetching || assignmentsPending ? ' · làm mới' : ''}
           </p>
 
-          {/*
-            One-page grid (lg): 3 equal rows fill remaining viewport.
-            Long lists scroll inside each card — no page scrollbar.
-          */}
-          <div className="grid min-h-0 flex-1 gap-2 overflow-hidden lg:grid-cols-12 lg:grid-rows-3">
+          <div className="grid min-h-0 flex-1 gap-2 overflow-hidden lg:grid-cols-12 lg:grid-rows-4">
             <div className="min-h-0 lg:col-span-12 lg:row-start-1">
-              <CompanyOverviewSummaryCharts overview={overview} />
+              <CompanyOverviewSummaryCharts overview={mergedOverview} />
             </div>
 
-            <div className="min-h-0 lg:col-span-4 lg:row-start-2">
+            <div className="min-h-0 lg:col-span-12 lg:row-start-2">
+              <CompanyActiveAssignmentsPanel
+                items={assignmentItems}
+                totalItems={assignmentTotal}
+                isPending={assignmentsPending}
+                isError={assignmentsError}
+              />
+            </div>
+
+            <div className="min-h-0 lg:col-span-4 lg:row-start-3">
               <CompanyWorkloadTrend points={workloadTrend} />
             </div>
-            <div className="min-h-0 lg:col-span-4 lg:row-start-2">
-              <CompanyTaskStatusDonut items={taskStatus} />
+            <div className="min-h-0 lg:col-span-4 lg:row-start-3">
+              <CompanyTaskStatusDonut items={mergedTaskStatus} />
             </div>
-            <div className="min-h-0 lg:col-span-4 lg:row-start-2">
+            <div className="min-h-0 lg:col-span-4 lg:row-start-3">
               <CompanyQueueAgingDonut items={queueAging} />
             </div>
 
-            <div className="min-h-0 lg:col-span-3 lg:row-start-3">
-              <CompanyUpcomingDeadlines items={upcomingDeadlines} />
+            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
+              <CompanyUpcomingDeadlines items={mergedUpcomingDeadlines} />
             </div>
-            <div className="min-h-0 lg:col-span-3 lg:row-start-3">
-              <CompanyRecentActivities items={recentActivities} />
+            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
+              <CompanyRecentActivities items={mergedRecentActivities} />
             </div>
-            <div className="min-h-0 lg:col-span-3 lg:row-start-3">
-              <CompanyTeamPerformanceTable items={teamPerformance} />
+            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
+              <CompanyTeamPerformanceTable items={mergedTeamPerformance} />
             </div>
-            <div className="min-h-0 lg:col-span-3 lg:row-start-3">
+            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
               <CompanyStaffPerformanceTable items={staffPerformance} />
             </div>
           </div>
@@ -141,18 +203,19 @@ export function CompanyOverviewDashboard() {
 function CompanyOverviewSkeleton() {
   return (
     <div
-      className="grid h-full min-h-0 gap-2 lg:grid-cols-12 lg:grid-rows-3"
+      className="grid h-full min-h-0 gap-2 lg:grid-cols-12 lg:grid-rows-4"
       aria-busy="true"
       aria-label="Đang tải tổng quan"
     >
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-12" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-4" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-4" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-4" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-12 lg:row-start-1" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-12 lg:row-start-2" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-4 lg:row-start-3" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-4 lg:row-start-3" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-4 lg:row-start-3" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
+      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
     </div>
   );
 }
