@@ -61,7 +61,7 @@ const SYSTEM_NAV: MapShellSystemNav = {
   settings: {
     id: 'settings',
     label: 'Cài đặt',
-    href: '/officer/profile',
+    href: '/officer/settings',
     icon: faGear,
   },
 };

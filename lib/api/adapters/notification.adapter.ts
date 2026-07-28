@@ -1,4 +1,6 @@
 import apiService from '@/lib/api/core';
+import type { NotificationsListDto } from '@/lib/api/dto/notification.dto';
+import { mapNotificationsListDto } from '@/lib/api/mappers/notification.mapper';
 import type {
   MarkAllNotificationsReadResult,
   NotificationPreferences,
@@ -7,6 +9,7 @@ import type {
   UpdateNotificationPreferencesInput,
 } from '@/lib/api/models/notification';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import { mapApiEnvelope } from '@/lib/api/types/envelope';
 
 function buildListQuery(
   params?: NotificationsListParams
@@ -18,15 +21,15 @@ function buildListQuery(
   return query;
 }
 
-/** GET /v1/notifications — danh sách thông báo của tôi. */
+/** GET /v1/notifications — danh sách thông báo của tôi (BR-NTF-001). */
 export async function adaptNotificationsList(
   params?: NotificationsListParams
 ): Promise<ApiEnvelope<NotificationsList>> {
-  const res = await apiService.get<ApiEnvelope<NotificationsList>>(
+  const res = await apiService.get<ApiEnvelope<NotificationsListDto>>(
     '/v1/notifications',
     buildListQuery(params)
   );
-  return res.data;
+  return mapApiEnvelope(res.data, mapNotificationsListDto);
 }
 
 /** PUT /v1/notifications/{id}/read — đánh dấu đã đọc. */

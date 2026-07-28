@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronDown,
   faChevronRight,
+  faGear,
   faLanguage,
   faRightFromBracket,
   faUser,
@@ -33,8 +34,10 @@ function initialsFromUser(name: string | undefined, email: string | undefined): 
 
 type SidebarUserProfileProps = {
   expanded: boolean;
-  /** Account link — Officer default; Admin `/admin/profile`; Company `/company/account`. */
+  /** Account settings — Officer `/officer/settings/account`; Admin `/admin/profile`; Company `/company/account`. */
   profileHref?: string;
+  /** General settings — Officer `/officer/settings`. Pass empty string to hide. */
+  settingsHref?: string;
 };
 
 function isPointerOverDesktopSidebar(): boolean {
@@ -44,7 +47,8 @@ function isPointerOverDesktopSidebar(): boolean {
 
 export function MapSidebarUserProfile({
   expanded,
-  profileHref = '/officer/profile',
+  profileHref = '/officer/settings/account',
+  settingsHref = '/officer/settings',
 }: SidebarUserProfileProps) {
   const router = useRouter();
   const { setOpen, setHoverLocked } = useSidebar();
@@ -245,24 +249,34 @@ export function MapSidebarUserProfile({
       {menuOpen ? (
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-47 rounded-lg border border-slate-900/8 bg-white py-1 shadow-lg"
+          className="fixed z-50 min-w-47 rounded-lg border border-slate-900/8 bg-white p-1.5 shadow-lg"
           role="menu"
           style={{ top: menuPos.top, left: menuPos.left }}
         >
+          {settingsHref ? (
+            <Link
+              href={settingsHref}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
+              role="menuitem"
+              onClick={closeMenu}
+            >
+              <FontAwesomeIcon icon={faGear} className="size-3.5 text-gray-500" />
+              Cài đặt
+            </Link>
+          ) : null}
           <Link
             href={profileHref}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
             role="menuitem"
             onClick={closeMenu}
           >
             <FontAwesomeIcon icon={faUser} className="size-3.5 text-gray-500" />
-            My account
+            Tài khoản của tôi
           </Link>
-          <div className="my-1 h-px bg-gray-200" role="separator" />
           <div ref={languageRef}>
             <button
               type="button"
-              className="flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100"
+              className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100"
               role="menuitem"
               aria-expanded={languageOpen}
               onClick={() => {
@@ -272,20 +286,20 @@ export function MapSidebarUserProfile({
             >
               <span className="inline-flex items-center gap-2.5">
                 <FontAwesomeIcon icon={faLanguage} className="size-3.5 text-gray-500" />
-                Language
+                Ngôn ngữ
               </span>
               <FontAwesomeIcon icon={faChevronRight} className="size-2.5 text-gray-400" />
             </button>
             {languageOpen ? (
               <div
-                className="fixed z-51 min-w-34 rounded-lg border border-slate-900/8 bg-white py-1 shadow-lg"
+                className="fixed z-51 min-w-34 rounded-lg border border-slate-900/8 bg-white p-1.5 shadow-lg"
                 role="menu"
                 style={{ top: languagePos.top, left: languagePos.left }}
               >
                 <button
                   type="button"
                   className={cn(
-                    'block w-full cursor-pointer border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
+                    'block w-full cursor-pointer rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
                     locale === 'vi' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
                   )}
                   role="menuitem"
@@ -299,7 +313,7 @@ export function MapSidebarUserProfile({
                 <button
                   type="button"
                   className={cn(
-                    'block w-full cursor-pointer border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
+                    'block w-full cursor-pointer rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
                     locale === 'en' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
                   )}
                   role="menuitem"
@@ -313,15 +327,14 @@ export function MapSidebarUserProfile({
               </div>
             ) : null}
           </div>
-          <div className="my-1 h-px bg-gray-200" role="separator" />
           <button
             type="button"
-            className="flex w-full cursor-pointer items-center gap-2.5 border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-red-600 hover:bg-red-50"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-red-600 hover:bg-red-50"
             role="menuitem"
             onClick={handleLogout}
           >
             <FontAwesomeIcon icon={faRightFromBracket} className="size-3.5 text-red-600" />
-            Logout
+            Đăng xuất
           </button>
         </div>
       ) : null}
