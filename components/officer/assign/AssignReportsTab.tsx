@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CreateCommunityCleanupDialog } from '@/components/officer/assign/CreateCommunityCleanupDialog';
 import { Input } from '@/components/ui/input';
 import LayoutSidebarRightIcon from '@/components/ui/layout-sidebar-right-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
@@ -33,7 +34,7 @@ import {
 } from '@/lib/constants/reportActions';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ImageIcon, Loader2, Search, UserPlus } from 'lucide-react';
+import { ChevronDown, HeartHandshake, ImageIcon, Loader2, Search, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -57,7 +58,7 @@ type DataColumnKey =
   | 'verifySla'
   | 'resolveSla';
 
-type ColumnKey = 'select' | DataColumnKey;
+type ColumnKey = 'select' | DataColumnKey | 'actions';
 
 /** Uniform horizontal pad so adjacent headers (e.g. Priority | Address) don’t collide. */
 const CELL_PAD = 'px-3 py-3';
@@ -76,15 +77,16 @@ const BADGE_SIZE_DEFAULT =
 const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'select', label: 'Chọn', className: 'w-[3%]' },
   { key: 'image', label: 'Image', className: 'w-[7%]' },
-  { key: 'code', label: 'Report Code', className: 'w-[11%]' },
-  { key: 'category', label: 'Category', className: 'w-[10%]' },
+  { key: 'code', label: 'Report Code', className: 'w-[10%]' },
+  { key: 'category', label: 'Category', className: 'w-[9%]' },
   { key: 'severity', label: 'Severity', className: 'w-[8%]' },
   { key: 'status', label: 'Status', className: 'w-[9%]' },
-  { key: 'priority', label: 'Priority', className: 'w-[8%]' },
-  { key: 'address', label: 'Address', className: 'w-[17%]' },
-  { key: 'created', label: 'Created', className: 'w-[10%]' },
-  { key: 'verifySla', label: 'Verify SLA', className: 'w-[9%]' },
-  { key: 'resolveSla', label: 'Resolve SLA', className: 'w-[8%]' },
+  { key: 'priority', label: 'Priority', className: 'w-[7%]' },
+  { key: 'address', label: 'Address', className: 'w-[13%]' },
+  { key: 'created', label: 'Created', className: 'w-[9%]' },
+  { key: 'verifySla', label: 'Verify SLA', className: 'w-[8%]' },
+  { key: 'resolveSla', label: 'Resolve SLA', className: 'w-[7%]' },
+  { key: 'actions', label: 'Cộng đồng', className: 'w-[10%]' },
 ];
 
 const SEVERITY_OPTIONS: Array<{ label: string; value: ReportSeverity }> = [
@@ -724,6 +726,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   };
 
   const [assignOpen, setAssignOpen] = useState(false);
+  const [communityReport, setCommunityReport] = useState<ReportQueueItem | null>(null);
 
   const filtered = useMemo(() => {
     return (data?.items ?? []).filter((r: ReportQueueItem) => {
@@ -998,6 +1001,30 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                             );
                           }
 
+                          if (col.key === 'actions') {
+                            return (
+                              <TableCell
+                                key={col.key}
+                                className={cn(CELL_PAD, 'min-w-0 align-middle', col.className)}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {report.status === 'Verified' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCommunityReport(report)}
+                                    title="Mở chương trình dọn cộng đồng cho báo cáo này"
+                                    className="inline-flex h-7 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-medium text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100"
+                                  >
+                                    <HeartHandshake className="size-3" aria-hidden />
+                                    Tạo cộng đồng
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-slate-300">—</span>
+                                )}
+                              </TableCell>
+                            );
+                          }
+
                           return (
                             <TableCell
                               key={col.key}
@@ -1039,6 +1066,16 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
         onClose={() => setAssignOpen(false)}
         reportIds={[...selected]}
         onAssigned={handleAssigned}
+      />
+
+      <CreateCommunityCleanupDialog
+        open={communityReport != null}
+        onClose={() => setCommunityReport(null)}
+        reportId={communityReport?.id ?? ''}
+        reportCode={communityReport?.code ?? ''}
+        reportLatitude={communityReport?.latitude ?? 0}
+        reportLongitude={communityReport?.longitude ?? 0}
+        onCreated={() => setCommunityReport(null)}
       />
     </>
   );
