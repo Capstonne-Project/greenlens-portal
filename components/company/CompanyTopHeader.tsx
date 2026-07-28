@@ -1,6 +1,6 @@
 'use client';
 
-import { CompanyNotificationBell } from '@/components/company/notifications/CompanyNotificationBell';
+import { NotificationHeaderBell } from '@/components/notification/NotificationHeaderBell';
 import { CompanyOverviewHeaderBar } from '@/components/company/overview/CompanyOverviewHeaderBar';
 import { getCompanyPageTitle } from '@/lib/constants/companyPageTitles';
 import { useUiStore } from '@/lib/store/uiStore';
@@ -52,7 +52,7 @@ export function CompanyTopHeader() {
             isOverview ? 'gap-1.5 pl-2 md:gap-2 md:pl-3' : 'gap-2 pl-3 md:gap-2.5 md:pl-4'
           )}
         >
-          <CompanyNotificationBell />
+          <NotificationHeaderBell />
           <button
             type="button"
             onClick={toggleLocale}

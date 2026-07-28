@@ -1,3 +1,4 @@
+import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
 import type { UserRole } from '@/lib/constants/systemRoles';
 import type { LucideIcon } from 'lucide-react';
 import { BarChart3, MessageSquare, User } from 'lucide-react';
@@ -16,5 +17,5 @@ export type OfficerAvatarMenuItem = {
 export const OFFICER_AVATAR_MENU: OfficerAvatarMenuItem[] = [
   { label: 'KPI & Thống kê', href: '/officer/kpi', icon: BarChart3 },
   { label: 'Bình luận', href: '/officer/comments', icon: MessageSquare },
-  { label: 'Hồ sơ', href: '/officer/profile', icon: User },
+  { label: 'Hồ sơ', href: PROFILE_ROUTES.officer, icon: User },
 ];

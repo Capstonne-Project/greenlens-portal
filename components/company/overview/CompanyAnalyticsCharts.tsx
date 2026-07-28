@@ -18,6 +18,7 @@ import type {
 } from '@/lib/api/services/fetchCompanyDashboard';
 import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 const STATUS_COLORS = ['#4f46e5', '#0ea5e9', '#f59e0b', '#059669', '#ef4444', '#94a3b8'];
@@ -537,30 +538,51 @@ export function CompanyUpcomingDeadlines({
         <EmptyHint text="Không có deadline sắp tới" />
       ) : (
         <ul className="h-full space-y-1.5 overflow-y-auto pr-1">
-          {rows.map(row => (
-            <li
-              key={row.taskId}
-              className="rounded-lg border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px]"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <span className="truncate font-semibold text-foreground">
-                  {row.reportCode || row.taskId}
-                </span>
-                {row.priority ? (
-                  <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-900">
-                    {row.priority}
+          {rows.map(row => {
+            const detailHref = row.reportId
+              ? `/company/assignments?reportId=${encodeURIComponent(row.reportId)}`
+              : null;
+
+            const content = (
+              <>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="truncate font-semibold text-foreground">
+                    {row.reportCode || row.taskId}
                   </span>
-                ) : null}
-              </div>
-              <p className="mt-0.5 truncate text-muted-foreground">{row.location || '—'}</p>
-              <p className="mt-0.5 tabular-nums text-muted-foreground">
-                Hạn {new Date(row.deadline).toLocaleString('vi-VN')}
-                {typeof row.remainingHours === 'number'
-                  ? ` · còn ${row.remainingHours.toFixed(1)}h`
-                  : ''}
-              </p>
-            </li>
-          ))}
+                  {row.priority ? (
+                    <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-900">
+                      {row.priority}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-0.5 truncate text-muted-foreground">{row.location || '—'}</p>
+                <p className="mt-0.5 tabular-nums text-muted-foreground">
+                  Hạn {new Date(row.deadline).toLocaleString('vi-VN')}
+                  {typeof row.remainingHours === 'number'
+                    ? ` · còn ${row.remainingHours.toFixed(1)}h`
+                    : ''}
+                </p>
+              </>
+            );
+
+            return (
+              <li
+                key={row.taskId}
+                className={cn(
+                  'rounded-lg border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px]',
+                  detailHref && 'transition hover:border-emerald-200 hover:bg-emerald-50/40'
+                )}
+              >
+                {detailHref ? (
+                  <Link href={detailHref} className="block">
+                    {content}
+                  </Link>
+                ) : (
+                  content
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </CardShell>

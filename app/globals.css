@@ -85,6 +85,8 @@
   /* Custom animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-anchor-flyout-in: anchor-flyout-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-anchor-flyout-out: anchor-flyout-out 0.2s cubic-bezier(0.4, 0, 0.6, 1) both;
 }
 
 @keyframes accordion-down {
@@ -101,6 +103,28 @@
   }
   to {
     height: 0;
+  }
+}
+
+@keyframes anchor-flyout-in {
+  from {
+    opacity: 0;
+    transform: scale(0.72) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes anchor-flyout-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.72) translateY(-8px);
   }
 }
 

@@ -138,6 +138,42 @@ export function assignmentStatusCompanyHint(status: string): string {
   }
 }
 
+/** Đội đã xác nhận nhận task (InProgress/Completed hoặc có startedAt). */
+export function isTeamTaskAccepted(status: string, startedAt?: string | null): boolean {
+  if (status === 'Declined' || status === 'Assigned') {
+    const at = startedAt?.trim();
+    if (!at || at.startsWith('0001-01-01')) return false;
+    return true;
+  }
+  return status === 'InProgress' || status === 'Completed' || Boolean(startedAt?.trim());
+}
+
+export function teamTaskAcceptanceLabel(
+  status: string,
+  startedAt?: string | null
+): 'accepted' | 'pending' | 'declined' {
+  if (status === 'Declined') return 'declined';
+  if (isTeamTaskAccepted(status, startedAt)) return 'accepted';
+  return 'pending';
+}
+
+export function teamTaskAcceptanceText(status: string, startedAt?: string | null): string {
+  const kind = teamTaskAcceptanceLabel(status, startedAt);
+  if (kind === 'declined') return 'Đã từ chối task';
+  if (kind === 'accepted') {
+    const at = formatCompanyDateTime(startedAt);
+    return at !== '—' ? `Đã nhận task · ${at}` : 'Đã nhận task';
+  }
+  return 'Chờ đội nhận task';
+}
+
+export function teamTaskAcceptanceClasses(status: string, startedAt?: string | null): string {
+  const kind = teamTaskAcceptanceLabel(status, startedAt);
+  if (kind === 'accepted') return 'bg-emerald-100 text-emerald-900 ring-emerald-200';
+  if (kind === 'declined') return 'bg-red-100 text-red-900 ring-red-200';
+  return 'bg-amber-50 text-amber-900 ring-amber-200';
+}
+
 export function formatCompanyDateTime(iso: string | null | undefined): string {
   if (!iso?.trim() || iso.startsWith('0001-01-01')) return '—';
   try {

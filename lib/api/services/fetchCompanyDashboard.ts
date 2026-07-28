@@ -61,6 +61,8 @@ export interface CompanyTeamPerformanceItem {
 
 export interface CompanyUpcomingDeadlineItem {
   taskId: string;
+  /** When from company-assignments fallback — opens detail page. */
+  reportId?: string;
   reportCode?: string;
   location?: string;
   deadline: string;

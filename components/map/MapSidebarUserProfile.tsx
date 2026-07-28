@@ -13,6 +13,7 @@ import {
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuthStore } from '@/lib/store/authStore';
+import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
 import { useUiStore } from '@/lib/store/uiStore';
 import {
   mapNavItemIconRailClass,
@@ -199,7 +200,7 @@ export function MapSidebarUserProfile({ expanded }: MapSidebarUserProfileProps) 
           }}
         >
           <Link
-            href="/officer/profile"
+            href={PROFILE_ROUTES.officer}
             className="flex w-full cursor-pointer items-center gap-[0.65rem] border-none bg-transparent px-[0.85rem] py-[0.55rem] text-left text-[0.8125rem] font-medium text-gray-700 no-underline hover:bg-gray-100 hover:text-gray-900"
             role="menuitem"
             onClick={() => {
