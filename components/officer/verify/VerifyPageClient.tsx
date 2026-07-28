@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   BadgeCheck,
   ChevronDown,
@@ -792,6 +792,7 @@ function VerifyRowActions({
 
 export function VerifyPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAuthStore(s => s.user);
   const fullName = user?.name?.trim() || 'Người dùng';
   const [search, setSearch] = useState('');
@@ -803,6 +804,7 @@ export function VerifyPageClient() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const highlightClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deepLinkHighlightAppliedRef = useRef<string | null>(null);
   const verifyMutation = useVerifyReport();
 
   const yearOnlyDefaults = getPresetDateInputs('all');
@@ -1015,6 +1017,27 @@ export function VerifyPageClient() {
       rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   };
+
+  /** Deep-link từ notification: `/officer/verify?highlight={reportId}` */
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight')?.trim() || null;
+    if (!highlightId || isPending) return;
+    if (deepLinkHighlightAppliedRef.current === highlightId) return;
+    deepLinkHighlightAppliedRef.current = highlightId;
+
+    if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    setHighlightedId(highlightId);
+
+    if (items.some(item => item.id === highlightId)) {
+      window.setTimeout(() => scrollToRow(highlightId), 160);
+    }
+
+    highlightClearRef.current = setTimeout(() => {
+      setHighlightedId(null);
+    }, 4000);
+
+    router.replace('/officer/verify', { scroll: false });
+  }, [searchParams, isPending, items, router]);
 
   const focusDuplicatePair = (row: ReportQueueItem) => {
     const parentId = row.possibleDuplicateOfReportId;

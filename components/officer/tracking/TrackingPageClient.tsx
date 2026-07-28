@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LeoTrackingReportDetail } from './LeoTrackingReportDetail';
 
 function TrackingFallback() {
@@ -23,11 +24,23 @@ const LeoTrackingPageClient = dynamic(
 
 /** ACL LEO do proxy — không render Access Denied trên client. */
 export function TrackingPageClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [detailReportId, setDetailReportId] = useState<string | null>(null);
+  const detailFromQuery = searchParams.get('reportId')?.trim() || null;
+  const activeDetailReportId = detailFromQuery ?? detailReportId;
 
-  if (detailReportId) {
+  const handleBackFromDetail = () => {
+    if (detailFromQuery) {
+      router.replace('/officer/tracking', { scroll: false });
+      return;
+    }
+    setDetailReportId(null);
+  };
+
+  if (activeDetailReportId) {
     return (
-      <LeoTrackingReportDetail reportId={detailReportId} onBack={() => setDetailReportId(null)} />
+      <LeoTrackingReportDetail reportId={activeDetailReportId} onBack={handleBackFromDetail} />
     );
   }
 

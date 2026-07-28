@@ -328,11 +328,13 @@ function ReportThumbStrip({
   alt,
   className,
   aspectClassName = 'aspect-[16/10]',
+  eagerFirstImage = false,
 }: {
   urls: string[];
   alt: string;
   className?: string;
   aspectClassName?: string;
+  eagerFirstImage?: boolean;
 }) {
   const thumbs = urls.filter(Boolean).slice(0, 3);
 
@@ -359,6 +361,7 @@ function ReportThumbStrip({
           fill
           sizes="(max-width: 640px) 100vw, 25vw"
           className="object-cover"
+          loading={eagerFirstImage ? 'eager' : 'lazy'}
           unoptimized
         />
       </div>
@@ -375,7 +378,15 @@ function ReportThumbStrip({
       )}
     >
       <div className={cn('relative min-h-0', thumbs.length >= 3 && 'row-span-2')}>
-        <Image src={thumbs[0]!} alt={alt} fill sizes="18vw" className="object-cover" unoptimized />
+        <Image
+          src={thumbs[0]!}
+          alt={alt}
+          fill
+          sizes="18vw"
+          className="object-cover"
+          loading={eagerFirstImage ? 'eager' : 'lazy'}
+          unoptimized
+        />
       </div>
       {thumbs.length === 2 ? (
         <div className="relative min-h-0">
@@ -395,7 +406,13 @@ function ReportThumbStrip({
 }
 
 /** Board card body — shadcn Card + thumb + tín hiệu scan (severity / status / progress). */
-function ProjectCard({ item }: { item: LeoMyReportItem }) {
+function ProjectCard({
+  item,
+  eagerFirstImage = false,
+}: {
+  item: LeoMyReportItem;
+  eagerFirstImage?: boolean;
+}) {
   const progress = Math.max(0, Math.min(100, Math.round(item.overallProgressPercent ?? 0)));
   const title = item.categoryName;
   const meta = item.address?.trim() || item.code;
@@ -424,7 +441,11 @@ function ProjectCard({ item }: { item: LeoMyReportItem }) {
   return (
     <Card className="overflow-hidden border-border/50 bg-card shadow-none transition-colors group-hover:bg-card">
       <div className="relative">
-        <ReportThumbStrip urls={item.thumbnails ?? []} alt={item.code} />
+        <ReportThumbStrip
+          urls={item.thumbnails ?? []}
+          alt={item.code}
+          eagerFirstImage={eagerFirstImage}
+        />
         <span
           className={cn(
             'absolute right-2 top-2 inline-flex max-w-[75%] items-center truncate rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm backdrop-blur-sm',
@@ -967,7 +988,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
               <HoverEffect
                 layoutId="leo-tracking-hover"
                 className="grid-cols-1 gap-1 py-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-                items={items.map(item => {
+                items={items.map((item, index) => {
                   const title = item.address?.trim() || item.code;
                   const description = [
                     item.categoryName,
@@ -981,7 +1002,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
                     title,
                     description,
                     onClick: () => onOpenDetail(item.id),
-                    content: <ProjectCard item={item} />,
+                    content: <ProjectCard item={item} eagerFirstImage={index === 0} />,
                   };
                 })}
               />
