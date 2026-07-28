@@ -44,5 +44,9 @@ export function TrackingPageClient() {
     );
   }
 
-  return <LeoTrackingPageClient onOpenDetail={setDetailReportId} />;
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <LeoTrackingPageClient onOpenDetail={setDetailReportId} />
+    </div>
+  );
 }

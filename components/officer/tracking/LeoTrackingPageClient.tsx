@@ -34,6 +34,8 @@ import {
   LEO_MY_REPORTS_STATUSES,
   LEO_REPORT_ASSIGNMENT_STATUSES,
 } from '@/lib/api/models/office';
+import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
+import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
 import { reportStatusLabelVi, REPORT_STATUS_BADGE_CLASSES } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import { faCalendar } from '@fortawesome/free-regular-svg-icons';
@@ -51,12 +53,16 @@ import {
 import Image from 'next/image';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+/** Query `pageSize` → GET /v1/offices/my/reports — cố định 10 / trang. */
+const LEO_BOARD_PAGE_SIZE = 10;
+const LEO_LIST_PAGE_SIZE = 10;
+
 /**
- * Page size theo view — board denser để quét nhiều case;
- * list vừa phải để đọc hàng. Query `pageSize` → GET /v1/offices/my/reports.
+ * Board grid — cột cố định theo breakpoint để 1 card không kéo full hàng.
+ * Không hardcode px; chiều cao card = aspect thumb + body line-clamp đồng nhất.
  */
-const LEO_BOARD_PAGE_SIZE = 20;
-const LEO_LIST_PAGE_SIZE = 15;
+const LEO_BOARD_GRID_CLASS =
+  'grid w-full grid-cols-2 gap-1.5 py-0 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
 
 /** Tab trạng thái theo dõi — bỏ Submitted (đã gửi); luồng đó thuộc hàng đợi xác minh. */
 const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES.filter(
@@ -69,20 +75,8 @@ type LeoTrackingStatus = (typeof LEO_TRACKING_STATUSES)[number];
 type LeoStatusTab = 'All' | LeoTrackingStatus;
 type LeoViewMode = 'list' | 'board';
 
-const SEVERITY_LABEL: Record<LeoMyReportsSeverity, string> = {
-  Low: 'Thấp',
-  Medium: 'Trung bình',
-  High: 'Cao',
-  Critical: 'Nghiêm trọng',
-};
+const SEVERITY_LABEL = REPORT_SEVERITY_LABEL_VI;
 
-const ASSIGNMENT_STATUS_LABEL: Record<LeoReportAssignmentStatus, string> = {
-  Assigned: 'Đã phân công',
-  InProgress: 'Đang xử lý',
-  Completed: 'Hoàn thành',
-  Declined: 'Từ chối',
-  Escalated: 'Chuyển cấp',
-};
 const FILTER_BTN_CLASS =
   'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand';
 
@@ -299,21 +293,21 @@ function LeoStatusTabBar({
       <div className="flex shrink-0 items-center gap-1 self-stretch border-b border-border pb-2">
         <button
           type="button"
-          title="Danh sách"
-          aria-pressed={viewMode === 'list'}
-          onClick={() => onViewModeChange('list')}
-          className={LEO_VIEW_TOGGLE_CLASS(viewMode === 'list')}
-        >
-          <List className="size-4" />
-        </button>
-        <button
-          type="button"
           title="Board"
           aria-pressed={viewMode === 'board'}
           onClick={() => onViewModeChange('board')}
           className={LEO_VIEW_TOGGLE_CLASS(viewMode === 'board')}
         >
           <LayoutGrid className="size-4" />
+        </button>
+        <button
+          type="button"
+          title="Danh sách"
+          aria-pressed={viewMode === 'list'}
+          onClick={() => onViewModeChange('list')}
+          className={LEO_VIEW_TOGGLE_CLASS(viewMode === 'list')}
+        >
+          <List className="size-4" />
         </button>
       </div>
     </div>
@@ -327,7 +321,7 @@ function ReportThumbStrip({
   urls,
   alt,
   className,
-  aspectClassName = 'aspect-[16/10]',
+  aspectClassName = 'aspect-[2/1]',
   eagerFirstImage = false,
 }: {
   urls: string[];
@@ -347,7 +341,7 @@ function ReportThumbStrip({
           className
         )}
       >
-        <ImageIcon className="size-7 opacity-40" aria-hidden />
+        <ImageIcon className="size-3.5 opacity-40" aria-hidden />
       </div>
     );
   }
@@ -439,8 +433,8 @@ function ProjectCard({
   }));
 
   return (
-    <Card className="overflow-hidden border-border/50 bg-card shadow-none transition-colors group-hover:bg-card">
-      <div className="relative">
+    <Card className="h-full overflow-hidden border-border/50 bg-card shadow-none transition-colors group-hover:bg-card">
+      <div className="relative shrink-0">
         <ReportThumbStrip
           urls={item.thumbnails ?? []}
           alt={item.code}
@@ -448,7 +442,7 @@ function ProjectCard({
         />
         <span
           className={cn(
-            'absolute right-2 top-2 inline-flex max-w-[75%] items-center truncate rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm backdrop-blur-sm',
+            'absolute right-1.5 top-1.5 inline-flex max-w-[75%] items-center truncate rounded-full px-1.5 py-0.5 text-[9px] font-semibold shadow-sm backdrop-blur-sm',
             statusBadgeClass
           )}
           title={statusLabel}
@@ -457,10 +451,10 @@ function ProjectCard({
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-1 p-1.5">
         <div className="min-w-0">
           <div
-            className="mb-2 mt-0.5 flex items-center gap-1.5 py-0.5"
+            className="mb-0.5 mt-0 flex items-center gap-1 py-0"
             title={`Mức độ: ${SEVERITY_LABEL[item.severity]}`}
           >
             <span
@@ -469,7 +463,7 @@ function ProjectCard({
             />
             <span
               className={cn(
-                'text-[11px] font-medium',
+                'text-[9px] font-medium',
                 item.severity === 'Low' && 'text-slate-600',
                 item.severity === 'Medium' && 'text-amber-700',
                 item.severity === 'High' && 'text-orange-700',
@@ -479,20 +473,20 @@ function ProjectCard({
               {SEVERITY_LABEL[item.severity]}
             </span>
           </div>
-          <CardTitle className="line-clamp-2 text-md font-semibold leading-snug" title={title}>
+          <CardTitle className="line-clamp-1 text-xs font-semibold leading-snug" title={title}>
             {title}
           </CardTitle>
-          <CardDescription className="mt-1 line-clamp-1 text-xs" title={meta}>
+          <CardDescription className="mt-0.5 line-clamp-1 text-[10px]" title={meta}>
             {meta}
           </CardDescription>
         </div>
 
-        <div className="mt-2">
-          <div className="mb-1 flex items-center justify-between text-xs">
+        <div className="mt-0.5">
+          <div className="mb-0.5 flex items-center justify-between text-[10px]">
             <span className="text-muted-foreground">Tiến độ</span>
             <span className="tabular-nums font-semibold text-foreground">{progress}%</span>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-muted">
+          <div className="h-0.5 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
               style={{ width: `${progress}%` }}
@@ -500,19 +494,19 @@ function ProjectCard({
           </div>
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-0.5">
+        <div className="mt-auto flex items-center justify-between gap-1 pt-0.5">
           <div
             className="flex min-w-0 items-center"
             onClick={e => e.stopPropagation()}
             onKeyDown={e => e.stopPropagation()}
           >
             {visibleTeams.length === 0 ? (
-              <span className="truncate text-[10px] text-muted-foreground">Chưa có đội</span>
+              <span className="truncate text-[9px] text-muted-foreground">Chưa có đội</span>
             ) : (
               <>
-                <AnimatedTooltip items={teamTooltipItems} />
+                <AnimatedTooltip items={teamTooltipItems} avatarClassName="size-4" />
                 {extraTeams > 0 ? (
-                  <span className="relative z-10 -ml-1 flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-foreground ring-2 ring-card">
+                  <span className="relative z-10 -ml-1 flex size-4 items-center justify-center rounded-full bg-muted text-[8px] font-semibold text-foreground ring-2 ring-card">
                     +{extraTeams}
                   </span>
                 ) : null}
@@ -524,10 +518,10 @@ function ProjectCard({
             designation={slaTooltipDesignation}
             className="shrink-0"
           >
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
               <FontAwesomeIcon
                 icon={faCalendar}
-                className="size-3.5 text-muted-foreground/80"
+                className="size-3 text-muted-foreground/80"
                 aria-hidden
               />
               <span className="tabular-nums">{slaDateLabel}</span>
@@ -644,12 +638,19 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
 
 function SkeletonGrid() {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-      {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(k => (
+    <div className={LEO_BOARD_GRID_CLASS}>
+      {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'].map(k => (
         <div
           key={k}
-          className="h-[240px] animate-pulse rounded-2xl border border-border/50 bg-muted/30"
-        />
+          className="flex flex-col overflow-hidden rounded-xl border border-border/50 bg-card"
+        >
+          <div className="aspect-[2/1] animate-pulse bg-muted/40" />
+          <div className="flex flex-col gap-1 p-1.5">
+            <div className="h-2 w-1/3 animate-pulse rounded bg-muted/40" />
+            <div className="h-3 w-4/5 animate-pulse rounded bg-muted/40" />
+            <div className="h-2 w-full animate-pulse rounded bg-muted/30" />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -804,7 +805,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
       : ASSIGNMENT_STATUS_LABEL[assignmentStatusFilter];
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="mb-3 shrink-0">
         <div className="border-b border-slate-200 pb-3">
           <div className="flex items-center gap-[0.35rem]">
@@ -968,7 +969,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           ) : null}
         </div>
 
-        <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-2 sm:p-3">
           {isError ? (
             <div className="flex h-full items-center justify-center text-destructive">
               Không thể tải dữ liệu. Vui lòng thử lại.
@@ -977,7 +978,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             isLoading ? (
               <SkeletonGrid />
             ) : items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <SaveIcon size={32} className="opacity-30" />
                 <p>
                   Không có báo cáo phù hợp ở trạng thái{' '}
@@ -987,7 +988,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             ) : (
               <HoverEffect
                 layoutId="leo-tracking-hover"
-                className="grid-cols-1 gap-1 py-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+                className={LEO_BOARD_GRID_CLASS}
                 items={items.map((item, index) => {
                   const title = item.address?.trim() || item.code;
                   const description = [
@@ -1010,7 +1011,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           ) : isLoading ? (
             <SkeletonList />
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
               <SaveIcon size={32} className="opacity-30" />
               <p>
                 Không có báo cáo phù hợp ở trạng thái{' '}
@@ -1018,7 +1019,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
               </p>
             </div>
           ) : (
-            <section className="flex flex-col gap-3">
+            <section className="flex flex-col gap-2">
               {items.map(item => (
                 <ProjectListRow key={item.id} item={item} onOpen={() => onOpenDetail(item.id)} />
               ))}
@@ -1027,23 +1028,19 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
         </div>
 
         {data?.pagination ? (
-          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-            <div className="min-w-0">
-              {totalPages > 1 ? (
-                <PaginationSimple
-                  page={page}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  className="w-auto"
-                />
-              ) : null}
-            </div>
-            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+          <div className="relative flex shrink-0 items-center justify-center">
+            <PaginationSimple
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              className="mx-auto w-auto justify-center"
+            />
+            <p className="absolute right-6 top-1/2 -translate-y-1/2 text-xs text-slate-500 tabular-nums">
               {data.pagination.totalItems.toLocaleString('vi-VN')} báo cáo
             </p>
           </div>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

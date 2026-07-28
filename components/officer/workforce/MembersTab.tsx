@@ -28,6 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { MovingBorderButton } from '@/components/ui/moving-border';
 import { PaginationSimple } from '@/components/ui/pagination';
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -93,7 +94,7 @@ const ROLE_BADGE: Record<OfficeStaffAssignRole, string> = {
 };
 
 const FILTER_BTN_CLASS =
-  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-sky-700';
+  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand';
 
 function staffRoleLabel(role: string): string {
   if (role === 'Cleaner' || role === 'Inspector') return ROLE_BADGE[role];
@@ -463,7 +464,7 @@ export function MembersTab() {
                 <DropdownMenuItem
                   key={key}
                   onClick={() => handleHasTeamChange(key)}
-                  className={hasTeamFilter === key ? 'font-medium text-sky-700' : ''}
+                  className={hasTeamFilter === key ? 'font-medium text-brand' : ''}
                 >
                   {HAS_TEAM_LABEL[key]}
                 </DropdownMenuItem>
@@ -483,7 +484,7 @@ export function MembersTab() {
                 <DropdownMenuItem
                   key={key}
                   onClick={() => handleRoleChange(key)}
-                  className={roleFilter === key ? 'font-medium text-sky-700' : ''}
+                  className={roleFilter === key ? 'font-medium text-brand' : ''}
                 >
                   {ROLE_LABEL[key]}
                 </DropdownMenuItem>
@@ -493,14 +494,15 @@ export function MembersTab() {
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <WorkforceExportCsvButton />
+            <Separator orientation="vertical" className="mx-0.5 h-6 shrink-0 bg-slate-300" />
             <MovingBorderButton
               type="button"
               onClick={() => setRecruitOpen(true)}
               borderRadius="0.5rem"
               duration={2500}
               containerClassName="h-8 w-auto shrink-0"
-              borderClassName="bg-[radial-gradient(#10b981_40%,transparent_60%)]"
-              className="gap-1.5 border-neutral-200 bg-white px-3 text-[0.8125rem] font-medium text-emerald-700 hover:bg-slate-50"
+              borderClassName="bg-[radial-gradient(#3f6b32_40%,transparent_60%)]"
+              className="gap-1.5 border-brand/25 bg-white px-3 text-[0.8125rem] font-medium text-slate-600 hover:bg-slate-50"
             >
               <Plus className="size-3.5" aria-hidden />
               Thêm

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
-import { Loader2, MoreHorizontal, RefreshCw, Search, Users } from 'lucide-react';
+import { Loader2, MoreHorizontal, Search, Users } from 'lucide-react';
 import {
   WorkforceExportCsvButton,
   WorkforceViewModeSwitch,
@@ -83,8 +83,6 @@ export type TeamListViewProps = {
   onStatusChange: (value: StatusFilter) => void;
   onTeamTypeChange: (value: TeamTypeFilter) => void;
   onAvailableChange: (value: AvailableFilter) => void;
-  isRefreshing: boolean;
-  onRefresh: () => void;
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
@@ -113,8 +111,6 @@ export function TeamListView({
   onStatusChange,
   onTeamTypeChange,
   onAvailableChange,
-  isRefreshing,
-  onRefresh,
   isLoading,
   isFetching,
   isError,
@@ -134,50 +130,44 @@ export function TeamListView({
   onViewModeChange,
 }: TeamListViewProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Toolbar — search (left) + filters + view/export (right) */}
-      <div className="my-2 flex shrink-0 flex-wrap items-center gap-2">
-        <div className="relative w-72 max-w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={e => onSearchChange(e.target.value)}
-            placeholder="Tìm tên đội, văn phòng..."
-            className={cn(
-              'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
-              isFetching && !isLoading && 'pr-8'
-            )}
-            aria-label="Tìm tên đội, văn phòng"
-          />
-          {isFetching && !isLoading ? (
-            <Loader2
-              className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
-              aria-hidden
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Search + filters (trái) + export + view mode (phải) */}
+      <header className="mb-6 shrink-0">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="relative w-72 max-w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={search}
+              onChange={e => onSearchChange(e.target.value)}
+              placeholder="Tìm tên đội, văn phòng..."
+              className={cn(
+                'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+                isFetching && !isLoading && 'pr-8'
+              )}
+              aria-label="Tìm tên đội, văn phòng"
             />
-          ) : null}
+            {isFetching && !isLoading ? (
+              <Loader2
+                className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                aria-hidden
+              />
+            ) : null}
+          </div>
+          <TeamFilterDropdowns
+            statusFilter={statusFilter}
+            teamTypeFilter={teamTypeFilter}
+            availableFilter={availableFilter}
+            onStatusChange={onStatusChange}
+            onTeamTypeChange={onTeamTypeChange}
+            onAvailableChange={onAvailableChange}
+          />
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <WorkforceExportCsvButton />
+            <span className="h-5 w-px shrink-0 bg-slate-200" aria-hidden />
+            <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
+          </div>
         </div>
-        <TeamFilterDropdowns
-          statusFilter={statusFilter}
-          teamTypeFilter={teamTypeFilter}
-          availableFilter={availableFilter}
-          onStatusChange={onStatusChange}
-          onTeamTypeChange={onTeamTypeChange}
-          onAvailableChange={onAvailableChange}
-        />
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="h-8 cursor-pointer text-slate-500"
-          >
-            <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
-          <WorkforceExportCsvButton />
-        </div>
-      </div>
+      </header>
 
       {/* Table — always fills remaining height (0 or N rows) */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
