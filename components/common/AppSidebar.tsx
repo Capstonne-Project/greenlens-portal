@@ -13,13 +13,17 @@ import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShel
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import { MapSidebarUserProfile } from '@/components/common/SidebarUserProfile';
+import { NotificationDrawer } from '@/components/notification/NotificationDrawer';
+import { NotificationNavButton } from '@/components/notification/NotificationNavButton';
 import FilledBellIcon from '@/components/ui/filled-bell-icon';
 import { cn } from '@/lib/utils';
 
 type AppSidebarProps = {
   config: MapShellNavConfig;
-  /** Profile / settings menu href — Officer default; Admin passes `/admin/profile`. */
+  /** Account menu href — Officer `/officer/settings/account`; Admin `/admin/profile`. */
   profileHref?: string;
+  /** Settings menu href — Officer `/officer/settings`. Empty string hides the item. */
+  settingsHref?: string;
 };
 
 const ICON_CLASS = 'h-5 w-5 shrink-0';
@@ -237,7 +241,11 @@ function SidebarLogo() {
   );
 }
 
-export function AppSidebar({ config, profileHref = '/officer/profile' }: AppSidebarProps) {
+export function AppSidebar({
+  config,
+  profileHref = '/officer/settings/account',
+  settingsHref = '/officer/settings',
+}: AppSidebarProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const activeId = resolveActiveNavId(pathname, config);
@@ -274,12 +282,9 @@ export function AppSidebar({ config, profileHref = '/officer/profile' }: AppSide
         </div>
 
         <div className="relative z-10 flex shrink-0 flex-col gap-2 bg-[#f7f7f7] pt-2">
-          <SidebarLink
-            link={{
-              label: notifications.label,
-              href: notifications.href,
-              icon: <NavIcon item={notifications} />,
-            }}
+          <NotificationNavButton
+            label={notifications.label}
+            icon={<NavIcon item={notifications} />}
             active={activeId === notifications.id}
           />
           {!isAuthenticated && (
@@ -295,11 +300,16 @@ export function AppSidebar({ config, profileHref = '/officer/profile' }: AppSide
           {isAuthenticated ? (
             <>
               <Separator className="mx-2 my-1 bg-neutral-200 dark:bg-neutral-700" />
-              <MapSidebarUserProfile expanded={open} profileHref={profileHref} />
+              <MapSidebarUserProfile
+                expanded={open}
+                profileHref={profileHref}
+                settingsHref={settingsHref}
+              />
             </>
           ) : null}
         </div>
       </SidebarBody>
+      <NotificationDrawer />
     </Sidebar>
   );
 }
