@@ -1,7 +1,14 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Modal, ModalBody, ModalContent, ModalFooter } from '@/components/ui/animated-modal';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,16 +24,23 @@ import { useRecruitOfficeStaff } from '@/hooks/useLeoOffices';
 import { useTeamsList } from '@/hooks/useTeams';
 import type { RecruitOfficeStaffInput, RecruitStaffTargetRole } from '@/lib/api/models/office';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import { faUser } from '@fortawesome/free-regular-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+/** Nhãn VI — khớp MembersTab ROLE_BADGE (không kèm Cleaner/Inspector). */
 const TARGET_ROLE_OPTIONS: { value: RecruitStaffTargetRole; label: string }[] = [
-  { value: 'Cleaner', label: 'Đội dọn dẹp (Cleaner)' },
-  { value: 'Inspector', label: 'Thanh tra (Inspector)' },
+  { value: 'Cleaner', label: 'Đội dọn dẹp' },
+  { value: 'Inspector', label: 'Thanh tra' },
 ];
+
+/** Khoảng cách trigger → menu. */
+const SELECT_MENU_OFFSET = 10;
+const SELECT_COLLISION_PADDING = 24;
 
 const NO_TEAM_VALUE = '__none__';
 
@@ -114,22 +128,34 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
   });
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onOpenChange={nextOpen => {
-        if (!nextOpen) onClose();
+        if (!nextOpen && !isBusy) onClose();
       }}
-      dismissible={!isBusy}
     >
-      <ModalBody className="min-h-0 max-h-[90vh] w-full max-w-md flex-none overflow-hidden md:max-w-md">
-        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <ModalContent className="gap-4 p-6 md:p-8">
-            <div className="pr-8">
-              <h2 className="text-lg font-semibold text-slate-900">Thêm thành viên</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Tuyển công dân vào văn phòng và đội xử lý
-              </p>
-            </div>
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        onInteractOutside={e => {
+          if (isBusy) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isBusy) e.preventDefault();
+        }}
+      >
+        <form onSubmit={onSubmit} className="flex flex-col">
+          <div className="space-y-4 p-6 pb-8 md:p-8 md:pb-10">
+            <DialogHeader className="pr-8 text-left">
+              <DialogTitle className="flex items-center gap-2.5">
+                <FontAwesomeIcon
+                  icon={faUser}
+                  className="size-4 shrink-0 text-foreground"
+                  aria-hidden
+                />
+                Thêm thành viên
+              </DialogTitle>
+              <DialogDescription>Tuyển công dân vào văn phòng và đội xử lý</DialogDescription>
+            </DialogHeader>
 
             <FieldGroup>
               <Field>
@@ -161,7 +187,10 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                       <SelectTrigger id="recruit-target-role">
                         <SelectValue placeholder="Chọn vai trò" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent
+                        sideOffset={SELECT_MENU_OFFSET}
+                        collisionPadding={SELECT_COLLISION_PADDING}
+                      >
                         {TARGET_ROLE_OPTIONS.map(opt => (
                           <SelectItem key={opt.value} value={opt.value}>
                             {opt.label}
@@ -177,7 +206,7 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
               <Field>
                 <Label htmlFor="recruit-team-id">Đội xử lý</Label>
                 <FieldDescription>
-                  Tuỳ chọn — có thể tuyển vào văn phòng mà chưa gán đội
+                  Có thể tuyển vào văn phòng mà chưa gán đội (Tùy chọn)
                 </FieldDescription>
                 <Controller
                   name="teamId"
@@ -195,7 +224,12 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                       <SelectTrigger id="recruit-team-id">
                         <SelectValue placeholder={teamsLoading ? 'Đang tải...' : 'Chọn đội'} />
                       </SelectTrigger>
-                      <SelectContent>
+                      {/* Mở lên trên — tránh menu dài hơn đáy dialog. */}
+                      <SelectContent
+                        side="top"
+                        sideOffset={SELECT_MENU_OFFSET}
+                        collisionPadding={SELECT_COLLISION_PADDING}
+                      >
                         <SelectItem value={NO_TEAM_VALUE}>Không chọn đội</SelectItem>
                         {teams.map(team => (
                           <SelectItem key={team.id} value={team.id}>
@@ -227,9 +261,9 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                 )}
               />
             </FieldGroup>
-          </ModalContent>
+          </div>
 
-          <ModalFooter className="gap-2 bg-slate-50">
+          <DialogFooter className="gap-2 border-t border-border bg-slate-50 px-6 py-4 sm:space-x-0">
             <Button type="button" variant="outline" disabled={isBusy} onClick={onClose}>
               Huỷ
             </Button>
@@ -247,9 +281,9 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                 'Thêm'
               )}
             </Button>
-          </ModalFooter>
+          </DialogFooter>
         </form>
-      </ModalBody>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }

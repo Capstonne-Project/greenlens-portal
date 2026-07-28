@@ -1,6 +1,5 @@
 'use client';
 
-import { Modal, ModalBody, ModalContent, ModalFooter } from '@/components/ui/animated-modal';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,8 +26,10 @@ import { useAddTeamMember, useCreateTeam, useTeamDetail } from '@/hooks/useTeams
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
+import { faUserGroup } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, Crown, Loader2, Plus, Trash2, UserPlus, X } from 'lucide-react';
+import { Building2, Crown, Loader2, Trash2, UserPlus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -87,27 +88,34 @@ export function CreateTeamDialog({
   });
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onOpenChange={nextOpen => {
-        if (!nextOpen) closeDialog();
+        if (!nextOpen && !isBusy) closeDialog();
       }}
-      dismissible={!isBusy}
     >
-      <ModalBody className="min-h-0 max-h-[90vh] w-full max-w-md flex-none overflow-hidden md:max-w-md">
-        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <ModalContent className="gap-4 p-6 md:p-8">
-            <div className="pr-8">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                  <Plus className="size-4 text-emerald-600" aria-hidden />
-                </span>
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        onInteractOutside={e => {
+          if (isBusy) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isBusy) e.preventDefault();
+        }}
+      >
+        <form onSubmit={onSubmit} className="flex flex-col">
+          <div className="space-y-4 p-6 md:p-8">
+            <DialogHeader className="pr-8 text-left">
+              <DialogTitle className="flex items-center gap-2.5">
+                <FontAwesomeIcon
+                  icon={faUserGroup}
+                  className="size-4 shrink-0 text-foreground"
+                  aria-hidden
+                />
                 Tạo đội mới
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Tạo đội cộng đồng trong văn phòng của bạn.
-              </p>
-            </div>
+              </DialogTitle>
+              <DialogDescription>Tạo đội cộng đồng trong văn phòng của bạn.</DialogDescription>
+            </DialogHeader>
 
             <FieldGroup>
               <Field>
@@ -135,9 +143,9 @@ export function CreateTeamDialog({
                 <FieldError>{errors.name?.message}</FieldError>
               </Field>
             </FieldGroup>
-          </ModalContent>
+          </div>
 
-          <ModalFooter className="gap-2 bg-slate-50">
+          <DialogFooter className="gap-2 border-t border-border bg-slate-50 px-6 py-4 sm:space-x-0">
             <Button
               type="button"
               variant="outline"
@@ -161,10 +169,10 @@ export function CreateTeamDialog({
                 'Tạo đội'
               )}
             </Button>
-          </ModalFooter>
+          </DialogFooter>
         </form>
-      </ModalBody>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -238,98 +246,150 @@ export function AddMemberDialog({
         if (!nextOpen) closeDialog();
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <form onSubmit={onSubmit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                <UserPlus className="size-4 text-emerald-600" aria-hidden />
-              </span>
-              Thêm thành viên
-            </DialogTitle>
-            <DialogDescription>
-              Gán nhân sự chưa thuộc đội vào <span className="font-medium">{teamName}</span>
-            </DialogDescription>
-          </DialogHeader>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+        <form onSubmit={onSubmit} className="flex flex-col">
+          <div className="space-y-4 p-6 md:p-8">
+            <DialogHeader className="pr-8 text-left">
+              <DialogTitle className="flex items-center gap-2.5">
+                <FontAwesomeIcon
+                  icon={faUserGroup}
+                  className="size-4 shrink-0 text-foreground"
+                  aria-hidden
+                />
+                Thêm thành viên
+              </DialogTitle>
+              <DialogDescription>
+                Gán nhân sự chưa thuộc đội vào{' '}
+                <span className="font-medium text-foreground">{teamName}</span>
+              </DialogDescription>
+            </DialogHeader>
 
-          <FieldGroup>
-            <Field>
-              <Label htmlFor="add-member-user">Thành viên</Label>
-              <FieldDescription>
-                {staffRole
-                  ? `Nhân sự chưa có đội — vai trò ${staffRole === 'Cleaner' ? 'Dọn dẹp (Cleaner)' : 'Thanh tra (Inspector)'}`
-                  : 'Loại đội không hỗ trợ thêm thành viên qua danh sách nhân sự.'}
-              </FieldDescription>
+            <FieldGroup>
+              <Field>
+                <Label htmlFor="add-member-user">Thành viên</Label>
+                <FieldDescription>
+                  {staffRole
+                    ? `Nhân sự chưa có đội — vai trò ${staffRole === 'Cleaner' ? 'Dọn dẹp' : 'Thanh tra'}`
+                    : 'Loại đội không hỗ trợ thêm thành viên qua danh sách nhân sự.'}
+                </FieldDescription>
+                <Controller
+                  name="userId"
+                  control={control}
+                  render={({ field }) => {
+                    const selectedMember = staffOptions.find(m => m.userId === field.value) ?? null;
+
+                    return (
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                        open={staffSelectOpen}
+                        onOpenChange={setStaffSelectOpen}
+                        disabled={staffSelectDisabled}
+                      >
+                        <SelectTrigger id="add-member-user" className="h-auto min-h-10 py-2">
+                          {selectedMember ? (
+                            <span className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                              <span
+                                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700"
+                                aria-hidden
+                              >
+                                {getInitials(selectedMember.fullName)}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-medium leading-snug text-foreground">
+                                  {selectedMember.fullName}
+                                </span>
+                                <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                                  {selectedMember.email}
+                                </span>
+                              </span>
+                            </span>
+                          ) : (
+                            <SelectValue
+                              placeholder={
+                                !staffRole
+                                  ? 'Loại đội không hợp lệ'
+                                  : staffError
+                                    ? 'Không tải được danh sách'
+                                    : staffLoading
+                                      ? 'Đang tải danh sách...'
+                                      : staffListEmpty
+                                        ? 'Không có nhân sự khả dụng'
+                                        : 'Chọn thành viên'
+                              }
+                            />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent position="popper" sideOffset={8}>
+                          {staffLoading ? (
+                            <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted-foreground">
+                              <Loader2 className="size-4 animate-spin" aria-hidden />
+                              Đang tải danh sách...
+                            </div>
+                          ) : staffListEmpty ? (
+                            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                              Không có nhân sự khả dụng
+                            </div>
+                          ) : (
+                            staffOptions.map(member => (
+                              <SelectItem
+                                key={member.userId}
+                                value={member.userId}
+                                textValue={`${member.fullName} ${member.email}`}
+                                className={cn(
+                                  // w-full + mx khiến hover dính mép phải — trừ đúng tổng margin 2 bên
+                                  'mx-1.5 my-0.5 h-auto w-[calc(100%-0.75rem)] cursor-pointer rounded-md py-2.5 pl-2.5 pr-2.5',
+                                  '[&>span.absolute]:hidden'
+                                )}
+                              >
+                                <span className="flex min-w-0 items-center gap-3">
+                                  <span
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700"
+                                    aria-hidden
+                                  >
+                                    {getInitials(member.fullName)}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-medium leading-snug text-foreground">
+                                      {member.fullName}
+                                    </span>
+                                    <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                                      {member.email}
+                                    </span>
+                                  </span>
+                                </span>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    );
+                  }}
+                />
+                <FieldError>{errors.userId?.message}</FieldError>
+              </Field>
+
               <Controller
-                name="userId"
+                name="isLeader"
                 control={control}
                 render={({ field }) => (
-                  <Select
-                    value={field.value ?? ''}
-                    onValueChange={field.onChange}
-                    open={staffSelectOpen}
-                    onOpenChange={setStaffSelectOpen}
-                    disabled={staffSelectDisabled}
-                  >
-                    <SelectTrigger id="add-member-user">
-                      <SelectValue
-                        placeholder={
-                          !staffRole
-                            ? 'Loại đội không hợp lệ'
-                            : staffError
-                              ? 'Không tải được danh sách'
-                              : staffLoading
-                                ? 'Đang tải danh sách...'
-                                : staffListEmpty
-                                  ? 'Không có nhân sự khả dụng'
-                                  : 'Chọn thành viên'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staffLoading ? (
-                        <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted-foreground">
-                          <Loader2 className="size-4 animate-spin" aria-hidden />
-                          Đang tải danh sách...
-                        </div>
-                      ) : staffListEmpty ? (
-                        <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                          Không có nhân sự khả dụng
-                        </div>
-                      ) : (
-                        staffOptions.map(member => (
-                          <SelectItem key={member.userId} value={member.userId}>
-                            {member.fullName} — {member.email}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Field orientation="horizontal">
+                    <Label htmlFor="add-member-leader" className="font-normal">
+                      Trưởng nhóm
+                    </Label>
+                    <Switch
+                      id="add-member-leader"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={formBusy}
+                    />
+                  </Field>
                 )}
               />
-              <FieldError>{errors.userId?.message}</FieldError>
-            </Field>
+            </FieldGroup>
+          </div>
 
-            <Controller
-              name="isLeader"
-              control={control}
-              render={({ field }) => (
-                <Field orientation="horizontal">
-                  <Label htmlFor="add-member-leader" className="font-normal">
-                    Trưởng nhóm
-                  </Label>
-                  <Switch
-                    id="add-member-leader"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={formBusy}
-                  />
-                </Field>
-              )}
-            />
-          </FieldGroup>
-
-          <DialogFooter>
+          <DialogFooter className="gap-2 border-t border-border bg-slate-50 px-6 py-4 sm:space-x-0">
             <DialogClose asChild>
               <Button
                 type="button"

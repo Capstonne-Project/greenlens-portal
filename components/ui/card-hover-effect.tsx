@@ -32,22 +32,23 @@ export type HoverEffectProps = {
 /**
  * Aceternity Hover Effect — shared sliding highlight across a card grid.
  * Default cards compose shadcn `Card` / `CardTitle` / `CardDescription`.
+ * Column count: pass via `className` (consumer owns responsive grid).
  */
 export function HoverEffect({ items, className, layoutId = 'hoverBackground' }: HoverEffectProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <div className={cn('grid grid-cols-1 py-10 md:grid-cols-2 lg:grid-cols-3', className)}>
+    <div className={cn('grid w-full gap-2', className)}>
       {items.map((item, idx) => {
         const itemKey = item.key ?? item.link ?? `${item.title}-${idx}`;
         const sharedClassName =
-          'group relative block h-full w-full p-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+          'group relative block h-full min-w-0 w-full p-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
         const hoverLayer = (
           <AnimatePresence>
             {hoveredIndex === idx ? (
               <motion.span
-                className="absolute inset-0 block h-full w-full rounded-3xl bg-neutral-200/80 dark:bg-slate-800/80"
+                className="absolute inset-0 block h-full w-full rounded-2xl bg-neutral-200/80 dark:bg-slate-800/80"
                 layoutId={layoutId}
                 initial={{ opacity: 0 }}
                 animate={{
@@ -64,7 +65,7 @@ export function HoverEffect({ items, className, layoutId = 'hoverBackground' }: 
         );
 
         const body = item.content ? (
-          <div className="relative z-20 h-full w-full">{item.content}</div>
+          <div className="relative z-20 h-full min-h-0 w-full">{item.content}</div>
         ) : (
           <Card>
             <CardTitle>{item.title}</CardTitle>

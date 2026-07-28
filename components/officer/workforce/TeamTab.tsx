@@ -31,7 +31,6 @@ export function TeamTab() {
   const [teamTypeFilter, setTeamTypeFilter] = useState<TeamTypeFilter>('all');
   const [availableFilter, setAvailableFilter] = useState<AvailableFilter>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [detailTeam, setDetailTeam] = useState<TeamListItem | null>(null);
   const [addMemberTeam, setAddMemberTeam] = useState<AddMemberTeamTarget | null>(null);
   const [createTeamType, setCreateTeamType] = useState<LeoCreateTeamType | null>(null);
@@ -41,7 +40,7 @@ export function TeamTab() {
     [statusFilter, teamTypeFilter, availableFilter]
   );
 
-  const { data, isLoading, isFetching, isError, refetch } = useTeamsList(sharedParams);
+  const { data, isLoading, isFetching, isError } = useTeamsList(sharedParams);
 
   const allTeams = useMemo(() => data?.items ?? [], [data?.items]);
 
@@ -105,11 +104,6 @@ export function TeamTab() {
       else next.add(id);
       return next;
     });
-  };
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    refetch().finally(() => setIsRefreshing(false));
   };
 
   const handlePageChange = (p: number) => {
@@ -182,8 +176,6 @@ export function TeamTab() {
           onStatusChange={handleStatusFilter}
           onTeamTypeChange={handleTeamTypeFilter}
           onAvailableChange={handleAvailableFilter}
-          isRefreshing={isRefreshing}
-          onRefresh={handleRefresh}
           isLoading={isLoading}
           isFetching={isFetching}
           isError={isError}

@@ -390,7 +390,7 @@ const COMPARE_FIELDS: CompareField[] = [
   },
   {
     key: 'category',
-    label: 'Loại rác thải',
+    label: 'Loại ô nhiễm',
     render: d => d.categoryName?.trim() || d.categoryCode || '—',
     compareValue: d => (d.categoryId || d.categoryCode || d.categoryName || '').toLowerCase(),
   },
