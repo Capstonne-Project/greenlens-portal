@@ -8,10 +8,16 @@ import { Label } from '@/components/ui/label';
 import UsersGroupIcon from '@/components/ui/users-group-icon';
 import { MeetingPointMapPicker } from '@/components/officer/assign/MeetingPointMapPicker';
 import { useCreateCommunityCleanup } from '@/hooks/useCommunityCleanup';
-import { TEAMS_ASSIGN_PAGE_SIZE, useTeamDetail, useTeamsInfiniteList } from '@/hooks/useTeams';
+import {
+  TEAMS_ASSIGN_PAGE_SIZE,
+  teamKeys,
+  useTeamDetail,
+  useTeamsInfiniteList,
+} from '@/hooks/useTeams';
 import type { TeamMember } from '@/lib/api/services/fetchTeam';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import { HeartHandshake, Loader2 } from 'lucide-react';
 import { useCallback, useMemo, useState, type UIEvent } from 'react';
 
@@ -123,6 +129,7 @@ export function CreateCommunityCleanupDialog({
   onCreated,
 }: CreateCommunityCleanupDialogProps) {
   const createMutation = useCreateCommunityCleanup();
+  const queryClient = useQueryClient();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -203,6 +210,10 @@ export function CreateCommunityCleanupDialog({
     if (id === teamId) return;
     setTeamId(id);
     setLeaderUserId(null);
+    // Membership thay đổi qua flow accept-invitation (mobile) không invalidate
+    // cache của portal — luôn lấy dữ liệu mới nhất khi LEO chọn team ở đây,
+    // tránh hiển thị "chưa có thành viên" do cache cũ còn hạn (staleTime 3').
+    void queryClient.invalidateQueries({ queryKey: teamKeys.detail(id) });
   };
 
   const isSubmitting = createMutation.isPending;
