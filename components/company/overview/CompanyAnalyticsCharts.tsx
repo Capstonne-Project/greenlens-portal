@@ -538,7 +538,7 @@ export function CompanyUpcomingDeadlines({
         <EmptyHint text="Không có deadline sắp tới" />
       ) : (
         <ul className="h-full space-y-1.5 overflow-y-auto pr-1">
-          {rows.map(row => {
+          {rows.map((row, idx) => {
             const detailHref = row.reportId
               ? `/company/assignments?reportId=${encodeURIComponent(row.reportId)}`
               : null;
@@ -567,7 +567,7 @@ export function CompanyUpcomingDeadlines({
 
             return (
               <li
-                key={row.taskId}
+                key={`${row.taskId}-${idx}`}
                 className={cn(
                   'rounded-lg border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px]',
                   detailHref && 'transition hover:border-emerald-200 hover:bg-emerald-50/40'
