@@ -21,9 +21,9 @@ import { cn } from '@/lib/utils';
 
 type AppSidebarProps = {
   config: MapShellNavConfig;
-  /** Account menu href — Officer `/officer/settings/account`; Admin `/admin/profile`. */
+  /** Account page — `/{role}/settings/account`. */
   profileHref?: string;
-  /** Settings menu href — Officer `/officer/settings`. Empty string hides the item. */
+  /** Settings shell — `/{role}/settings`. */
   settingsHref?: string;
 };
 
