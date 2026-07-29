@@ -57,7 +57,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
+import { locateReportInQueuePage, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
@@ -841,9 +841,16 @@ export function VerifyPageClient() {
   const [duplicateDialogRow, setDuplicateDialogRow] = useState<ReportQueueItem | null>(null);
   const [pairFocus, setPairFocus] = useState<{ childId: string; parentId: string } | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  /** Khi deep-link từ noti: bỏ filter/search tạm để locate + list cùng params. */
+  const [deepLinkMode, setDeepLinkMode] = useState(false);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const highlightClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const deepLinkHighlightAppliedRef = useRef<string | null>(null);
+  const pendingDeepLinkIdRef = useRef<string | null>(null);
+  const resolvedDeepLinkIdRef = useRef<string | null>(null);
+  const locateStartedForRef = useRef<string | null>(null);
+  const deepLinkTargetPageRef = useRef<number | null>(null);
+  const pageRef = useRef(1);
+  const isFetchingRef = useRef(false);
   const verifyMutation = useVerifyReport();
 
   const yearOnlyDefaults = getPresetDateInputs('all');
@@ -1000,22 +1007,38 @@ export function VerifyPageClient() {
     toolbarDatePreset,
   ]);
 
-  const listParams = useMemo(
-    () => ({
+  const listParams = useMemo(() => {
+    const base = {
       page,
       pageSize: VERIFY_PAGE_SIZE,
       status: 'Submitted' as const,
-      sortBy: 'PriorityScore' as const,
+      sortBy: 'CreatedAt' as const,
       sortDir: 'Desc' as const,
+    };
+    /** Deep-link từ noti: queue sạch (không filter/search) khớp locate. */
+    if (deepLinkMode) return base;
+    return {
+      ...base,
       ...(applied.severity !== 'all' ? { severity: applied.severity } : {}),
       ...effectiveDateRange,
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
-    }),
-    [page, applied.severity, applied.categoryId, effectiveDateRange, debouncedSearch]
-  );
+    };
+  }, [
+    page,
+    deepLinkMode,
+    applied.severity,
+    applied.categoryId,
+    effectiveDateRange,
+    debouncedSearch,
+  ]);
 
   const { data, isPending, isFetching, isError, refetch } = useReportQueue(listParams);
+
+  useEffect(() => {
+    pageRef.current = page;
+    isFetchingRef.current = isFetching;
+  }, [page, isFetching]);
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
@@ -1053,30 +1076,156 @@ export function VerifyPageClient() {
 
   const scrollToRow = (id: string) => {
     requestAnimationFrame(() => {
-      rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
+  };
+
+  const finishDeepLink = (id: string, opts?: { clearHighlight?: boolean }) => {
+    resolvedDeepLinkIdRef.current = id;
+    setDeepLinkMode(false);
+    if (opts?.clearHighlight) {
+      setHighlightedId(null);
+      return;
+    }
+    if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    highlightClearRef.current = setTimeout(() => {
+      setHighlightedId(null);
+    }, 4000);
   };
 
   /** Deep-link từ notification: `/officer/verify?highlight={reportId}` */
   useEffect(() => {
     const highlightId = searchParams.get('highlight')?.trim() || null;
-    if (!highlightId || isPending) return;
-    if (deepLinkHighlightAppliedRef.current === highlightId) return;
-    deepLinkHighlightAppliedRef.current = highlightId;
+    if (!highlightId) return;
+
+    pendingDeepLinkIdRef.current = highlightId;
+    resolvedDeepLinkIdRef.current = null;
+    locateStartedForRef.current = null;
+    deepLinkTargetPageRef.current = null;
 
     if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
-    setHighlightedId(highlightId);
 
-    if (items.some(item => item.id === highlightId)) {
-      window.setTimeout(() => scrollToRow(highlightId), 160);
-    }
+    const yearDefaults = getPresetDateInputs('all');
+    const defaults = {
+      severity: 'all' as SeverityFilter,
+      datePreset: 'all' as DatePreset,
+      customFrom: yearDefaults.from,
+      customTo: yearDefaults.to,
+      categoryId: '',
+    };
 
-    highlightClearRef.current = setTimeout(() => {
-      setHighlightedId(null);
-    }, 4000);
+    /** Defer setState — tránh cascade render sync trong effect (React 19 lint). */
+    queueMicrotask(() => {
+      setHighlightedId(highlightId);
+      setPairFocus(null);
+      setDeepLinkMode(true);
+      setSearch('');
+      setToolbarDatePreset('all');
+      setApplied(defaults);
+      setDraft(defaults);
+      setPage(1);
+    });
 
     router.replace('/officer/verify', { scroll: false });
-  }, [searchParams, isPending, items, router]);
+  }, [searchParams, router]);
+
+  /** Resolve: item đã có trên trang hiện tại, hoặc locate sang đúng page. */
+  useEffect(() => {
+    const highlightId = pendingDeepLinkIdRef.current;
+    if (!highlightId) return;
+    if (resolvedDeepLinkIdRef.current === highlightId) return;
+    if (isPending) return;
+
+    if (items.some(item => item.id === highlightId)) {
+      deepLinkTargetPageRef.current = null;
+      finishDeepLink(highlightId);
+      return;
+    }
+
+    /** Đã locate xong — chờ data của trang đích settle. */
+    if (deepLinkTargetPageRef.current != null) {
+      if (page !== deepLinkTargetPageRef.current || isFetching) return;
+      deepLinkTargetPageRef.current = null;
+      finishDeepLink(highlightId, { clearHighlight: true });
+      return;
+    }
+
+    if (locateStartedForRef.current === highlightId) return;
+    locateStartedForRef.current = highlightId;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const foundPage = await locateReportInQueuePage(highlightId, {
+          pageSize: VERIFY_PAGE_SIZE,
+          status: 'Submitted',
+          sortBy: 'CreatedAt',
+          sortDir: 'Desc',
+        });
+        if (cancelled || pendingDeepLinkIdRef.current !== highlightId) return;
+
+        if (foundPage == null) {
+          finishDeepLink(highlightId, { clearHighlight: true });
+          return;
+        }
+
+        const currentPage = pageRef.current;
+        if (foundPage === currentPage) {
+          if (isFetchingRef.current) {
+            locateStartedForRef.current = null;
+            return;
+          }
+          finishDeepLink(highlightId, { clearHighlight: true });
+          return;
+        }
+
+        deepLinkTargetPageRef.current = foundPage;
+        setPage(foundPage);
+      } catch {
+        if (!cancelled) finishDeepLink(highlightId, { clearHighlight: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      /** Strict Mode remount: cho locate lại nếu chưa có target page. */
+      if (
+        resolvedDeepLinkIdRef.current !== highlightId &&
+        deepLinkTargetPageRef.current == null &&
+        locateStartedForRef.current === highlightId
+      ) {
+        locateStartedForRef.current = null;
+      }
+    };
+  }, [items, isPending, isFetching, page]);
+
+  /** Scroll tới row highlight — retry đến khi ref gắn (kể cả dưới fold / sau đổi page). */
+  useEffect(() => {
+    if (!highlightedId) return;
+    if (!items.some(item => item.id === highlightedId)) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 45;
+
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = rowRefs.current.get(highlightedId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (attempts++ < maxAttempts) {
+        requestAnimationFrame(tryScroll);
+      }
+    };
+
+    const timer = window.setTimeout(tryScroll, 80);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [highlightedId, items, page]);
 
   const focusDuplicatePair = (row: ReportQueueItem) => {
     const parentId = row.possibleDuplicateOfReportId;
@@ -1352,22 +1501,20 @@ export function VerifyPageClient() {
         </div>
 
         {pagination ? (
-          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-            <div className="min-w-0">
-              {pagination.totalPages > 1 ? (
-                <PaginationSimple
-                  page={page}
-                  totalPages={pagination.totalPages}
-                  onPageChange={nextPage => {
-                    setPairFocus(null);
-                    setHighlightedId(null);
-                    setPage(nextPage);
-                  }}
-                  className="w-auto"
-                />
-              ) : null}
-            </div>
-            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+          <div className="relative flex shrink-0 items-center justify-center px-6 py-3">
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={page}
+                totalPages={pagination.totalPages}
+                onPageChange={nextPage => {
+                  setPairFocus(null);
+                  setHighlightedId(null);
+                  setPage(nextPage);
+                }}
+                className="mx-auto w-auto justify-center"
+              />
+            ) : null}
+            <p className="absolute right-6 top-1/2 -translate-y-1/2 text-xs text-slate-500 tabular-nums">
               {pagination.totalItems.toLocaleString('vi-VN')} báo cáo
             </p>
           </div>
