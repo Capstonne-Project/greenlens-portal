@@ -327,6 +327,25 @@
   animation: office-stepper-shuttle 1.35s ease-in-out infinite alternate;
 }
 
+/** Pulse rings for active media timeline step (LEO tracking detail). */
+@keyframes media-step-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  55% {
+    opacity: 0.28;
+  }
+  100% {
+    transform: scale(2.85);
+    opacity: 0;
+  }
+}
+
+@utility media-step-pulse-ring {
+  animation: media-step-pulse 1.35s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
 @utility rounded-card {
   border-radius: 5px;
 }
