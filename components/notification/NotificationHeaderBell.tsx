@@ -14,7 +14,7 @@ type NotificationHeaderBellProps = {
 };
 
 /**
- * Header bell — mở cùng NotificationDrawer như Leo (sidebar Hộp thư).
+ * Header bell — mở cùng NotificationDrawer như Leo (sidebar Thông báo).
  * Badge + realtime gắn ở trigger (luôn mount).
  */
 export function NotificationHeaderBell({ className }: NotificationHeaderBellProps) {

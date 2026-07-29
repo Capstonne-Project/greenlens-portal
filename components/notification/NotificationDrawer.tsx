@@ -28,7 +28,7 @@ export function NotificationDrawer() {
         className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
         aria-describedby={undefined}
       >
-        <SheetTitle className="sr-only">Hộp thư thông báo</SheetTitle>
+        <SheetTitle className="sr-only">Thông báo</SheetTitle>
         <SheetDescription className="sr-only">
           Danh sách thông báo gần đây. Có thể đánh dấu đã đọc hoặc mở chi tiết.
         </SheetDescription>
