@@ -701,7 +701,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     () => ({
       page,
       pageSize: REPORT_PAGE_SIZE,
-      sortBy: 'PriorityScore' as const,
+      sortBy: 'CreatedAt' as const,
       sortDir: 'Desc' as const,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...getDateRange(datePreset, customFrom, customTo),
