@@ -61,6 +61,10 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   ReportResolved: 'Giải quyết',
   ReportClosed: 'Đóng',
   ReportRejected: 'Từ chối',
+  assignment: 'Phân công',
+  progress: 'Tiến độ',
+  completed: 'Hoàn thành',
+  declined: 'Từ chối',
 };
 
 export function activityTypeLabel(type: string): string {

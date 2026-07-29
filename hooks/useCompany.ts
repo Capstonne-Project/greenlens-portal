@@ -222,6 +222,8 @@ export const companyKeys = {
     [...companyKeys.all, 'assignments', params] as const,
   /** Newly assigned tasks awaiting attention — sidebar badge. */
   assignmentsNewCount: () => [...companyKeys.all, 'assignments', 'new-count'] as const,
+  /** Snapshot for company overview dashboard — recent assignments feed + fallbacks. */
+  assignmentsDashboard: () => [...companyKeys.all, 'assignments', 'dashboard'] as const,
   assignmentDetail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'detail', reportId] as const,
   contractHistory: () => [...companyKeys.all, 'contract-history'] as const,
@@ -326,6 +328,16 @@ export function useCompanyAssignments(params: CompanyAssignmentsParams) {
   return useQuery({
     queryKey: companyKeys.assignments(params),
     queryFn: () => fetchCompanyAssignments(params),
+    select: (envelope: ApiEnvelope<CompanyAssignmentsList>) => envelope.data,
+    staleTime: 60 * 1000,
+  });
+}
+
+/** Recent assignments for company overview dashboard (list + widget fallbacks). */
+export function useCompanyDashboardAssignments() {
+  return useQuery({
+    queryKey: companyKeys.assignmentsDashboard(),
+    queryFn: () => fetchCompanyAssignments({ page: 1, pageSize: 50 }),
     select: (envelope: ApiEnvelope<CompanyAssignmentsList>) => envelope.data,
     staleTime: 60 * 1000,
   });

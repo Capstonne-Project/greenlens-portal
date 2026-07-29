@@ -1,5 +1,5 @@
-import { OfficerAccountSettingsView } from '@/components/officer/settings/OfficerAccountSettingsView';
+import { UserProfileView } from '@/components/settings';
 
 export default function OfficerAccountSettingsPage() {
-  return <OfficerAccountSettingsView />;
+  return <UserProfileView variant="officer" />;
 }

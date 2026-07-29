@@ -1,7 +1,8 @@
 'use client';
 
+import { clearAuthSessionViaApi } from '@/lib/api/authSessionClient';
 import type { UserRole } from '@/lib/constants/systemRoles';
-import { clearAuthCookies } from '@/lib/storage/authCookies';
+import { clearLegacyClientAuthCookies } from '@/lib/storage/authCookies';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -18,6 +19,7 @@ export interface AuthUser {
 }
 
 interface AuthState {
+  /** In-memory only — never persisted to localStorage (XSS surface). */
   token: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -50,7 +52,8 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         if (typeof window !== 'undefined') {
           (window as Window & { __authToken?: string }).__authToken = undefined;
-          clearAuthCookies();
+          clearLegacyClientAuthCookies();
+          void clearAuthSessionViaApi();
           try {
             localStorage.removeItem('auth-storage');
           } catch {
@@ -63,9 +66,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist token+user — never persist lists or API data
+      // Persist profile only — never token / secrets (BR-DAT / XSS)
       partialize: state => ({
-        token: state.token,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),

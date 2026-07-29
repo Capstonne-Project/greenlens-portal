@@ -1,5 +1,5 @@
-import { OfficerNotificationSettingsView } from '@/components/officer/settings/OfficerNotificationSettingsView';
+import { NotificationSettingsView } from '@/components/settings';
 
 export default function OfficerNotificationSettingsPage() {
-  return <OfficerNotificationSettingsView />;
+  return <NotificationSettingsView />;
 }

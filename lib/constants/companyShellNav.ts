@@ -5,7 +5,6 @@
 
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
-  faBell,
   faBullseye,
   faChartLine,
   faClipboardList,
@@ -32,12 +31,11 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
     item('kpi', 'KPI công ty', '/company/kpi', faBullseye),
     item('queue', 'Điều phối báo cáo', '/company/queue', faClipboardList),
     item('assignments', 'Phân công', '/company/assignments', faChartLine),
-    item('notifications', 'Thông báo', '/company/notifications', faBell),
     // Nguồn lực
     item('staff', 'Nhân sự', '/company/staff', faUsers),
     item('teams', 'Đội dọn dẹp', '/company/teams', faUserGroup),
     item('contract-history', 'Lịch sử hợp đồng', '/company/contract-history', faScroll),
-    item('account', 'Tài khoản', '/company/account', faUser),
+    item('account', 'Tài khoản', '/company/settings/account', faUser),
   ];
 
   return {
@@ -48,7 +46,6 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
     mainNav,
     systemNav: {
       notifications: {
-        // Same id as mainNav so active chip highlights both entries
         id: 'notifications',
         label: 'Thông báo',
         href: '/company/notifications',
@@ -57,7 +54,7 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
       settings: {
         id: 'settings',
         label: 'Cài đặt',
-        href: '/company/notifications/preferences',
+        href: '/company/settings',
         icon: faGear,
       },
     },

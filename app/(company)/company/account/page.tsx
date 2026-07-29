@@ -1,5 +1,5 @@
-import { CompanyAccountView } from '@/components/company/account/CompanyAccountView';
+import { redirect } from 'next/navigation';
 
-export default function CompanyAccountPage() {
-  return <CompanyAccountView />;
+export default function CompanyAccountRedirect() {
+  redirect('/company/settings/account');
 }

@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 import { useSidebar } from '@/components/ui/sidebar';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
+import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
 
 function initialsFromUser(name: string | undefined, email: string | undefined): string {
   if (name?.trim()) {
@@ -35,9 +36,9 @@ function initialsFromUser(name: string | undefined, email: string | undefined): 
 
 type SidebarUserProfileProps = {
   expanded: boolean;
-  /** Account settings — Officer `/officer/settings/account`; Admin `/admin/profile`; Company `/company/account`. */
+  /** Account page — `/{role}/settings/account`. */
   profileHref?: string;
-  /** General settings — Officer `/officer/settings`. Pass empty string to hide. */
+  /** Settings shell — `/{role}/settings`. */
   settingsHref?: string;
 };
 
@@ -48,7 +49,7 @@ function isPointerOverDesktopSidebar(): boolean {
 
 export function MapSidebarUserProfile({
   expanded,
-  profileHref = '/officer/settings/account',
+  profileHref = PROFILE_ROUTES.officer,
   settingsHref = '/officer/settings',
 }: SidebarUserProfileProps) {
   const router = useRouter();

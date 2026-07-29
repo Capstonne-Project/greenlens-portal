@@ -13,6 +13,7 @@ import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShel
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import { MapSidebarUserProfile } from '@/components/common/SidebarUserProfile';
+import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
 import { NotificationDrawer } from '@/components/notification/NotificationDrawer';
 import { NotificationNavButton } from '@/components/notification/NotificationNavButton';
 import FilledBellIcon from '@/components/ui/filled-bell-icon';
@@ -20,9 +21,9 @@ import { cn } from '@/lib/utils';
 
 type AppSidebarProps = {
   config: MapShellNavConfig;
-  /** Account menu href — Officer `/officer/settings/account`; Admin `/admin/profile`. */
+  /** Account page — `/{role}/settings/account`. */
   profileHref?: string;
-  /** Settings menu href — Officer `/officer/settings`. Empty string hides the item. */
+  /** Settings shell — `/{role}/settings`. */
   settingsHref?: string;
 };
 
@@ -243,7 +244,7 @@ function SidebarLogo() {
 
 export function AppSidebar({
   config,
-  profileHref = '/officer/settings/account',
+  profileHref = PROFILE_ROUTES.officer,
   settingsHref = '/officer/settings',
 }: AppSidebarProps) {
   const [open, setOpen] = useState(false);

@@ -172,12 +172,12 @@ export function getNotificationDrawerLinks(portal: NotificationPortal): {
     case 'admin':
       return {
         inboxHref: '/admin/notifications',
-        preferencesHref: '/admin/notifications/preferences',
+        preferencesHref: '/admin/settings/notifications',
       };
     case 'company':
       return {
         inboxHref: '/company/notifications',
-        preferencesHref: '/company/notifications/preferences',
+        preferencesHref: '/company/settings/notifications',
       };
     default:
       // Officer: drawer là inbox chính, settings nằm trong route shell bên phải sidebar.
@@ -223,6 +223,81 @@ export function formatNotificationRelativeTime(iso: string): string {
 
   const weeks = Math.floor(days / 7);
   return `${weeks} tuần trước`;
+}
+
+/** Thời gian ngắn cho dropdown (kiểu Facebook: "11 giờ", "2 phút"). */
+export function formatNotificationShortTime(iso: string): string {
+  if (!iso?.trim()) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+
+  const diffMs = Date.now() - d.getTime();
+  if (diffMs < 0) return 'Vừa xong';
+
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return 'Vừa xong';
+  if (minutes < 60) return `${minutes} phút`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} giờ`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} ngày`;
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+  }).format(d);
+}
+
+export type NotificationTimeGroup = 'new' | 'today' | 'earlier';
+
+export const NOTIFICATION_TIME_GROUP_LABEL: Record<NotificationTimeGroup, string> = {
+  new: 'Mới',
+  today: 'Hôm nay',
+  earlier: 'Trước đó',
+};
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Nhóm thông báo: Mới (chưa đọc) → Hôm nay (đã đọc hôm nay) → Trước đó. */
+export function groupNotificationsByTime(
+  items: NotificationItem[]
+): { group: NotificationTimeGroup; items: NotificationItem[] }[] {
+  const todayStart = startOfLocalDay(new Date());
+  const buckets: Record<NotificationTimeGroup, NotificationItem[]> = {
+    new: [],
+    today: [],
+    earlier: [],
+  };
+
+  for (const item of items) {
+    const created = new Date(item.createdAt);
+    if (Number.isNaN(created.getTime())) {
+      buckets.earlier.push(item);
+      continue;
+    }
+    if (!item.isRead) {
+      buckets.new.push(item);
+    } else if (created >= todayStart) {
+      buckets.today.push(item);
+    } else {
+      buckets.earlier.push(item);
+    }
+  }
+
+  return (['new', 'today', 'earlier'] as const)
+    .filter(g => buckets[g].length > 0)
+    .map(group => ({ group, items: buckets[group] }));
+}
+
+export function notificationThumbnailFallback(
+  item: Pick<NotificationItem, 'title' | 'categoryName'>
+): string {
+  const source = item.categoryName?.trim() || item.title?.trim() || '?';
+  return source.charAt(0).toUpperCase();
 }
 
 /** BR-REP-005 seed: 3 loại ô nhiễm dùng cho badge góc thumbnail. */

@@ -11,6 +11,8 @@ import {
   isSlaUrgent,
   queueSeverityClasses,
   queueSeverityLabel,
+  teamTaskAcceptanceClasses,
+  teamTaskAcceptanceText,
 } from '@/utils/companyUi';
 import {
   Select,
@@ -238,6 +240,14 @@ export function CompanyAssignmentsTrackingTab({
                         <p className="text-xs text-muted-foreground">
                           {row.team.memberCount} thành viên
                         </p>
+                        <span
+                          className={cn(
+                            'mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+                            teamTaskAcceptanceClasses(row.assignmentStatus, row.startedAt)
+                          )}
+                        >
+                          {teamTaskAcceptanceText(row.assignmentStatus, row.startedAt)}
+                        </span>
                       </td>
                       <td className="min-w-[140px] px-4 py-3">
                         <ProgressBar value={row.progressPercent} />

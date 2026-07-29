@@ -33,14 +33,13 @@ function clonePreferences(list: NotificationPreference[]): NotificationPreferenc
   return list.map(p => ({ ...p }));
 }
 
-export function OfficerNotificationSettingsView() {
+export function NotificationSettingsView() {
   const { data, isPending, isError, refetch } = useNotificationPreferences();
   const updatePrefs = useUpdateNotificationPreferences();
   const [draft, setDraft] = useState<NotificationPreference[]>([]);
   const [syncedData, setSyncedData] = useState<NotificationPreference[] | undefined>(undefined);
   const [expandedType, setExpandedType] = useState<string | null>(null);
 
-  // Reset draft when server preferences change (avoid setState-in-effect warning).
   if (data !== undefined && data !== syncedData) {
     setSyncedData(data);
     setDraft(clonePreferences(data));
@@ -75,7 +74,6 @@ export function OfficerNotificationSettingsView() {
       description: resolveTypeDescription(pref.type),
       channelSummary: resolveChannelSummary(pref),
     }));
-    // Đưa "Báo cáo mới cần xác minh" lên vị trí thứ 2 theo yêu cầu UI.
     items.sort((a, b) => getPreferenceOrder(a.type) - getPreferenceOrder(b.type));
     return items;
   }, [draft]);
@@ -153,7 +151,6 @@ export function OfficerNotificationSettingsView() {
 
                   {open ? (
                     <div className="px-2 pb-3">
-                      {/* Indent = icon(size-8) + gap-3 → thẳng hàng với title header */}
                       <div className="pl-11">
                         <p className="py-3 text-base leading-6 text-foreground">
                           {pref.description}

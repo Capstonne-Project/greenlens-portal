@@ -1,11 +1,5 @@
-import { AdminProfilePage } from '@/components/admin/AdminProfilePage';
-import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Hồ sơ',
-  description: 'Thông tin tài khoản GreenLens',
-};
-
-export default function AdminProfileRoutePage() {
-  return <AdminProfilePage />;
+export default function AdminProfileRedirect() {
+  redirect('/admin/settings/account');
 }

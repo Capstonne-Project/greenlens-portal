@@ -2,8 +2,16 @@
 
 import { useProfile, useUpdateProfile, useUploadAvatar } from '@/hooks/useUser';
 import { userProfileToAuthUser } from '@/lib/auth/profileMappers';
+import { PROFILE_PORTAL_CONFIG, type ProfilePortalVariant } from '@/lib/constants/profilePortal';
 import { useAuthStore } from '@/lib/store/authStore';
+import {
+  PROFILE_AVATAR_ACCEPT,
+  PROFILE_AVATAR_MAX_BYTES,
+  profileFormSchema,
+  type ProfileFormValues,
+} from '@/lib/validation/profileFormSchema';
 import { formatCompanyDateTime } from '@/utils/companyUi';
+import { profileRoleLabelVi } from '@/utils/profileUi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   AlertTriangle,
@@ -20,35 +28,21 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { type ChangeEvent, useEffect, useRef } from 'react';
+import { type ChangeEvent, useEffect, useId, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
-const profileFormSchema = z.object({
-  fullName: z.string().min(1, 'Vui lòng nhập họ tên').max(160, 'Tối đa 160 ký tự'),
-  phoneNumber: z.string().refine(
-    val => {
-      const t = val.trim();
-      return t === '' || /^0\d{8,10}$/.test(t.replace(/\s/g, ''));
-    },
-    { message: 'Số điện thoại không hợp lệ (VD: 0955633245)' }
-  ),
-});
+export type UserProfileViewProps = {
+  variant: ProfilePortalVariant;
+};
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
-const AVATAR_ACCEPT = ['image/jpeg', 'image/png', 'image/webp'];
-
-function roleLabel(role: string | undefined): string {
-  if (!role) return '—';
-  if (role === 'CompanyManager') return 'Quản lý công ty';
-  if (role === 'CompanyStaff') return 'Nhân viên công ty';
-  return role;
-}
-
-export function CompanyAccountView() {
+/**
+ * Unified profile/account screen — use this for every portal persona.
+ * Routes & copy: `lib/constants/profilePortal.ts` · hooks: `hooks/useUser.ts`
+ */
+export function UserProfileView({ variant }: UserProfileViewProps) {
+  const config = PROFILE_PORTAL_CONFIG[variant];
+  const formId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: profile, isLoading, isError, error, refetch } = useProfile();
@@ -106,12 +100,12 @@ export function CompanyAccountView() {
 
     if (!file) return;
 
-    if (!AVATAR_ACCEPT.includes(file.type)) {
+    if (!PROFILE_AVATAR_ACCEPT.includes(file.type as (typeof PROFILE_AVATAR_ACCEPT)[number])) {
       toast.error('Chỉ chấp nhận JPG, PNG hoặc WebP');
       return;
     }
 
-    if (file.size > AVATAR_MAX_BYTES) {
+    if (file.size > PROFILE_AVATAR_MAX_BYTES) {
       toast.error('Ảnh tối đa 5MB');
       return;
     }
@@ -164,17 +158,7 @@ export function CompanyAccountView() {
 
   return (
     <div className="relative w-full min-w-0 space-y-4">
-      <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white dark:border-border dark:bg-card">
-        <div className="bg-emerald-600 px-4 py-4 text-white sm:px-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
-            Tài khoản công ty
-          </p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight">Tài khoản của tôi</h1>
-          <p className="mt-1 max-w-2xl text-sm text-emerald-50/90">
-            Quản lý thông tin cá nhân và ảnh đại diện dùng trong cổng công ty.
-          </p>
-        </div>
-      </section>
+      <p className="text-sm leading-6 text-muted-foreground">{config.subtitle}</p>
 
       <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
         <aside className="space-y-4">
@@ -216,7 +200,7 @@ export function CompanyAccountView() {
             <input
               ref={fileRef}
               type="file"
-              accept={AVATAR_ACCEPT.join(',')}
+              accept={PROFILE_AVATAR_ACCEPT.join(',')}
               className="sr-only"
               onChange={onPickAvatar}
             />
@@ -287,28 +271,32 @@ export function CompanyAccountView() {
                 </div>
               </div>
               <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                {roleLabel(profile?.role)}
+                {profileRoleLabelVi(profile?.role)}
               </span>
             </div>
 
-            <div className="space-y-1.5 rounded-xl border border-emerald-100 p-3 text-xs text-muted-foreground dark:border-border">
-              <p>
-                <span className="font-medium text-foreground">Tạo lúc:</span>{' '}
-                {formatCompanyDateTime(profile?.createdAt)}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Cập nhật:</span>{' '}
-                {formatCompanyDateTime(profile?.updatedAt)}
-              </p>
-            </div>
+            {config.showAccountTimestamps && (
+              <div className="space-y-1.5 rounded-xl border border-emerald-100 p-3 text-xs text-muted-foreground dark:border-border">
+                <p>
+                  <span className="font-medium text-foreground">Tạo lúc:</span>{' '}
+                  {formatCompanyDateTime(profile?.createdAt)}
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Cập nhật:</span>{' '}
+                  {formatCompanyDateTime(profile?.updatedAt)}
+                </p>
+              </div>
+            )}
 
-            <Link
-              href="/company/notifications/preferences"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-100 px-3 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 dark:border-border dark:text-emerald-400 dark:hover:bg-muted"
-            >
-              <Bell className="size-4" aria-hidden />
-              Cài đặt thông báo
-            </Link>
+            {config.notificationPreferencesHref && (
+              <Link
+                href={config.notificationPreferencesHref}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-100 px-3 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 dark:border-border dark:text-emerald-400 dark:hover:bg-muted"
+              >
+                <Bell className="size-4" aria-hidden />
+                Cài đặt thông báo
+              </Link>
+            )}
           </section>
         </aside>
 
@@ -333,14 +321,14 @@ export function CompanyAccountView() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
                 <label
-                  htmlFor="company-fullName"
+                  htmlFor={`${formId}-fullName`}
                   className="flex items-center gap-2 text-sm font-semibold text-foreground"
                 >
                   <UserRound className="size-4 text-muted-foreground" aria-hidden />
                   Họ và tên
                 </label>
                 <input
-                  id="company-fullName"
+                  id={`${formId}-fullName`}
                   autoComplete="name"
                   placeholder="Nhập họ và tên"
                   className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
@@ -353,14 +341,14 @@ export function CompanyAccountView() {
 
               <div className="space-y-1.5">
                 <label
-                  htmlFor="company-email"
+                  htmlFor={`${formId}-email`}
                   className="flex items-center gap-2 text-sm font-semibold text-foreground"
                 >
                   <Mail className="size-4 text-muted-foreground" aria-hidden />
                   Email
                 </label>
                 <input
-                  id="company-email"
+                  id={`${formId}-email`}
                   type="email"
                   value={profile?.email ?? ''}
                   readOnly
@@ -371,14 +359,14 @@ export function CompanyAccountView() {
 
               <div className="space-y-1.5">
                 <label
-                  htmlFor="company-phoneNumber"
+                  htmlFor={`${formId}-phoneNumber`}
                   className="flex items-center gap-2 text-sm font-semibold text-foreground"
                 >
                   <Phone className="size-4 text-muted-foreground" aria-hidden />
                   Số điện thoại
                 </label>
                 <input
-                  id="company-phoneNumber"
+                  id={`${formId}-phoneNumber`}
                   type="tel"
                   autoComplete="tel"
                   placeholder="0955633245"
@@ -395,11 +383,10 @@ export function CompanyAccountView() {
 
             <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3.5 dark:border-border dark:bg-muted/40">
               <p className="text-sm font-semibold text-emerald-950 dark:text-foreground">
-                Thông tin dùng cho cổng công ty
+                {config.infoHintTitle}
               </p>
               <p className="mt-1 text-sm leading-6 text-emerald-900/70 dark:text-muted-foreground">
-                Họ tên và ảnh đại diện hiển thị khi điều phối báo cáo, phân công và thông báo nội
-                bộ.
+                {config.infoHintBody}
               </p>
             </div>
 

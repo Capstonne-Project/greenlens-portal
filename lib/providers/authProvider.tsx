@@ -1,20 +1,22 @@
 'use client';
 
 import { refreshSessionOnce } from '@/lib/api/core';
-import type { LoginSuccessData } from '@/lib/api/types/auth';
+import type { AuthSessionEventDetail } from '@/lib/api/core';
+import { persistAuthSession } from '@/lib/api/authSessionClient';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getUserFromAccessToken } from '@/lib/auth/userFromAccessToken';
 import {
-  getAccessTokenFromCookie,
+  clearLegacyClientAuthCookies,
+  getLegacyAccessTokenFromCookie,
+  getLegacyRefreshTokenFromCookie,
   getMustChangePasswordFromCookie,
-  getRefreshTokenFromCookie,
   setMustChangePasswordCookie,
 } from '@/lib/storage/authCookies';
 import type { AuthUser } from '@/lib/store/authStore';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useEffect } from 'react';
 
-function sessionToAuthUser(data: LoginSuccessData): AuthUser {
+function sessionToAuthUser(data: AuthSessionEventDetail): AuthUser {
   return buildAuthUserFromApi(data.user);
 }
 
@@ -23,7 +25,6 @@ function withMustChangeFromCookie(user: AuthUser): AuthUser {
   const must = Boolean(user.mustChangePassword) || fromCookie;
 
   if (must) {
-    // Keep cookie + store aligned (refresh Max-Age after silent refresh / hydrate)
     setMustChangePasswordCookie(true);
     return { ...user, mustChangePassword: true };
   }
@@ -31,7 +32,20 @@ function withMustChangeFromCookie(user: AuthUser): AuthUser {
   return { ...user, mustChangePassword: false };
 }
 
-function syncAuthAfterHydration(setAuth: (token: string, user: AuthUser) => void) {
+async function migrateLegacyClientCookies(): Promise<{ access: string; refresh: string } | null> {
+  const access = getLegacyAccessTokenFromCookie();
+  const refresh = getLegacyRefreshTokenFromCookie();
+  if (!access || !refresh) return null;
+  const ok = await persistAuthSession(access, refresh);
+  if (!ok) return null;
+  clearLegacyClientAuthCookies();
+  return { access, refresh };
+}
+
+async function syncAuthAfterHydration(
+  setAuth: (token: string, user: AuthUser) => void,
+  logout: () => void
+) {
   const s = useAuthStore.getState();
 
   if (s.token && s.user) {
@@ -60,78 +74,69 @@ function syncAuthAfterHydration(setAuth: (token: string, user: AuthUser) => void
     return;
   }
 
-  const cookieToken = getAccessTokenFromCookie();
-  if (cookieToken) {
-    const user = getUserFromAccessToken(cookieToken);
+  const migrated = await migrateLegacyClientCookies();
+  if (migrated) {
+    const user = getUserFromAccessToken(migrated.access);
     if (user) {
-      setAuth(cookieToken, withMustChangeFromCookie(user));
+      setAuth(migrated.access, withMustChangeFromCookie(user));
     }
     return;
   }
 
-  if (getRefreshTokenFromCookie()) {
-    void refreshSessionOnce();
+  // No memory token — silent refresh using HttpOnly refresh cookie
+  const ok = await refreshSessionOnce();
+  if (!ok && (s.isAuthenticated || s.user)) {
+    logout();
   }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { token, logout, setAuth } = useAuthStore();
 
-  // After persist rehydrates from localStorage, sync window token; if empty, restore from cookie.
   useEffect(() => {
     const persistApi = useAuthStore.persist;
 
+    const run = () => {
+      void syncAuthAfterHydration(setAuth, logout).then(() => {
+        const s = useAuthStore.getState();
+        if (s.token && s.user) {
+          const merged = withMustChangeFromCookie(s.user);
+          if (merged.mustChangePassword !== s.user.mustChangePassword) {
+            setAuth(s.token, merged);
+          }
+        }
+      });
+    };
+
     if (!persistApi) {
-      syncAuthAfterHydration(setAuth);
+      run();
       return;
     }
 
-    const unsub = persistApi.onFinishHydration(() => {
-      syncAuthAfterHydration(setAuth);
-
-      // Đồng bộ mustChangePassword từ cookie sau khi hydrate
-      const s = useAuthStore.getState();
-      if (s.token && s.user) {
-        const merged = withMustChangeFromCookie(s.user);
-        if (merged.mustChangePassword !== s.user.mustChangePassword) {
-          setAuth(s.token, merged);
-        }
-      }
-    });
+    const unsub = persistApi.onFinishHydration(run);
 
     if (persistApi.hasHydrated()) {
-      syncAuthAfterHydration(setAuth);
-
-      const s = useAuthStore.getState();
-      if (s.token && s.user) {
-        const merged = withMustChangeFromCookie(s.user);
-        if (merged.mustChangePassword !== s.user.mustChangePassword) {
-          setAuth(s.token, merged);
-        }
-      }
+      run();
     }
 
     return unsub;
-  }, [setAuth]);
+  }, [setAuth, logout]);
 
-  // Expose token on window so L1 interceptor can read it
   useEffect(() => {
     if (token) {
       (window as Window & { __authToken?: string }).__authToken = token;
     }
   }, [token]);
 
-  // Listen for logout events dispatched by L1 401 interceptor
   useEffect(() => {
     const handleLogout = () => logout();
     window.addEventListener('auth:logout', handleLogout);
     return () => window.removeEventListener('auth:logout', handleLogout);
   }, [logout]);
 
-  // Sync Zustand after silent refresh (cookies + window token already updated in L1)
   useEffect(() => {
     const handler = (e: Event) => {
-      const ce = e as CustomEvent<LoginSuccessData>;
+      const ce = e as CustomEvent<AuthSessionEventDetail>;
       const d = ce.detail;
       if (!d?.user) return;
       setAuth(d.accessToken, withMustChangeFromCookie(sessionToAuthUser(d)));

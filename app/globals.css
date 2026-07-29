@@ -85,6 +85,8 @@
   /* Custom animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-anchor-flyout-in: anchor-flyout-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-anchor-flyout-out: anchor-flyout-out 0.2s cubic-bezier(0.4, 0, 0.6, 1) both;
 }
 
 @keyframes accordion-down {
@@ -101,6 +103,28 @@
   }
   to {
     height: 0;
+  }
+}
+
+@keyframes anchor-flyout-in {
+  from {
+    opacity: 0;
+    transform: scale(0.72) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes anchor-flyout-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.72) translateY(-8px);
   }
 }
 
@@ -301,6 +325,25 @@
 
 @utility stepper-line-shuttle {
   animation: office-stepper-shuttle 1.35s ease-in-out infinite alternate;
+}
+
+/** Pulse rings for active media timeline step (LEO tracking detail). */
+@keyframes media-step-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  55% {
+    opacity: 0.28;
+  }
+  100% {
+    transform: scale(2.85);
+    opacity: 0;
+  }
+}
+
+@utility media-step-pulse-ring {
+  animation: media-step-pulse 1.35s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 @utility rounded-card {
