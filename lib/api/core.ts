@@ -1,16 +1,17 @@
-import {
-  getAccessTokenFromCookie,
-  getRefreshTokenFromCookie,
-  setAuthCookies,
-} from '@/lib/storage/authCookies';
+import { clearAuthSessionViaApi, refreshAuthSessionViaApi } from '@/lib/api/authSessionClient';
 import axios, { AxiosProgressEvent, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 /** Re-export of axios.isAxiosError so layers L2–L6 can type-guard errors
  *  without importing axios directly. */
 export const isAxiosError = axios.isAxiosError;
 import { getApiBaseUrl } from './getApiBaseUrl';
-import { postRefreshToken } from './refreshSession';
-import type { LoginSuccessData } from './types/auth';
+import type { LoginUserDto } from './types/auth';
+
+/** Payload broadcast after silent refresh — never includes refreshToken. */
+export type AuthSessionEventDetail = {
+  accessToken: string;
+  user: LoginUserDto;
+};
 
 const axiosInstance = axios.create({
   baseURL: getApiBaseUrl(),
@@ -18,12 +19,11 @@ const axiosInstance = axios.create({
   timeout: 15000,
 });
 
-// Request interceptor — resolve base URL per request + Bearer token
+// Request interceptor — resolve base URL per request + Bearer from in-memory token only
 axiosInstance.interceptors.request.use(config => {
   config.baseURL = getApiBaseUrl();
   if (typeof window !== 'undefined') {
-    const windowToken = (window as Window & { __authToken?: string }).__authToken;
-    const token = windowToken ?? getAccessTokenFromCookie();
+    const token = (window as Window & { __authToken?: string }).__authToken;
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -39,31 +39,34 @@ function forceLogout(): void {
   if (typeof window === 'undefined') return;
   (window as Window & { __authToken?: string }).__authToken = undefined;
   window.dispatchEvent(new Event('auth:logout'));
-  window.location.href = '/login';
+  void clearAuthSessionViaApi().finally(() => {
+    window.location.href = '/login';
+  });
 }
 
 function shouldSkipRefreshRetry(url: string | undefined): boolean {
   if (!url) return false;
-  return url.includes('/v1/auth/login') || url.includes('/v1/auth/refresh-token');
+  return (
+    url.includes('/v1/auth/login') ||
+    url.includes('/v1/auth/refresh-token') ||
+    url.includes('/api/auth/refresh')
+  );
 }
 
+/** Silent refresh via `/api/auth/refresh` (HttpOnly refresh cookie on server). */
 export async function refreshSessionOnce(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
     try {
-      const refreshToken = getRefreshTokenFromCookie();
-      if (!refreshToken) return false;
+      const data = await refreshAuthSessionViaApi();
+      if (!data?.accessToken) return false;
 
-      const envelope = await postRefreshToken(refreshToken);
-      const { accessToken, refreshToken: newRefresh, user } = envelope.data;
-      setAuthCookies(accessToken, newRefresh);
-      (window as Window & { __authToken?: string }).__authToken = accessToken;
+      (window as Window & { __authToken?: string }).__authToken = data.accessToken;
 
-      const sessionDetail: LoginSuccessData = {
-        accessToken,
-        refreshToken: newRefresh,
-        user,
+      const sessionDetail: AuthSessionEventDetail = {
+        accessToken: data.accessToken,
+        user: data.user,
       };
       window.dispatchEvent(new CustomEvent('auth:session', { detail: sessionDetail }));
       return true;
