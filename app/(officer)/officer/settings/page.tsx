@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function OfficerSettingsPage() {
-  redirect('/officer/settings/notifications');
+  redirect('/officer/settings/account');
 }
