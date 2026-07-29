@@ -337,7 +337,7 @@ export function useCompanyAssignments(params: CompanyAssignmentsParams) {
 export function useCompanyDashboardAssignments() {
   return useQuery({
     queryKey: companyKeys.assignmentsDashboard(),
-    queryFn: () => fetchCompanyAssignments({ page: 1, pageSize: 50 }),
+    queryFn: () => fetchCompanyAssignments({ page: 1, pageSize: 12 }),
     select: (envelope: ApiEnvelope<CompanyAssignmentsList>) => envelope.data,
     staleTime: 60 * 1000,
   });

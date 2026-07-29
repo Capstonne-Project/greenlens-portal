@@ -1,6 +1,7 @@
 'use client';
 
 import { WasteTagCatalogFlow } from '@/components/admin/waste-tags/WasteTagCatalogFlow';
+import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import { WasteTagInactiveFlow } from '@/components/admin/waste-tags/WasteTagInactiveFlow';
 import { WasteTagLiveSearch } from '@/components/admin/waste-tags/WasteTagLiveSearch';
 import {
@@ -212,7 +213,7 @@ export function AdminWasteTagsView() {
 
   const paginationBar =
     !isPending && !isError && filteredItems.length > 0 ? (
-      <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={ADMIN_TABLE_PAGINATION_NAV}>
         <span className="text-xs text-muted-foreground">
           Trang {pagination.page}/{pagination.totalPages} ·{' '}
           <span className="font-medium text-foreground">

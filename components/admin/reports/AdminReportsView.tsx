@@ -2,6 +2,7 @@
 
 import { AdminReportDetailPanel } from '@/components/admin/reports/AdminReportDetailPanel';
 import { AdminReportHideDialog } from '@/components/admin/reports/AdminReportHideDialog';
+import { AdminReportSummaryStrip } from '@/components/admin/reports/AdminReportSummaryStrip';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
 import {
@@ -10,6 +11,8 @@ import {
   ADMIN_TABLE_ROW_BORDER,
   ADMIN_TABLE_SCROLL,
   ADMIN_TABLE_SHELL,
+  ADMIN_TABLE_PAGINATION_FOOTER,
+  ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { PaginationSimple } from '@/components/ui/pagination';
@@ -210,55 +213,15 @@ export function AdminReportsView() {
 
   return (
     <div className="w-full min-w-0 space-y-4">
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: 'Tổng báo cáo',
-            value: pagination ? pagination.totalItems.toLocaleString('vi-VN') : '—',
-            hint: 'Toàn hệ thống',
-            ring: 100,
-          },
-          {
-            label: 'Đang mở (trang)',
-            value: String(openOnPage),
-            hint: 'Đã gửi → đang xử lý (chưa đóng)',
-            ring: items.length ? Math.round((openOnPage / items.length) * 100) : 0,
-          },
-          {
-            label: 'Chờ xác minh (trang)',
-            value: String(submittedOnPage),
-            hint: 'Trạng thái đã gửi',
-            ring: items.length ? Math.round((submittedOnPage / items.length) * 100) : 0,
-          },
-          {
-            label: 'Ẩn danh (trang)',
-            value: String(anonymousOnPage),
-            hint: 'Theo dữ liệu trang hiện tại',
-            ring: items.length ? Math.round((anonymousOnPage / items.length) * 100) : 0,
-          },
-        ].map(card => (
-          <article
-            key={card.label}
-            className="rounded-card border border-border bg-card p-4 shadow-sm"
-          >
-            <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-            <div className="mt-2 flex items-end justify-between gap-3">
-              <div>
-                <p className="text-2xl font-bold tracking-tight">{card.value}</p>
-                <p className="mt-0.5 text-xs text-emerald-800/90">{card.hint}</p>
-              </div>
-              <div
-                className="flex size-12 shrink-0 items-center justify-center rounded-full border-4 border-emerald-100 bg-emerald-50 text-[11px] font-bold text-emerald-800"
-                aria-hidden
-              >
-                {card.ring}%
-              </div>
-            </div>
-          </article>
-        ))}
-      </section>
-
       <div className="rounded-card border border-border bg-card p-4 shadow-sm">
+        <AdminReportSummaryStrip
+          totalItems={pagination?.totalItems ?? null}
+          openOnPage={openOnPage}
+          submittedOnPage={submittedOnPage}
+          anonymousOnPage={anonymousOnPage}
+          className="mb-3"
+        />
+
         <div className="flex flex-wrap items-center gap-2">
           <AdminReportsSearchField
             key={searchQ}
@@ -430,18 +393,16 @@ export function AdminReportsView() {
         </div>
 
         {pagination ? (
-          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-            <div className="min-w-0">
-              {pagination.totalPages > 1 ? (
-                <PaginationSimple
-                  page={pagination.page}
-                  totalPages={pagination.totalPages}
-                  onPageChange={p => setQuery({ page: String(p) })}
-                  className="w-auto"
-                />
-              ) : null}
-            </div>
-            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+          <div className={ADMIN_TABLE_PAGINATION_FOOTER}>
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={p => setQuery({ page: String(p) })}
+                className="w-auto"
+              />
+            ) : null}
+            <p className={ADMIN_TABLE_PAGINATION_META}>
               {pagination.totalItems.toLocaleString('vi-VN')} rows
             </p>
           </div>

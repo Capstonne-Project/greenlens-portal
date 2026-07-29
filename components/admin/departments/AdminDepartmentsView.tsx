@@ -8,6 +8,7 @@ import { DepartmentEditDialog } from '@/components/admin/departments/DepartmentE
 import { DepartmentLiveSearch } from '@/components/admin/departments/DepartmentLiveSearch';
 import { DepartmentsDataList } from '@/components/admin/departments/DepartmentsDataList';
 import { DepartmentsOverviewSidebar } from '@/components/admin/departments/DepartmentsOverviewSidebar';
+import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import { useDepartmentsList } from '@/hooks/useDepartments';
 import { ADMIN_DEPARTMENTS_PAGE_SIZE } from '@/lib/constants/adminDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
@@ -201,7 +202,7 @@ export function AdminDepartmentsView() {
                 />
 
                 {pagination && pagination.totalPages > 1 && (
-                  <div className="flex flex-col gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className={ADMIN_TABLE_PAGINATION_NAV}>
                     <span className="text-xs text-muted-foreground">
                       Trang {pagination.page}/{pagination.totalPages}
                     </span>

@@ -106,7 +106,7 @@ const PaginationSimple = ({
   })();
 
   return (
-    <Pagination className={cn('w-auto justify-end', className)}>
+    <Pagination className={cn('w-auto justify-center', className)}>
       <PaginationContent>
         {pages.map((p, i) => {
           const prev = pages[i - 1];

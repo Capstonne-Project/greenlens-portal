@@ -6,6 +6,11 @@ import {
 } from '@/components/company/teams/CompanyTeamArchiveDialog';
 import { CompanyTeamCreateDialog } from '@/components/company/teams/CompanyTeamCreateDialog';
 import { CompanyTeamRenameDialog } from '@/components/company/teams/CompanyTeamRenameDialog';
+import {
+  COMPANY_PAGINATION_CONTROLS,
+  COMPANY_PAGINATION_FOOTER,
+  COMPANY_PAGINATION_META,
+} from '@/components/company/shared/companyPaginationChrome';
 import { useArchiveCompanyTeam, useCompanyTeamsList } from '@/hooks/useCompany';
 import {
   Select,
@@ -207,11 +212,11 @@ export function CompanyTeamsView() {
         )}
 
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-emerald-50 px-4 py-3 text-sm dark:border-border">
-            <p className="text-muted-foreground">
+          <div className={COMPANY_PAGINATION_FOOTER}>
+            <p className={COMPANY_PAGINATION_META}>
               {pagination.page}/{pagination.totalPages} · {pagination.totalItems} đội
             </p>
-            <div className="flex gap-1">
+            <div className={COMPANY_PAGINATION_CONTROLS}>
               <button
                 type="button"
                 disabled={!pagination.hasPrev}

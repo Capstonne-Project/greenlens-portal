@@ -1,6 +1,13 @@
 'use client';
 
-import { useCompanyTeamOptions, useAssignCompanyTeam } from '@/hooks/useCompany';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAssignCompanyTeam, useCompanyTeamOptions } from '@/hooks/useCompany';
 import { getCompanyMutationError } from '@/utils/companyUi';
 import { Loader2, UsersRound, X } from 'lucide-react';
 import { useState } from 'react';
@@ -106,29 +113,24 @@ export function CompanyAssignTeamDialog({
                 Chưa có đội hoạt động. Tạo đội trước khi phân công.
               </p>
             ) : (
-              <div className="max-h-48 space-y-2 overflow-y-auto">
-                {teams.map(team => (
-                  <label
-                    key={team.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
-                      teamId === team.id
-                        ? 'border-emerald-500 bg-emerald-50'
-                        : 'border-emerald-100 hover:border-emerald-300 dark:border-border'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="team"
-                      value={team.id}
-                      checked={teamId === team.id}
-                      onChange={() => setTeamId(team.id)}
-                      className="sr-only"
-                    />
+              <Select value={teamId || undefined} onValueChange={setTeamId}>
+                <SelectTrigger
+                  id="assign-team"
+                  className="h-11 rounded-xl border-emerald-200 bg-emerald-50/60 text-sm shadow-none focus:ring-emerald-500/40 dark:border-border dark:bg-background"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
                     <UsersRound className="size-4 shrink-0 text-emerald-700" aria-hidden />
-                    <span className="text-sm font-medium">{team.name}</span>
-                  </label>
-                ))}
-              </div>
+                    <SelectValue placeholder="Chọn đội dọn dẹp" />
+                  </span>
+                </SelectTrigger>
+                <SelectContent className="z-[60] max-h-60">
+                  {teams.map(team => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
 
