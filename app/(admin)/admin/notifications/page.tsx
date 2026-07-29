@@ -1,5 +1,5 @@
-import { AdminNotificationsView } from '@/components/admin/notifications/AdminNotificationsView';
+import { NotificationInboxView } from '@/components/notification';
 
 export default function AdminNotificationsPage() {
-  return <AdminNotificationsView />;
+  return <NotificationInboxView portal="admin" />;
 }

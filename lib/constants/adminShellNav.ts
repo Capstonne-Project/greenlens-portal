@@ -74,14 +74,14 @@ export function getAdminShellNavConfig(): MapShellNavConfig {
     systemNav: {
       notifications: {
         id: 'notifications',
-        label: 'Hộp thư',
+        label: 'Thông báo',
         href: '/admin/notifications',
         animatedIcon: 'filled-bell',
       },
       settings: {
         id: 'settings',
         label: 'Cài đặt',
-        href: '/admin/profile',
+        href: '/admin/settings',
         icon: faGear,
       },
     },
