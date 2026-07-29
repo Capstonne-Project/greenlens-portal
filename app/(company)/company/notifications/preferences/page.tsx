@@ -1,5 +1,5 @@
-import { CompanyNotificationPreferencesView } from '@/components/company/notifications/CompanyNotificationPreferencesView';
+import { redirect } from 'next/navigation';
 
-export default function CompanyNotificationPreferencesPage() {
-  return <CompanyNotificationPreferencesView />;
+export default function CompanyNotifPrefsRedirect() {
+  redirect('/company/settings/notifications');
 }
