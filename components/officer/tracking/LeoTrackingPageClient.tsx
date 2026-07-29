@@ -61,8 +61,7 @@ const LEO_LIST_PAGE_SIZE = 10;
  * Board grid — cột cố định theo breakpoint để 1 card không kéo full hàng.
  * Không hardcode px; chiều cao card = aspect thumb + body line-clamp đồng nhất.
  */
-const LEO_BOARD_GRID_CLASS =
-  'grid w-full grid-cols-2 gap-1.5 py-0 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
+const LEO_BOARD_GRID_CLASS = 'grid w-full grid-cols-2 gap-2 py-0 sm:grid-cols-3 lg:grid-cols-5';
 
 /** Tab trạng thái theo dõi — bỏ Submitted (đã gửi); luồng đó thuộc hàng đợi xác minh. */
 const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES.filter(
@@ -79,6 +78,9 @@ const SEVERITY_LABEL = REPORT_SEVERITY_LABEL_VI;
 
 const FILTER_BTN_CLASS =
   'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand';
+const BOARD_TEAM_AVATAR_SIZE_CLASS = 'size-5 sm:size-6 lg:size-7';
+const BOARD_TEAM_EXTRA_BADGE_CLASS =
+  'relative z-10 -ml-1.5 flex size-5 items-center justify-center rounded-full bg-muted text-[9px] font-semibold text-foreground ring-2 ring-card sm:-ml-2 sm:size-6 sm:text-[10px] lg:-ml-2.5 lg:size-7';
 
 const LEO_VIEW_TOGGLE_CLASS = (active: boolean) =>
   cn(
@@ -321,7 +323,7 @@ function ReportThumbStrip({
   urls,
   alt,
   className,
-  aspectClassName = 'aspect-[2/1]',
+  aspectClassName = 'aspect-2/1',
   eagerFirstImage = false,
 }: {
   urls: string[];
@@ -442,7 +444,7 @@ function ProjectCard({
         />
         <span
           className={cn(
-            'absolute right-1.5 top-1.5 inline-flex max-w-[75%] items-center truncate rounded-full px-1.5 py-0.5 text-[9px] font-semibold shadow-sm backdrop-blur-sm',
+            'absolute right-2 top-2 inline-flex max-w-[76%] items-center truncate rounded-full px-2 py-0.5 text-[9px] font-semibold shadow-sm backdrop-blur-sm',
             statusBadgeClass
           )}
           title={statusLabel}
@@ -451,10 +453,10 @@ function ProjectCard({
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1 p-1.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
         <div className="min-w-0">
           <div
-            className="mb-0.5 mt-0 flex items-center gap-1 py-0"
+            className="mb-0.5 mt-0.5 flex items-center gap-1.5 py-0"
             title={`Mức độ: ${SEVERITY_LABEL[item.severity]}`}
           >
             <span
@@ -476,17 +478,17 @@ function ProjectCard({
           <CardTitle className="line-clamp-1 text-xs font-semibold leading-snug" title={title}>
             {title}
           </CardTitle>
-          <CardDescription className="mt-0.5 line-clamp-1 text-[10px]" title={meta}>
+          <CardDescription className="mt-1 line-clamp-1 text-[10px]" title={meta}>
             {meta}
           </CardDescription>
         </div>
 
         <div className="mt-0.5">
-          <div className="mb-0.5 flex items-center justify-between text-[10px]">
+          <div className="mb-1 flex items-center justify-between text-[10px]">
             <span className="text-muted-foreground">Tiến độ</span>
             <span className="tabular-nums font-semibold text-foreground">{progress}%</span>
           </div>
-          <div className="h-0.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-1 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
               style={{ width: `${progress}%` }}
@@ -494,7 +496,7 @@ function ProjectCard({
           </div>
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-1 pt-0.5">
+        <div className="mt-auto flex items-center justify-between gap-1.5 pt-0.5">
           <div
             className="flex min-w-0 items-center"
             onClick={e => e.stopPropagation()}
@@ -504,11 +506,12 @@ function ProjectCard({
               <span className="truncate text-[9px] text-muted-foreground">Chưa có đội</span>
             ) : (
               <>
-                <AnimatedTooltip items={teamTooltipItems} avatarClassName="size-4" />
+                <AnimatedTooltip
+                  items={teamTooltipItems}
+                  avatarClassName={BOARD_TEAM_AVATAR_SIZE_CLASS}
+                />
                 {extraTeams > 0 ? (
-                  <span className="relative z-10 -ml-1 flex size-4 items-center justify-center rounded-full bg-muted text-[8px] font-semibold text-foreground ring-2 ring-card">
-                    +{extraTeams}
-                  </span>
+                  <span className={BOARD_TEAM_EXTRA_BADGE_CLASS}>+{extraTeams}</span>
                 ) : null}
               </>
             )}
@@ -644,8 +647,8 @@ function SkeletonGrid() {
           key={k}
           className="flex flex-col overflow-hidden rounded-xl border border-border/50 bg-card"
         >
-          <div className="aspect-[2/1] animate-pulse bg-muted/40" />
-          <div className="flex flex-col gap-1 p-1.5">
+          <div className="aspect-2/1 animate-pulse bg-muted/40" />
+          <div className="flex flex-col gap-1.5 p-2.5">
             <div className="h-2 w-1/3 animate-pulse rounded bg-muted/40" />
             <div className="h-3 w-4/5 animate-pulse rounded bg-muted/40" />
             <div className="h-2 w-full animate-pulse rounded bg-muted/30" />
