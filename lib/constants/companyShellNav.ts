@@ -35,7 +35,7 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
     item('staff', 'Nhân sự', '/company/staff', faUsers),
     item('teams', 'Đội dọn dẹp', '/company/teams', faUserGroup),
     item('contract-history', 'Lịch sử hợp đồng', '/company/contract-history', faScroll),
-    item('account', 'Tài khoản', '/company/account', faUser),
+    item('account', 'Tài khoản', '/company/settings/account', faUser),
   ];
 
   return {
@@ -54,7 +54,7 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
       settings: {
         id: 'settings',
         label: 'Cài đặt',
-        href: '/company/notifications/preferences',
+        href: '/company/settings',
         icon: faGear,
       },
     },

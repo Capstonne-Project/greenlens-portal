@@ -1,5 +1,5 @@
 import { NotificationSettingsView } from '@/components/settings';
 
-export default function OfficerNotificationSettingsPage() {
+export default function CompanyNotificationSettingsPage() {
   return <NotificationSettingsView />;
 }

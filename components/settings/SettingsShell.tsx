@@ -1,42 +1,45 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Bell, UserRound } from 'lucide-react';
+import { Bell, UserRound, Shield, Building2, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-type OfficerSettingsShellProps = {
+const ICON_MAP: Record<string, LucideIcon> = {
+  bell: Bell,
+  'user-round': UserRound,
+  shield: Shield,
+  building: Building2,
+};
+
+export type SettingsNavItem = {
+  id: string;
+  label: string;
+  href: string;
+  /** Key into the icon registry — e.g. `"bell"`, `"user-round"`. */
+  icon: string;
+};
+
+type SettingsShellProps = {
+  title?: string;
+  navItems: readonly SettingsNavItem[];
   children: React.ReactNode;
 };
 
-const SETTINGS_NAV = [
-  {
-    id: 'notifications',
-    label: 'Thông báo',
-    href: '/officer/settings/notifications',
-    Icon: Bell,
-  },
-  {
-    id: 'account',
-    label: 'Cài đặt tài khoản',
-    href: '/officer/settings/account',
-    Icon: UserRound,
-  },
-] as const;
-
-export function OfficerSettingsShell({ children }: OfficerSettingsShellProps) {
+export function SettingsShell({ title = 'Cài đặt', navItems, children }: SettingsShellProps) {
   const pathname = usePathname();
 
   return (
     <div className="flex min-h-[calc(100vh-7rem)] min-w-0 flex-col overflow-hidden rounded-2xl bg-white md:flex-row">
       <aside className="w-full shrink-0 border-b border-border/70 bg-white px-4 py-5 md:w-72 md:border-r md:border-b-0 md:px-5">
         <h1 className="px-2 text-xl font-semibold tracking-tight text-black sm:text-2xl">
-          Cài đặt
+          {title}
         </h1>
 
-        <nav className="mt-5 flex flex-col gap-1.5" aria-label="Cài đặt tài khoản">
-          {SETTINGS_NAV.map(item => {
+        <nav className="mt-5 flex flex-col gap-1.5" aria-label={title}>
+          {navItems.map(item => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const Icon = ICON_MAP[item.icon];
             return (
               <Link
                 key={item.id}
@@ -47,7 +50,7 @@ export function OfficerSettingsShell({ children }: OfficerSettingsShellProps) {
                 )}
                 aria-current={active ? 'page' : undefined}
               >
-                <item.Icon className="size-4" aria-hidden />
+                {Icon ? <Icon className="size-4" aria-hidden /> : null}
                 <span className="font-normal">{item.label}</span>
               </Link>
             );

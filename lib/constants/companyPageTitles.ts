@@ -10,7 +10,9 @@ export function getCompanyPageTitle(pathname: string): string {
   if (pathname === '/company/teams') return 'Đội dọn dẹp';
   if (pathname === '/company/contract-history') return 'Lịch sử hợp đồng';
   if (pathname === '/company/kpi') return 'KPI công ty';
-  if (pathname === '/company/notifications/preferences') return 'Cài đặt thông báo';
+  if (pathname === '/company/settings' || pathname === '/company/settings/account')
+    return 'Cài đặt tài khoản';
+  if (pathname === '/company/settings/notifications') return 'Cài đặt thông báo';
   if (pathname === '/company/notifications' || pathname.startsWith('/company/notifications/'))
     return 'Thông báo';
   if (pathname === '/company/queue') return 'Điều phối báo cáo';

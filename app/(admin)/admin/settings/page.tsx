@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
-export default function AdminProfileRedirect() {
+export default function AdminSettingsPage() {
   redirect('/admin/settings/account');
 }

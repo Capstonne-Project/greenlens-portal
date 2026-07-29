@@ -6,8 +6,8 @@
 export type ProfilePortalVariant = 'admin' | 'company' | 'officer';
 
 export const PROFILE_ROUTES: Record<ProfilePortalVariant, string> = {
-  admin: '/admin/profile',
-  company: '/company/account',
+  admin: '/admin/settings/account',
+  company: '/company/settings/account',
   officer: '/officer/settings/account',
 } as const;
 
@@ -31,6 +31,7 @@ export const PROFILE_PORTAL_CONFIG: Record<ProfilePortalVariant, ProfilePortalCo
     infoHintTitle: 'Thông tin này dùng cho tài khoản quản trị',
     infoHintBody:
       'Họ tên và ảnh đại diện sẽ được hiển thị trong dashboard, lịch sử thao tác và các hoạt động quản trị.',
+    notificationPreferencesHref: '/admin/settings/notifications',
   },
   company: {
     badgeLabel: 'Tài khoản công ty',
@@ -39,7 +40,7 @@ export const PROFILE_PORTAL_CONFIG: Record<ProfilePortalVariant, ProfilePortalCo
     infoHintTitle: 'Thông tin dùng cho cổng công ty',
     infoHintBody:
       'Họ tên và ảnh đại diện hiển thị khi điều phối báo cáo, phân công và thông báo nội bộ.',
-    notificationPreferencesHref: '/company/notifications/preferences',
+    notificationPreferencesHref: '/company/settings/notifications',
     showAccountTimestamps: true,
   },
   officer: {
@@ -49,6 +50,7 @@ export const PROFILE_PORTAL_CONFIG: Record<ProfilePortalVariant, ProfilePortalCo
     infoHintTitle: 'Thông tin dùng cho cổng cán bộ',
     infoHintBody:
       'Họ tên và ảnh đại diện hiển thị khi xác minh báo cáo, phân công và theo dõi tiến độ xử lý.',
+    notificationPreferencesHref: '/officer/settings/notifications',
   },
 };
 

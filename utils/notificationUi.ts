@@ -172,12 +172,12 @@ export function getNotificationDrawerLinks(portal: NotificationPortal): {
     case 'admin':
       return {
         inboxHref: '/admin/notifications',
-        preferencesHref: '/admin/notifications/preferences',
+        preferencesHref: '/admin/settings/notifications',
       };
     case 'company':
       return {
         inboxHref: '/company/notifications',
-        preferencesHref: '/company/notifications/preferences',
+        preferencesHref: '/company/settings/notifications',
       };
     default:
       // Officer: drawer là inbox chính, settings nằm trong route shell bên phải sidebar.

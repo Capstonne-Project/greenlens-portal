@@ -36,9 +36,9 @@ function initialsFromUser(name: string | undefined, email: string | undefined): 
 
 type SidebarUserProfileProps = {
   expanded: boolean;
-  /** Account settings — Officer `/officer/settings/account`; Admin `/admin/profile`; Company `/company/account`. */
+  /** Account page — `/{role}/settings/account`. */
   profileHref?: string;
-  /** General settings — Officer `/officer/settings`. Pass empty string to hide. */
+  /** Settings shell — `/{role}/settings`. */
   settingsHref?: string;
 };
 
