@@ -135,7 +135,7 @@ function TeamCard({
         {/* Row 2: office */}
         <div className="flex items-center gap-1.5 text-xs text-slate-600">
           <Building2 className="size-3 shrink-0" />
-          <span className="truncate">{team.officeName}</span>
+          <span className="truncate">{team.officeName ?? 'Đội công ty'}</span>
         </div>
       </button>
 
@@ -314,9 +314,7 @@ export function TeamFilterDropdowns({
               key={key}
               onClick={() => onStatusChange(key)}
               className={
-                statusFilter === key
-                  ? 'cursor-pointer font-medium text-slate-900'
-                  : 'cursor-pointer'
+                statusFilter === key ? 'cursor-pointer font-medium text-brand' : 'cursor-pointer'
               }
             >
               {STATUS_LABEL[key]}
@@ -338,9 +336,7 @@ export function TeamFilterDropdowns({
               key={key}
               onClick={() => onTeamTypeChange(key)}
               className={
-                teamTypeFilter === key
-                  ? 'cursor-pointer font-medium text-slate-900'
-                  : 'cursor-pointer'
+                teamTypeFilter === key ? 'cursor-pointer font-medium text-brand' : 'cursor-pointer'
               }
             >
               {TEAM_TYPE_LABEL[key]}
@@ -362,9 +358,7 @@ export function TeamFilterDropdowns({
               key={key}
               onClick={() => onAvailableChange(key)}
               className={
-                availableFilter === key
-                  ? 'cursor-pointer font-medium text-slate-900'
-                  : 'cursor-pointer'
+                availableFilter === key ? 'cursor-pointer font-medium text-brand' : 'cursor-pointer'
               }
             >
               {AVAILABLE_LABEL[key]}
@@ -471,41 +465,44 @@ export function BoardView({
   const inspLoading = isLoading && showInspection;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Search (left) + filters + view/export (right) */}
-      <div className="my-2 flex shrink-0 flex-wrap items-center gap-2">
-        <div className="relative w-72 max-w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={e => onSearchChange(e.target.value)}
-            placeholder="Tìm tên đội..."
-            className={cn(
-              'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
-              isFetching && !isLoading && 'pr-8'
-            )}
-            aria-label="Tìm tên đội"
-          />
-          {isFetching && !isLoading ? (
-            <Loader2
-              className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
-              aria-hidden
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Search + filters (trái) + export + view mode (phải) */}
+      <header className="mb-6 shrink-0">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="relative w-72 max-w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={search}
+              onChange={e => onSearchChange(e.target.value)}
+              placeholder="Tìm tên đội..."
+              className={cn(
+                'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+                isFetching && !isLoading && 'pr-8'
+              )}
+              aria-label="Tìm tên đội"
             />
-          ) : null}
+            {isFetching && !isLoading ? (
+              <Loader2
+                className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                aria-hidden
+              />
+            ) : null}
+          </div>
+          <TeamFilterDropdowns
+            statusFilter={statusFilter}
+            teamTypeFilter={teamTypeFilter}
+            availableFilter={availableFilter}
+            onStatusChange={onStatusChange}
+            onTeamTypeChange={onTeamTypeChange}
+            onAvailableChange={onAvailableChange}
+          />
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <WorkforceExportCsvButton />
+            <span className="h-5 w-px shrink-0 bg-slate-200" aria-hidden />
+            <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
+          </div>
         </div>
-        <TeamFilterDropdowns
-          statusFilter={statusFilter}
-          teamTypeFilter={teamTypeFilter}
-          availableFilter={availableFilter}
-          onStatusChange={onStatusChange}
-          onTeamTypeChange={onTeamTypeChange}
-          onAvailableChange={onAvailableChange}
-        />
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
-          <WorkforceExportCsvButton />
-        </div>
-      </div>
+      </header>
 
       {/* Kanban columns — always fill remaining height (0 or N cards) */}
       <div

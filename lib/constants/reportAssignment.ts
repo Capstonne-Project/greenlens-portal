@@ -5,6 +5,7 @@ export const ASSIGNMENT_STATUS_LABEL: Record<string, string> = {
   Declined: 'Đã từ chối',
   InProgress: 'Đang xử lý',
   Completed: 'Hoàn thành',
+  Escalated: 'Chuyển cấp',
 };
 
 export const ASSIGNMENT_STATUS_TONE: Record<string, 'slate' | 'red' | 'emerald' | 'blue'> = {
@@ -12,4 +13,5 @@ export const ASSIGNMENT_STATUS_TONE: Record<string, 'slate' | 'red' | 'emerald' 
   Declined: 'red',
   InProgress: 'emerald',
   Completed: 'blue',
+  Escalated: 'red',
 };

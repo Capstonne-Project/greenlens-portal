@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CreateCommunityCleanupDialog } from '@/components/officer/assign/CreateCommunityCleanupDialog';
 import { Input } from '@/components/ui/input';
 import LayoutSidebarRightIcon from '@/components/ui/layout-sidebar-right-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
@@ -31,9 +32,10 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
+import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ImageIcon, Loader2, Search, UserPlus } from 'lucide-react';
+import { ChevronDown, HeartHandshake, ImageIcon, Loader2, Search, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -57,41 +59,64 @@ type DataColumnKey =
   | 'verifySla'
   | 'resolveSla';
 
-type ColumnKey = 'select' | DataColumnKey;
-
-/** Uniform horizontal pad so adjacent headers (e.g. Priority | Address) don’t collide. */
-const CELL_PAD = 'px-3 py-3';
-
-/** Badge shell — size scales via `compact` (filter open) + `@container/assign-table`. */
-const BADGE_BASE =
-  'inline-flex max-w-full items-center truncate rounded-lg font-medium leading-none';
-
-const BADGE_SIZE_COMPACT = 'px-2 py-0.5 text-[10px] tracking-tight';
-const BADGE_SIZE_DEFAULT =
-  'px-2.5 py-1 text-[11px] @[40rem]/assign-table:px-2.5 @[40rem]/assign-table:text-xs';
+type ColumnKey = 'select' | DataColumnKey | 'actions';
 
 /**
- * Widths as % of table (sum ≈ 100%). Priority widened so header isn’t flush against Address.
+ * Padding / chữ / badge co theo `@container/assign-table`
+ * (sidebar mở + panel bộ lọc hẹp content — tránh wrap loạn).
+ */
+function tableCellPad(colKey: ColumnKey) {
+  const y = 'py-2 @[44rem]/assign-table:py-3';
+  if (colKey === 'select') {
+    return cn(y, 'px-1 @[44rem]/assign-table:px-2');
+  }
+  if (colKey === 'actions') {
+    return cn(y, 'px-1 @[44rem]/assign-table:px-2.5');
+  }
+  return cn(y, 'px-1 @[44rem]/assign-table:px-2.5 @[56rem]/assign-table:px-3');
+}
+
+const BADGE_BASE =
+  'inline-flex max-w-full min-w-0 items-center truncate rounded-lg font-medium leading-none';
+const BADGE_SIZE =
+  'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/assign-table:px-2 @[44rem]/assign-table:py-0.5 @[44rem]/assign-table:text-[11px] @[56rem]/assign-table:text-xs';
+
+const CELL_TEXT =
+  'block min-w-0 truncate text-[11px] leading-snug text-slate-700 @[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm';
+const CELL_TEXT_MUTED =
+  'block min-w-0 truncate text-[11px] leading-snug text-slate-600 @[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm';
+const CELL_META =
+  'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/assign-table:text-xs';
+const HEAD_LABEL =
+  'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/assign-table:text-[0.6875rem]';
+
+/**
+ * Widths as % of table (sum ≈ 100%). Fluid — không min-width cứng.
  */
 const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
-  { key: 'select', label: 'Chọn', className: 'w-[3%]' },
-  { key: 'image', label: 'Image', className: 'w-[7%]' },
-  { key: 'code', label: 'Report Code', className: 'w-[11%]' },
-  { key: 'category', label: 'Category', className: 'w-[10%]' },
-  { key: 'severity', label: 'Severity', className: 'w-[8%]' },
-  { key: 'status', label: 'Status', className: 'w-[9%]' },
-  { key: 'priority', label: 'Priority', className: 'w-[8%]' },
-  { key: 'address', label: 'Address', className: 'w-[17%]' },
-  { key: 'created', label: 'Created', className: 'w-[10%]' },
-  { key: 'verifySla', label: 'Verify SLA', className: 'w-[9%]' },
-  { key: 'resolveSla', label: 'Resolve SLA', className: 'w-[8%]' },
+  { key: 'select', label: REPORT_QUEUE_COLUMN_LABEL.select, className: 'w-[3%]' },
+  { key: 'image', label: REPORT_QUEUE_COLUMN_LABEL.image, className: 'w-[6%] min-w-0' },
+  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[9%] min-w-0' },
+  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[9%] min-w-0' },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[8%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[9%] min-w-0' },
+  { key: 'priority', label: REPORT_QUEUE_COLUMN_LABEL.priority, className: 'w-[7%] min-w-0' },
+  {
+    key: 'address',
+    label: REPORT_QUEUE_COLUMN_LABEL.address,
+    className: 'w-[13%] min-w-0 max-w-0',
+  },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[9%] min-w-0' },
+  { key: 'verifySla', label: REPORT_QUEUE_COLUMN_LABEL.verifySla, className: 'w-[8%] min-w-0' },
+  { key: 'resolveSla', label: REPORT_QUEUE_COLUMN_LABEL.resolveSla, className: 'w-[7%] min-w-0' },
+  { key: 'actions', label: REPORT_QUEUE_COLUMN_LABEL.community, className: 'w-[12%] min-w-0' },
 ];
 
 const SEVERITY_OPTIONS: Array<{ label: string; value: ReportSeverity }> = [
-  { label: 'Nghiêm trọng', value: 'Critical' },
-  { label: 'Cao', value: 'High' },
-  { label: 'Trung bình', value: 'Medium' },
-  { label: 'Thấp', value: 'Low' },
+  { label: REPORT_SEVERITY_LABEL_VI.Critical, value: 'Critical' },
+  { label: REPORT_SEVERITY_LABEL_VI.High, value: 'High' },
+  { label: REPORT_SEVERITY_LABEL_VI.Medium, value: 'Medium' },
+  { label: REPORT_SEVERITY_LABEL_VI.Low, value: 'Low' },
 ];
 
 // ── Time filter (lịch VN UTC+7) ───────────────────────────────────────────────
@@ -401,15 +426,12 @@ function formatCreatedParts(isoString: string): { date: string; time: string } {
 
 function SlaCell({ dueAt }: { dueAt: string | null }) {
   if (!dueAt) {
-    return <span className="text-xs text-slate-400">—</span>;
+    return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
   }
   const sla = formatSla(dueAt);
   return (
     <span
-      className={cn(
-        'block min-w-0 truncate text-xs font-medium',
-        sla.overdue ? 'text-red-600' : 'text-slate-700'
-      )}
+      className={cn(CELL_META, 'font-medium', sla.overdue ? 'text-red-600' : 'text-slate-700')}
       title={sla.text}
     >
       {sla.text}
@@ -420,14 +442,15 @@ function SlaCell({ dueAt }: { dueAt: string | null }) {
 function CreatedCell({ iso }: { iso: string }) {
   const { date, time } = formatCreatedParts(iso);
   return (
-    <span className="block min-w-0 truncate text-xs tabular-nums" title={`${date} ${time}`}>
-      <span className="font-medium text-slate-800">{date}</span>{' '}
-      <span className="text-slate-400">{time}</span>
+    <span className={cn(CELL_META, 'text-slate-800')} title={`${date} ${time}`}>
+      <span className="font-medium">{date}</span>
+      {/* Hẹp (sidebar / filter): ẩn giờ — tránh wrap 2 dòng. */}
+      <span className="hidden text-slate-400 @[48rem]/assign-table:inline"> {time}</span>
     </span>
   );
 }
 
-/** Fills column width; aspect keeps thumb proportional without fixed rem. */
+/** Thumb co theo cột; aspect giữ tỉ lệ khi bảng hẹp. */
 const THUMB_FRAME =
   'relative aspect-video w-full max-w-full overflow-hidden rounded-md bg-slate-100';
 
@@ -435,91 +458,70 @@ function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
   if (!url) {
     return (
       <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
-        <ImageIcon className="size-3.5 sm:size-4" aria-hidden />
+        <ImageIcon
+          className="size-3 @[44rem]/assign-table:size-3.5 @[56rem]/assign-table:size-4"
+          aria-hidden
+        />
       </div>
     );
   }
 
   return (
     <div className={THUMB_FRAME}>
-      <Image src={url} alt={alt} fill sizes="10vw" className="object-cover" unoptimized />
+      <Image src={url} alt={alt} fill sizes="8vw" className="object-cover" unoptimized />
     </div>
   );
 }
 
-function SeverityBadge({
-  severity,
-  compact = false,
-}: {
-  severity: ReportSeverity;
-  compact?: boolean;
-}) {
+function SeverityBadge({ severity }: { severity: ReportSeverity }) {
   return (
     <span
-      className={cn(
-        BADGE_BASE,
-        compact ? BADGE_SIZE_COMPACT : BADGE_SIZE_DEFAULT,
-        REPORT_SEVERITY_BADGE_CLASSES[severity]
-      )}
+      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_SEVERITY_BADGE_CLASSES[severity])}
+      title={REPORT_SEVERITY_LABEL_VI[severity]}
     >
       {REPORT_SEVERITY_LABEL_VI[severity]}
     </span>
   );
 }
 
-function StatusBadge({
-  status,
-  compact = false,
-}: {
-  status: ReportQueueItem['status'];
-  compact?: boolean;
-}) {
+function StatusBadge({ status }: { status: ReportQueueItem['status'] }) {
+  const label = reportStatusLabelVi(status);
   return (
-    <span
-      className={cn(
-        BADGE_BASE,
-        compact ? BADGE_SIZE_COMPACT : BADGE_SIZE_DEFAULT,
-        REPORT_STATUS_BADGE_CLASSES[status]
-      )}
-      title={status}
-    >
-      {reportStatusLabelVi(status)}
+    <span className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])} title={label}>
+      {label}
     </span>
   );
 }
 
-function renderDataCell(key: DataColumnKey, row: ReportQueueItem, compactBadges = false) {
+function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
   switch (key) {
     case 'image':
       return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
     case 'code':
       return (
-        <span
-          className="block min-w-0 truncate text-xs font-medium text-slate-700"
-          title={row.code}
-        >
+        <span className={cn(CELL_TEXT, 'font-medium')} title={row.code}>
           {row.code}
         </span>
       );
     case 'category':
       return (
-        <span className="block min-w-0 truncate text-sm text-slate-700" title={row.categoryName}>
+        <span className={CELL_TEXT} title={row.categoryName}>
           {row.categoryName}
         </span>
       );
     case 'severity':
-      return <SeverityBadge severity={row.severity} compact={compactBadges} />;
+      return <SeverityBadge severity={row.severity} />;
     case 'status':
-      return <StatusBadge status={row.status} compact={compactBadges} />;
+      return <StatusBadge status={row.status} />;
     case 'priority':
       return (
-        <span className="block min-w-0 truncate text-xs font-medium tabular-nums text-slate-700">
+        <span className={cn(CELL_META, 'font-medium text-slate-700')}>
           {row.priorityScore.toFixed(2)}
         </span>
       );
     case 'address':
       return (
-        <span className="block min-w-0 truncate text-sm text-slate-600" title={row.address}>
+        <span className={CELL_TEXT_MUTED} title={row.address}>
           {row.address}
         </span>
       );
@@ -724,6 +726,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   };
 
   const [assignOpen, setAssignOpen] = useState(false);
+  const [communityReport, setCommunityReport] = useState<ReportQueueItem | null>(null);
 
   const filtered = useMemo(() => {
     return (data?.items ?? []).filter((r: ReportQueueItem) => {
@@ -900,8 +903,8 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                     <TableHead
                       key={col.key}
                       className={cn(
-                        CELL_PAD,
-                        'h-auto min-w-0 border-b border-slate-200 bg-slate-100/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500',
+                        tableCellPad(col.key),
+                        'h-auto min-w-0 overflow-hidden border-b border-slate-200 bg-slate-100/80 text-left',
                         col.className
                       )}
                     >
@@ -914,7 +917,9 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                           }}
                         />
                       ) : (
-                        col.label
+                        <span className={HEAD_LABEL} title={col.label}>
+                          {col.label}
+                        </span>
                       )}
                     </TableHead>
                   ))}
@@ -925,7 +930,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                   <TableRow>
                     <TableCell
                       colSpan={TABLE_COLS.length}
-                      className={cn(CELL_PAD, 'h-40 text-center')}
+                      className={cn(tableCellPad('code'), 'h-40 text-center')}
                     >
                       <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
                     </TableCell>
@@ -934,7 +939,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                   <TableRow>
                     <TableCell
                       colSpan={TABLE_COLS.length}
-                      className={cn(CELL_PAD, 'h-40 text-center')}
+                      className={cn(tableCellPad('code'), 'h-40 text-center')}
                     >
                       <p className="text-sm text-destructive">
                         Không thể tải dữ liệu. Vui lòng thử lại.
@@ -945,7 +950,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                   <TableRow className="hover:bg-transparent">
                     <TableCell
                       colSpan={TABLE_COLS.length}
-                      className={cn(CELL_PAD, 'h-40 text-center')}
+                      className={cn(tableCellPad('code'), 'h-40 text-center')}
                     >
                       <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
                         <SaveIcon size={44} className="opacity-30" />
@@ -980,7 +985,11 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                             return (
                               <TableCell
                                 key={col.key}
-                                className={cn(CELL_PAD, 'min-w-0 align-middle', col.className)}
+                                className={cn(
+                                  tableCellPad(col.key),
+                                  'min-w-0 align-middle',
+                                  col.className
+                                )}
                                 onClick={e => e.stopPropagation()}
                               >
                                 <Checkbox
@@ -998,16 +1007,50 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                             );
                           }
 
+                          if (col.key === 'actions') {
+                            return (
+                              <TableCell
+                                key={col.key}
+                                className={cn(
+                                  tableCellPad(col.key),
+                                  'min-w-0 overflow-hidden align-middle',
+                                  col.className
+                                )}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {report.status === 'Verified' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCommunityReport(report)}
+                                    title="Mở chương trình dọn cộng đồng cho báo cáo này"
+                                    className={cn(
+                                      'inline-flex h-6 max-w-full items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50',
+                                      'px-1.5 text-[10px] font-medium text-emerald-700 transition',
+                                      'hover:border-emerald-300 hover:bg-emerald-100',
+                                      '@[44rem]/assign-table:h-7 @[44rem]/assign-table:gap-1.5 @[44rem]/assign-table:px-2.5 @[44rem]/assign-table:text-[11px]'
+                                    )}
+                                  >
+                                    <HeartHandshake className="size-3 shrink-0" aria-hidden />
+                                    <span className="min-w-0 truncate">Tạo cộng đồng</span>
+                                  </button>
+                                ) : (
+                                  <span className={cn(CELL_META, 'text-slate-300')}>—</span>
+                                )}
+                              </TableCell>
+                            );
+                          }
+
                           return (
                             <TableCell
                               key={col.key}
                               className={cn(
-                                CELL_PAD,
-                                'min-w-0 max-w-0 align-middle',
+                                tableCellPad(col.key),
+                                'min-w-0 overflow-hidden align-middle',
+                                col.key !== 'image' && 'max-w-0',
                                 col.className
                               )}
                             >
-                              {renderDataCell(col.key, report, filterOpen)}
+                              {renderDataCell(col.key, report)}
                             </TableCell>
                           );
                         })}
@@ -1039,6 +1082,16 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
         onClose={() => setAssignOpen(false)}
         reportIds={[...selected]}
         onAssigned={handleAssigned}
+      />
+
+      <CreateCommunityCleanupDialog
+        open={communityReport != null}
+        onClose={() => setCommunityReport(null)}
+        reportId={communityReport?.id ?? ''}
+        reportCode={communityReport?.code ?? ''}
+        reportLatitude={communityReport?.latitude ?? 0}
+        reportLongitude={communityReport?.longitude ?? 0}
+        onCreated={() => setCommunityReport(null)}
       />
     </>
   );

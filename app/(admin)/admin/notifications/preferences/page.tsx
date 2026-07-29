@@ -1,5 +1,5 @@
-import { AdminNotificationPreferencesView } from '@/components/admin/notifications/AdminNotificationPreferencesView';
+import { redirect } from 'next/navigation';
 
-export default function AdminNotificationPreferencesPage() {
-  return <AdminNotificationPreferencesView />;
+export default function AdminNotifPrefsRedirect() {
+  redirect('/admin/settings/notifications');
 }

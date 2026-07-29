@@ -25,46 +25,35 @@ import type {
   ReportProgressImage,
   ReportProgressStatusHistory,
 } from '@/lib/api/models/reportProgress';
-import type { ReportSeverity } from '@/lib/api/models/report';
 import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
-import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { TYPE_LABEL as TEAM_TYPE_LABEL_VI } from '@/components/officer/workforce/teamTab/teamTab.shared';
 import { cn } from '@/lib/utils';
 import {
   Activity,
   AlignLeft,
   ArrowLeft,
   Calendar,
+  Camera,
   CheckCircle2,
+  ChevronDown,
   Circle,
   Clock,
   ImageIcon,
   Loader2,
   MapPin,
   RefreshCw,
-  Tag,
+  Sparkles,
   Target,
   Users,
 } from 'lucide-react';
 import { useState, Fragment, useMemo, type ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 interface LeoTrackingReportDetailProps {
   reportId: string;
   onBack: () => void;
 }
-
-const SEVERITY_LABEL: Record<ReportSeverity, string> = {
-  Critical: 'Nghiêm trọng',
-  High: 'Cao',
-  Medium: 'Trung bình',
-  Low: 'Thấp',
-};
-
-const SEVERITY_TAG: Record<ReportSeverity, string> = {
-  Critical: 'bg-rose-100 text-rose-800 ring-rose-200',
-  High: 'bg-orange-100 text-orange-800 ring-orange-200',
-  Medium: 'bg-amber-100 text-amber-800 ring-amber-200',
-  Low: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
-};
 
 const ASSIGNMENT_DOT: Record<string, string> = {
   Assigned: 'bg-slate-400',
@@ -113,6 +102,12 @@ function getInitials(name: string): string {
   return (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase();
 }
 
+function teamTypeLabelVi(teamType: string | null | undefined): string {
+  const key = teamType?.trim();
+  if (!key) return 'Đội xử lý';
+  return TEAM_TYPE_LABEL_VI[key] ?? key;
+}
+
 function hashColor(key: string): string {
   let h = 0;
   for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.charCodeAt(i)) | 0;
@@ -122,15 +117,18 @@ function hashColor(key: string): string {
 function ProgressRing({
   percent,
   size = 'md',
+  showValue = true,
   className,
 }: {
   percent: number;
   size?: 'sm' | 'md' | 'lg';
+  /** Ẩn % giữa vòng — dùng khi label/% nằm cạnh (style dashboard). */
+  showValue?: boolean;
   className?: string;
 }) {
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
-  const dim = size === 'sm' ? 'size-9' : size === 'lg' ? 'size-28' : 'size-14';
-  const text = size === 'sm' ? 'text-[9px]' : size === 'lg' ? 'text-2xl' : 'text-xs';
+  const dim = size === 'sm' ? 'size-9' : size === 'lg' ? 'size-20' : 'size-14';
+  const text = size === 'sm' ? 'text-[9px]' : size === 'lg' ? 'text-lg' : 'text-xs';
 
   return (
     <div className={cn('relative flex items-center justify-center', dim, className)} aria-hidden>
@@ -148,9 +146,11 @@ function ProgressRing({
           pathLength={100}
         />
       </svg>
-      <span className={cn('absolute font-bold tabular-nums text-foreground', text)}>
-        {clamped}%
-      </span>
+      {showValue ? (
+        <span className={cn('absolute font-bold tabular-nums text-foreground', text)}>
+          {clamped}%
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -158,17 +158,19 @@ function ProgressRing({
 function DonutChart({ percent, label }: { percent: number; label: string }) {
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex shrink-0 items-center gap-3">
       <div
-        className="relative flex size-24 items-center justify-center rounded-full"
+        className="relative flex size-24 shrink-0 items-center justify-center rounded-full"
         style={{
           background: `conic-gradient(hsl(142 71% 45%) ${clamped * 3.6}deg, hsl(var(--muted)) 0deg)`,
         }}
+        aria-hidden
       >
-        <div className="flex size-[4.5rem] flex-col items-center justify-center rounded-full bg-background text-center">
-          <span className="text-lg font-bold tabular-nums">{clamped}%</span>
-          <span className="text-[10px] text-muted-foreground">{label}</span>
-        </div>
+        <div className="size-[4.5rem] rounded-full bg-background" />
+      </div>
+      <div className="flex h-24 min-w-0 flex-col justify-center gap-1">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-3xl font-bold leading-none tabular-nums text-foreground">{clamped}%</p>
       </div>
     </div>
   );
@@ -281,11 +283,8 @@ function TeamSubtaskRow({ assignment }: { assignment: ReportProgressAssignment }
               {assignment.teamName}
             </p>
             <Badge variant="outline" className="rounded-full text-[10px]">
-              {assignment.teamType}
+              {teamTypeLabelVi(assignment.teamType)}
             </Badge>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {assignment.progressPercent}%
-            </span>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {assignment.teamLeaderName} · {label}
@@ -315,7 +314,7 @@ function ActivityFeed({ items }: { items: ReportProgressStatusHistory[] }) {
   }
 
   return (
-    <ul className="space-y-4">
+    <ul className="space-y-4 pb-2">
       {items.map((entry, idx) => (
         <li key={`${entry.changedAt}-${idx}`} className="flex gap-3">
           <Avatar className="size-8 shrink-0">
@@ -349,6 +348,8 @@ function OverviewTab({
   onPreview: ReportPreviewHandler;
 }) {
   const progress = Math.max(0, Math.min(100, Math.round(data.summary.overallProgressPercent)));
+  const isMergedDuplicate = data.status === 'Duplicate';
+  const resolveDueAt = data.sla.resolveDueAt;
   const slaText = formatSlaRemaining(data.sla.hoursRemaining);
   const attachmentCount =
     data.media.beforeImages.length +
@@ -374,25 +375,16 @@ function OverviewTab({
             </span>
           </MetaRow>
           <MetaRow icon={<Calendar className="size-4" />} label="Hạn xử lý">
-            <span className={cn(data.sla.isBreached && 'font-medium text-red-600')}>
-              {formatDateOnly(data.sla.resolveDueAt)} · {slaText}
-            </span>
+            {isMergedDuplicate || !resolveDueAt ? (
+              <span className="text-muted-foreground">Không áp dụng · Đã gộp vào báo cáo gốc</span>
+            ) : (
+              <span className={cn(data.sla.isBreached && 'font-medium text-red-600')}>
+                {formatDateOnly(resolveDueAt)} · {slaText}
+              </span>
+            )}
           </MetaRow>
           <MetaRow icon={<Users className="size-4" />} label="Đội được gán">
             <TeamAvatarStack assignments={data.assignments} />
-          </MetaRow>
-          <MetaRow icon={<Tag className="size-4" />} label="Nhãn">
-            <div className="flex flex-wrap gap-2">
-              <Badge className="rounded-full bg-violet-100 text-violet-800 hover:bg-violet-100">
-                {data.categoryName}
-              </Badge>
-              <Badge className={cn('rounded-full ring-1', SEVERITY_TAG[data.severity])}>
-                {data.sla.severityLabel || SEVERITY_LABEL[data.severity]}
-              </Badge>
-              <Badge variant="outline" className="rounded-full">
-                {data.wardCode}
-              </Badge>
-            </div>
           </MetaRow>
           <MetaRow icon={<AlignLeft className="size-4" />} label="Mô tả">
             <p className="leading-relaxed text-foreground/90">
@@ -400,47 +392,52 @@ function OverviewTab({
             </p>
           </MetaRow>
         </div>
+      </section>
 
-        <div className="mt-6 border-t border-border/60 pt-4">
-          <p className="flex items-center gap-2 text-sm font-semibold">
-            <ImageIcon className="size-4" />
-            Ảnh đính kèm ({attachmentCount})
-          </p>
-          <AttachmentGrid
-            images={data.media.beforeImages}
-            label="Trước xử lý"
-            onPreview={onPreview}
-          />
-          {attachmentCount === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">Chưa có ảnh minh chứng.</p>
-          ) : null}
+      <section className="border-t border-border/60 pt-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-8">
+          <div className="flex shrink-0 items-center gap-3">
+            <ProgressRing percent={progress} size="md" showValue={false} />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Tiến độ tổng</p>
+              <p className="text-lg font-bold tabular-nums text-foreground">{progress}%</p>
+            </div>
+          </div>
+
+          <dl className="grid min-w-0 flex-1 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+            {[
+              { label: 'Tổng đội', value: data.summary.totalTeams },
+              { label: 'Đã nhận', value: data.summary.acceptedTeams },
+              { label: 'Hoàn thành', value: data.summary.completedTeams },
+              { label: 'Từ chối', value: data.summary.declinedTeams },
+              { label: 'Chờ xử lý', value: data.summary.pendingTeams },
+            ].map(item => (
+              <div key={item.label} className="min-w-0">
+                <dd className="text-lg font-bold tabular-nums text-foreground">{item.value}</dd>
+                <dt className="mt-0.5 text-xs text-muted-foreground">{item.label}</dt>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-6 border-t border-border/60 pt-6 text-sm">
-        {[
-          { label: 'Tổng đội', value: data.summary.totalTeams },
-          { label: 'Đã nhận', value: data.summary.acceptedTeams, tone: 'text-emerald-600' },
-          { label: 'Hoàn thành', value: data.summary.completedTeams, tone: 'text-sky-600' },
-          { label: 'Từ chối', value: data.summary.declinedTeams, tone: 'text-red-600' },
-          { label: 'Chờ xử lý', value: data.summary.pendingTeams, tone: 'text-amber-600' },
-        ].map(item => (
-          <div key={item.label} className="min-w-[4.5rem]">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {item.label}
-            </p>
-            <p className={cn('text-lg font-bold tabular-nums', item.tone ?? 'text-foreground')}>
-              {item.value}
-            </p>
-          </div>
-        ))}
-        <div className="ml-auto flex items-center gap-3">
-          <ProgressRing percent={progress} size="md" />
-        </div>
-      </div>
+      <section className="border-t border-border/60 pt-6">
+        <p className="flex items-center gap-2 text-sm font-semibold">
+          <ImageIcon className="size-4" />
+          Ảnh đính kèm ({attachmentCount})
+        </p>
+        <AttachmentGrid
+          images={data.media.beforeImages}
+          label="Trước xử lý"
+          onPreview={onPreview}
+        />
+        {attachmentCount === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Chưa có ảnh minh chứng.</p>
+        ) : null}
+      </section>
 
-      <div className="grid gap-8 border-t border-border/60 pt-6 lg:grid-cols-2">
-        <section>
+      <div className="grid gap-8 border-t border-border/60 pt-6 pb-2 lg:grid-cols-2 lg:gap-x-8">
+        <section className="min-w-0">
           <h3 className="text-sm font-semibold">Tiến trình các đội</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {data.summary.completedTeams}/{data.summary.totalTeams} đội hoàn thành
@@ -458,7 +455,7 @@ function OverviewTab({
           </ul>
         </section>
 
-        <section>
+        <section className="min-w-0">
           <div className="mb-4 flex items-center gap-2">
             <Activity className="size-4 text-emerald-600" />
             <h3 className="text-sm font-semibold">Hoạt động gần đây</h3>
@@ -501,39 +498,149 @@ function AssignmentTimeline({ assignment }: { assignment: ReportProgressAssignme
   );
 }
 
-function MediaGallery({
-  title,
-  images,
-  emptyHint,
+function ProcessMediaTimeline({
+  media,
   onPreview,
 }: {
-  title: string;
-  images: ReportProgressImage[];
-  emptyHint: string;
+  media: ReportProgress['media'];
   onPreview: ReportPreviewHandler;
 }) {
+  const stages: Array<{
+    key: string;
+    step: number;
+    title: string;
+    subtitle: string;
+    emptyHint: string;
+    images: ReportProgressImage[];
+    icon: LucideIcon;
+  }> = [
+    {
+      key: 'before',
+      step: 1,
+      title: 'Ảnh trước xử lý',
+      subtitle: 'Hiện trạng ban đầu khi tiếp nhận',
+      emptyHint: 'Chưa có ảnh hiện trạng ban đầu.',
+      images: media.beforeImages,
+      icon: Camera,
+    },
+    {
+      key: 'progress',
+      step: 2,
+      title: 'Ảnh tiến độ',
+      subtitle: 'Cập nhật từ đội trong quá trình xử lý',
+      emptyHint: 'Chưa có ảnh cập nhật từ các đội.',
+      images: media.progressImages,
+      icon: Sparkles,
+    },
+    {
+      key: 'after',
+      step: 3,
+      title: 'Ảnh sau xử lý',
+      subtitle: 'Minh chứng nghiệm thu / hoàn tất',
+      emptyHint: 'Chưa có ảnh nghiệm thu.',
+      images: media.afterImages,
+      icon: CheckCircle2,
+    },
+  ];
+
+  const doneCount = stages.filter(s => s.images.length > 0).length;
+
   return (
-    <section className="border-t border-border/60 pt-6 first:border-t-0 first:pt-0">
-      <h3 className="text-sm font-semibold">
-        {title} <span className="font-normal text-muted-foreground">({images.length})</span>
-      </h3>
-      {images.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">{emptyHint}</p>
-      ) : (
-        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {images.map(img => (
-            <li key={`${img.url}-${img.uploadedAt}`}>
-              <ClickableReportImage
-                url={img.url}
-                label={title}
-                uploadedAt={img.uploadedAt}
-                onPreview={onPreview}
-                className="aspect-[4/3] w-full rounded-lg"
-              />
+    <section aria-label="Minh chứng theo quy trình xử lý">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">Minh chứng theo quy trình</h3>
+          <p className="text-xs text-muted-foreground">
+            Ba giai đoạn ảnh nối tiếp — theo dõi từ hiện trạng đến nghiệm thu
+          </p>
+        </div>
+        <p className="text-xs tabular-nums text-muted-foreground">
+          <span className="font-medium text-foreground">{doneCount}/3</span> giai đoạn có ảnh
+        </p>
+      </div>
+
+      <ol className="relative">
+        {stages.map((stage, index) => {
+          const isLast = index === stages.length - 1;
+          const hasImages = stage.images.length > 0;
+          const Icon = stage.icon;
+          const latestAt = hasImages
+            ? ([...stage.images].sort((a, b) => a.uploadedAt.localeCompare(b.uploadedAt)).at(-1)
+                ?.uploadedAt ?? null)
+            : null;
+
+          return (
+            <li key={stage.key} className="relative flex gap-4">
+              {/* Rail: node + vertical connector */}
+              <div className="relative flex w-9 shrink-0 flex-col items-center">
+                <span
+                  className={cn(
+                    'relative z-10 flex size-9 items-center justify-center rounded-full border-2 transition-colors',
+                    hasImages
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                      : 'border-border bg-muted/60 text-muted-foreground'
+                  )}
+                  aria-hidden
+                >
+                  <Icon className="size-4" />
+                </span>
+                {!isLast ? (
+                  <span
+                    className={cn(
+                      'mt-1 w-px flex-1 min-h-10',
+                      hasImages ? 'bg-emerald-300/80 dark:bg-emerald-700/60' : 'bg-border'
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+
+              <div className={cn('min-w-0 flex-1', !isLast && 'pb-8')}>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-2">
+                      Bước {stage.step}
+                    </p>
+                    <h4 className="text-sm font-semibold text-foreground">
+                      {stage.title}{' '}
+                      <span className="font-normal text-muted-foreground">
+                        ({stage.images.length})
+                      </span>
+                    </h4>
+                    <p className="text-xs text-muted-foreground">{stage.subtitle}</p>
+                  </div>
+                  {latestAt ? (
+                    <p className="text-[11px] tabular-nums text-muted-foreground">
+                      Mới nhất · {formatDateTime(latestAt)}
+                    </p>
+                  ) : null}
+                </div>
+
+                {hasImages ? (
+                  <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {stage.images.map(img => (
+                      <li key={`${img.url}-${img.uploadedAt}`}>
+                        <ClickableReportImage
+                          url={img.url}
+                          label={stage.title}
+                          uploadedAt={img.uploadedAt}
+                          onPreview={onPreview}
+                          className="aspect-[4/3] w-full rounded-xl ring-1 ring-border/50 transition hover:ring-emerald-400/50"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+                    <ImageIcon className="size-4 shrink-0 opacity-60" aria-hidden />
+                    <span>{stage.emptyHint}</span>
+                  </div>
+                )}
+              </div>
             </li>
-          ))}
-        </ul>
-      )}
+          );
+        })}
+      </ol>
     </section>
   );
 }
@@ -545,10 +652,33 @@ function ProgressTab({
   data: ReportProgress;
   onPreview: ReportPreviewHandler;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(
-    data.assignments[0]?.assignmentId ?? null
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(data.assignments[0]?.assignmentId ? [data.assignments[0].assignmentId] : [])
   );
+
+  const toggleExpanded = (assignmentId: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(assignmentId)) next.delete(assignmentId);
+      else next.add(assignmentId);
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    setExpandedIds(new Set(data.assignments.map(a => a.assignmentId)));
+  };
+
+  const collapseAll = () => {
+    setExpandedIds(new Set());
+  };
+
+  const allExpanded =
+    data.assignments.length > 0 && data.assignments.every(a => expandedIds.has(a.assignmentId));
+
   const progress = Math.max(0, Math.min(100, Math.round(data.summary.overallProgressPercent)));
+  const isMergedDuplicate = data.status === 'Duplicate';
+  const resolveDueAt = data.sla.resolveDueAt;
 
   return (
     <div className="space-y-8">
@@ -565,38 +695,65 @@ function ProgressTab({
               <strong>{data.assignments.filter(a => a.status === 'InProgress').length}</strong>
             </p>
             <p>
-              <span className="inline-block size-2 rounded-full bg-red-500" /> Quá hạn SLA:{' '}
-              <strong>{data.sla.isBreached ? 1 : 0}</strong>
+              <span className="inline-block size-2 rounded-full bg-red-500" /> Quá hạn xử lý:{' '}
+              <strong>
+                {isMergedDuplicate || !resolveDueAt ? 0 : data.sla.isBreached ? 1 : 0}
+              </strong>
             </p>
           </div>
         </div>
         <div
           className={cn(
             'flex items-center gap-2 text-sm',
-            data.sla.isBreached ? 'text-red-600' : 'text-muted-foreground'
+            !isMergedDuplicate && resolveDueAt && data.sla.isBreached
+              ? 'text-red-600'
+              : 'text-muted-foreground'
           )}
         >
           <Clock className="size-4 shrink-0" />
           <div>
-            <p className="font-semibold text-foreground">
-              SLA · {formatSlaRemaining(data.sla.hoursRemaining)}
-            </p>
-            <p className="text-xs">Hạn: {formatDateTime(data.sla.resolveDueAt)}</p>
+            {isMergedDuplicate || !resolveDueAt ? (
+              <>
+                <p className="font-semibold text-foreground">Hạn xử lý · Không áp dụng</p>
+                <p className="text-xs">Đã gộp vào báo cáo gốc</p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-foreground">
+                  Hạn xử lý · {formatSlaRemaining(data.sla.hoursRemaining)}
+                </p>
+                <p className="text-xs">Hạn: {formatDateTime(resolveDueAt)}</p>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       <section>
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold">Chi tiết tiến độ từng đội</h3>
-          <p className="text-xs text-muted-foreground">
-            Bấm vào dòng để xem timeline, ghi chú và người phụ trách
-          </p>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">Chi tiết tiến độ từng đội</h3>
+            <p className="text-xs text-muted-foreground">
+              Bấm vào dòng để mở / thu gọn timeline, ghi chú và người phụ trách
+            </p>
+          </div>
+          {data.assignments.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground"
+              onClick={allExpanded ? collapseAll : expandAll}
+            >
+              {allExpanded ? 'Thu gọn tất cả' : 'Mở tất cả'}
+            </Button>
+          ) : null}
         </div>
         <div className="overflow-x-auto rounded-lg border border-border/60">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                <TableHead className="w-10" />
                 <TableHead className="min-w-[200px]">Đội / Trưởng nhóm</TableHead>
                 <TableHead className="w-[120px]">Trạng thái</TableHead>
                 <TableHead className="w-[90px] text-center">Tiến độ</TableHead>
@@ -607,13 +764,13 @@ function ProgressTab({
             <TableBody>
               {data.assignments.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
                     Chưa có đội được phân công.
                   </TableCell>
                 </TableRow>
               ) : (
                 data.assignments.map(assignment => {
-                  const isOpen = expandedId === assignment.assignmentId;
+                  const isOpen = expandedIds.has(assignment.assignmentId);
                   const statusLabel =
                     ASSIGNMENT_STATUS_LABEL[assignment.status] ?? assignment.status;
 
@@ -621,12 +778,18 @@ function ProgressTab({
                     <Fragment key={assignment.assignmentId}>
                       <TableRow
                         className="cursor-pointer hover:bg-muted/30"
-                        onClick={() =>
-                          setExpandedId(prev =>
-                            prev === assignment.assignmentId ? null : assignment.assignmentId
-                          )
-                        }
+                        aria-expanded={isOpen}
+                        onClick={() => toggleExpanded(assignment.assignmentId)}
                       >
+                        <TableCell className="w-10 pr-0">
+                          <ChevronDown
+                            className={cn(
+                              'size-4 text-muted-foreground transition-transform duration-200',
+                              isOpen && 'rotate-180'
+                            )}
+                            aria-hidden
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="size-9">
@@ -642,7 +805,7 @@ function ProgressTab({
                             <div className="min-w-0">
                               <p className="truncate font-medium">{assignment.teamName}</p>
                               <p className="truncate text-xs text-muted-foreground">
-                                {assignment.teamLeaderName} · {assignment.teamType}
+                                {assignment.teamLeaderName} · {teamTypeLabelVi(assignment.teamType)}
                               </p>
                             </div>
                           </div>
@@ -674,7 +837,7 @@ function ProgressTab({
                       </TableRow>
                       {isOpen ? (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={5} className="bg-muted/20 px-4 py-4">
+                          <TableCell colSpan={6} className="bg-muted/20 px-4 py-4">
                             <div className="space-y-3">
                               {assignment.progressNote ? (
                                 <p className="text-sm">
@@ -707,32 +870,12 @@ function ProgressTab({
         </div>
       </section>
 
-      <div className="space-y-6">
-        <MediaGallery
-          title="Ảnh trước xử lý"
-          images={data.media.beforeImages}
-          emptyHint="Chưa có ảnh hiện trạng ban đầu."
-          onPreview={onPreview}
-        />
-        <MediaGallery
-          title="Ảnh tiến độ"
-          images={data.media.progressImages}
-          emptyHint="Chưa có ảnh cập nhật từ các đội."
-          onPreview={onPreview}
-        />
-        <MediaGallery
-          title="Ảnh sau xử lý"
-          images={data.media.afterImages}
-          emptyHint="Chưa có ảnh nghiệm thu."
-          onPreview={onPreview}
-        />
-      </div>
+      <ProcessMediaTimeline media={data.media} onPreview={onPreview} />
     </div>
   );
 }
 
 function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => void }) {
-  const progress = Math.max(0, Math.min(100, Math.round(data.summary.overallProgressPercent)));
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const allImages = useMemo((): ReportPreviewImage[] => {
@@ -753,7 +896,7 @@ function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => voi
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col pb-6">
+    <div className="flex min-h-0 flex-1 flex-col px-4 pb-16 pt-2 sm:px-6 sm:pb-20 lg:px-8">
       <ReportImagePreviewDialog
         images={allImages}
         index={previewIndex}
@@ -761,46 +904,33 @@ function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => voi
         onChangeIndex={setPreviewIndex}
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={onBack}>
-            <ArrowLeft className="mr-1 size-4" />
-            Quay lại
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="secondary"
-            className={cn('rounded-full', REPORT_STATUS_BADGE_CLASSES[data.status] ?? '')}
-          >
-            {reportStatusLabelVi(data.status)}
-          </Badge>
-          <Badge variant="outline" className="rounded-full tabular-nums">
-            {progress}%
-          </Badge>
-        </div>
+      <div className="mb-3">
+        <Button type="button" variant="ghost" size="sm" className="-ml-2 h-8 px-2" onClick={onBack}>
+          <ArrowLeft className="mr-1 size-4" />
+          Quay lại
+        </Button>
       </div>
 
       <Tabs defaultValue="overview" className="min-h-0 flex-1">
         <TabsList className="h-auto w-full justify-start rounded-none border-b border-border bg-transparent p-0">
           <TabsTrigger
             value="overview"
-            className="rounded-none border-b-2 border-transparent px-4 py-2.5 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            className="rounded-none border-b-2 border-transparent px-3 py-2.5 first:pl-0 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-4 sm:first:pl-0"
           >
             Tổng quan
           </TabsTrigger>
           <TabsTrigger
             value="progress"
-            className="rounded-none border-b-2 border-transparent px-4 py-2.5 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            className="rounded-none border-b-2 border-transparent px-3 py-2.5 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:px-4"
           >
             Tiến độ
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6 focus-visible:outline-none">
+        <TabsContent value="overview" className="mt-6 pb-6 focus-visible:outline-none sm:pb-8">
           <OverviewTab data={data} onPreview={handlePreview} />
         </TabsContent>
-        <TabsContent value="progress" className="mt-6 focus-visible:outline-none">
+        <TabsContent value="progress" className="mt-6 pb-6 focus-visible:outline-none sm:pb-8">
           <ProgressTab data={data} onPreview={handlePreview} />
         </TabsContent>
       </Tabs>
@@ -813,7 +943,7 @@ export function LeoTrackingReportDetail({ reportId, onBack }: LeoTrackingReportD
 
   if (isPending) {
     return (
-      <div className="flex flex-1 items-center justify-center py-24">
+      <div className="flex flex-1 items-center justify-center px-4 py-24 sm:px-6">
         <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -821,7 +951,7 @@ export function LeoTrackingReportDetail({ reportId, onBack }: LeoTrackingReportD
 
   if (isError || !data) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-24 text-center sm:px-6">
         <p className="text-sm text-destructive">Không tải được tiến trình báo cáo.</p>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={onBack}>

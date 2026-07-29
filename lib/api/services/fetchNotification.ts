@@ -15,6 +15,7 @@ import type {
   NotificationsListParams,
   UpdateNotificationPreferencesInput,
 } from '@/lib/api/models/notification';
+import { NOTIFICATION_PAGE_SIZE } from '@/lib/api/models/notification';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
@@ -28,11 +29,17 @@ export type {
   UpdateNotificationPreferencesInput,
 } from '@/lib/api/models/notification';
 
+export { NOTIFICATION_PAGE_SIZE };
+
 /** GET /v1/notifications */
 export async function fetchNotifications(
   params?: NotificationsListParams
 ): Promise<ApiEnvelope<NotificationsList>> {
-  return adaptNotificationsList(params);
+  return adaptNotificationsList({
+    page: params?.page ?? 1,
+    pageSize: params?.pageSize ?? NOTIFICATION_PAGE_SIZE,
+    isRead: params?.isRead,
+  });
 }
 
 /** PUT /v1/notifications/{id}/read */

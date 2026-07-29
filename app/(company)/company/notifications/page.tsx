@@ -1,5 +1,5 @@
-import { CompanyNotificationsView } from '@/components/company/notifications/CompanyNotificationsView';
+import { NotificationInboxView } from '@/components/notification';
 
 export default function CompanyNotificationsPage() {
-  return <CompanyNotificationsView />;
+  return <NotificationInboxView portal="company" />;
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { AdminNotificationBell } from '@/components/admin/notifications/AdminNotificationBell';
+import { NotificationHeaderBell } from '@/components/notification/NotificationHeaderBell';
+import { AdminOverviewHeaderBar } from '@/components/admin/overview/AdminOverviewHeaderBar';
 import { getAdminPageTitle } from '@/lib/constants/adminPageTitles';
 import { useUiStore } from '@/lib/store/uiStore';
 import { Globe, Moon, Sun } from 'lucide-react';
@@ -16,6 +17,7 @@ export function AdminTopHeader() {
   const toggleTheme = useUiStore(s => s.toggleTheme);
   const locale = useUiStore(s => s.locale);
   const toggleLocale = useUiStore(s => s.toggleLocale);
+  const isOverviewTab = pathname === '/admin';
 
   const nextLocaleLabel = locale === 'vi' ? 'EN' : 'VN';
 
@@ -25,7 +27,7 @@ export function AdminTopHeader() {
         <HeaderBrand title={title} />
 
         <div className="flex shrink-0 items-center gap-2 border-l border-[#e8e8e8] pl-3 md:gap-2.5 md:pl-4">
-          <AdminNotificationBell />
+          <NotificationHeaderBell />
           <button
             type="button"
             onClick={toggleLocale}
@@ -49,6 +51,8 @@ export function AdminTopHeader() {
           </button>
         </div>
       </div>
+
+      {isOverviewTab ? <AdminOverviewHeaderBar /> : null}
     </header>
   );
 }

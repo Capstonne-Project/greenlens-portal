@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 import { useSidebar } from '@/components/ui/sidebar';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
+import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
 
 function initialsFromUser(name: string | undefined, email: string | undefined): string {
   if (name?.trim()) {
@@ -34,8 +36,10 @@ function initialsFromUser(name: string | undefined, email: string | undefined): 
 
 type SidebarUserProfileProps = {
   expanded: boolean;
-  /** Account / settings links — Officer default; Admin passes `/admin/profile`. */
+  /** Account page — `/{role}/settings/account`. */
   profileHref?: string;
+  /** Settings shell — `/{role}/settings`. */
+  settingsHref?: string;
 };
 
 function isPointerOverDesktopSidebar(): boolean {
@@ -45,7 +49,8 @@ function isPointerOverDesktopSidebar(): boolean {
 
 export function MapSidebarUserProfile({
   expanded,
-  profileHref = '/officer/profile',
+  profileHref = PROFILE_ROUTES.officer,
+  settingsHref = '/officer/settings',
 }: SidebarUserProfileProps) {
   const router = useRouter();
   const { setOpen, setHoverLocked } = useSidebar();
@@ -243,98 +248,101 @@ export function MapSidebarUserProfile({
         />
       </button>
 
-      {menuOpen ? (
-        <div
-          ref={menuRef}
-          className="fixed z-50 min-w-47 rounded-lg border border-slate-900/8 bg-white py-1 shadow-lg"
-          role="menu"
-          style={{ top: menuPos.top, left: menuPos.left }}
-        >
-          <Link
-            href={profileHref}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
-            role="menuitem"
-            onClick={closeMenu}
+      {menuOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[200] min-w-52 rounded-lg border border-slate-900/8 bg-white p-1.5 shadow-[0_8px_24px_rgb(0_0_0/18%),0_0_0_1px_rgb(0_0_0/6%)]"
+            role="menu"
+            style={{ top: menuPos.top, left: menuPos.left }}
           >
-            <FontAwesomeIcon icon={faUser} className="size-3.5 text-gray-500" />
-            My account
-          </Link>
-          <div className="my-1 h-px bg-gray-200" role="separator" />
-          <div ref={languageRef}>
+            {settingsHref ? (
+              <Link
+                href={settingsHref}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
+                role="menuitem"
+                onClick={closeMenu}
+              >
+                <FontAwesomeIcon icon={faGear} className="size-3.5 text-gray-500" />
+                Cài đặt
+              </Link>
+            ) : null}
+            <Link
+              href={profileHref}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
+              role="menuitem"
+              onClick={closeMenu}
+            >
+              <FontAwesomeIcon icon={faUser} className="size-3.5 text-gray-500" />
+              Tài khoản của tôi
+            </Link>
+            <div ref={languageRef}>
+              <button
+                type="button"
+                className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100"
+                role="menuitem"
+                aria-expanded={languageOpen}
+                onClick={() => {
+                  if (!languageOpen) updateLanguagePosition();
+                  setLanguageOpen(o => !o);
+                }}
+              >
+                <span className="inline-flex items-center gap-2.5">
+                  <FontAwesomeIcon icon={faLanguage} className="size-3.5 text-gray-500" />
+                  Ngôn ngữ
+                </span>
+                <FontAwesomeIcon icon={faChevronRight} className="size-2.5 text-gray-400" />
+              </button>
+              {languageOpen ? (
+                <div
+                  className="fixed z-[201] min-w-34 rounded-lg border border-slate-900/8 bg-white p-1.5 shadow-[0_8px_24px_rgb(0_0_0/18%),0_0_0_1px_rgb(0_0_0/6%)]"
+                  role="menu"
+                  style={{ top: languagePos.top, left: languagePos.left }}
+                >
+                  <button
+                    type="button"
+                    className={cn(
+                      'block w-full cursor-pointer rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
+                      locale === 'vi' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
+                    )}
+                    role="menuitem"
+                    onClick={() => {
+                      setLocale('vi');
+                      closeMenu();
+                    }}
+                  >
+                    Tiếng Việt
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      'block w-full cursor-pointer rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
+                      locale === 'en' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
+                    )}
+                    role="menuitem"
+                    onClick={() => {
+                      setLocale('en');
+                      closeMenu();
+                    }}
+                  >
+                    English
+                  </button>
+                </div>
+              ) : null}
+            </div>
             <button
               type="button"
-              className="flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-red-600 hover:bg-red-50"
               role="menuitem"
-              aria-expanded={languageOpen}
-              onClick={() => {
-                if (!languageOpen) updateLanguagePosition();
-                setLanguageOpen(o => !o);
-              }}
+              onClick={handleLogout}
             >
-              <span className="inline-flex items-center gap-2.5">
-                <FontAwesomeIcon icon={faLanguage} className="size-3.5 text-gray-500" />
-                Language
-              </span>
-              <FontAwesomeIcon icon={faChevronRight} className="size-2.5 text-gray-400" />
+              <FontAwesomeIcon icon={faRightFromBracket} className="size-3.5 text-red-600" />
+              Đăng xuất
             </button>
-            {languageOpen ? (
-              <div
-                className="fixed z-51 min-w-34 rounded-lg border border-slate-900/8 bg-white py-1 shadow-lg"
-                role="menu"
-                style={{ top: languagePos.top, left: languagePos.left }}
-              >
-                <button
-                  type="button"
-                  className={cn(
-                    'block w-full cursor-pointer border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
-                    locale === 'vi' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
-                  )}
-                  role="menuitem"
-                  onClick={() => {
-                    setLocale('vi');
-                    closeMenu();
-                  }}
-                >
-                  Tiếng Việt
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    'block w-full cursor-pointer border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
-                    locale === 'en' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
-                  )}
-                  role="menuitem"
-                  onClick={() => {
-                    setLocale('en');
-                    closeMenu();
-                  }}
-                >
-                  English
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <Link
-            href={profileHref}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-gray-700 no-underline hover:bg-gray-100"
-            role="menuitem"
-            onClick={closeMenu}
-          >
-            <FontAwesomeIcon icon={faGear} className="size-3.5 text-gray-500" />
-            Settings
-          </Link>
-          <div className="my-1 h-px bg-gray-200" role="separator" />
-          <button
-            type="button"
-            className="flex w-full cursor-pointer items-center gap-2.5 border-none bg-transparent px-3 py-2 text-left text-[13px] font-medium text-red-600 hover:bg-red-50"
-            role="menuitem"
-            onClick={handleLogout}
-          >
-            <FontAwesomeIcon icon={faRightFromBracket} className="size-3.5 text-red-600" />
-            Logout
-          </button>
-        </div>
-      ) : null}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

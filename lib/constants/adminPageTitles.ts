@@ -1,9 +1,12 @@
 import { ADMIN_USERS_NAV } from '@/lib/constants/adminUsersNav';
+import { getProfilePageTitleByPath } from '@/lib/constants/profilePortal';
 
 /** Tiêu đề header admin theo pathname (tiếng Việt). */
 export function getAdminPageTitle(pathname: string): string {
+  const profileTitle = getProfilePageTitleByPath(pathname);
+  if (profileTitle) return profileTitle;
+
   if (pathname === '/admin') return 'Tổng quan quản trị';
-  if (pathname === '/admin/profile') return 'Hồ sơ cá nhân';
   if (pathname === '/admin/offices' || pathname === '/admin/organization')
     return 'Văn phòng địa phương';
   if (pathname === '/admin/pollution-categories') return 'Danh mục ô nhiễm';
@@ -14,7 +17,9 @@ export function getAdminPageTitle(pathname: string): string {
   if (pathname === '/admin/spam-suspects') return 'Tài khoản nghi spam';
   if (pathname === '/admin/gamification-configs') return 'Cấu hình điểm gamification';
   if (pathname === '/admin/notification-templates') return 'Mẫu thông báo';
-  if (pathname === '/admin/notifications/preferences') return 'Cài đặt thông báo';
+  if (pathname === '/admin/settings' || pathname === '/admin/settings/account')
+    return 'Cài đặt tài khoản';
+  if (pathname === '/admin/settings/notifications') return 'Cài đặt thông báo';
   if (pathname === '/admin/notifications' || pathname.startsWith('/admin/notifications/'))
     return 'Thông báo';
   if (pathname === '/admin/departments') return 'Sở TNMT · Cấp tỉnh';

@@ -2,7 +2,6 @@
 
 import { useCompanyAssignments } from '@/hooks/useCompany';
 import { REPORT_STATUSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
-import type { CompanyAssignmentListItem } from '@/lib/api/models/company';
 import { cn } from '@/lib/utils';
 import {
   assignmentStatusClasses,
@@ -12,6 +11,8 @@ import {
   isSlaUrgent,
   queueSeverityClasses,
   queueSeverityLabel,
+  teamTaskAcceptanceClasses,
+  teamTaskAcceptanceText,
 } from '@/utils/companyUi';
 import {
   Select,
@@ -20,16 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  Loader2,
-  Search,
-  TrendingUp,
-  UsersRound,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardList, Loader2, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const PAGE_SIZE = 20;
@@ -70,46 +62,6 @@ function ProgressBar({ value, className }: { value: number; className?: string }
   );
 }
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  icon: typeof ClipboardList;
-  accent: string;
-}) {
-  return (
-    <div className="rounded-lg border border-emerald-100/80 bg-white p-4 shadow-sm dark:border-border dark:bg-card">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-950 dark:text-foreground">
-            {value}
-          </p>
-        </div>
-        <div className={cn('flex size-10 items-center justify-center rounded-md', accent)}>
-          <Icon className="size-5 text-white" aria-hidden />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function computeStats(items: CompanyAssignmentListItem[], total: number) {
-  const inProgress = items.filter(
-    i => i.assignmentStatus === 'Assigned' || i.assignmentStatus === 'InProgress'
-  ).length;
-  const completed = items.filter(i => i.assignmentStatus === 'Completed').length;
-  const avgProgress =
-    items.length > 0
-      ? Math.round(items.reduce((sum, i) => sum + i.progressPercent, 0) / items.length)
-      : 0;
-  return { total, inProgress, completed, avgProgress };
-}
-
 export function CompanyAssignmentsTrackingTab({
   onSelectReport,
 }: CompanyAssignmentsTrackingTabProps) {
@@ -129,10 +81,6 @@ export function CompanyAssignmentsTrackingTab({
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
-  const stats = useMemo(
-    () => computeStats(items, pagination?.totalItems ?? 0),
-    [items, pagination?.totalItems]
-  );
 
   const handleSearch = () => {
     setSearch(searchInput.trim());
@@ -141,33 +89,6 @@ export function CompanyAssignmentsTrackingTab({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Tổng phân công"
-          value={stats.total}
-          icon={ClipboardList}
-          accent="bg-emerald-600"
-        />
-        <StatCard
-          label="Đang xử lý (trang)"
-          value={stats.inProgress}
-          icon={TrendingUp}
-          accent="bg-emerald-500"
-        />
-        <StatCard
-          label="Hoàn thành (trang)"
-          value={stats.completed}
-          icon={CheckCircle2}
-          accent="bg-emerald-700"
-        />
-        <StatCard
-          label="Tiến độ TB (trang)"
-          value={`${stats.avgProgress}%`}
-          icon={UsersRound}
-          accent="bg-lime-600"
-        />
-      </div>
-
       <div className="rounded-lg border border-emerald-100/80 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-border dark:bg-card/90">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex flex-1 flex-col gap-3 sm:flex-row">
@@ -319,8 +240,16 @@ export function CompanyAssignmentsTrackingTab({
                         <p className="text-xs text-muted-foreground">
                           {row.team.memberCount} thành viên
                         </p>
+                        <span
+                          className={cn(
+                            'mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+                            teamTaskAcceptanceClasses(row.assignmentStatus, row.startedAt)
+                          )}
+                        >
+                          {teamTaskAcceptanceText(row.assignmentStatus, row.startedAt)}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 min-w-[140px]">
+                      <td className="min-w-[140px] px-4 py-3">
                         <ProgressBar value={row.progressPercent} />
                       </td>
                       <td className="px-4 py-3">

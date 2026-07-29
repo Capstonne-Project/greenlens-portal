@@ -107,6 +107,7 @@ const ASSIGNMENT_STATUSES: LeoReportAssignmentStatus[] = [
   'InProgress',
   'Completed',
   'Declined',
+  'Escalated',
 ];
 
 function mapAssignmentStatus(value: string | undefined): LeoReportAssignmentStatus {

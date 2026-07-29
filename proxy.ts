@@ -1,4 +1,8 @@
-import { AUTH_COOKIE_ACCESS, AUTH_COOKIE_REFRESH } from '@/lib/constants/authCookies';
+import {
+  AUTH_COOKIE_ACCESS,
+  AUTH_COOKIE_REFRESH,
+  AUTH_COOKIE_MUST_CHANGE_PASSWORD,
+} from '@/lib/constants/authCookies';
 import { matchOfficerRouteAcl, OFFICER_ACL_FALLBACK_PATH } from '@/lib/constants/officerRoles';
 import { getDashboardPathByRole, mapApiRoleToAuth } from '@/lib/auth/mapUser';
 import type { AuthUser } from '@/lib/store/authStore';
@@ -6,6 +10,7 @@ import { decodeJwt, jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/otp', '/renew-password'];
+const RENEW_PASSWORD_PATH = '/renew-password';
 
 const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
 
@@ -29,6 +34,9 @@ function getAccessToken(request: NextRequest): string | undefined {
 function hasRefreshToken(request: NextRequest): boolean {
   return Boolean(request.cookies.get(AUTH_COOKIE_REFRESH)?.value);
 }
+function mustChangePassword(request: NextRequest): boolean {
+  return request.cookies.get(AUTH_COOKIE_MUST_CHANGE_PASSWORD)?.value === '1';
+}
 
 function roleRawFromPayload(payload: Record<string, unknown>): string | null {
   const claim = payload[ROLE_CLAIM];
@@ -48,10 +56,12 @@ async function getTokenRoleInfo(
       const raw = roleRawFromPayload(payload as Record<string, unknown>);
       return { mapped: raw ? mapApiRoleToAuth(raw) : null, rawRole: raw };
     }
+
     // Production: fail closed — require JWT_SECRET to verify signatures.
     if (process.env.NODE_ENV === 'production') {
       return { mapped: null, rawRole: null };
     }
+
     // Local/dev UX only — BE still enforces auth on API calls.
     const payload = decodeJwt(token);
     const raw = roleRawFromPayload(payload as Record<string, unknown>);
@@ -70,21 +80,49 @@ export async function proxy(request: NextRequest) {
       if (hasRefreshToken(request)) return NextResponse.next();
       return NextResponse.redirect(new URL('/login', request.url));
     }
+
+    if (mustChangePassword(request)) {
+      return NextResponse.redirect(new URL(RENEW_PASSWORD_PATH, request.url));
+    }
+
     const { mapped } = await getTokenRoleInfo(token);
+
     if (mapped && mapped !== 'citizen') {
       return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
     }
+
     if (!mapped && hasRefreshToken(request)) return NextResponse.next();
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
+  const isRenewPassword =
+    pathname === RENEW_PASSWORD_PATH || pathname.startsWith(`${RENEW_PASSWORD_PATH}/`);
+
   if (AUTH_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`))) {
     if (token) {
       const { mapped } = await getTokenRoleInfo(token);
+
+      // CM/staff with temp password may stay on renew-password until activated
+      if (isRenewPassword && mustChangePassword(request)) {
+        return NextResponse.next();
+      }
+
+      if (isRenewPassword && !mustChangePassword(request)) {
+        if (mapped) {
+          return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
+        }
+      }
+
       if (mapped && mapped !== 'citizen') {
+        if (mustChangePassword(request)) {
+          return NextResponse.redirect(new URL(RENEW_PASSWORD_PATH, request.url));
+        }
         return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
       }
+    } else if (isRenewPassword) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
+
     return NextResponse.next();
   }
 
@@ -94,14 +132,22 @@ export async function proxy(request: NextRequest) {
         if (hasRefreshToken(request)) return NextResponse.next();
         return NextResponse.redirect(new URL('/login', request.url));
       }
+
+      if (mustChangePassword(request)) {
+        return NextResponse.redirect(new URL(RENEW_PASSWORD_PATH, request.url));
+      }
+
       const { mapped, rawRole } = await getTokenRoleInfo(token);
+
       if (!mapped) {
         if (hasRefreshToken(request)) return NextResponse.next();
         return NextResponse.redirect(new URL('/login', request.url));
       }
+
       if (mapped !== required) {
         return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
       }
+
       // Officer sub-role ACL (DEO vs LEO) — redirect, no Access Denied page.
       if (required === 'officer') {
         const acl = matchOfficerRouteAcl(pathname, rawRole ?? undefined);
@@ -109,6 +155,7 @@ export async function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL(OFFICER_ACL_FALLBACK_PATH, request.url));
         }
       }
+
       break;
     }
   }

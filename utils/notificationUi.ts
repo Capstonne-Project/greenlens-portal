@@ -1,5 +1,7 @@
 import type { NotificationItem, NotificationType } from '@/lib/api/models/notification';
 import { NOTIFICATION_TYPE_LABEL_VI } from '@/lib/constants/notificationTemplates';
+import type { LucideIcon } from 'lucide-react';
+import { Droplets, FlaskConical, Trash2 } from 'lucide-react';
 
 /** Types ưu tiên hiển thị / cấu hình trên Company Manager dashboard. */
 export const COMPANY_NOTIFICATION_TYPES = [
@@ -61,6 +63,9 @@ export function adminNotificationHref(
     case 'SlaBreachWarning':
     case 'ReportUnassigned':
     case 'DuplicateReviewNeeded':
+    case 'ReportVerificationNeeded':
+    case 'ReopenReviewNeeded':
+    case 'ReopenRequestDecided':
     case 'NewComment':
     case 'NearbyReport':
       if (ref) return `/admin/reports/${encodeURIComponent(ref)}`;
@@ -102,6 +107,84 @@ export function companyNotificationHref(
   }
 }
 
+/** Deep-link trong officer portal theo type + referenceId. */
+export function officerNotificationHref(
+  item: Pick<NotificationItem, 'type' | 'referenceId'>
+): string {
+  const ref = item.referenceId?.trim();
+
+  switch (item.type) {
+    case 'ReportVerificationNeeded':
+      // List + highlight row — không mở detail thẳng.
+      if (ref) return `/officer/verify?highlight=${encodeURIComponent(ref)}`;
+      return '/officer/verify';
+    case 'SlaBreachWarning':
+      // SLA warning mở thẳng detail trong tracking.
+      if (ref) return `/officer/tracking?reportId=${encodeURIComponent(ref)}`;
+      return '/officer/tracking';
+    case 'ReportStatusChanged':
+    case 'ReportOverdue':
+    case 'ReportAutoClosed':
+    case 'ReportUnassigned':
+    case 'DuplicateReviewNeeded':
+    case 'ReopenReviewNeeded':
+    case 'ReopenRequestDecided':
+    case 'NewComment':
+    case 'NearbyReport':
+      if (ref) return `/officer/verify/${encodeURIComponent(ref)}`;
+      return '/officer/verify';
+    case 'BadgeEarned':
+    case 'LevelUp':
+      return '/officer/dashboard';
+    default:
+      if (ref) return `/officer/tracking`;
+      return '/officer/dashboard';
+  }
+}
+
+export type NotificationPortal = 'officer' | 'admin' | 'company';
+
+export function resolveNotificationPortal(pathname: string): NotificationPortal {
+  if (pathname.startsWith('/admin')) return 'admin';
+  if (pathname.startsWith('/company')) return 'company';
+  return 'officer';
+}
+
+export function resolveNotificationHref(
+  portal: NotificationPortal,
+  item: Pick<NotificationItem, 'type' | 'referenceId'>
+): string {
+  switch (portal) {
+    case 'admin':
+      return adminNotificationHref(item);
+    case 'company':
+      return companyNotificationHref(item);
+    default:
+      return officerNotificationHref(item);
+  }
+}
+
+export function getNotificationDrawerLinks(portal: NotificationPortal): {
+  inboxHref: string | null;
+  preferencesHref: string | null;
+} {
+  switch (portal) {
+    case 'admin':
+      return {
+        inboxHref: '/admin/notifications',
+        preferencesHref: '/admin/settings/notifications',
+      };
+    case 'company':
+      return {
+        inboxHref: '/company/notifications',
+        preferencesHref: '/company/settings/notifications',
+      };
+    default:
+      // Officer: drawer là inbox chính, settings nằm trong route shell bên phải sidebar.
+      return { inboxHref: null, preferencesHref: '/officer/settings/notifications' };
+  }
+}
+
 export function getNotificationMutationError(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
     const res = (err as { response?: { data?: { message?: string } } }).response;
@@ -112,21 +195,171 @@ export function getNotificationMutationError(err: unknown, fallback: string): st
   return fallback;
 }
 
+/**
+ * Relative time từ `createdAt` → hiện tại.
+ * <1 phút → Vừa xong
+ * 1–59 phút → X phút trước
+ * 1–23 giờ → X giờ trước
+ * 1–6 ngày → X ngày trước
+ * ≥7 ngày → X tuần trước (phù hợp inbox)
+ */
 export function formatNotificationRelativeTime(iso: string): string {
   if (!iso?.trim()) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
+
   const diffMs = Date.now() - d.getTime();
+  if (diffMs < 0) return 'Vừa xong';
+
   const minutes = Math.floor(diffMs / 60_000);
   if (minutes < 1) return 'Vừa xong';
   if (minutes < 60) return `${minutes} phút trước`;
+
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} giờ trước`;
+
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days} ngày trước`;
+
+  const weeks = Math.floor(days / 7);
+  return `${weeks} tuần trước`;
+}
+
+/** Thời gian ngắn cho dropdown (kiểu Facebook: "11 giờ", "2 phút"). */
+export function formatNotificationShortTime(iso: string): string {
+  if (!iso?.trim()) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+
+  const diffMs = Date.now() - d.getTime();
+  if (diffMs < 0) return 'Vừa xong';
+
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return 'Vừa xong';
+  if (minutes < 60) return `${minutes} phút`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} giờ`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} ngày`;
+
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
   }).format(d);
+}
+
+export type NotificationTimeGroup = 'new' | 'today' | 'earlier';
+
+export const NOTIFICATION_TIME_GROUP_LABEL: Record<NotificationTimeGroup, string> = {
+  new: 'Mới',
+  today: 'Hôm nay',
+  earlier: 'Trước đó',
+};
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Nhóm thông báo: Mới (chưa đọc) → Hôm nay (đã đọc hôm nay) → Trước đó. */
+export function groupNotificationsByTime(
+  items: NotificationItem[]
+): { group: NotificationTimeGroup; items: NotificationItem[] }[] {
+  const todayStart = startOfLocalDay(new Date());
+  const buckets: Record<NotificationTimeGroup, NotificationItem[]> = {
+    new: [],
+    today: [],
+    earlier: [],
+  };
+
+  for (const item of items) {
+    const created = new Date(item.createdAt);
+    if (Number.isNaN(created.getTime())) {
+      buckets.earlier.push(item);
+      continue;
+    }
+    if (!item.isRead) {
+      buckets.new.push(item);
+    } else if (created >= todayStart) {
+      buckets.today.push(item);
+    } else {
+      buckets.earlier.push(item);
+    }
+  }
+
+  return (['new', 'today', 'earlier'] as const)
+    .filter(g => buckets[g].length > 0)
+    .map(group => ({ group, items: buckets[group] }));
+}
+
+export function notificationThumbnailFallback(
+  item: Pick<NotificationItem, 'title' | 'categoryName'>
+): string {
+  const source = item.categoryName?.trim() || item.title?.trim() || '?';
+  return source.charAt(0).toUpperCase();
+}
+
+/** BR-REP-005 seed: 3 loại ô nhiễm dùng cho badge góc thumbnail. */
+export type NotificationCategoryCode = 'TRASH' | 'WASTEWATER' | 'CHEMICAL';
+
+export type NotificationCategoryBadge = {
+  code: NotificationCategoryCode;
+  label: string;
+  Icon: LucideIcon;
+  /** Nền badge kiểu Facebook (icon trắng). */
+  badgeClassName: string;
+};
+
+const CATEGORY_BADGES: NotificationCategoryBadge[] = [
+  {
+    code: 'TRASH',
+    label: 'Ô nhiễm rác thải',
+    Icon: Trash2,
+    /** Xanh môi trường — gắn ý nghĩa bảo vệ môi trường (brand GreenLens). */
+    badgeClassName: 'bg-brand',
+  },
+  {
+    code: 'WASTEWATER',
+    label: 'Ô nhiễm nước',
+    Icon: Droplets,
+    badgeClassName: 'bg-sky-600',
+  },
+  {
+    code: 'CHEMICAL',
+    label: 'Ô nhiễm hóa chất',
+    Icon: FlaskConical,
+    badgeClassName: 'bg-rose-600',
+  },
+];
+
+/**
+ * Map `categoryName` (NameVi) hoặc code → badge UI.
+ * Trả `null` nếu không khớp 3 loại seed.
+ */
+export function resolveNotificationCategoryBadge(
+  categoryName: string | null | undefined
+): NotificationCategoryBadge | null {
+  if (!categoryName?.trim()) return null;
+  const raw = categoryName.trim();
+  const upper = raw.toUpperCase();
+  const lower = raw.toLowerCase();
+
+  const byCode = CATEGORY_BADGES.find(b => b.code === upper);
+  if (byCode) return byCode;
+
+  const byLabel = CATEGORY_BADGES.find(b => b.label.toLowerCase() === lower);
+  if (byLabel) return byLabel;
+
+  if (lower.includes('rác') || lower.includes('trash')) {
+    return CATEGORY_BADGES[0]!;
+  }
+  if (lower.includes('nước') || lower.includes('wastewater') || lower.includes('nước thải')) {
+    return CATEGORY_BADGES[1]!;
+  }
+  if (lower.includes('hóa chất') || lower.includes('chemical') || lower.includes('hoá chất')) {
+    return CATEGORY_BADGES[2]!;
+  }
+
+  return null;
 }

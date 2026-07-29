@@ -99,13 +99,19 @@ export const LEO_MY_REPORTS_SEVERITIES = ['Low', 'Medium', 'High', 'Critical'] a
 export type LeoMyReportsSeverity = (typeof LEO_MY_REPORTS_SEVERITIES)[number];
 
 /** Swagger query `assignmentStatus` & `assignments[].status`. */
-export type LeoReportAssignmentStatus = 'Assigned' | 'InProgress' | 'Completed' | 'Declined';
+export type LeoReportAssignmentStatus =
+  | 'Assigned'
+  | 'InProgress'
+  | 'Completed'
+  | 'Declined'
+  | 'Escalated';
 
 export const LEO_REPORT_ASSIGNMENT_STATUSES = [
   'Assigned',
   'InProgress',
   'Completed',
   'Declined',
+  'Escalated',
 ] as const satisfies readonly LeoReportAssignmentStatus[];
 
 /** Một assignment trong `LeoMyReportItem.assignments[]`. */
@@ -167,7 +173,7 @@ export interface LeoMyReportsData {
 }
 
 /**
- * Sort theo Swagger comment:
+ * Gợi ý sort phổ biến (Swagger `sortBy` là string tự do).
  * `code, status, severity, priority, createdAt, assignmentCount`
  * (mặc định BE: mới nhất).
  */
@@ -179,6 +185,7 @@ export type LeoMyReportsSortBy =
   | 'createdAt'
   | 'assignmentCount';
 
+/** Query GET /v1/offices/my/reports — khớp Swagger. */
 export interface LeoMyReportsParams {
   page?: number;
   pageSize?: number;
@@ -187,7 +194,12 @@ export interface LeoMyReportsParams {
   categoryId?: string;
   severity?: LeoMyReportsSeverity;
   assignmentStatus?: LeoReportAssignmentStatus;
-  sortBy?: LeoMyReportsSortBy;
+  /** ISO date-time (`string($date-time)`). */
+  fromDate?: string;
+  /** ISO date-time (`string($date-time)`). */
+  toDate?: string;
+  /** Swagger: plain string — dùng `LeoMyReportsSortBy` làm gợi ý giá trị. */
+  sortBy?: string;
   sortDesc?: boolean;
 }
 
