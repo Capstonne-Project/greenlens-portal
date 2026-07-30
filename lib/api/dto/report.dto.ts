@@ -39,6 +39,31 @@ export interface ReportWasteTagDto {
   iconUrl: string;
 }
 
+/** GET /v1/reports/{id} — `data.satisfaction` */
+export interface ReportSatisfactionDto {
+  isSatisfied: boolean;
+  rating: number;
+  comment: string;
+  ratedAt: string;
+}
+
+/** GET /v1/reports/{id} — `data.pendingReopenRequest` */
+export interface ReportPendingReopenRequestDto {
+  requestId: string;
+  reason: string;
+  requestedAt: string;
+  evidenceMedia: ReportMediaDto[];
+}
+
+/** GET /v1/reports/{id} — `data.mergedReports[]` */
+export interface ReportMergedChildDto {
+  id: string;
+  code: string;
+  imageUrl: string | null;
+  createdAt: string;
+  status: ReportStatusDto;
+}
+
 /** GET /v1/reports/{id} — `data` (Swagger BE). */
 export interface ReportDetailDto {
   id: string;
@@ -76,6 +101,13 @@ export interface ReportDetailDto {
   closedAt?: string | null;
   slaVerifyDueAt?: string | null;
   slaResolveDueAt?: string | null;
+  satisfaction?: ReportSatisfactionDto | null;
+  hasCurrentUserRated?: boolean;
+  hasPendingReopenRequest?: boolean;
+  pendingReopenRequest?: ReportPendingReopenRequestDto | null;
+  mergedIntoPrimaryReportId?: string | null;
+  mergedIntoPrimaryReportCode?: string | null;
+  mergedReports?: ReportMergedChildDto[] | null;
 }
 
 /** GET /v1/reports/{id} — envelope response. */

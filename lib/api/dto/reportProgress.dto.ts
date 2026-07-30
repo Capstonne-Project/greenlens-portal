@@ -24,21 +24,23 @@ export interface ReportProgressSummaryDto {
   startedAt: string;
 }
 
-/** Assignment trong tiến trình — có thêm leader, accept/complete, progress %. */
+/** Assignment trong tiến trình — khớp Swagger GET /v1/reports/{id}/progress. */
 export interface ReportProgressAssignmentDto {
   assignmentId: string;
   teamId: string;
   teamName: string;
   teamType: string;
   teamLeaderName: string;
+  assignedById: string;
+  assignedByName: string;
   status: string;
   assignedAt: string;
-  acceptedAt?: string | null;
-  completedAt?: string | null;
-  declineReason?: string | null;
+  acceptedAt: string | null;
+  completedAt: string | null;
+  declineReason: string | null;
   progressPercent: number;
-  progressNote?: string | null;
-  progressUpdatedAt?: string | null;
+  progressNote: string | null;
+  progressUpdatedAt: string | null;
 }
 
 export interface ReportProgressMediaDto {
@@ -52,7 +54,7 @@ export interface ReportProgressStatusHistoryDto {
   toStatus: ReportStatusDto;
   changedAt: string;
   changedByName: string;
-  note?: string | null;
+  note: string | null;
 }
 
 /** GET /v1/reports/{id}/progress — data envelope. */
