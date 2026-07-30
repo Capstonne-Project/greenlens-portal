@@ -6,8 +6,11 @@ import {
   ADMIN_TABLE_ROW_BORDER,
   ADMIN_TABLE_SCROLL,
   ADMIN_TABLE_SHELL,
+  ADMIN_TABLE_PAGINATION_FOOTER,
+  ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
+import { useSpamSuspectsList } from '@/hooks/useSpamSuspects';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -18,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useSpamSuspectsList } from '@/hooks/useSpamSuspects';
+import { SpamSuspectSummaryStrip } from '@/components/admin/spam-suspects/SpamSuspectSummaryStrip';
 import type { SpamSuspectsListParams, SpamSuspectsPagination } from '@/lib/api/models/spamSuspect';
 import { SPAM_SUSPECT_DEFAULTS, SPAM_SUSPECTS_PAGE_SIZE } from '@/lib/constants/spamSuspects';
 import { cn } from '@/lib/utils';
@@ -96,41 +99,14 @@ export function AdminSpamSuspectsView() {
         </p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: 'Tổng nghi spam',
-            value: pagination.totalItems.toLocaleString('vi-VN'),
-            hint: 'Theo ngưỡng hiện tại',
-          },
-          {
-            label: 'Trên trang',
-            value: String(items.length),
-            hint: `Tối đa ${SPAM_SUSPECTS_PAGE_SIZE}/trang`,
-          },
-          {
-            label: 'Đã khóa',
-            value: String(items.filter(i => i.isBanned).length),
-            hint: 'Trong trang hiện tại',
-          },
-          {
-            label: 'AI gắn cờ cao',
-            value: String(items.filter(i => i.aiFlaggedCount >= aiThreshold).length),
-            hint: `≥ ${aiThreshold} flag`,
-          },
-        ].map(card => (
-          <article
-            key={card.label}
-            className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {card.label}
-            </p>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-emerald-950">{card.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{card.hint}</p>
-          </article>
-        ))}
-      </section>
+      <SpamSuspectSummaryStrip
+        totalItems={pagination.totalItems}
+        onPageCount={items.length}
+        bannedOnPage={items.filter(i => i.isBanned).length}
+        highAiFlagOnPage={items.filter(i => i.aiFlaggedCount >= aiThreshold).length}
+        aiThreshold={aiThreshold}
+        pageSize={SPAM_SUSPECTS_PAGE_SIZE}
+      />
 
       <section className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-950">
@@ -371,18 +347,16 @@ export function AdminSpamSuspectsView() {
           </Table>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-          <div className="min-w-0">
-            {pagination.totalPages > 1 ? (
-              <PaginationSimple
-                page={pagination.page}
-                totalPages={pagination.totalPages}
-                onPageChange={setPage}
-                className="w-auto"
-              />
-            ) : null}
-          </div>
-          <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+        <div className={ADMIN_TABLE_PAGINATION_FOOTER}>
+          {pagination.totalPages > 1 ? (
+            <PaginationSimple
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={setPage}
+              className="w-auto"
+            />
+          ) : null}
+          <p className={ADMIN_TABLE_PAGINATION_META}>
             {pagination.totalItems.toLocaleString('vi-VN')} rows
           </p>
         </div>

@@ -2,8 +2,8 @@
 
 import type { SystemRole } from '@/lib/constants/systemRoles';
 
-/** Số dòng / trang — vừa viewport Admin, tránh che cột Thao tác. */
-export const ADMIN_USERS_PAGE_SIZE = 6;
+/** Số dòng / trang — lấp đủ chiều cao bảng admin users. */
+export const ADMIN_USERS_PAGE_SIZE = 9;
 
 export type AdminUsersRoleSlug = 'quan-tri' | 'nguoi-dan' | 'deo' | 'leo' | 'thanh-tra' | 'don-dep';
 

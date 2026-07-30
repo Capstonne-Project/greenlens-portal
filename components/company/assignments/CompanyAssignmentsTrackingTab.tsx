@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  COMPANY_PAGINATION_CONTROLS,
+  COMPANY_PAGINATION_FOOTER,
+  COMPANY_PAGINATION_META,
+} from '@/components/company/shared/companyPaginationChrome';
 import { useCompanyAssignments } from '@/hooks/useCompany';
 import { REPORT_STATUSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
@@ -290,11 +295,11 @@ export function CompanyAssignmentsTrackingTab({
         )}
 
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-emerald-50 px-4 py-3 text-sm dark:border-border">
-            <p className="text-muted-foreground">
+          <div className={COMPANY_PAGINATION_FOOTER}>
+            <p className={COMPANY_PAGINATION_META}>
               Trang {pagination.page} / {pagination.totalPages} · {pagination.totalItems} task
             </p>
-            <div className="flex gap-2">
+            <div className={COMPANY_PAGINATION_CONTROLS}>
               <button
                 type="button"
                 disabled={!pagination.hasPrev}

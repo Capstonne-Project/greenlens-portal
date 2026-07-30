@@ -65,7 +65,7 @@ export function CompanyOverviewDashboard() {
     refetch: refetchAssignments,
   } = useCompanyDashboardAssignments();
 
-  const assignmentItems = assignmentsData?.items ?? [];
+  const assignmentItems = useMemo(() => assignmentsData?.items ?? [], [assignmentsData?.items]);
   const assignmentTotal = assignmentsData?.pagination.totalItems ?? assignmentItems.length;
 
   const mergedOverview = useMemo(
@@ -157,7 +157,7 @@ export function CompanyOverviewDashboard() {
             {isFetching || assignmentsPending ? ' · làm mới' : ''}
           </p>
 
-          <div className="grid min-h-0 flex-1 gap-2 overflow-hidden lg:grid-cols-12 lg:grid-rows-4">
+          <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]">
             <div className="min-h-0 lg:col-span-12 lg:row-start-1">
               <CompanyOverviewSummaryCharts overview={mergedOverview} />
             </div>
@@ -181,10 +181,10 @@ export function CompanyOverviewDashboard() {
               <CompanyQueueAgingDonut items={queueAging} />
             </div>
 
-            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
+            <div className="lg:col-span-3 lg:row-start-4 lg:self-start">
               <CompanyUpcomingDeadlines items={mergedUpcomingDeadlines} />
             </div>
-            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
+            <div className="lg:col-span-3 lg:row-start-4 lg:self-start">
               <CompanyRecentActivities items={mergedRecentActivities} />
             </div>
             <div className="min-h-0 lg:col-span-3 lg:row-start-4">
@@ -203,7 +203,7 @@ export function CompanyOverviewDashboard() {
 function CompanyOverviewSkeleton() {
   return (
     <div
-      className="grid h-full min-h-0 gap-2 lg:grid-cols-12 lg:grid-rows-4"
+      className="grid h-full min-h-0 gap-2 lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]"
       aria-busy="true"
       aria-label="Đang tải tổng quan"
     >

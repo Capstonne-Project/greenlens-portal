@@ -6,6 +6,9 @@ import {
   ADMIN_TABLE_ROW_BORDER,
   ADMIN_TABLE_SCROLL,
   ADMIN_TABLE_SHELL,
+  ADMIN_TABLE_PAGINATION_FOOTER,
+  ADMIN_TABLE_PAGINATION_META,
+  ADMIN_TABLE_PAGINATION_NAV,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { TeamDetailDialog } from '@/components/admin/teams/TeamDetailDialog';
@@ -470,7 +473,7 @@ export function AdminTeamsView() {
             )}
 
             {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-border px-6 py-3">
+              <div className={ADMIN_TABLE_PAGINATION_NAV}>
                 <span className="text-xs text-muted-foreground">
                   Trang {pagination.page}/{pagination.totalPages}
                 </span>
@@ -631,18 +634,16 @@ export function AdminTeamsView() {
             </div>
 
             {pagination ? (
-              <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-                <div className="min-w-0">
-                  {pagination.totalPages > 1 ? (
-                    <PaginationSimple
-                      page={pagination.page}
-                      totalPages={pagination.totalPages}
-                      onPageChange={p => setQuery({ page: String(p) })}
-                      className="w-auto"
-                    />
-                  ) : null}
-                </div>
-                <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+              <div className={ADMIN_TABLE_PAGINATION_FOOTER}>
+                {pagination.totalPages > 1 ? (
+                  <PaginationSimple
+                    page={pagination.page}
+                    totalPages={pagination.totalPages}
+                    onPageChange={p => setQuery({ page: String(p) })}
+                    className="w-auto"
+                  />
+                ) : null}
+                <p className={ADMIN_TABLE_PAGINATION_META}>
                   {pagination.totalItems.toLocaleString('vi-VN')} rows
                 </p>
               </div>

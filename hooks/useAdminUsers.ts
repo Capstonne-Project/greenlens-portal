@@ -9,6 +9,7 @@ import {
   fetchAdminRoles,
   fetchAdminUserDetail,
   fetchAdminUsers,
+  toggleBanAdminUser,
   updateAdminUser,
 } from '@/lib/api/services/fetchAdmin';
 import type {
@@ -171,5 +172,17 @@ export function useChangeAdminUserRole() {
     mutationFn: ({ id, newRole }: { id: string; newRole: string }) =>
       changeAdminUserRole(id, newRole),
     onSuccess: () => invalidate(),
+  });
+}
+
+export function useToggleBanAdminUser() {
+  const queryClient = useQueryClient();
+  const invalidateUsers = useInvalidateAdminUsers();
+  return useMutation({
+    mutationFn: (id: string) => toggleBanAdminUser(id),
+    onSuccess: () => {
+      invalidateUsers();
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
+    },
   });
 }

@@ -3,6 +3,7 @@ import type {
   AuditLogDto,
   AuditLogPaginationDto,
   AuditLogsListDataDto,
+  AuditLogsStatsDataDto,
 } from '@/lib/api/dto/auditLog.dto';
 import type {
   AuditJsonValue,
@@ -10,6 +11,7 @@ import type {
   AuditLogListItem,
   AuditLogPagination,
   AuditLogsList,
+  AuditLogsStats,
 } from '@/lib/api/models/auditLog';
 
 export function safeParseJson(value?: string | null): AuditJsonValue | null {
@@ -28,8 +30,9 @@ function normalizeText(value?: string | null): string | null {
 export function mapAuditLogDto(dto: AuditLogDto): AuditLogListItem {
   return {
     id: dto.id ?? '',
-    actorId: normalizeText(dto.actorId),
-    actorEmail: normalizeText(dto.actorEmail),
+    userId: normalizeText(dto.userId ?? dto.actorId),
+    userEmail: normalizeText(dto.userEmail ?? dto.actorEmail),
+    actorRole: normalizeText(dto.actorRole),
     actorName: normalizeText(dto.actorName),
     entityType: dto.entityType ?? '',
     entityId: normalizeText(dto.entityId),
@@ -68,5 +71,19 @@ export function mapAuditLogsListDataDto(dto: AuditLogsListDataDto): AuditLogsLis
   return {
     items: (dto.items ?? []).map(mapAuditLogDto),
     pagination: mapAuditLogPaginationDto(dto.pagination),
+  };
+}
+
+export function mapAuditLogsStatsDataDto(dto: AuditLogsStatsDataDto): AuditLogsStats {
+  return {
+    totalCount: dto.totalCount ?? 0,
+    byAction: (dto.byAction ?? []).map(item => ({
+      action: item.action,
+      count: item.count,
+    })),
+    byDay: (dto.byDay ?? []).map(item => ({
+      date: item.date,
+      count: item.count,
+    })),
   };
 }

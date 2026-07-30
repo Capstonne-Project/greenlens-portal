@@ -1,3 +1,5 @@
+'use client';
+
 import {
   activityTypeLabel,
   formatHours,
@@ -18,8 +20,12 @@ import type {
 } from '@/lib/api/services/fetchCompanyDashboard';
 import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
 import { cn } from '@/lib/utils';
+import { queueSeverityClasses, queueSeverityLabel, formatSlaRemaining } from '@/utils/companyUi';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+const OVERVIEW_LIST_LIMIT = 3;
 
 const STATUS_COLORS = ['#4f46e5', '#0ea5e9', '#f59e0b', '#059669', '#ef4444', '#94a3b8'];
 const QUEUE_COLORS = ['#22c55e', '#facc15', '#f97316', '#dc2626'];
@@ -28,17 +34,21 @@ function CardShell({
   title,
   subtitle,
   className,
+  fitContent = false,
   children,
 }: {
   title: string;
   subtitle?: string;
   className?: string;
+  /** Không ép chiều cao / cắt overflow — dùng cho list widget overview. */
+  fitContent?: boolean;
   children: ReactNode;
 }) {
   return (
     <article
       className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2 shadow-sm sm:p-2.5',
+        'flex flex-col rounded-card border border-border bg-card p-2 shadow-sm sm:p-2.5',
+        fitContent ? 'h-auto shrink-0' : 'h-full min-h-0 overflow-hidden',
         className
       )}
     >
@@ -46,7 +56,9 @@ function CardShell({
         <h2 className="text-[11px] font-semibold text-foreground sm:text-xs">{title}</h2>
         {subtitle ? <p className="mt-0.5 text-[9px] text-muted-foreground">{subtitle}</p> : null}
       </header>
-      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      <div className={cn(fitContent ? 'shrink-0' : 'min-h-0 flex-1 overflow-hidden')}>
+        {children}
+      </div>
     </article>
   );
 }
@@ -530,37 +542,79 @@ export function CompanyUpcomingDeadlines({
 }: {
   items: CompanyUpcomingDeadlineItem[] | undefined;
 }) {
-  const rows = (items ?? []).slice(0, 8);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const allRows = items ?? [];
+  const rows = allRows.slice(0, OVERVIEW_LIST_LIMIT);
+  const urgentCount = allRows.filter(row => (row.remainingHours ?? 0) < 24).length;
 
   return (
-    <CardShell title="Sắp đến hạn SLA" subtitle="Nhiệm vụ gần deadline">
+    <CardShell fitContent title="Sắp đến hạn SLA" subtitle="Nhiệm vụ gần deadline">
+      {allRows.length > 0 ? (
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-[10px] text-muted-foreground">
+            {allRows.length} task
+            {urgentCount > 0 ? ` · ${urgentCount} gấp (<24h)` : ''}
+          </p>
+          <Link
+            href="/company/assignments"
+            className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-emerald-800 hover:underline"
+          >
+            Xem tất cả
+            <ArrowRight className="size-3" aria-hidden />
+          </Link>
+        </div>
+      ) : null}
+
       {rows.length === 0 ? (
         <EmptyHint text="Không có deadline sắp tới" />
       ) : (
-        <ul className="h-full space-y-1.5 overflow-y-auto pr-1">
+        <ul className="space-y-1.5">
           {rows.map((row, idx) => {
             const detailHref = row.reportId
               ? `/company/assignments?reportId=${encodeURIComponent(row.reportId)}`
               : null;
+            const remainingHours =
+              typeof row.remainingHours === 'number' && Number.isFinite(row.remainingHours)
+                ? row.remainingHours
+                : (new Date(row.deadline).getTime() - now) / (60 * 60 * 1000);
+            const slaUrgent = Number.isFinite(remainingHours) && remainingHours < 24;
+            const slaLabel = Number.isFinite(remainingHours)
+              ? formatSlaRemaining(remainingHours)
+              : row.deadline
+                ? `Hạn ${new Date(row.deadline).toLocaleString('vi-VN')}`
+                : 'Chưa có hạn SLA';
 
             const content = (
               <>
                 <div className="flex items-start justify-between gap-2">
-                  <span className="truncate font-semibold text-foreground">
+                  <span className="truncate font-mono text-[11px] font-semibold text-emerald-800">
                     {row.reportCode || row.taskId}
                   </span>
                   {row.priority ? (
-                    <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-900">
-                      {row.priority}
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+                        queueSeverityClasses(row.priority)
+                      )}
+                    >
+                      {queueSeverityLabel(row.priority)}
                     </span>
                   ) : null}
                 </div>
                 <p className="mt-0.5 truncate text-muted-foreground">{row.location || '—'}</p>
-                <p className="mt-0.5 tabular-nums text-muted-foreground">
-                  Hạn {new Date(row.deadline).toLocaleString('vi-VN')}
-                  {typeof row.remainingHours === 'number'
-                    ? ` · còn ${row.remainingHours.toFixed(1)}h`
-                    : ''}
+                <p
+                  className={cn(
+                    'mt-1 font-medium tabular-nums',
+                    slaUrgent ? 'text-destructive' : 'text-muted-foreground'
+                  )}
+                >
+                  {slaLabel}
                 </p>
               </>
             );
@@ -569,7 +623,7 @@ export function CompanyUpcomingDeadlines({
               <li
                 key={`${row.taskId}-${idx}`}
                 className={cn(
-                  'rounded-lg border border-border/70 bg-muted/20 px-2 py-1.5 text-[10px]',
+                  'rounded-xl border border-border/70 bg-muted/20 px-2.5 py-2 text-[10px]',
                   detailHref && 'transition hover:border-emerald-200 hover:bg-emerald-50/40'
                 )}
               >
@@ -585,6 +639,18 @@ export function CompanyUpcomingDeadlines({
           })}
         </ul>
       )}
+
+      {allRows.length > rows.length ? (
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          +{allRows.length - rows.length} deadline khác ·{' '}
+          <Link
+            href="/company/assignments"
+            className="font-medium text-emerald-800 hover:underline"
+          >
+            mở Phân công
+          </Link>
+        </p>
+      ) : null}
     </CardShell>
   );
 }
@@ -595,21 +661,35 @@ export function CompanyRecentActivities({
 }: {
   items: CompanyRecentActivityItem[] | undefined;
 }) {
-  const list = (items ?? []).slice(0, 8);
+  const allItems = items ?? [];
+  const list = allItems.slice(0, OVERVIEW_LIST_LIMIT);
 
   return (
-    <CardShell title="Hoạt động gần đây" subtitle="Vòng đời nhiệm vụ công ty">
+    <CardShell fitContent title="Hoạt động gần đây" subtitle="Vòng đời nhiệm vụ công ty">
+      {allItems.length > 0 ? (
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-[10px] text-muted-foreground">{allItems.length} sự kiện gần đây</p>
+          <Link
+            href="/company/assignments"
+            className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-emerald-800 hover:underline"
+          >
+            Xem tất cả
+            <ArrowRight className="size-3" aria-hidden />
+          </Link>
+        </div>
+      ) : null}
+
       {list.length === 0 ? (
         <EmptyHint text="Chưa có sự kiện" />
       ) : (
-        <ul className="h-full space-y-2 overflow-y-auto pr-1">
+        <ul className="space-y-1.5">
           {list.map((item, index) => (
             <li
               key={`${item.time}-${item.type}-${index}`}
-              className="border-b border-border/60 pb-2 last:border-0 last:pb-0"
+              className="rounded-xl border border-border/70 bg-muted/20 px-2.5 py-2"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
                   {activityTypeLabel(item.type)}
                 </span>
                 <time className="shrink-0 text-[9px] text-muted-foreground" dateTime={item.time}>
@@ -623,6 +703,18 @@ export function CompanyRecentActivities({
           ))}
         </ul>
       )}
+
+      {allItems.length > list.length ? (
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          +{allItems.length - list.length} sự kiện khác ·{' '}
+          <Link
+            href="/company/assignments"
+            className="font-medium text-emerald-800 hover:underline"
+          >
+            mở Phân công
+          </Link>
+        </p>
+      ) : null}
     </CardShell>
   );
 }
