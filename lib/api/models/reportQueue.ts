@@ -1,6 +1,8 @@
 import type { PaginationMeta } from '@/lib/api/models/office';
 import type { ReportSeverity } from '@/lib/api/models/report';
-import type { ReportStatus } from '@/lib/constants/reportStatus';
+import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
+
+export type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 
 /** GET /v1/reports/queue — một item trong hàng đợi [LEO/DEO]. */
 export interface ReportQueueItem {
@@ -9,7 +11,8 @@ export interface ReportQueueItem {
   categoryCode: string;
   categoryName: string;
   severity: ReportSeverity;
-  status: ReportStatus;
+  /** Swagger: Submitted | Verified | InProgress | Resolved | Reopened | Closed | Rejected | Duplicate */
+  status: ReportQueueStatus;
   latitude: number;
   longitude: number;
   address: string;
@@ -26,6 +29,9 @@ export interface ReportQueueItem {
   duplicateDetectionSource: string | null;
   aiSimilarityScore: number | null;
   duplicateCandidateCount: number;
+  isSuspectedViolationRecurrence: boolean;
+  suspectedRecurrenceOfReportId: string | null;
+  suspectedRecurrenceOfReportCode: string | null;
 }
 
 /** GET /v1/reports/queue — data envelope. */
@@ -46,7 +52,7 @@ export type ReportQueueSortDir = 'Asc' | 'Desc';
 export interface ReportQueueParams {
   page?: number;
   pageSize?: number;
-  status?: ReportStatus;
+  status?: ReportQueueStatus;
   severity?: ReportSeverity;
   categoryId?: string;
   wardCode?: string;

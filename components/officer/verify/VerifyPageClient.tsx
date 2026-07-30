@@ -14,6 +14,7 @@ import {
   Eye,
   Filter,
   FlaskConical,
+  History,
   ImageIcon,
   Leaf,
   Loader2,
@@ -25,7 +26,10 @@ import {
 } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
 
-import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
+import {
+  DuplicateSuspectDialog,
+  type SuspectDialogMode,
+} from '@/components/officer/verify/DuplicateSuspectDialog';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
@@ -785,7 +789,13 @@ function VerifyRowActions({
       <button
         type="button"
         disabled={isVerifying}
-        title={row.isPossibleDuplicate ? 'Kiểm tra trùng trước khi xác minh' : 'Xác minh ngay'}
+        title={
+          row.isPossibleDuplicate
+            ? 'Kiểm tra trùng trước khi xác minh'
+            : row.isSuspectedViolationRecurrence
+              ? 'Kiểm tra tái phát trước khi xác minh'
+              : 'Xác minh ngay'
+        }
         aria-label={`Xác minh ${row.code}`}
         onClick={e => {
           e.stopPropagation();
@@ -839,6 +849,7 @@ export function VerifyPageClient() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [duplicateDialogRow, setDuplicateDialogRow] = useState<ReportQueueItem | null>(null);
+  const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
   const [pairFocus, setPairFocus] = useState<{ childId: string; parentId: string } | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   /** Khi deep-link từ noti: bỏ filter/search tạm để locate + list cùng params. */
@@ -1235,6 +1246,7 @@ export function VerifyPageClient() {
     // Child (isPossibleDuplicate) trượt ngay dưới parent; highlight child
     setPairFocus({ childId: row.id, parentId });
     setHighlightedId(row.id);
+    setSuspectDialogMode('duplicate');
     setDuplicateDialogRow(row);
 
     // Đợi layout animation + reorder xong rồi scroll tới cặp (gốc → nghi trùng bên dưới)
@@ -1247,20 +1259,45 @@ export function VerifyPageClient() {
       return;
     }
 
+    if (row.isSuspectedViolationRecurrence) {
+      setSuspectDialogMode('recurrence');
+      setDuplicateDialogRow(row);
+      return;
+    }
+
+    await performVerify(row);
+  };
+
+  /** Verify thật — bỏ qua gate trùng/tái phát (dùng sau dialog recurrence). */
+  const performVerify = async (row: ReportQueueItem): Promise<boolean> => {
     setVerifyingId(row.id);
     try {
       const result = await verifyMutation.mutateAsync({ reportId: row.id, body: {} });
       toastApiSuccess(result, 'Đã xác minh báo cáo.');
+      return true;
     } catch (error) {
       toastApiError(error, 'Không thể xác minh báo cáo.');
+      return false;
     } finally {
       setVerifyingId(null);
     }
   };
 
+  /** Dialog tái phát → xác minh bình thường (giữ cờ tái phát trên BE nếu chưa dismiss). */
+  const handleContinueRecurrenceVerify = async () => {
+    const row = duplicateDialogRow;
+    if (!row) return;
+    const ok = await performVerify(row);
+    if (!ok) return;
+    setDuplicateDialogRow(null);
+    setSuspectDialogMode('duplicate');
+    clearPairFocusSoon();
+  };
+
   const handleDuplicateDialogOpenChange = (open: boolean) => {
     if (open) return;
     setDuplicateDialogRow(null);
+    setSuspectDialogMode('duplicate');
     clearPairFocusSoon();
   };
 
@@ -1522,6 +1559,7 @@ export function VerifyPageClient() {
       </div>
 
       <DuplicateSuspectDialog
+        mode={suspectDialogMode}
         row={duplicateDialogRow}
         parentPreview={parentPreview}
         open={Boolean(duplicateDialogRow)}
@@ -1531,6 +1569,10 @@ export function VerifyPageClient() {
           setPairFocus(null);
           setHighlightedId(null);
         }}
+        onContinueVerify={() => void handleContinueRecurrenceVerify()}
+        isContinuingVerify={Boolean(
+          verifyingId && duplicateDialogRow && verifyingId === duplicateDialogRow.id
+        )}
       />
     </>
   );
@@ -1548,6 +1590,7 @@ function renderVerifyCell(
           url={row.firstImageUrl}
           alt={row.code}
           isPossibleDuplicate={row.isPossibleDuplicate}
+          isSuspectedViolationRecurrence={row.isSuspectedViolationRecurrence}
           priority={opts?.imagePriority}
         />
       );
@@ -1598,11 +1641,13 @@ function ReportThumb({
   url,
   alt,
   isPossibleDuplicate = false,
+  isSuspectedViolationRecurrence = false,
   priority = false,
 }: {
   url: string | null;
   alt: string;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
   /** Above-the-fold thumbs — tránh Next LCP lazy warning. */
   priority?: boolean;
 }) {
@@ -1627,23 +1672,56 @@ function ReportThumb({
     </div>
   );
 
-  if (!isPossibleDuplicate) return thumb;
+  if (!isPossibleDuplicate && !isSuspectedViolationRecurrence) return thumb;
 
   return (
     <div className="relative inline-flex">
       {thumb}
-      <AnimatedHoverTooltip name="báo cáo trùng lặp" className="absolute -right-1.5 -top-1.5 z-10">
-        <span
-          className={cn(
-            'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
-            'rounded-full bg-amber-500 text-white shadow-sm',
-            'ring-2 ring-white'
-          )}
-          aria-label="báo cáo trùng lặp"
+      {isPossibleDuplicate ? (
+        <AnimatedHoverTooltip
+          name="Nghi ngờ trùng lặp"
+          className="absolute -right-1.5 -top-1.5 z-10"
         >
-          <Copy className="size-2 @[44rem]/verify-table:size-2.5" aria-hidden strokeWidth={2.75} />
-        </span>
-      </AnimatedHoverTooltip>
+          <span
+            className={cn(
+              'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
+              'rounded-full bg-amber-500 text-white shadow-sm',
+              'ring-2 ring-white'
+            )}
+            aria-label="Nghi ngờ trùng lặp"
+          >
+            <Copy
+              className="size-2 @[44rem]/verify-table:size-2.5"
+              aria-hidden
+              strokeWidth={2.75}
+            />
+          </span>
+        </AnimatedHoverTooltip>
+      ) : null}
+      {isSuspectedViolationRecurrence ? (
+        <AnimatedHoverTooltip
+          name="Nghi ô nhiễm tái phát"
+          className={cn(
+            'absolute z-10',
+            isPossibleDuplicate ? '-right-1.5 top-3.5' : '-right-1.5 -top-1.5'
+          )}
+        >
+          <span
+            className={cn(
+              'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
+              'rounded-full bg-orange-500 text-white shadow-sm',
+              'ring-2 ring-white'
+            )}
+            aria-label="Nghi ô nhiễm tái phát"
+          >
+            <History
+              className="size-2 @[44rem]/verify-table:size-2.5"
+              aria-hidden
+              strokeWidth={2.75}
+            />
+          </span>
+        </AnimatedHoverTooltip>
+      ) : null}
     </div>
   );
 }

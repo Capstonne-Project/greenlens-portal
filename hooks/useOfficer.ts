@@ -4,9 +4,11 @@ import {
   assignReport,
   confirmDuplicateReport,
   dismissDuplicateReport,
+  dismissViolationRecurrence,
   dispatchReportToCompany,
   fetchReportDetail,
   fetchReportQueue,
+  fetchViolationRecurrenceComparison,
   rejectReport,
   reassignReport,
   verifyReport,
@@ -20,7 +22,7 @@ import type {
   VerifyReportInput,
 } from '@/lib/api/services/fetchReport';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
-import type { ReportStatus } from '@/lib/constants/reportStatus';
+import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
 import {
   keepPreviousData,
@@ -39,12 +41,18 @@ export const officerKeys = {
   detail: (id: string) => [...officerKeys.details(), id] as const,
   queue: () => [...officerKeys.all, 'queue'] as const,
   queueList: (params: ReportQueueParams) => [...officerKeys.queue(), params] as const,
+  /** So sánh tái phát — BR-REP-034 */
+  violationRecurrenceComparison: (id: string) =>
+    [...officerKeys.all, 'violation-recurrence-comparison', id] as const,
 };
 
 const LIST_STALE_MS = 3 * 60 * 1000;
 
 /** Tab Phân công — BE chỉ nhận một `status`/request nên gọi song song rồi gộp. */
-const ASSIGN_QUEUE_STATUSES = ['Verified', 'Rejected'] as const satisfies readonly ReportStatus[];
+const ASSIGN_QUEUE_STATUSES = [
+  'Verified',
+  'Rejected',
+] as const satisfies readonly ReportQueueStatus[];
 
 type AssignReportQueueParams = Omit<ReportQueueParams, 'status'>;
 
@@ -250,6 +258,38 @@ export function useDismissDuplicateReport() {
     mutationFn: ({ reportId }: { reportId: string }) => dismissDuplicateReport(reportId),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/**
+ * GET /v1/reports/{id}/violation-recurrence-comparison — BR-REP-034.
+ * `id` = báo cáo hiện tại (cờ `isSuspectedViolationRecurrence`).
+ */
+export function useViolationRecurrenceComparison(
+  reportId: string,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: officerKeys.violationRecurrenceComparison(reportId),
+    queryFn: () => fetchViolationRecurrenceComparison(reportId),
+    staleTime: LIST_STALE_MS,
+    enabled: (options?.enabled ?? true) && Boolean(reportId),
+  });
+}
+
+/** POST /v1/reports/{id}/dismiss-violation-recurrence — BR-REP-034 bác bỏ nghi tái phát. */
+export function useDismissViolationRecurrence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId }: { reportId: string }) => dismissViolationRecurrence(reportId),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({
+        queryKey: officerKeys.violationRecurrenceComparison(reportId),
+      });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
     },

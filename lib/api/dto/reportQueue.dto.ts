@@ -1,4 +1,7 @@
-import type { ReportSeverityDto, ReportStatusDto } from '@/lib/api/dto/report.dto';
+import type { ReportSeverityDto } from '@/lib/api/dto/report.dto';
+import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
+
+export type ReportQueueStatusDto = ReportQueueStatus;
 
 /** GET /v1/reports/queue — một item trong hàng đợi. */
 export interface ReportQueueItemDto {
@@ -7,15 +10,16 @@ export interface ReportQueueItemDto {
   categoryCode: string;
   categoryName: string;
   severity: ReportSeverityDto;
-  status: ReportStatusDto;
+  /** Swagger: Submitted | Verified | InProgress | Resolved | Reopened | Closed | Rejected | Duplicate */
+  status: ReportQueueStatusDto;
   latitude: number;
   longitude: number;
   address: string;
   wardCode: string;
   priorityScore: number;
   createdAt: string;
-  slaVerifyDueAt: string;
-  slaResolveDueAt: string;
+  slaVerifyDueAt: string | null;
+  slaResolveDueAt: string | null;
   firstImageUrl: string | null;
   isPossibleDuplicate: boolean;
   possibleDuplicateOfReportId: string | null;
@@ -23,6 +27,9 @@ export interface ReportQueueItemDto {
   duplicateDetectionSource: string | null;
   aiSimilarityScore: number | null;
   duplicateCandidateCount: number;
+  isSuspectedViolationRecurrence: boolean;
+  suspectedRecurrenceOfReportId: string | null;
+  suspectedRecurrenceOfReportCode: string | null;
 }
 
 export interface ReportQueuePaginationDto {
@@ -52,7 +59,7 @@ export type ReportQueueSortDirDto = 'Asc' | 'Desc';
 export interface ReportQueueParamsDto {
   page?: number;
   pageSize?: number;
-  status?: ReportStatusDto;
+  status?: ReportQueueStatusDto;
   severity?: ReportSeverityDto;
   categoryId?: string;
   wardCode?: string;

@@ -12,6 +12,10 @@ import {
   adaptReassignReport,
   adaptVerifyReport,
 } from '@/lib/api/adapters/reportActions.adapter';
+import {
+  adaptDismissViolationRecurrence,
+  adaptFetchViolationRecurrenceComparison,
+} from '@/lib/api/adapters/violationRecurrence.adapter';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type { ReportProgress } from '@/lib/api/models/reportProgress';
@@ -25,6 +29,10 @@ import type {
   VerifyReportInput,
   VerifyReportResult,
 } from '@/lib/api/models/reportAction';
+import type {
+  DismissViolationRecurrenceResult,
+  ViolationRecurrenceComparison,
+} from '@/lib/api/models/violationRecurrence';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
@@ -33,6 +41,7 @@ export type {
   ReportMedia,
   ReportMergedChild,
   ReportPendingReopenRequest,
+  ReportPriorClosedReport,
   ReportSatisfaction,
   ReportSeverity,
   ReportStatus,
@@ -46,6 +55,7 @@ export type {
   ReportMediaDto,
   ReportMergedChildDto,
   ReportPendingReopenRequestDto,
+  ReportPriorClosedReportDto,
   ReportSatisfactionDto,
   ReportWasteTagDto,
 } from '@/lib/api/dto/report.dto';
@@ -76,6 +86,12 @@ export type {
   ReportQueueSortBy,
   ReportQueueSortDir,
 } from '@/lib/api/models/reportQueue';
+export type {
+  DismissViolationRecurrenceResult,
+  ViolationRecurrenceComparison,
+  ViolationRecurrenceMedia,
+  ViolationRecurrenceReport,
+} from '@/lib/api/models/violationRecurrence';
 
 /** GET /v1/reports/{id} — chi tiết một báo cáo */
 export async function fetchReportDetail(id: string): Promise<ReportDetail> {
@@ -144,6 +160,23 @@ export async function dismissDuplicateReport(reportId: string): Promise<Duplicat
   return adaptDismissDuplicate(reportId);
 }
 
+/**
+ * GET /v1/reports/{id}/violation-recurrence-comparison — BR-REP-034.
+ * `reportId` = báo cáo hiện tại đang gắn cờ tái phát.
+ */
+export async function fetchViolationRecurrenceComparison(
+  reportId: string
+): Promise<ViolationRecurrenceComparison> {
+  return adaptFetchViolationRecurrenceComparison(reportId);
+}
+
+/** POST /v1/reports/{id}/dismiss-violation-recurrence — BR-REP-034 bác bỏ nghi tái phát. */
+export async function dismissViolationRecurrence(
+  reportId: string
+): Promise<DismissViolationRecurrenceResult> {
+  return adaptDismissViolationRecurrence(reportId);
+}
+
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
@@ -155,5 +188,7 @@ const reportService = {
   rejectReport,
   confirmDuplicateReport,
   dismissDuplicateReport,
+  fetchViolationRecurrenceComparison,
+  dismissViolationRecurrence,
 };
 export default reportService;

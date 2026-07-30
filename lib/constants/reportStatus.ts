@@ -9,6 +9,7 @@ export const REPORT_STATUSES = [
   'Assigned',
   'InProgress',
   'Resolved',
+  'Reopened',
   'Closed',
   'Rejected',
   'Duplicate',
@@ -17,6 +18,23 @@ export const REPORT_STATUSES = [
 ] as const;
 
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
+
+/**
+ * Status enum của GET /v1/reports/queue (Swagger).
+ * Narrow hơn `ReportStatus` toàn hệ thống.
+ */
+export const REPORT_QUEUE_STATUSES = [
+  'Submitted',
+  'Verified',
+  'InProgress',
+  'Resolved',
+  'Reopened',
+  'Closed',
+  'Rejected',
+  'Duplicate',
+] as const;
+
+export type ReportQueueStatus = (typeof REPORT_QUEUE_STATUSES)[number];
 
 /** Giá trị legacy / map API cũ → chuẩn FE. */
 const REPORT_STATUS_ALIASES: Record<string, ReportStatus> = {
@@ -31,6 +49,15 @@ export function normalizeReportStatus(raw: string): ReportStatus {
   return REPORT_STATUS_ALIASES[value] ?? 'Submitted';
 }
 
+export function normalizeReportQueueStatus(raw: string): ReportQueueStatus {
+  const value = raw?.trim() ?? '';
+  if ((REPORT_QUEUE_STATUSES as readonly string[]).includes(value)) {
+    return value as ReportQueueStatus;
+  }
+  if (value === 'In Progress') return 'InProgress';
+  return 'Submitted';
+}
+
 /** Nhãn hiển thị UI — mã BE vẫn là PascalCase (`Submitted`, `InProgress`, …). */
 export const REPORT_STATUS_LABEL_VI: Record<ReportStatus, string> = {
   Submitted: 'Đã gửi',
@@ -39,6 +66,7 @@ export const REPORT_STATUS_LABEL_VI: Record<ReportStatus, string> = {
   Assigned: 'Đã phân công',
   InProgress: 'Đang xử lý',
   Resolved: 'Đã giải quyết',
+  Reopened: 'Đã mở lại',
   Closed: 'Đã đóng',
   Rejected: 'Đã từ chối',
   Duplicate: 'Trùng lặp',
@@ -58,6 +86,7 @@ export const REPORT_STATUS_BADGE_CLASSES: Record<ReportStatus, string> = {
   Assigned: 'bg-sky-50 text-sky-800 ring-1 ring-sky-200/80',
   InProgress: 'bg-blue-50 text-blue-800 ring-1 ring-blue-200/80',
   Resolved: 'bg-green-50 text-green-800 ring-1 ring-green-200/80',
+  Reopened: 'bg-violet-50 text-violet-800 ring-1 ring-violet-200/80',
   Closed: 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80',
   Rejected: 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80',
   Duplicate: 'bg-orange-50 text-orange-800 ring-1 ring-orange-200/80',
@@ -72,6 +101,7 @@ export const REPORT_STATUS_CHART_COLORS: Record<ReportStatus, string> = {
   Assigned: '#0288d1',
   InProgress: '#66bb6a',
   Resolved: '#1b5e20',
+  Reopened: '#7c3aed',
   Closed: '#9e9e9e',
   Rejected: '#c62828',
   Duplicate: '#ef6c00',
@@ -86,6 +116,7 @@ export const OPEN_REPORT_STATUSES: ReportStatus[] = [
   'Dispatched',
   'Assigned',
   'InProgress',
+  'Reopened',
 ];
 
 export const MODERATION_REPORT_STATUSES: ReportStatus[] = ['Submitted'];

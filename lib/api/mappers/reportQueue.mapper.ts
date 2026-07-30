@@ -6,7 +6,7 @@ import type {
 import type { PaginationMeta } from '@/lib/api/models/office';
 import type { ReportQueueData, ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/models/report';
-import { normalizeReportStatus } from '@/lib/constants/reportStatus';
+import { normalizeReportQueueStatus } from '@/lib/constants/reportStatus';
 
 const SEVERITIES: ReportSeverity[] = ['Low', 'Medium', 'High', 'Critical'];
 
@@ -32,7 +32,7 @@ function mapReportQueueItemDto(dto: ReportQueueItemDto): ReportQueueItem {
     categoryCode: dto.categoryCode,
     categoryName: dto.categoryName,
     severity: asSeverity(String(dto.severity)),
-    status: normalizeReportStatus(String(dto.status)),
+    status: normalizeReportQueueStatus(String(dto.status)),
     latitude: dto.latitude,
     longitude: dto.longitude,
     address: dto.address ?? '',
@@ -51,6 +51,9 @@ function mapReportQueueItemDto(dto: ReportQueueItemDto): ReportQueueItem {
         ? null
         : Number(dto.aiSimilarityScore),
     duplicateCandidateCount: dto.duplicateCandidateCount ?? 0,
+    isSuspectedViolationRecurrence: Boolean(dto.isSuspectedViolationRecurrence),
+    suspectedRecurrenceOfReportId: dto.suspectedRecurrenceOfReportId || null,
+    suspectedRecurrenceOfReportCode: dto.suspectedRecurrenceOfReportCode || null,
   };
 }
 
