@@ -5,6 +5,7 @@ import type {
   AdminUserMutationDataDto,
   AdminUsersPagedDto,
   CreateAdminUserDataDto,
+  ToggleBanUserDataDto,
 } from '@/lib/api/dto/adminUser.dto';
 import { normalizeApiRole } from '@/lib/constants/systemRoles';
 import type {
@@ -14,6 +15,7 @@ import type {
   AdminUserMutationResult,
   AdminUsersList,
   PaginationMeta,
+  ToggleBanUserResult,
 } from '@/lib/api/models/adminUser';
 
 export function mapAdminUserDto(dto: AdminUserDto): AdminUser {
@@ -90,5 +92,13 @@ export function mapAdminUserMutationDataDto(
   return {
     userId: dto.userId,
     message: dto.message,
+  };
+}
+
+export function mapToggleBanUserDataDto(dto: ToggleBanUserDataDto): ToggleBanUserResult {
+  return {
+    userId: dto.userId,
+    isBanned: Boolean(dto.isBanned),
+    message: dto.message ?? '',
   };
 }

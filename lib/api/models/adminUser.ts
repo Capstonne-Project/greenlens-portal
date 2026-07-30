@@ -61,3 +61,9 @@ export interface AdminUserMutationResult {
   userId: string;
   message: string;
 }
+
+export interface ToggleBanUserResult {
+  userId: string;
+  isBanned: boolean;
+  message: string;
+}

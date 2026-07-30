@@ -18,17 +18,52 @@ export interface AuditLogPagination {
 export interface AuditLogsListParams {
   page?: number;
   pageSize?: number;
-  actorId?: string;
+  /** Actor (admin/officer) — query param BE: `userId`. */
+  userId?: string;
+  actorRole?: string;
   entityType?: string;
+  entityId?: string;
   action?: string;
   fromDate?: string;
   toDate?: string;
 }
 
+export interface AuditLogsExportParams {
+  fromDate: string;
+  toDate: string;
+  userId?: string;
+  actorRole?: string;
+  entityType?: string;
+  action?: string;
+}
+
+export interface AuditLogsStatsParams {
+  fromDate: string;
+  toDate: string;
+}
+
+export interface AuditLogActionCount {
+  action: string;
+  count: number;
+}
+
+export interface AuditLogDayCount {
+  date: string;
+  count: number;
+}
+
+export interface AuditLogsStats {
+  totalCount: number;
+  byAction: AuditLogActionCount[];
+  byDay: AuditLogDayCount[];
+}
+
 export interface AuditLogListItem {
   id: string;
-  actorId: string | null;
-  actorEmail: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  actorRole: string | null;
+  /** Tên hiển thị nếu BE trả (legacy). */
   actorName: string | null;
   entityType: string;
   entityId: string | null;
