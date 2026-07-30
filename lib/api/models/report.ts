@@ -24,11 +24,11 @@ export interface ReportAssignment {
   status: string;
   note: string;
   assignedAt: string;
-  startedAt: string;
-  completedAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
   progressPercent: number;
   progressNote: string;
-  progressUpdatedAt: string;
+  progressUpdatedAt: string | null;
 }
 
 /** GET /v1/reports/{id} — `data.wasteTags[]` */
@@ -63,6 +63,15 @@ export interface ReportMergedChild {
   imageUrl: string | null;
   createdAt: string;
   status: ReportStatus;
+}
+
+/** GET /v1/reports/{id} — `data.priorClosedReport` */
+export interface ReportPriorClosedReport {
+  id: string;
+  code: string;
+  closedAt: string;
+  categoryCode: string;
+  hadPriorInspection: boolean;
 }
 
 /** GET /v1/reports/{id} — domain model (khớp Swagger BE; `status` đã normalize). */
@@ -108,4 +117,7 @@ export interface ReportDetail {
   mergedIntoPrimaryReportId: string | null;
   mergedIntoPrimaryReportCode: string | null;
   mergedReports: ReportMergedChild[];
+  isSuspectedViolationRecurrence: boolean;
+  suspectedRecurrenceOfReportId: string | null;
+  priorClosedReport: ReportPriorClosedReport | null;
 }
