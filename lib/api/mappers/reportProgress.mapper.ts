@@ -27,6 +27,8 @@ function mapProgressAssignmentDto(dto: ReportProgressAssignmentDto): ReportProgr
     teamName: dto.teamName,
     teamType: dto.teamType,
     teamLeaderName: dto.teamLeaderName,
+    assignedById: dto.assignedById ?? '',
+    assignedByName: dto.assignedByName ?? '',
     status: dto.status,
     assignedAt: dto.assignedAt,
     acceptedAt: dto.acceptedAt ?? null,

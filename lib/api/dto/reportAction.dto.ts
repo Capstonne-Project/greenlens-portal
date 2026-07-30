@@ -26,6 +26,11 @@ export interface VerifyReportBodyDto {
   wasteTagIds?: string[];
 }
 
+/** PUT /v1/reports/{id}/reject — body Swagger. */
+export interface RejectReportBodyDto {
+  reason: string;
+}
+
 /** PUT /v1/reports/{id}/verify — envelope response (200 / 404). */
 export type VerifyReportResponseDto = {
   code: string;

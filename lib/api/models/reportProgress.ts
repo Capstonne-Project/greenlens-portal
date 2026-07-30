@@ -30,6 +30,8 @@ export interface ReportProgressAssignment {
   teamName: string;
   teamType: string;
   teamLeaderName: string;
+  assignedById: string;
+  assignedByName: string;
   status: string;
   assignedAt: string;
   acceptedAt: string | null;

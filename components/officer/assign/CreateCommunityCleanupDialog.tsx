@@ -285,7 +285,7 @@ export function CreateCommunityCleanupDialog({
       }}
     >
       <DialogContent
-        className="flex h-auto max-h-[90vh] w-full max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
         onInteractOutside={e => {
           if (isSubmitting) e.preventDefault();
         }}
@@ -307,7 +307,7 @@ export function CreateCommunityCleanupDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div key={formKey} className="max-h-[68vh] shrink-0 overflow-y-auto px-8 py-6">
+        <div key={formKey} className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
           <div className="space-y-6">
             {/* Thông tin chương trình */}
             <section className="space-y-3">

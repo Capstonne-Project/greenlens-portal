@@ -7,6 +7,7 @@ import {
   dispatchReportToCompany,
   fetchReportDetail,
   fetchReportQueue,
+  rejectReport,
   reassignReport,
   verifyReport,
 } from '@/lib/api/services/fetchReport';
@@ -14,6 +15,7 @@ import type {
   AssignReportInput,
   ConfirmDuplicateInput,
   DispatchToCompanyInput,
+  RejectReportInput,
   ReassignReportInput,
   VerifyReportInput,
 } from '@/lib/api/services/fetchReport';
@@ -204,6 +206,20 @@ export function useVerifyReport() {
   return useMutation({
     mutationFn: ({ reportId, body }: { reportId: string; body: VerifyReportInput }) =>
       verifyReport(reportId, body),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo (Submitted → Rejected). */
+export function useRejectReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: RejectReportInput }) =>
+      rejectReport(reportId, body),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
