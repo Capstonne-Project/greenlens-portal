@@ -1,34 +1,41 @@
-import type { NotificationItem } from '@/lib/api/models/notification';
-
 /**
- * Contract cho hub realtime (SignalR sau này).
- * UI / React Query chỉ phụ thuộc interface này — không phụ thuộc SDK cụ thể.
+ * Contract realtime notification (SignalR).
+ *
+ * BE MVP: chỉ 1 hub method `ReceiveNotification`.
+ * Union `kind` giữ chỗ cho Read / ReadAll / UnreadCount sau này.
  */
+
+/** Payload FE sau khi normalize từ Hub (chấp nhận camelCase hoặc PascalCase từ BE). */
+export type RealTimeNotificationPayload = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  referenceId: string | null;
+  createdAt: string;
+};
+
 export type NotificationRealtimeEvent =
   | {
-      kind: 'created';
-      notification: NotificationItem;
+      kind: 'received';
+      notification: RealTimeNotificationPayload;
     }
   | {
-      kind: 'read';
-      notificationId: string;
-    }
-  | {
-      kind: 'read_all';
-      markedCount: number;
-    }
-  | {
-      kind: 'unread_count';
-      unreadCount: number;
+      /** Sau start thành công hoặc automatic reconnect — FE nên REST sync unread. */
+      kind: 'connected';
+      reason: 'start' | 'reconnect';
     };
 
 export type NotificationRealtimeHandler = (event: NotificationRealtimeEvent) => void;
 
+/**
+ * Abstraction hub — UI/hooks chỉ phụ thuộc interface này.
+ * Dùng `subscribe` (ref-count + delayed stop) thay vì start/stop thủ công.
+ */
 export interface NotificationHub {
-  /** Kết nối hub (idempotent). */
-  start: () => Promise<void>;
-  /** Ngắt kết nối. */
-  stop: () => Promise<void>;
-  /** Đăng ký listener; trả về unsubscribe. */
-  onEvent: (handler: NotificationRealtimeHandler) => () => void;
+  /**
+   * Đăng ký handler + giữ connection sống.
+   * Trả về unsubscribe — consumer cuối cùng rời đi mới stop (debounce chống Strict Mode).
+   */
+  subscribe: (handler: NotificationRealtimeHandler) => () => void;
 }

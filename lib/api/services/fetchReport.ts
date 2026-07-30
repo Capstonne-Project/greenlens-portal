@@ -8,6 +8,7 @@ import {
   adaptConfirmDuplicate,
   adaptDismissDuplicate,
   adaptDispatchToCompany,
+  adaptRejectReport,
   adaptReassignReport,
   adaptVerifyReport,
 } from '@/lib/api/adapters/reportActions.adapter';
@@ -19,6 +20,7 @@ import type {
   ConfirmDuplicateInput,
   DispatchToCompanyInput,
   DuplicateActionResult,
+  RejectReportInput,
   ReassignReportInput,
   VerifyReportInput,
   VerifyReportResult,
@@ -29,6 +31,9 @@ export type {
   ReportAssignment,
   ReportDetail,
   ReportMedia,
+  ReportMergedChild,
+  ReportPendingReopenRequest,
+  ReportSatisfaction,
   ReportSeverity,
   ReportStatus,
   ReportWasteTag,
@@ -39,6 +44,9 @@ export type {
   ReportDetailDto,
   ReportDetailResponseDto,
   ReportMediaDto,
+  ReportMergedChildDto,
+  ReportPendingReopenRequestDto,
+  ReportSatisfactionDto,
   ReportWasteTagDto,
 } from '@/lib/api/dto/report.dto';
 export type {
@@ -56,6 +64,7 @@ export type {
   ConfirmDuplicateInput,
   DispatchToCompanyInput,
   DuplicateActionResult,
+  RejectReportInput,
   ReassignReportInput,
   VerifyReportInput,
   VerifyReportResult,
@@ -114,6 +123,14 @@ export async function verifyReport(
   return adaptVerifyReport(reportId, body);
 }
 
+/** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo (Submitted → Rejected). */
+export async function rejectReport(
+  reportId: string,
+  body: RejectReportInput
+): Promise<VerifyReportResult> {
+  return adaptRejectReport(reportId, body);
+}
+
 /** POST /v1/reports/{id}/confirm-duplicate — BR-REP-032 xác nhận & gộp trùng. */
 export async function confirmDuplicateReport(
   reportId: string,
@@ -135,6 +152,7 @@ const reportService = {
   dispatchReportToCompany,
   reassignReport,
   verifyReport,
+  rejectReport,
   confirmDuplicateReport,
   dismissDuplicateReport,
 };

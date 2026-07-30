@@ -41,7 +41,7 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 
-const REPORT_PAGE_SIZE = 10;
+const REPORT_PAGE_SIZE = 8;
 
 /** Filter panel width when open; collapse animates to 0 then unmounts. */
 const FILTER_WIDTH_OPEN = '14rem';
@@ -64,9 +64,11 @@ type ColumnKey = 'select' | DataColumnKey | 'actions';
 /**
  * Padding / chữ / badge co theo `@container/assign-table`
  * (sidebar mở + panel bộ lọc hẹp content — tránh wrap loạn).
+ * Chiều cao hàng (py) khớp VerifyPageClient.
  */
-function tableCellPad(colKey: ColumnKey) {
-  const y = 'py-2 @[44rem]/assign-table:py-3';
+function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
+  const y =
+    layer === 'head' ? 'py-2.5 @[44rem]/assign-table:py-3.5' : 'py-2.5 @[44rem]/assign-table:py-4';
   if (colKey === 'select') {
     return cn(y, 'px-1 @[44rem]/assign-table:px-2');
   }
@@ -450,9 +452,9 @@ function CreatedCell({ iso }: { iso: string }) {
   );
 }
 
-/** Thumb co theo cột; aspect giữ tỉ lệ khi bảng hẹp. */
+/** Landscape thumb — co theo container (đồng bộ chiều cao hàng với VerifyPageClient). */
 const THUMB_FRAME =
-  'relative aspect-video w-full max-w-full overflow-hidden rounded-md bg-slate-100';
+  'relative h-8 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100 @[44rem]/assign-table:h-9 @[44rem]/assign-table:w-14 @[56rem]/assign-table:h-10 @[56rem]/assign-table:w-16';
 
 function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
   if (!url) {
@@ -468,7 +470,14 @@ function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
 
   return (
     <div className={THUMB_FRAME}>
-      <Image src={url} alt={alt} fill sizes="8vw" className="object-cover" unoptimized />
+      <Image
+        src={url}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) 3rem, 4rem"
+        className="object-cover"
+        unoptimized
+      />
     </div>
   );
 }
@@ -701,7 +710,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     () => ({
       page,
       pageSize: REPORT_PAGE_SIZE,
-      sortBy: 'PriorityScore' as const,
+      sortBy: 'CreatedAt' as const,
       sortDir: 'Desc' as const,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...getDateRange(datePreset, customFrom, customTo),
@@ -903,7 +912,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                     <TableHead
                       key={col.key}
                       className={cn(
-                        tableCellPad(col.key),
+                        tableCellPad(col.key, 'head'),
                         'h-auto min-w-0 overflow-hidden border-b border-slate-200 bg-slate-100/80 text-left',
                         col.className
                       )}
@@ -1063,13 +1072,13 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
           </div>
 
           {pagination ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4">
+            <div className="relative flex shrink-0 items-center justify-center px-3 py-2 sm:px-4">
               {pagination.totalPages > 1 ? (
                 <PaginationSimple
                   page={page}
                   totalPages={pagination.totalPages}
                   onPageChange={setPage}
-                  className="w-auto"
+                  className="mx-auto w-auto justify-center"
                 />
               ) : null}
             </div>

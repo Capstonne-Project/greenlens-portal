@@ -3,11 +3,17 @@
 /**
  * Notification drawer trigger — cùng visual language với `SidebarLink`,
  * nhưng là button (mở drawer) thay vì điều hướng trang.
+ *
+ * UI badge (giữ nguyên):
+ * - Collapse: chấm số trên icon
+ * - Expand: chấm số bên phải label
+ * Cùng `unreadCount` — không render hai badge cùng lúc.
  */
 
 import { useSidebar } from '@/components/ui/sidebar';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { useNotificationsPreview } from '@/hooks/useNotification';
+import { useAuthStore } from '@/lib/store/authStore';
 import { useNotificationUiStore } from '@/lib/store/notificationUiStore';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
@@ -25,10 +31,12 @@ export function NotificationNavButton({ label, icon, active = false }: Notificat
 
   const openDrawer = useNotificationUiStore(s => s.openDrawer);
   const isDrawerOpen = useNotificationUiStore(s => s.isDrawerOpen);
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  const token = useAuthStore(s => s.token);
   // Badge chỉ cần unreadCount — pageSize=1 tối ưu bandwidth.
   const { data } = useNotificationsPreview(1);
   // Seam realtime luôn gắn ở trigger (luôn mount) → badge cập nhật cả khi drawer đóng.
-  useNotificationRealtime(true);
+  useNotificationRealtime(isAuthenticated && Boolean(token));
   const unreadCount = data?.unreadCount ?? 0;
   const badgeCount = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 
@@ -67,7 +75,8 @@ export function NotificationNavButton({ label, icon, active = false }: Notificat
         <span className="relative z-1">{icon}</span>
         {badgeCount && !showLabel ? (
           <span
-            className="absolute -top-1.5 -right-1.5 z-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white"
+            key={badgeCount}
+            className="absolute -top-1.5 -right-1.5 z-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-bold text-white tabular-nums"
             aria-hidden
           >
             {badgeCount}
@@ -88,6 +97,7 @@ export function NotificationNavButton({ label, icon, active = false }: Notificat
       </motion.span>
       {badgeCount && showLabel ? (
         <span
+          key={`side-${badgeCount}`}
           className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[10px] font-bold text-white tabular-nums"
           aria-hidden
         >

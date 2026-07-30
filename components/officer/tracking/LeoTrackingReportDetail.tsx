@@ -415,7 +415,7 @@ function AssignmentRow({ assignment }: { assignment: ReportProgressAssignment })
               />
               {statusLabel}
             </span>
-            <span className="tabular-nums">Gán · {formatDateTime(assignment.assignedAt)}</span>
+            <span className="tabular-nums">Gán lúc: {formatDateTime(assignment.assignedAt)}</span>
           </div>
           {assignment.progressNote ? (
             <p className="mt-2 text-xs text-amber-800">
@@ -496,13 +496,11 @@ function DetailShell({
   const isMergedDuplicate = data.status === 'Duplicate';
   const resolveDueAt = data.sla.resolveDueAt;
 
-  const coordinatedAt = useMemo(() => {
-    const dates = data.assignments
-      .map(a => a.assignedAt)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-    return dates[0] ?? data.summary.startedAt ?? null;
-  }, [data.assignments, data.summary.startedAt]);
+  const assignedByName = useMemo(() => {
+    const sorted = [...data.assignments].sort((a, b) => a.assignedAt.localeCompare(b.assignedAt));
+    const name = sorted.find(a => a.assignedByName.trim())?.assignedByName.trim();
+    return name || null;
+  }, [data.assignments]);
 
   const teamTooltipItems = useMemo(
     () =>
@@ -580,7 +578,7 @@ function DetailShell({
                 !isMergedDuplicate && resolveDueAt && data.sla.isBreached && 'text-red-700'
               )}
             >
-              <p className="text-sm font-bold leading-snug text-foreground sm:text-base">
+              <p className="text-xl font-bold leading-snug text-foreground sm:text-2xl">
                 Hạn xử lý
               </p>
             </div>
@@ -590,7 +588,7 @@ function DetailShell({
               <p className="text-sm leading-snug text-muted-foreground">
                 Điều phối bởi:{' '}
                 <span className="font-medium text-foreground/90">
-                  {coordinatedAt ? formatDateTime(coordinatedAt) : 'Chưa điều phối'}
+                  {assignedByName ?? 'Chưa điều phối'}
                 </span>
               </p>
             </div>
@@ -602,7 +600,7 @@ function DetailShell({
                 !isMergedDuplicate && resolveDueAt && data.sla.isBreached && 'text-red-700'
               )}
             >
-              <p className="text-lg font-bold leading-snug tabular-nums text-foreground sm:text-xl">
+              <p className="text-md font-semibold leading-snug tabular-nums text-foreground sm:text-md">
                 {isMergedDuplicate || !resolveDueAt
                   ? 'Không áp dụng'
                   : formatDateOnly(resolveDueAt)}

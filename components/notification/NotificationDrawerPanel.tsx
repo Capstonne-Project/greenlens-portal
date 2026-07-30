@@ -21,7 +21,7 @@ import FilledBellIcon from '@/components/ui/filled-bell-icon';
 import { CheckCheck, Loader2, MoreHorizontal, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { NotificationListItem } from './NotificationListItem';
 
@@ -49,10 +49,14 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
   const router = useRouter();
   const isDrawerOpen = useNotificationUiStore(s => s.isDrawerOpen);
   const closeDrawer = useNotificationUiStore(s => s.closeDrawer);
+  const highlightedNotificationId = useNotificationUiStore(s => s.highlightedNotificationId);
+  const clearHighlight = useNotificationUiStore(s => s.clearHighlight);
 
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
-  const isRead = toIsReadParam(readFilter);
+  /** Toast highlight → ép tab Tất cả (derive, không setState trong effect). */
+  const activeFilter: ReadFilter = highlightedNotificationId ? 'all' : readFilter;
+  const isRead = toIsReadParam(activeFilter);
 
   const { data, isPending, isError, isFetching, refetch } = useNotificationsList(
     {
@@ -69,8 +73,25 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
   const unreadCount = data?.unreadCount ?? 0;
   const links = getNotificationDrawerLinks(portal);
 
+  /** Scroll tới hàng + bỏ highlight sau vài giây (chỉ khi tìm thấy row). */
+  useEffect(() => {
+    if (!isDrawerOpen || !highlightedNotificationId || isPending) return;
+
+    const row = document.getElementById(`ntf-row-${highlightedNotificationId}`);
+    if (!row) return;
+
+    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const timer = window.setTimeout(() => {
+      clearHighlight();
+    }, 4500);
+
+    return () => window.clearTimeout(timer);
+  }, [isDrawerOpen, highlightedNotificationId, isPending, items.length, clearHighlight]);
+
   /** Click row → mở đích; mark-read theo id nằm ở ListItem (menu). */
   const handleSelect = (item: NotificationItem) => {
+    clearHighlight();
     closeDrawer();
     router.push(resolveNotificationHref(portal, item));
   };
@@ -101,6 +122,7 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
   };
 
   const handleFilterChange = (next: ReadFilter) => {
+    clearHighlight();
     setReadFilter(next);
   };
 
@@ -122,7 +144,7 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
               onClick={() => handleFilterChange(opt.key)}
               className={cn(
                 'rounded-full px-4 py-2.5 text-xs font-medium transition-colors',
-                readFilter === opt.key
+                activeFilter === opt.key
                   ? 'border border-transparent bg-foreground text-background'
                   : 'border border-border text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
@@ -219,13 +241,17 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-4 py-16 text-center text-sm text-muted-foreground">
             <FilledBellIcon size={58} color="currentColor" className="opacity-40" />
-            {readFilter === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo nào'}
+            {activeFilter === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo nào'}
           </div>
         ) : (
           <ul className={cn(isFetching && 'opacity-70')}>
             {items.map(item => (
               <li key={item.id}>
-                <NotificationListItem item={item} onSelect={handleSelect} />
+                <NotificationListItem
+                  item={item}
+                  onSelect={handleSelect}
+                  highlighted={item.id === highlightedNotificationId}
+                />
               </li>
             ))}
           </ul>

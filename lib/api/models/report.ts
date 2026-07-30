@@ -40,6 +40,31 @@ export interface ReportWasteTag {
   iconUrl: string;
 }
 
+/** GET /v1/reports/{id} — `data.satisfaction` */
+export interface ReportSatisfaction {
+  isSatisfied: boolean;
+  rating: number;
+  comment: string;
+  ratedAt: string;
+}
+
+/** GET /v1/reports/{id} — `data.pendingReopenRequest` */
+export interface ReportPendingReopenRequest {
+  requestId: string;
+  reason: string;
+  requestedAt: string;
+  evidenceMedia: ReportMedia[];
+}
+
+/** GET /v1/reports/{id} — `data.mergedReports[]` */
+export interface ReportMergedChild {
+  id: string;
+  code: string;
+  imageUrl: string | null;
+  createdAt: string;
+  status: ReportStatus;
+}
+
 /** GET /v1/reports/{id} — domain model (khớp Swagger BE; `status` đã normalize). */
 export interface ReportDetail {
   id: string;
@@ -76,4 +101,11 @@ export interface ReportDetail {
   closedAt: string | null;
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
+  satisfaction: ReportSatisfaction | null;
+  hasCurrentUserRated: boolean;
+  hasPendingReopenRequest: boolean;
+  pendingReopenRequest: ReportPendingReopenRequest | null;
+  mergedIntoPrimaryReportId: string | null;
+  mergedIntoPrimaryReportCode: string | null;
+  mergedReports: ReportMergedChild[];
 }
