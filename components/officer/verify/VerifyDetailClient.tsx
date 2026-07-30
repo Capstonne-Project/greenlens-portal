@@ -39,7 +39,10 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
 import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
-import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
+import {
+  DuplicateSuspectDialog,
+  type SuspectDialogMode,
+} from '@/components/officer/verify/DuplicateSuspectDialog';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import {
   useRejectReport,
@@ -49,9 +52,10 @@ import {
 } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
-import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { normalizeReportQueueStatus, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -62,6 +66,7 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  History,
   Hourglass,
   LayoutGrid as LayoutGridIcon,
   Layers,
@@ -101,6 +106,7 @@ const STATUS_TEXT_CLASSES: Record<ReportStatus, string> = {
   Assigned: 'text-sky-700',
   InProgress: 'text-blue-700',
   Resolved: 'text-green-700',
+  Reopened: 'text-violet-700',
   Closed: 'text-zinc-600',
   Rejected: 'text-rose-700',
   Duplicate: 'text-orange-700',
@@ -264,10 +270,12 @@ function HeaderStrip({
   detail,
   pendingCategoryName,
   isPossibleDuplicate = false,
+  isSuspectedViolationRecurrence = false,
 }: {
   detail: ReportDetail;
   pendingCategoryName: string;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
 }) {
   return (
     <CardTitle className="flex min-w-0 items-start justify-between gap-3 text-2xl font-bold tracking-tight">
@@ -284,9 +292,25 @@ function HeaderStrip({
                     'rounded-full bg-amber-500 text-white shadow-sm',
                     'ring-2 ring-white'
                   )}
-                  aria-label="báo cáo trùng lặp"
+                  aria-label="Nghi ngờ trùng lặp"
                 >
                   <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+                </span>
+              </AnimatedHoverTooltip>
+            </span>
+          ) : null}
+          {isSuspectedViolationRecurrence ? (
+            <span className={cn('absolute -top-3', isPossibleDuplicate ? 'right-5' : '-right-0.5')}>
+              <AnimatedHoverTooltip name="Nghi ô nhiễm tái phát">
+                <span
+                  className={cn(
+                    'inline-flex size-5 shrink-0 items-center justify-center',
+                    'rounded-full bg-orange-500 text-white shadow-sm',
+                    'ring-2 ring-white'
+                  )}
+                  aria-label="Nghi ô nhiễm tái phát"
+                >
+                  <History className="size-2.5" aria-hidden strokeWidth={2.75} />
                 </span>
               </AnimatedHoverTooltip>
             </span>
@@ -814,6 +838,7 @@ function SlaActionCard({
   isVerifying,
   isRejecting,
   isPossibleDuplicate,
+  isSuspectedViolationRecurrence,
 }: {
   detail: ReportDetail;
   onVerify: () => void;
@@ -821,6 +846,7 @@ function SlaActionCard({
   isVerifying: boolean;
   isRejecting: boolean;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
 }) {
   const { isOverdue, remainingMs, percentElapsed, level, totalMs, hasSla } = useSlaCountdown(
     detail.createdAt,
@@ -903,10 +929,18 @@ function SlaActionCard({
             type="button"
             disabled={isVerifying || isRejecting}
             onClick={onVerify}
-            title={isPossibleDuplicate ? 'Kiểm tra trùng trước khi xác minh' : 'Xác minh ngay'}
+            title={
+              isPossibleDuplicate
+                ? 'Kiểm tra trùng trước khi xác minh'
+                : isSuspectedViolationRecurrence
+                  ? 'Kiểm tra tái phát trước khi xác minh'
+                  : 'Xác minh ngay'
+            }
             className={cn(
               'w-full text-white',
-              isPossibleDuplicate ? tokens.verifyBtn : 'bg-emerald-600 hover:bg-emerald-500'
+              isPossibleDuplicate || isSuspectedViolationRecurrence
+                ? tokens.verifyBtn
+                : 'bg-emerald-600 hover:bg-emerald-500'
             )}
           >
             {isVerifying ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
@@ -937,6 +971,7 @@ function ActionCard({
   isVerifying,
   isRejecting,
   isPossibleDuplicate,
+  isSuspectedViolationRecurrence,
 }: {
   detail: ReportDetail;
   onAssignNow: () => void;
@@ -946,6 +981,7 @@ function ActionCard({
   isVerifying: boolean;
   isRejecting: boolean;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
 }) {
   if (status === 'InProgress') {
     return (
@@ -1018,6 +1054,7 @@ function ActionCard({
       isVerifying={isVerifying}
       isRejecting={isRejecting}
       isPossibleDuplicate={isPossibleDuplicate}
+      isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
     />
   );
 }
@@ -1171,11 +1208,49 @@ export function VerifyDetailClient({
     queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId
   );
 
+  const isSuspectedViolationRecurrence = Boolean(
+    detail?.isSuspectedViolationRecurrence || queueItem?.isSuspectedViolationRecurrence
+  );
+
+  /** Queue item hoặc stub từ detail — đủ cho DuplicateSuspectDialog mode=recurrence. */
+  const suspectDialogRow = useMemo((): ReportQueueItem | null => {
+    if (queueItem) return queueItem;
+    if (!detail?.isSuspectedViolationRecurrence) return null;
+    const image = detail.media.find(m => m.mediaType.toLowerCase().includes('image'));
+    return {
+      id: detail.id,
+      code: detail.code,
+      categoryCode: detail.categoryCode,
+      categoryName: detail.categoryName,
+      severity: detail.severity,
+      status: normalizeReportQueueStatus(String(detail.status)),
+      latitude: detail.latitude,
+      longitude: detail.longitude,
+      address: detail.address,
+      wardCode: detail.wardCode,
+      priorityScore: detail.priorityScore,
+      createdAt: detail.createdAt,
+      slaVerifyDueAt: detail.slaVerifyDueAt,
+      slaResolveDueAt: detail.slaResolveDueAt,
+      firstImageUrl: image?.url ?? detail.media[0]?.url ?? null,
+      isPossibleDuplicate: false,
+      possibleDuplicateOfReportId: null,
+      possibleDuplicateOfReportCode: null,
+      duplicateDetectionSource: null,
+      aiSimilarityScore: null,
+      duplicateCandidateCount: 0,
+      isSuspectedViolationRecurrence: true,
+      suspectedRecurrenceOfReportId: detail.suspectedRecurrenceOfReportId,
+      suspectedRecurrenceOfReportCode: detail.priorClosedReport?.code ?? null,
+    };
+  }, [queueItem, detail]);
+
   const [pendingCategoryId, setPendingCategoryId] = useState<string>('');
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
   const [assignPromptOpen, setAssignPromptOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -1252,13 +1327,7 @@ export function VerifyDetailClient({
     }
   };
 
-  const handleVerify = async () => {
-    // Đồng bộ VerifyPageClient.handleQuickVerify — nghi trùng → dialog, không gọi verify ngay
-    if (queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId) {
-      setDuplicateDialogOpen(true);
-      return;
-    }
-
+  const performVerify = async (): Promise<boolean> => {
     const body = {
       ...(pendingSeverity !== detail.severity ? { overrideSeverity: pendingSeverity } : {}),
       ...(pendingCategoryId !== detail.categoryId ? { overrideCategoryId: pendingCategoryId } : {}),
@@ -1271,9 +1340,35 @@ export function VerifyDetailClient({
       if (detailMode === 'verify') {
         setAssignPromptOpen(true);
       }
+      return true;
     } catch (error) {
       toastApiError(error, 'Không thể xác minh báo cáo.');
+      return false;
     }
+  };
+
+  const handleVerify = async () => {
+    // Đồng bộ VerifyPageClient.handleQuickVerify — nghi trùng → dialog, không gọi verify ngay
+    if (queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId) {
+      setSuspectDialogMode('duplicate');
+      setDuplicateDialogOpen(true);
+      return;
+    }
+
+    if (isSuspectedViolationRecurrence && suspectDialogRow) {
+      setSuspectDialogMode('recurrence');
+      setDuplicateDialogOpen(true);
+      return;
+    }
+
+    await performVerify();
+  };
+
+  const handleContinueRecurrenceVerify = async () => {
+    const ok = await performVerify();
+    if (!ok) return;
+    setDuplicateDialogOpen(false);
+    setSuspectDialogMode('duplicate');
   };
 
   return (
@@ -1284,6 +1379,7 @@ export function VerifyDetailClient({
         detail={detail}
         pendingCategoryName={pendingCategoryName}
         isPossibleDuplicate={isPossibleDuplicate}
+        isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
       />
 
       <Gallery media={detail.media} address={detail.address} createdAt={detail.createdAt} />
@@ -1344,27 +1440,36 @@ export function VerifyDetailClient({
               isVerifying={verifyMutation.isPending}
               isRejecting={rejectMutation.isPending}
               isPossibleDuplicate={isPossibleDuplicate}
+              isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
             />
           </div>
         </div>
       </div>
 
       <DuplicateSuspectDialog
-        row={duplicateDialogOpen ? queueItem : null}
+        mode={suspectDialogMode}
+        row={duplicateDialogOpen ? suspectDialogRow : null}
         parentPreview={null}
-        open={duplicateDialogOpen && Boolean(queueItem)}
+        open={duplicateDialogOpen && Boolean(suspectDialogRow)}
         onOpenChange={open => {
-          if (!open) setDuplicateDialogOpen(false);
+          if (!open) {
+            setDuplicateDialogOpen(false);
+            setSuspectDialogMode('duplicate');
+          }
         }}
         onGoToParent={() => {
           const parentId = queueItem?.possibleDuplicateOfReportId;
           setDuplicateDialogOpen(false);
+          setSuspectDialogMode('duplicate');
           if (parentId) router.push(`/officer/verify/${parentId}`);
         }}
         onResolved={() => {
           setDuplicateDialogOpen(false);
+          setSuspectDialogMode('duplicate');
           void refetch();
         }}
+        onContinueVerify={() => void handleContinueRecurrenceVerify()}
+        isContinuingVerify={verifyMutation.isPending && suspectDialogMode === 'recurrence'}
       />
 
       <VerifyAssignPromptDialog

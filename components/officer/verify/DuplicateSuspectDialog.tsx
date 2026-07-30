@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
-import { ArrowRight, Check, Copy, Eye, GitMerge, ImageIcon, Loader2, XCircle } from 'lucide-react';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Check,
+  Copy,
+  Eye,
+  GitMerge,
+  History,
+  ImageIcon,
+  Loader2,
+  XCircle,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
@@ -24,11 +35,14 @@ import {
 import {
   useConfirmDuplicateReport,
   useDismissDuplicateReport,
+  useDismissViolationRecurrence,
   useReportDetail,
+  useViolationRecurrenceComparison,
 } from '@/hooks/useOfficer';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
+import type { ViolationRecurrenceReport } from '@/lib/api/models/violationRecurrence';
 import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
@@ -42,6 +56,8 @@ export type DuplicateParentPreview = {
   firstImageUrl: string | null;
 };
 
+export type SuspectDialogMode = 'duplicate' | 'recurrence';
+
 type DuplicateSuspectDialogProps = {
   row: ReportQueueItem | null;
   /** Preview từ queue nếu báo cáo gốc đang ở trang hiện tại. */
@@ -51,6 +67,18 @@ type DuplicateSuspectDialogProps = {
   onGoToParent: () => void;
   /** Sau confirm / dismiss thành công — parent clear highlight. */
   onResolved?: () => void;
+  /**
+   * `duplicate` — BR-REP-031/032 nghi trùng.
+   * `recurrence` — BR-REP-034 nghi ô nhiễm tái phát (reuse layout so sánh).
+   */
+  mode?: SuspectDialogMode;
+  /**
+   * Mode recurrence: tiếp tục verify bình thường (giữ cờ tái phát).
+   * Parent đóng dialog rồi gọi `verifyReport`.
+   */
+  onContinueVerify?: () => void | Promise<void>;
+  /** Disable nút tiếp tục khi parent đang verify. */
+  isContinuingVerify?: boolean;
 };
 
 function firstImageUrl(
@@ -124,12 +152,15 @@ function CompareThumb({
   alt,
   loading,
   tone,
+  badgeLabel,
   onPreview,
 }: {
   url: string | null;
   alt: string;
   loading?: boolean;
   tone: 'suspect' | 'original';
+  /** Override nhãn badge góc ảnh (mặc định “Trùng lặp” khi tone=suspect). */
+  badgeLabel?: string;
   onPreview?: ReportPreviewHandler;
 }) {
   const ring =
@@ -138,6 +169,8 @@ function CompareThumb({
       : 'ring-sky-300/70 shadow-sky-500/10';
 
   const canPreview = Boolean(url && !loading && onPreview);
+  const showBadge = tone === 'suspect' && badgeLabel !== '';
+  const resolvedBadge = badgeLabel ?? 'Trùng lặp';
 
   return (
     <div
@@ -160,7 +193,7 @@ function CompareThumb({
         </div>
       )}
 
-      {tone === 'suspect' ? (
+      {showBadge ? (
         <span
           className={cn(
             'pointer-events-none absolute left-2 top-2 z-20',
@@ -169,8 +202,12 @@ function CompareThumb({
             'shadow-sm ring-1 ring-white/30'
           )}
         >
-          <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
-          Trùng lặp
+          {resolvedBadge === 'Tái phát' ? (
+            <History className="size-2.5" aria-hidden strokeWidth={2.75} />
+          ) : (
+            <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+          )}
+          {resolvedBadge}
         </span>
       ) : null}
 
@@ -592,6 +629,449 @@ function VerifiedRecordsCompare({
   );
 }
 
+function firstRecurrenceImageUrl(report: ViolationRecurrenceReport): string | null {
+  if (!report.media?.length) return null;
+  const image = report.media.find(m => m.type.toLowerCase().includes('image'));
+  const pick = image ?? report.media[0];
+  return pick?.thumbnailUrl || pick?.url || null;
+}
+
+type RecurrenceCompareField = {
+  key: string;
+  label: string;
+  render: (side: ViolationRecurrenceReport) => ReactNode;
+  compareValue: (side: ViolationRecurrenceReport) => string;
+  highlightDiff?: boolean;
+};
+
+const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
+  {
+    key: 'address',
+    label: 'Địa chỉ',
+    render: d => d.address?.trim() || '—',
+    compareValue: d => (d.address?.trim() || '').toLowerCase(),
+  },
+  {
+    key: 'coords',
+    label: 'Tọa độ GPS',
+    render: d => <CoordsLink lat={d.latitude} lng={d.longitude} />,
+    compareValue: d => formatCoords(d.latitude, d.longitude),
+  },
+  {
+    key: 'category',
+    label: 'Loại ô nhiễm',
+    render: d => d.categoryName?.trim() || d.categoryCode || '—',
+    compareValue: d => (d.categoryCode || d.categoryName || '').toLowerCase(),
+  },
+  {
+    key: 'severity',
+    label: 'Mức độ',
+    render: d => <SeverityPill severity={d.severity} />,
+    compareValue: d => d.severity,
+  },
+  {
+    key: 'description',
+    label: 'Mô tả',
+    render: d => d.description?.trim() || '—',
+    compareValue: d => (d.description?.trim() || '').toLowerCase(),
+  },
+  {
+    key: 'createdAt',
+    label: 'Thời điểm báo cáo',
+    render: d => formatShortDate(d.createdAt),
+    compareValue: d => d.createdAt || '',
+    highlightDiff: false,
+  },
+  {
+    key: 'closedAt',
+    label: 'Thời điểm đóng',
+    render: d => formatShortDate(d.closedAt),
+    compareValue: d => d.closedAt || '',
+    highlightDiff: false,
+  },
+  {
+    key: 'inspection',
+    label: 'Đã thanh tra trước',
+    render: d => (d.hadPriorInspection ? 'Có' : 'Không'),
+    compareValue: d => (d.hadPriorInspection ? '1' : '0'),
+  },
+];
+
+/** So sánh current vs prior Closed — reuse layout VerifiedRecordsCompare (BR-REP-034). */
+function RecurrenceRecordsCompare({
+  current,
+  prior,
+  currentImageUrl,
+  priorImageUrl,
+  daysSincePriorClosed,
+  distanceMeters,
+  onPreview,
+}: {
+  current: ViolationRecurrenceReport;
+  prior: ViolationRecurrenceReport;
+  currentImageUrl: string | null;
+  priorImageUrl: string | null;
+  daysSincePriorClosed: number;
+  distanceMeters: number;
+  onPreview: ReportPreviewHandler;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+      className="flex min-h-0 flex-1 flex-col gap-5"
+    >
+      <div className="flex shrink-0 items-stretch gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <CompareThumb
+            url={currentImageUrl}
+            alt={`${current.code} · Báo cáo hiện tại`}
+            tone="suspect"
+            badgeLabel="Tái phát"
+            onPreview={onPreview}
+          />
+        </div>
+        <LinkPulse tall />
+        <div className="min-w-0 flex-1">
+          <CompareThumb
+            url={priorImageUrl}
+            alt={`${prior.code} · Đã đóng trước đó`}
+            tone="original"
+            onPreview={onPreview}
+          />
+        </div>
+      </div>
+
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <AnimatedHoverTooltip name="Khoảng cách GPS giữa hai vị trí báo cáo">
+          <span
+            className={cn(
+              'inline-flex cursor-help items-center rounded-lg px-3 py-1 text-xs font-semibold',
+              distanceMeters <= 200
+                ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
+                : distanceMeters <= 1000
+                  ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-200/80'
+                  : 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80'
+            )}
+          >
+            Cách nhau ~{formatMeters(distanceMeters)}
+          </span>
+        </AnimatedHoverTooltip>
+        <AnimatedHoverTooltip name="Số ngày kể từ khi báo cáo Closed trước được đóng">
+          <span className="inline-flex cursor-help items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/80">
+            Cách lần đóng trước {daysSincePriorClosed} ngày
+          </span>
+        </AnimatedHoverTooltip>
+        {prior.hadPriorInspection ? (
+          <AnimatedHoverTooltip name="Báo cáo Closed trước đã từng có hồ sơ thanh tra">
+            <span className="inline-flex cursor-help items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-800 ring-1 ring-rose-200/80">
+              Đã từng thanh tra
+            </span>
+          </AnimatedHoverTooltip>
+        ) : null}
+      </div>
+
+      <div>
+        <div className="grid grid-cols-2">
+          <div className="border-r border-slate-200 px-2 pb-1 text-center sm:px-5">
+            <button
+              type="button"
+              onClick={() => void copyCode(current.code)}
+              title="Sao chép mã báo cáo"
+              className={cn(
+                'max-w-full truncate text-lg font-bold tracking-tight text-slate-900 tabular-nums',
+                'transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
+              )}
+            >
+              {current.code}
+            </button>
+            <p className="mt-1 text-xs font-medium text-slate-500">
+              Hiện tại · {reportStatusLabelVi(current.status)}
+            </p>
+          </div>
+          <div className="px-2 pb-1 text-center sm:px-5">
+            <button
+              type="button"
+              onClick={() => void copyCode(prior.code)}
+              title="Sao chép mã báo cáo"
+              className={cn(
+                'max-w-full truncate text-lg font-bold tracking-tight text-slate-900 tabular-nums',
+                'transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
+              )}
+            >
+              {prior.code}
+            </button>
+            <p className="mt-1 text-xs font-medium text-slate-500">
+              Closed trước · {reportStatusLabelVi(prior.status)}
+            </p>
+          </div>
+        </div>
+
+        {RECURRENCE_COMPARE_FIELDS.map(field => {
+          const shouldHighlight = field.highlightDiff !== false;
+          const differs =
+            shouldHighlight && field.compareValue(current) !== field.compareValue(prior);
+          return (
+            <div
+              key={field.key}
+              className={cn(
+                'grid grid-cols-2 transition-colors duration-150',
+                differs ? 'bg-amber-50/50 hover:bg-amber-50/80' : 'hover:bg-slate-50/90'
+              )}
+            >
+              <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
+                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
+                  {field.label}
+                </p>
+                <div
+                  className={cn(
+                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
+                    differs && 'text-amber-950'
+                  )}
+                >
+                  {field.render(current)}
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
+                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
+                  {field.label}
+                </p>
+                <div
+                  className={cn(
+                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
+                    differs && 'text-amber-950'
+                  )}
+                >
+                  {field.render(prior)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+function RecurrenceSuspectDialogBody({
+  row,
+  open,
+  onOpenChange,
+  onResolved,
+  onContinueVerify,
+  isContinuingVerify = false,
+}: {
+  row: ReportQueueItem;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onResolved?: () => void;
+  onContinueVerify?: () => void | Promise<void>;
+  isContinuingVerify?: boolean;
+}) {
+  /**
+   * Path `{id}` = báo cáo hiện tại đang gắn cờ tái phát (Swagger BR-REP-034).
+   * Prior Closed nằm trong `data.priorClosedReport` (khớp `suspectedRecurrenceOfReportId`).
+   */
+  const reportId = row.id;
+
+  const {
+    data: comparison,
+    isPending,
+    isError,
+  } = useViolationRecurrenceComparison(reportId, { enabled: open && Boolean(reportId) });
+
+  const dismissMutation = useDismissViolationRecurrence();
+  const actionPending = dismissMutation.isPending || isContinuingVerify;
+
+  const currentImageUrl = comparison ? firstRecurrenceImageUrl(comparison.currentReport) : null;
+  const priorImageUrl = comparison ? firstRecurrenceImageUrl(comparison.priorClosedReport) : null;
+
+  const previewImages: ReportPreviewImage[] = [];
+  if (currentImageUrl && comparison) {
+    previewImages.push({
+      url: currentImageUrl,
+      label: `${comparison.currentReport.code} · Hiện tại`,
+    });
+  }
+  if (priorImageUrl && comparison) {
+    previewImages.push({
+      url: priorImageUrl,
+      label: `${comparison.priorClosedReport.code} · Closed trước`,
+    });
+  }
+
+  const { openPreview, previewDialog } = useReportImagePreview(previewImages);
+
+  const handleDismiss = async () => {
+    try {
+      const result = await dismissMutation.mutateAsync({ reportId });
+      toastApiSuccess(result, 'Đã xóa nghi ô nhiễm tái phát.');
+      onOpenChange(false);
+      onResolved?.();
+    } catch (error) {
+      toastApiError(error, 'Không thể xóa nghi ô nhiễm tái phát.');
+    }
+  };
+
+  const handleContinueVerify = async () => {
+    try {
+      await onContinueVerify?.();
+    } catch {
+      // Parent đã toast lỗi verify — giữ dialog nếu parent không đóng.
+    }
+  };
+
+  const priorCode =
+    comparison?.priorClosedReport.code ??
+    row.suspectedRecurrenceOfReportCode ??
+    row.suspectedRecurrenceOfReportId ??
+    '—';
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className={cn(
+            'flex h-[min(92vh,56rem)] w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden border-slate-200 p-0',
+            'sm:max-w-5xl lg:max-w-6xl'
+          )}
+        >
+          {isPending ? (
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-slate-400" aria-hidden />
+            </div>
+          ) : isError || !comparison ? (
+            <>
+              <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
+                <DialogHeader className="space-y-0 text-left">
+                  <DialogTitle className="text-lg text-slate-900">
+                    Không tải được so sánh tái phát
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-slate-600">
+                    Không thể đối chiếu với báo cáo Closed trước (
+                    <span className="font-semibold tabular-nums">{priorCode}</span>). Có thể tiếp
+                    tục xác minh hoặc thử lại sau.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+              <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:px-7">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={actionPending}
+                  onClick={() => void handleDismiss()}
+                  className={cn(
+                    'border-slate-300 text-slate-700',
+                    'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700'
+                  )}
+                >
+                  {dismissMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <XCircle className="size-4" aria-hidden />
+                  )}
+                  Xóa nghi tái phát
+                </Button>
+                <Button
+                  type="button"
+                  disabled={actionPending || !onContinueVerify}
+                  onClick={() => void handleContinueVerify()}
+                  className="bg-emerald-600 text-white hover:bg-emerald-500"
+                >
+                  {isContinuingVerify ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <BadgeCheck className="size-4" aria-hidden />
+                  )}
+                  Tiếp tục xác minh
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
+                <DialogHeader className="space-y-0 text-left">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm shadow-amber-500/25"
+                      aria-hidden
+                    >
+                      <History className="size-5" strokeWidth={2.25} />
+                    </div>
+                    <div className="min-w-0 space-y-1.5 pt-0.5">
+                      <DialogTitle className="text-lg leading-snug text-slate-900">
+                        Nghi ô nhiễm tái phát
+                      </DialogTitle>
+                      <DialogDescription className="text-sm leading-relaxed text-slate-600">
+                        Đối chiếu báo cáo hiện tại với case Closed trước{' '}
+                        <span className="font-semibold tabular-nums text-slate-800">
+                          {comparison.priorClosedReport.code}
+                        </span>
+                        . Rác tái phát thông thường →{' '}
+                        <span className="font-semibold text-slate-800">Xóa nghi tái phát</span>. Cần
+                        xử lý tiếp →{' '}
+                        <span className="font-semibold text-slate-800">Tiếp tục xác minh</span>.
+                      </DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [scrollbar-gutter:stable]">
+                <RecurrenceRecordsCompare
+                  current={comparison.currentReport}
+                  prior={comparison.priorClosedReport}
+                  currentImageUrl={currentImageUrl}
+                  priorImageUrl={priorImageUrl}
+                  daysSincePriorClosed={comparison.daysSincePriorClosed}
+                  distanceMeters={comparison.distanceMeters}
+                  onPreview={openPreview}
+                />
+              </div>
+
+              <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:gap-2 sm:px-7">
+                <Button
+                  type="button"
+                  disabled={actionPending}
+                  onClick={() => void handleDismiss()}
+                  className={cn(
+                    'border-slate-300 bg-white text-slate-700',
+                    'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700',
+                    'focus-visible:ring-rose-400/40'
+                  )}
+                  variant="outline"
+                >
+                  {dismissMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <XCircle className="size-4" aria-hidden />
+                  )}
+                  Xóa nghi tái phát
+                </Button>
+                <Button
+                  type="button"
+                  disabled={actionPending || !onContinueVerify}
+                  onClick={() => void handleContinueVerify()}
+                  className="bg-emerald-600 text-white hover:bg-emerald-500"
+                >
+                  {isContinuingVerify ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <BadgeCheck className="size-4" aria-hidden />
+                  )}
+                  Tiếp tục xác minh
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      {previewDialog}
+    </>
+  );
+}
+
 export function DuplicateSuspectDialog({
   row,
   parentPreview,
@@ -599,7 +1079,45 @@ export function DuplicateSuspectDialog({
   onOpenChange,
   onGoToParent,
   onResolved,
+  mode = 'duplicate',
+  onContinueVerify,
+  isContinuingVerify,
 }: DuplicateSuspectDialogProps) {
+  // Tách body để tránh conditional hooks khi đổi mode.
+  if (mode === 'recurrence') {
+    if (!row) return null;
+    return (
+      <RecurrenceSuspectDialogBody
+        row={row}
+        open={open}
+        onOpenChange={onOpenChange}
+        onResolved={onResolved}
+        onContinueVerify={onContinueVerify}
+        isContinuingVerify={isContinuingVerify}
+      />
+    );
+  }
+
+  return (
+    <DuplicateSuspectDialogBody
+      row={row}
+      parentPreview={parentPreview}
+      open={open}
+      onOpenChange={onOpenChange}
+      onGoToParent={onGoToParent}
+      onResolved={onResolved}
+    />
+  );
+}
+
+function DuplicateSuspectDialogBody({
+  row,
+  parentPreview,
+  open,
+  onOpenChange,
+  onGoToParent,
+  onResolved,
+}: Omit<DuplicateSuspectDialogProps, 'mode'>) {
   const parentId = row?.possibleDuplicateOfReportId ?? '';
   const suspectId = row?.id ?? '';
 
