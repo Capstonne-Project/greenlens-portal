@@ -35,6 +35,12 @@ export interface VerifyReportResult {
   data: string;
 }
 
+/** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo (Submitted → Rejected). */
+export interface RejectReportInput {
+  /** Bắt buộc, tối thiểu 20 ký tự theo BR. */
+  reason: string;
+}
+
 /** POST /v1/reports/{id}/confirm-duplicate — BR-REP-032 gộp vào báo cáo gốc. */
 export interface ConfirmDuplicateInput {
   /** ID báo cáo gốc (primary). */
