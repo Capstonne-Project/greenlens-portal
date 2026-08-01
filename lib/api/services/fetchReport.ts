@@ -2,6 +2,7 @@ import {
   adaptFetchReportDetail,
   adaptFetchReportProgress,
 } from '@/lib/api/adapters/report.adapter';
+import { adaptFetchDuplicateCandidates } from '@/lib/api/adapters/duplicateCandidate.adapter';
 import { adaptFetchReportQueue } from '@/lib/api/adapters/reportQueue.adapter';
 import {
   adaptAssignReport,
@@ -16,6 +17,10 @@ import {
   adaptDismissViolationRecurrence,
   adaptFetchViolationRecurrenceComparison,
 } from '@/lib/api/adapters/violationRecurrence.adapter';
+import type {
+  DuplicateCandidatesData,
+  DuplicateCandidatesParams,
+} from '@/lib/api/models/duplicateCandidate';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type { ReportProgress } from '@/lib/api/models/reportProgress';
@@ -35,6 +40,12 @@ import type {
 } from '@/lib/api/models/violationRecurrence';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
+export type {
+  DuplicateCandidateItem,
+  DuplicateCandidatePrimary,
+  DuplicateCandidatesData,
+  DuplicateCandidatesParams,
+} from '@/lib/api/models/duplicateCandidate';
 export type {
   ReportAssignment,
   ReportDetail,
@@ -103,6 +114,16 @@ export async function fetchReportQueue(
   params?: ReportQueueParams
 ): Promise<ApiEnvelope<ReportQueueData>> {
   return adaptFetchReportQueue(params);
+}
+
+/**
+ * GET /v1/reports/duplicate-candidates — [LEO/DEO] danh sách báo cáo nghi ngờ trùng lặp.
+ * BR-REP-031: kèm báo cáo gốc (`primary`) để LEO so sánh và quyết định gộp/bác bỏ.
+ */
+export async function fetchDuplicateCandidates(
+  params?: DuplicateCandidatesParams
+): Promise<ApiEnvelope<DuplicateCandidatesData>> {
+  return adaptFetchDuplicateCandidates(params);
 }
 
 /** GET /v1/reports/{id}/progress — [LEO] tiến trình xử lý báo cáo. */
@@ -180,6 +201,7 @@ export async function dismissViolationRecurrence(
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
+  fetchDuplicateCandidates,
   fetchReportProgress,
   assignReport,
   dispatchReportToCompany,

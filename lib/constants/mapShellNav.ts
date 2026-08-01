@@ -3,6 +3,7 @@ import {
   faBuilding,
   faClipboardCheck,
   faClipboardList,
+  faClone,
   faEarthAmericas,
   faFileLines,
   faGaugeHigh,
@@ -102,6 +103,12 @@ const NAV_ITEMS = {
     href: '/officer/tracking',
     icon: faRoute,
   },
+  duplicates: {
+    id: 'duplicates',
+    label: 'Trùng lặp',
+    href: '/officer/duplicates',
+    icon: faClone,
+  },
   workforce: {
     id: 'workforce',
     label: 'Đội ngũ',
@@ -155,6 +162,7 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.map, 'Tổng quan'),
       NAV_ITEMS.overview,
       withSection(NAV_ITEMS.reports, 'Báo cáo'),
+      NAV_ITEMS.duplicates,
       withSection(NAV_ITEMS.companies, 'Quản lý')
     );
   } else if (role === 'LEO') {
@@ -164,6 +172,7 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.verify, 'Báo cáo'),
       NAV_ITEMS.assign,
       NAV_ITEMS.tracking,
+      NAV_ITEMS.duplicates,
       withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
   } else {

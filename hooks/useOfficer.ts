@@ -6,6 +6,7 @@ import {
   dismissDuplicateReport,
   dismissViolationRecurrence,
   dispatchReportToCompany,
+  fetchDuplicateCandidates,
   fetchReportDetail,
   fetchReportQueue,
   fetchViolationRecurrenceComparison,
@@ -21,6 +22,7 @@ import type {
   ReassignReportInput,
   VerifyReportInput,
 } from '@/lib/api/services/fetchReport';
+import type { DuplicateCandidatesParams } from '@/lib/api/models/duplicateCandidate';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
@@ -41,6 +43,10 @@ export const officerKeys = {
   detail: (id: string) => [...officerKeys.details(), id] as const,
   queue: () => [...officerKeys.all, 'queue'] as const,
   queueList: (params: ReportQueueParams) => [...officerKeys.queue(), params] as const,
+  /** Danh sách nghi trùng lặp — BR-REP-031 */
+  duplicateCandidates: () => [...officerKeys.all, 'duplicate-candidates'] as const,
+  duplicateCandidatesList: (params: DuplicateCandidatesParams) =>
+    [...officerKeys.duplicateCandidates(), params] as const,
   /** So sánh tái phát — BR-REP-034 */
   violationRecurrenceComparison: (id: string) =>
     [...officerKeys.all, 'violation-recurrence-comparison', id] as const,
@@ -71,6 +77,24 @@ export function useReportQueue(params: ReportQueueParams, options?: { enabled?: 
   return useQuery({
     queryKey: officerKeys.queueList(params),
     queryFn: () => fetchReportQueue(params),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * GET /v1/reports/duplicate-candidates — [LEO/DEO] báo cáo nghi trùng lặp (BR-REP-031).
+ * Kèm báo cáo gốc (`primary`) để so sánh gộp/bác bỏ.
+ */
+export function useDuplicateCandidates(
+  params: DuplicateCandidatesParams,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: officerKeys.duplicateCandidatesList(params),
+    queryFn: () => fetchDuplicateCandidates(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
