@@ -31,6 +31,11 @@ export type MapShellNavItem = {
   badge?: number;
   /** Mục con trong sidebar (dropdown) — giữ type; hiện LEO không dùng. */
   children?: MapShellNavChildItem[];
+  /**
+   * Section label tĩnh (kiểu "LOGISTICS / FINANCE") render NGAY TRÊN item này.
+   * Không phải nav bấm được — chỉ là tiêu đề phân vùng. Dùng chung cho mọi role qua AppSidebar.
+   */
+  sectionLabel?: string;
 };
 
 export type MapShellBrand = {
@@ -132,18 +137,37 @@ const BRAND_DEFAULT: MapShellBrand = {
   tagline: 'Hệ thống điều hành',
 };
 
+/** Gắn section label tĩnh lên item (label render phía trên item trong sidebar). */
+function withSection(item: MapShellNavItem, sectionLabel: string): MapShellNavItem {
+  return { ...item, sectionLabel };
+}
+
 /** Sidebar map shell — nav chính theo role (DEO / LEO). */
 export function getMapShellNavForRole(
   systemRole: UserRole | string | undefined
 ): MapShellNavConfig {
   const role = parseOfficerApiRole(systemRole);
 
-  const mainNav: MapShellNavItem[] = [NAV_ITEMS.map, NAV_ITEMS.overview];
+  const mainNav: MapShellNavItem[] = [];
 
   if (role === 'DEO') {
-    mainNav.push(NAV_ITEMS.reports, NAV_ITEMS.companies);
+    mainNav.push(
+      withSection(NAV_ITEMS.map, 'Tổng quan'),
+      NAV_ITEMS.overview,
+      withSection(NAV_ITEMS.reports, 'Báo cáo'),
+      withSection(NAV_ITEMS.companies, 'Quản lý')
+    );
   } else if (role === 'LEO') {
-    mainNav.push(NAV_ITEMS.verify, NAV_ITEMS.assign, NAV_ITEMS.tracking, NAV_ITEMS.workforce);
+    mainNav.push(
+      withSection(NAV_ITEMS.map, 'Tổng quan'),
+      NAV_ITEMS.overview,
+      withSection(NAV_ITEMS.verify, 'Báo cáo'),
+      NAV_ITEMS.assign,
+      NAV_ITEMS.tracking,
+      withSection(NAV_ITEMS.workforce, 'Quản lý')
+    );
+  } else {
+    mainNav.push(NAV_ITEMS.map, NAV_ITEMS.overview);
   }
 
   const brand = role === 'LEO' ? BRAND_LEO : role === 'DEO' ? BRAND_DEO : BRAND_DEFAULT;

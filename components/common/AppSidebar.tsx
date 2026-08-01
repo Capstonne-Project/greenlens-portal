@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -72,6 +72,27 @@ function NavIcon({ item }: { item: MapShellNavItem }) {
     return <FontAwesomeIcon icon={item.icon} className={ICON_CLASS} />;
   }
   return null;
+}
+
+/**
+ * Section label tĩnh (kiểu PROLOGISTIC "LOGISTICS / FINANCE") — không bấm được.
+ * Giữ trong DOM khi collapse (opacity fade theo Framer) để width tween không giật layout.
+ */
+function NavSectionLabel({ label }: { label: string }) {
+  const { open, animate } = useSidebar();
+  const showLabel = !animate || open;
+
+  return (
+    <motion.div
+      initial={false}
+      animate={{ opacity: showLabel ? 1 : 0 }}
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      aria-hidden={!showLabel}
+      className="mt-2 px-2 text-[11px] font-semibold tracking-[0.08em] whitespace-pre text-neutral-400 uppercase select-none first:mt-0"
+    >
+      {label}
+    </motion.div>
+  );
 }
 
 function isInSection(path: string, item: MapShellNavItem): boolean {
@@ -263,22 +284,24 @@ export function AppSidebar({
             className="mt-8 flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto scrollbar-hide"
             aria-label="Menu chính"
           >
-            {config.mainNav.map(item =>
-              item.children?.length ? (
-                <NavDropdown key={item.id} item={item} activeId={activeId} pathname={pathname} />
-              ) : (
-                <SidebarLink
-                  key={item.id}
-                  link={{
-                    label: item.label,
-                    href: item.href,
-                    icon: <NavIcon item={item} />,
-                    badge: item.badge,
-                  }}
-                  active={activeId === item.id}
-                />
-              )
-            )}
+            {config.mainNav.map(item => (
+              <Fragment key={item.id}>
+                {item.sectionLabel ? <NavSectionLabel label={item.sectionLabel} /> : null}
+                {item.children?.length ? (
+                  <NavDropdown item={item} activeId={activeId} pathname={pathname} />
+                ) : (
+                  <SidebarLink
+                    link={{
+                      label: item.label,
+                      href: item.href,
+                      icon: <NavIcon item={item} />,
+                      badge: item.badge,
+                    }}
+                    active={activeId === item.id}
+                  />
+                )}
+              </Fragment>
+            ))}
           </nav>
         </div>
 
