@@ -8,9 +8,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAssignCompanyTeam, useCompanyTeamOptions } from '@/hooks/useCompany';
+import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import { getCompanyMutationError } from '@/utils/companyUi';
 import { Loader2, UsersRound, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface CompanyAssignTeamDialogProps {
@@ -30,6 +31,7 @@ export function CompanyAssignTeamDialog({
 }: CompanyAssignTeamDialogProps) {
   const [teamId, setTeamId] = useState('');
   const [note, setNote] = useState('');
+  const assignIdempotencyKeyRef = useRef(createIdempotencyKeyStore());
 
   const { options: teams, isPending: teamsLoading } = useCompanyTeamOptions();
   const assign = useAssignCompanyTeam();
@@ -39,6 +41,7 @@ export function CompanyAssignTeamDialog({
   const handleClose = () => {
     setTeamId('');
     setNote('');
+    assignIdempotencyKeyRef.current.reset();
     onClose();
   };
 
@@ -53,9 +56,11 @@ export function CompanyAssignTeamDialog({
         body: {
           teams: [{ teamId, ...(note.trim() ? { note: note.trim() } : {}) }],
         },
+        idempotencyKey: assignIdempotencyKeyRef.current.get(reportId),
       },
       {
         onSuccess: () => {
+          assignIdempotencyKeyRef.current.reset();
           toast.success('Đã phân công đội xử lý');
           onSuccess();
           handleClose();

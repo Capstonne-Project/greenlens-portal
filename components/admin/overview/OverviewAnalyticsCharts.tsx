@@ -128,7 +128,7 @@ export function OverviewPollutionAnalytics({
       {data.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu loại ô nhiễm" />
       ) : (
-        <div className="flex h-[150px] gap-2">
+        <div className="flex h-[140px] gap-2 overflow-x-auto sm:h-[150px] sm:overflow-x-visible">
           <div className="flex w-6 shrink-0 flex-col justify-between py-0.5 text-[9px] tabular-nums text-muted-foreground">
             {gridSteps.map(step => (
               <span key={step} className="text-right">

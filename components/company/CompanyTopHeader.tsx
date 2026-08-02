@@ -34,8 +34,10 @@ export function CompanyTopHeader() {
     >
       <div
         className={cn(
-          'flex items-center',
-          isOverview ? 'min-h-12 gap-2 md:min-h-14 md:gap-3' : 'h-14 justify-between gap-4 md:h-16'
+          'flex w-full min-w-0',
+          isOverview
+            ? 'flex-col gap-2 sm:flex-row sm:items-start sm:justify-between md:items-center'
+            : 'h-14 items-center justify-between gap-4 md:h-16'
         )}
       >
         {isOverview ? (
@@ -49,7 +51,9 @@ export function CompanyTopHeader() {
         <div
           className={cn(
             'flex shrink-0 items-center border-l border-[#e8e8e8]',
-            isOverview ? 'gap-1.5 pl-2 md:gap-2 md:pl-3' : 'gap-2 pl-3 md:gap-2.5 md:pl-4'
+            isOverview
+              ? 'gap-1.5 self-end pl-2 sm:self-center md:gap-2 md:pl-3'
+              : 'gap-2 pl-3 md:gap-2.5 md:pl-4'
           )}
         >
           <NotificationHeaderBell />

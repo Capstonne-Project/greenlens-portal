@@ -32,6 +32,7 @@ import {
   adaptSuspendCompany,
   adaptUpdateCompanyServiceAreas,
 } from '@/lib/api/adapters/companies.adapter';
+import type { IdempotencyRequestOptions } from '@/lib/api/idempotency';
 import type {
   AddCompanyTeamMemberInput,
   ArchiveCompanyTeamInput,
@@ -330,9 +331,10 @@ export async function fetchCompanyAssignmentDetail(
  */
 export async function assignCompanyTeam(
   reportId: string,
-  body: AssignCompanyTeamInput
+  body: AssignCompanyTeamInput,
+  options?: IdempotencyRequestOptions
 ): Promise<void> {
-  return adaptAssignCompanyTeam(reportId, body);
+  return adaptAssignCompanyTeam(reportId, body, options);
 }
 
 const companyApi = {

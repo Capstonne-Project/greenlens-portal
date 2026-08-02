@@ -52,6 +52,7 @@ import {
 } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
@@ -82,7 +83,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 const SEVERITY_SET_BY_LABEL: Record<string, string> = {
   User: 'Người dùng',
@@ -1186,6 +1187,7 @@ export function VerifyDetailClient({
   const { data: detail, isLoading, isError, refetch } = useReportDetail(id);
   const { data: categories = [], isLoading: catsLoading } = useCatalogPollutionCategories();
   const verifyMutation = useVerifyReport();
+  const verifyIdempotencyKeyRef = useRef(createIdempotencyKeyStore());
   const rejectMutation = useRejectReport();
 
   /** Cùng nguồn flag trùng với hàng đợi — mở DuplicateSuspectDialog trước khi verify. */
@@ -1334,7 +1336,12 @@ export function VerifyDetailClient({
     };
 
     try {
-      const result = await verifyMutation.mutateAsync({ reportId: detail.id, body });
+      const result = await verifyMutation.mutateAsync({
+        reportId: detail.id,
+        body,
+        idempotencyKey: verifyIdempotencyKeyRef.current.get(detail.id),
+      });
+      verifyIdempotencyKeyRef.current.reset();
       toastApiSuccess(result, 'Đã xác minh báo cáo.');
       await refetch();
       if (detailMode === 'verify') {

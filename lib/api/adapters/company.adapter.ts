@@ -1,4 +1,9 @@
 import apiService from '@/lib/api/core';
+import {
+  mergeIdempotencyConfig,
+  withOptionalIdempotency,
+  type IdempotencyRequestOptions,
+} from '@/lib/api/idempotency';
 import type {
   AddCompanyTeamMemberInput,
   AssignCompanyTeamInput,
@@ -228,7 +233,8 @@ export async function adaptCompanyAssignmentDetail(
  */
 export async function adaptAssignCompanyTeam(
   reportId: string,
-  body: AssignCompanyTeamInput
+  body: AssignCompanyTeamInput,
+  options?: IdempotencyRequestOptions
 ): Promise<void> {
   const payload: AssignCompanyTeamInput = {
     teams: body.teams.map(t => ({
@@ -236,5 +242,11 @@ export async function adaptAssignCompanyTeam(
       ...(t.note?.trim() ? { note: t.note.trim() } : {}),
     })),
   };
-  await apiService.post(`/v1/reports/${reportId}/assign-company-team`, payload);
+  return withOptionalIdempotency(options?.idempotencyKey, async key => {
+    await apiService.post(
+      `/v1/reports/${reportId}/assign-company-team`,
+      payload,
+      mergeIdempotencyConfig(key, options?.config)
+    );
+  });
 }
