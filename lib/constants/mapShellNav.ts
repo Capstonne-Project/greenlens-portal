@@ -8,6 +8,7 @@ import {
   faFileLines,
   faGaugeHigh,
   faGear,
+  faHistory,
   faRoute,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -109,6 +110,12 @@ const NAV_ITEMS = {
     href: '/officer/duplicates',
     icon: faClone,
   },
+  recurrence: {
+    id: 'recurrence',
+    label: 'Tái phát',
+    href: '/officer/recurrence',
+    icon: faHistory,
+  },
   workforce: {
     id: 'workforce',
     label: 'Đội ngũ',
@@ -163,6 +170,7 @@ export function getMapShellNavForRole(
       NAV_ITEMS.overview,
       withSection(NAV_ITEMS.reports, 'Báo cáo'),
       NAV_ITEMS.duplicates,
+      NAV_ITEMS.recurrence,
       withSection(NAV_ITEMS.companies, 'Quản lý')
     );
   } else if (role === 'LEO') {
@@ -173,6 +181,7 @@ export function getMapShellNavForRole(
       NAV_ITEMS.assign,
       NAV_ITEMS.tracking,
       NAV_ITEMS.duplicates,
+      NAV_ITEMS.recurrence,
       withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
   } else {

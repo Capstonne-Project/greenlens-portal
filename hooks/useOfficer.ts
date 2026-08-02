@@ -9,6 +9,7 @@ import {
   fetchDuplicateCandidates,
   fetchReportDetail,
   fetchReportQueue,
+  fetchViolationRecurrenceCandidates,
   fetchViolationRecurrenceComparison,
   rejectReport,
   reassignReport,
@@ -24,6 +25,7 @@ import type {
 } from '@/lib/api/services/fetchReport';
 import type { DuplicateCandidatesParams } from '@/lib/api/models/duplicateCandidate';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
+import type { ViolationRecurrenceCandidatesParams } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
 import {
@@ -47,6 +49,11 @@ export const officerKeys = {
   duplicateCandidates: () => [...officerKeys.all, 'duplicate-candidates'] as const,
   duplicateCandidatesList: (params: DuplicateCandidatesParams) =>
     [...officerKeys.duplicateCandidates(), params] as const,
+  /** Danh sách nghi tái phạm — BR-REP-034 */
+  violationRecurrenceCandidates: () =>
+    [...officerKeys.all, 'violation-recurrence-candidates'] as const,
+  violationRecurrenceCandidatesList: (params: ViolationRecurrenceCandidatesParams) =>
+    [...officerKeys.violationRecurrenceCandidates(), params] as const,
   /** So sánh tái phát — BR-REP-034 */
   violationRecurrenceComparison: (id: string) =>
     [...officerKeys.all, 'violation-recurrence-comparison', id] as const,
@@ -95,6 +102,24 @@ export function useDuplicateCandidates(
   return useQuery({
     queryKey: officerKeys.duplicateCandidatesList(params),
     queryFn: () => fetchDuplicateCandidates(params),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * GET /v1/reports/violation-recurrence-candidates — [LEO/DEO] báo cáo nghi tái phạm (BR-REP-034).
+ * Kèm prior Closed (+ media 2 bên) để so sánh mở thanh tra / bác bỏ.
+ */
+export function useViolationRecurrenceCandidates(
+  params: ViolationRecurrenceCandidatesParams,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: officerKeys.violationRecurrenceCandidatesList(params),
+    queryFn: () => fetchViolationRecurrenceCandidates(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
@@ -314,6 +339,7 @@ export function useDismissViolationRecurrence() {
       queryClient.invalidateQueries({
         queryKey: officerKeys.violationRecurrenceComparison(reportId),
       });
+      queryClient.invalidateQueries({ queryKey: officerKeys.violationRecurrenceCandidates() });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
     },
