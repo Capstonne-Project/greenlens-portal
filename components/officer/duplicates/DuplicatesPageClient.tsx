@@ -1,15 +1,27 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRightLeft, CircleHelp, Eye, Loader2, MapPinned, Sparkles } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  CircleHelp,
+  Copy,
+  Eye,
+  ImageIcon,
+  Loader2,
+  MapPinned,
+  Sparkles,
+} from 'lucide-react';
 
 import {
   DuplicateCandidateCompareDialog,
   detectionSourceLabel,
+  firstDuplicateMediaUrl,
   formatSimilarity,
   isAiDetectionSource,
 } from '@/components/officer/duplicates/DuplicateCandidateCompareDialog';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
@@ -35,6 +47,7 @@ import { cn } from '@/lib/utils';
 const DUPLICATES_PAGE_SIZE = 10;
 
 type ColumnKey =
+  | 'image'
   | 'code'
   | 'category'
   | 'severity'
@@ -47,7 +60,7 @@ type ColumnKey =
   | 'actions';
 
 /** Vertical rhythm; padding scales with `@container/dup-table` khi sidebar mở hẹp content. */
-const FIRST_COL: ColumnKey = 'code';
+const FIRST_COL: ColumnKey = 'image';
 const LAST_COL: ColumnKey = 'actions';
 
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
@@ -69,19 +82,24 @@ const ROW_BORDER = 'border-b border-slate-200';
  * Chữ / badge / padding co qua `@container/dup-table`, không wrap loạn.
  */
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
-  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[10%] min-w-0' },
-  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[12%] min-w-0' },
+  {
+    key: 'image',
+    label: REPORT_QUEUE_COLUMN_LABEL.image,
+    className: 'w-14 @[44rem]/dup-table:w-20',
+  },
+  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[9%] min-w-0' },
+  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[11%] min-w-0' },
   { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[8%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[9%] min-w-0' },
-  { key: 'source', label: 'Nguồn phát hiện', className: 'w-[11%] min-w-0' },
-  { key: 'similarity', label: 'AI tương đồng', className: 'w-[8%] min-w-0' },
-  { key: 'primary', label: 'Báo cáo gốc', className: 'w-[10%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[8%] min-w-0' },
+  { key: 'source', label: 'Nguồn phát hiện', className: 'w-[10%] min-w-0' },
+  { key: 'similarity', label: 'AI tương đồng', className: 'w-[7%] min-w-0' },
+  { key: 'primary', label: 'Báo cáo gốc', className: 'w-[9%] min-w-0' },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[16%] min-w-0 max-w-0',
+    className: 'w-[14%] min-w-0 max-w-0',
   },
-  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[9%] min-w-0' },
   {
     key: 'actions',
     label: REPORT_QUEUE_COLUMN_LABEL.actions,
@@ -103,6 +121,9 @@ const CELL_META =
   'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/dup-table:text-xs';
 const HEAD_LABEL =
   'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/dup-table:text-[0.6875rem]';
+
+const THUMB_FRAME =
+  'relative h-8 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100 @[44rem]/dup-table:h-9 @[44rem]/dup-table:w-14 @[56rem]/dup-table:h-10 @[56rem]/dup-table:w-16';
 
 function formatCreatedParts(isoString: string): { date: string; time: string } {
   const d = new Date(isoString);
@@ -176,6 +197,54 @@ function SourceBadge({ source }: { source: string | null }) {
   );
 }
 
+function ReportThumb({
+  url,
+  alt,
+  priority = false,
+}: {
+  url: string | null;
+  alt: string;
+  priority?: boolean;
+}) {
+  const thumb = !url ? (
+    <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
+      <ImageIcon
+        className="size-3 @[44rem]/dup-table:size-3.5 @[56rem]/dup-table:size-4"
+        aria-hidden
+      />
+    </div>
+  ) : (
+    <div className={THUMB_FRAME}>
+      <Image
+        src={url}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) 3rem, 4rem"
+        className="object-cover"
+        unoptimized
+        priority={priority}
+      />
+    </div>
+  );
+
+  return (
+    <div className="relative inline-flex">
+      {thumb}
+      <AnimatedHoverTooltip name="Nghi ngờ trùng lặp" className="absolute -right-1.5 -top-1.5 z-10">
+        <span
+          className={cn(
+            'inline-flex size-4 items-center justify-center @[44rem]/dup-table:size-5',
+            'rounded-full bg-amber-500 text-white shadow-sm ring-2 ring-white'
+          )}
+          aria-label="Nghi ngờ trùng lặp"
+        >
+          <Copy className="size-2 @[44rem]/dup-table:size-2.5" aria-hidden strokeWidth={2.75} />
+        </span>
+      </AnimatedHoverTooltip>
+    </div>
+  );
+}
+
 /** Row actions — ArrowRightLeft (so sánh 2 bên) + Eye (chi tiết báo cáo). */
 function DuplicateRowActions({
   row,
@@ -227,8 +296,20 @@ function DuplicateRowActions({
   );
 }
 
-function renderDuplicateCell(key: ColumnKey, row: DuplicateCandidateItem) {
+function renderDuplicateCell(
+  key: ColumnKey,
+  row: DuplicateCandidateItem,
+  opts?: { imagePriority?: boolean }
+) {
   switch (key) {
+    case 'image':
+      return (
+        <ReportThumb
+          url={firstDuplicateMediaUrl(row.media)}
+          alt={row.code}
+          priority={opts?.imagePriority}
+        />
+      );
     case 'code':
       return (
         <span className={cn(CELL_TEXT, 'font-medium')} title={row.code}>
@@ -398,7 +479,7 @@ export function DuplicatesPageClient() {
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map(row => (
+                items.map((row, rowIndex) => (
                   <TableRow
                     key={row.id}
                     className={cn(
@@ -413,7 +494,7 @@ export function DuplicatesPageClient() {
                         className={cn(
                           tableCellPad(col.key, 'body'),
                           'align-middle',
-                          col.key !== 'actions' && 'max-w-0 overflow-hidden',
+                          col.key !== 'image' && col.key !== 'actions' && 'max-w-0 overflow-hidden',
                           col.className
                         )}
                         onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
@@ -421,7 +502,9 @@ export function DuplicatesPageClient() {
                         {col.key === 'actions' ? (
                           <DuplicateRowActions row={row} onCompare={() => openCompare(row)} />
                         ) : (
-                          renderDuplicateCell(col.key, row)
+                          renderDuplicateCell(col.key, row, {
+                            imagePriority: rowIndex < 2,
+                          })
                         )}
                       </TableCell>
                     ))}

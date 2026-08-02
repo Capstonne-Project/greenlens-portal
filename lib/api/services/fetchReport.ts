@@ -47,6 +47,7 @@ import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
   DuplicateCandidateItem,
+  DuplicateCandidateMedia,
   DuplicateCandidatePrimary,
   DuplicateCandidatesData,
   DuplicateCandidatesParams,

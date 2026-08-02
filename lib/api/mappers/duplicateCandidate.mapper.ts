@@ -1,10 +1,12 @@
 import type {
   DuplicateCandidateItemDto,
+  DuplicateCandidateMediaDto,
   DuplicateCandidatePrimaryDto,
   DuplicateCandidatesDataDto,
 } from '@/lib/api/dto/duplicateCandidate.dto';
 import type {
   DuplicateCandidateItem,
+  DuplicateCandidateMedia,
   DuplicateCandidatePrimary,
   DuplicateCandidatesData,
 } from '@/lib/api/models/duplicateCandidate';
@@ -17,6 +19,16 @@ function asSeverity(value: string): ReportSeverity {
   return (SEVERITIES.includes(value as ReportSeverity) ? value : 'Low') as ReportSeverity;
 }
 
+function mapMediaDto(dto: DuplicateCandidateMediaDto): DuplicateCandidateMedia {
+  return {
+    id: dto.id,
+    url: dto.url ?? '',
+    thumbnailUrl: dto.thumbnailUrl ?? '',
+    type: dto.type ?? '',
+    uploadedAt: dto.uploadedAt ?? '',
+  };
+}
+
 function mapPrimary(dto: DuplicateCandidatePrimaryDto | null): DuplicateCandidatePrimary | null {
   if (!dto?.id) return null;
   return {
@@ -24,6 +36,7 @@ function mapPrimary(dto: DuplicateCandidatePrimaryDto | null): DuplicateCandidat
     code: dto.code ?? '',
     address: dto.address ?? '',
     createdAt: dto.createdAt,
+    media: (dto.media ?? []).map(mapMediaDto),
   };
 }
 
@@ -43,6 +56,7 @@ function mapDuplicateCandidateItemDto(dto: DuplicateCandidateItemDto): Duplicate
       dto.aiSimilarityScore == null || Number.isNaN(Number(dto.aiSimilarityScore))
         ? null
         : Number(dto.aiSimilarityScore),
+    media: (dto.media ?? []).map(mapMediaDto),
     primary: mapPrimary(dto.primary),
   };
 }

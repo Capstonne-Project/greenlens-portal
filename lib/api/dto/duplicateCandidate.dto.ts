@@ -1,6 +1,10 @@
 import type { ReportSeverityDto } from '@/lib/api/dto/report.dto';
 import type { ReportQueuePaginationDto } from '@/lib/api/dto/reportQueue.dto';
+import type { ViolationRecurrenceMediaDto } from '@/lib/api/dto/violationRecurrence.dto';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
+
+/** Media so sánh trùng lặp — cùng shape với violation-recurrence media. */
+export type DuplicateCandidateMediaDto = ViolationRecurrenceMediaDto;
 
 /** GET /v1/reports/duplicate-candidates — báo cáo gốc (primary) mà item bị gắn cờ trùng. */
 export interface DuplicateCandidatePrimaryDto {
@@ -8,6 +12,7 @@ export interface DuplicateCandidatePrimaryDto {
   code: string;
   address: string;
   createdAt: string;
+  media: DuplicateCandidateMediaDto[];
 }
 
 /**
@@ -26,6 +31,7 @@ export interface DuplicateCandidateItemDto {
   createdAt: string;
   duplicateDetectionSource: string | null;
   aiSimilarityScore: number | null;
+  media: DuplicateCandidateMediaDto[];
   primary: DuplicateCandidatePrimaryDto | null;
 }
 
