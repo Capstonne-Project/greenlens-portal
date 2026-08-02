@@ -5,14 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowRightLeft,
+  Check,
   CircleHelp,
   Copy,
   Eye,
   ImageIcon,
   Loader2,
   MapPinned,
+  MoreHorizontal,
   Sparkles,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import {
   DuplicateCandidateCompareDialog,
@@ -21,7 +24,12 @@ import {
   formatSimilarity,
   isAiDetectionSource,
 } from '@/components/officer/duplicates/DuplicateCandidateCompareDialog';
-import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
@@ -47,20 +55,16 @@ import { cn } from '@/lib/utils';
 const DUPLICATES_PAGE_SIZE = 10;
 
 type ColumnKey =
-  | 'image'
-  | 'code'
-  | 'category'
+  | 'report'
   | 'severity'
   | 'status'
   | 'source'
   | 'similarity'
-  | 'primary'
   | 'address'
   | 'created'
   | 'actions';
 
-/** Vertical rhythm; padding scales with `@container/dup-table` khi sidebar mở hẹp content. */
-const FIRST_COL: ColumnKey = 'image';
+const FIRST_COL: ColumnKey = 'report';
 const LAST_COL: ColumnKey = 'actions';
 
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
@@ -79,42 +83,36 @@ const ROW_BORDER = 'border-b border-slate-200';
 
 /**
  * Proportional widths (`table-fixed`) — fluid theo content area (sidebar collapse/expand).
- * Chữ / badge / padding co qua `@container/dup-table`, không wrap loạn.
+ * Cột đầu: ảnh + stack code / id / categoryName (kiểu Transaction row).
  */
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   {
-    key: 'image',
-    label: REPORT_QUEUE_COLUMN_LABEL.image,
-    className: 'w-14 @[44rem]/dup-table:w-20',
+    key: 'report',
+    label: 'Báo cáo',
+    className: 'w-[28%] min-w-0 @[44rem]/dup-table:w-[30%]',
   },
-  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[9%] min-w-0' },
-  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[11%] min-w-0' },
-  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[8%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[8%] min-w-0' },
-  { key: 'source', label: 'Nguồn phát hiện', className: 'w-[10%] min-w-0' },
-  { key: 'similarity', label: 'AI tương đồng', className: 'w-[7%] min-w-0' },
-  { key: 'primary', label: 'Báo cáo gốc', className: 'w-[9%] min-w-0' },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
+  { key: 'source', label: 'Nguồn phát hiện', className: 'w-[12%] min-w-0' },
+  { key: 'similarity', label: 'AI tương đồng', className: 'w-[9%] min-w-0' },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[14%] min-w-0 max-w-0',
+    className: 'w-[16%] min-w-0 max-w-0',
   },
-  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[9%] min-w-0' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
   {
     key: 'actions',
-    label: REPORT_QUEUE_COLUMN_LABEL.actions,
-    className: 'w-[4.75rem] @[44rem]/dup-table:w-[5.5rem]',
+    label: '',
+    className: 'w-12 @[44rem]/dup-table:w-14',
   },
 ];
 
-/** Badge — hẹp: 10px; rộng: xs. Luôn truncate 1 dòng. */
 const BADGE_BASE =
   'inline-flex max-w-full min-w-0 items-center truncate rounded-full font-medium leading-none';
 const BADGE_SIZE =
   'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/dup-table:px-2 @[44rem]/dup-table:py-0.5 @[44rem]/dup-table:text-xs';
 
-const CELL_TEXT =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-700 @[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm';
 const CELL_TEXT_MUTED =
   'block min-w-0 truncate text-[11px] leading-snug text-slate-600 @[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm';
 const CELL_META =
@@ -122,8 +120,58 @@ const CELL_META =
 const HEAD_LABEL =
   'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/dup-table:text-[0.6875rem]';
 
-const THUMB_FRAME =
-  'relative h-8 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100 @[44rem]/dup-table:h-9 @[44rem]/dup-table:w-14 @[56rem]/dup-table:h-10 @[56rem]/dup-table:w-16';
+/** Thumbnail vuông nhỏ — khớp layout Transaction (ảnh mẫu). */
+const THUMB_SQUARE =
+  'relative size-9 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80 @[44rem]/dup-table:size-10';
+
+async function copyText(value: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(successMessage);
+  } catch {
+    toast.error('Không thể sao chép. Hãy chọn và copy thủ công.');
+  }
+}
+
+function CopyIconButton({
+  value,
+  label,
+  successMessage,
+}: {
+  value: string;
+  label: string;
+  successMessage: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={e => {
+        e.stopPropagation();
+        void (async () => {
+          await copyText(value, successMessage);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        })();
+      }}
+      className={cn(
+        'inline-flex size-5 shrink-0 items-center justify-center rounded text-slate-400',
+        'opacity-0 transition-opacity group-hover/copyrow:opacity-100',
+        'hover:bg-slate-100 hover:text-slate-700',
+        'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+      )}
+    >
+      {copied ? (
+        <Check className="size-3 text-emerald-600" aria-hidden />
+      ) : (
+        <Copy className="size-3" aria-hidden />
+      )}
+    </button>
+  );
+}
 
 function formatCreatedParts(isoString: string): { date: string; time: string } {
   const d = new Date(isoString);
@@ -145,7 +193,6 @@ function CreatedCell({ iso }: { iso: string }) {
   return (
     <span className={cn(CELL_META, 'text-slate-800')} title={`${date} ${time}`}>
       <span className="font-medium">{date}</span>
-      {/* Khi sidebar mở / bảng hẹp: ẩn giờ để tránh wrap 2 dòng. */}
       <span className="hidden text-slate-400 @[48rem]/dup-table:inline"> {time}</span>
     </span>
   );
@@ -171,7 +218,6 @@ function StatusBadge({ status }: { status: DuplicateCandidateItem['status'] }) {
   );
 }
 
-/** Nguồn phát hiện — AI (Tier 2) tím, geo/time (Tier 1) xanh. Tooltip giữ chuỗi gốc BE. */
 function SourceBadge({ source }: { source: string | null }) {
   if (!source) return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
   const isAi = isAiDetectionSource(source);
@@ -197,55 +243,87 @@ function SourceBadge({ source }: { source: string | null }) {
   );
 }
 
-function ReportThumb({
-  url,
-  alt,
+/**
+ * Cột đầu kiểu Transaction: thumb vuông + stack
+ * code (link xanh + copy) → id (+ copy) → categoryName (muted).
+ */
+function ReportIdentityCell({
+  row,
   priority = false,
 }: {
-  url: string | null;
-  alt: string;
+  row: DuplicateCandidateItem;
   priority?: boolean;
 }) {
-  const thumb = !url ? (
-    <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
-      <ImageIcon
-        className="size-3 @[44rem]/dup-table:size-3.5 @[56rem]/dup-table:size-4"
-        aria-hidden
-      />
-    </div>
-  ) : (
-    <div className={THUMB_FRAME}>
-      <Image
-        src={url}
-        alt={alt}
-        fill
-        sizes="(max-width: 640px) 3rem, 4rem"
-        className="object-cover"
-        unoptimized
-        priority={priority}
-      />
-    </div>
-  );
+  const url = firstDuplicateMediaUrl(row.media);
 
   return (
-    <div className="relative inline-flex">
-      {thumb}
-      <AnimatedHoverTooltip name="Nghi ngờ trùng lặp" className="absolute -right-1.5 -top-1.5 z-10">
-        <span
-          className={cn(
-            'inline-flex size-4 items-center justify-center @[44rem]/dup-table:size-5',
-            'rounded-full bg-amber-500 text-white shadow-sm ring-2 ring-white'
-          )}
-          aria-label="Nghi ngờ trùng lặp"
+    <div className="flex min-w-0 items-start gap-3">
+      <div className={THUMB_SQUARE}>
+        {url ? (
+          <Image
+            src={url}
+            alt={row.code}
+            fill
+            sizes="40px"
+            className="object-cover"
+            unoptimized
+            priority={priority}
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-slate-400">
+            <ImageIcon className="size-4" aria-hidden />
+          </div>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <Link
+            href={`/officer/verify/${row.id}`}
+            title={row.code}
+            onClick={e => e.stopPropagation()}
+            className={cn(
+              'min-w-0 truncate text-[12px] font-semibold tabular-nums text-sky-700 no-underline',
+              '@[44rem]/dup-table:text-sm',
+              'hover:text-sky-800 hover:underline',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+            )}
+          >
+            {row.code}
+          </Link>
+          <CopyIconButton
+            value={row.code}
+            label={`Sao chép mã ${row.code}`}
+            successMessage="Đã sao chép mã báo cáo."
+          />
+        </div>
+
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <span
+            className="min-w-0 truncate text-[11px] tabular-nums text-slate-800 @[44rem]/dup-table:text-xs"
+            title={row.id}
+          >
+            {row.id}
+          </span>
+          <CopyIconButton
+            value={row.id}
+            label="Sao chép ID báo cáo"
+            successMessage="Đã sao chép ID báo cáo."
+          />
+        </div>
+
+        <p
+          className="truncate text-[11px] leading-snug text-slate-500 @[44rem]/dup-table:text-xs"
+          title={row.categoryName || undefined}
         >
-          <Copy className="size-2 @[44rem]/dup-table:size-2.5" aria-hidden strokeWidth={2.75} />
-        </span>
-      </AnimatedHoverTooltip>
+          {row.categoryName?.trim() || '—'}
+        </p>
+      </div>
     </div>
   );
 }
 
-/** Row actions — ArrowRightLeft (so sánh 2 bên) + Eye (chi tiết báo cáo). */
+/** Cột ⋮ — không label header; menu: So sánh / Chi tiết. */
 function DuplicateRowActions({
   row,
   onCompare,
@@ -254,44 +332,39 @@ function DuplicateRowActions({
   onCompare: () => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-      <button
-        type="button"
-        title="So sánh với báo cáo gốc"
-        aria-label={`So sánh ${row.code} với báo cáo gốc`}
-        onClick={e => {
-          e.stopPropagation();
-          onCompare();
-        }}
-        className={cn(
-          'inline-flex size-7 items-center justify-center rounded-md @[44rem]/dup-table:size-8',
-          'bg-amber-500 text-white shadow-sm',
-          'transition-[background-color,box-shadow,transform] duration-150',
-          'hover:bg-amber-400 hover:shadow',
-          'active:scale-[0.97]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-1'
-        )}
-      >
-        <ArrowRightLeft
-          className="size-3.5 @[44rem]/dup-table:size-4"
-          aria-hidden
-          strokeWidth={2.25}
-        />
-      </button>
-      <Link
-        href={`/officer/verify/${row.id}`}
-        title="Xem chi tiết"
-        aria-label={`Xem chi tiết ${row.code}`}
-        onClick={e => e.stopPropagation()}
-        className={cn(
-          'inline-flex size-7 items-center justify-center rounded-md @[44rem]/dup-table:size-8',
-          'text-slate-600 transition-colors',
-          'hover:bg-slate-100 hover:text-slate-900',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
-        )}
-      >
-        <Eye className="size-3.5 @[44rem]/dup-table:size-4" aria-hidden />
-      </Link>
+    <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Thao tác ${row.code}`}
+            className={cn(
+              'inline-flex size-8 items-center justify-center rounded-md text-slate-500',
+              'transition-colors hover:bg-slate-100 hover:text-slate-800',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+            )}
+          >
+            <MoreHorizontal className="size-4" aria-hidden />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            className="cursor-pointer gap-2"
+            onClick={() => {
+              onCompare();
+            }}
+          >
+            <ArrowRightLeft className="size-4" aria-hidden />
+            So sánh với gốc
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="cursor-pointer gap-2">
+            <Link href={`/officer/verify/${row.id}`}>
+              <Eye className="size-4" aria-hidden />
+              Xem chi tiết
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -302,26 +375,8 @@ function renderDuplicateCell(
   opts?: { imagePriority?: boolean }
 ) {
   switch (key) {
-    case 'image':
-      return (
-        <ReportThumb
-          url={firstDuplicateMediaUrl(row.media)}
-          alt={row.code}
-          priority={opts?.imagePriority}
-        />
-      );
-    case 'code':
-      return (
-        <span className={cn(CELL_TEXT, 'font-medium')} title={row.code}>
-          {row.code}
-        </span>
-      );
-    case 'category':
-      return (
-        <span className={CELL_TEXT} title={row.categoryName}>
-          {row.categoryName || '—'}
-        </span>
-      );
+    case 'report':
+      return <ReportIdentityCell row={row} priority={opts?.imagePriority} />;
     case 'severity':
       return <SeverityBadge severity={row.severity} />;
     case 'status':
@@ -340,14 +395,6 @@ function renderDuplicateCell(
         </span>
       );
     }
-    case 'primary':
-      return row.primary ? (
-        <span className={cn(CELL_TEXT, 'font-medium text-sky-800')} title={row.primary.code}>
-          {row.primary.code}
-        </span>
-      ) : (
-        <span className={cn(CELL_META, 'text-slate-400')}>—</span>
-      );
     case 'address':
       return (
         <span className={CELL_TEXT_MUTED} title={row.address}>
@@ -383,7 +430,6 @@ export function DuplicatesPageClient() {
     setCompareOpen(true);
   };
 
-  /** Giữ item khi đóng để dialog fade-out không trống nội dung. */
   const handleCompareOpenChange = (open: boolean) => {
     setCompareOpen(open);
     if (!open) {
@@ -440,9 +486,13 @@ export function DuplicatesPageClient() {
                       col.className
                     )}
                   >
-                    <span className={HEAD_LABEL} title={col.label}>
-                      {col.label}
-                    </span>
+                    {col.label ? (
+                      <span className={HEAD_LABEL} title={col.label}>
+                        {col.label}
+                      </span>
+                    ) : (
+                      <span className="sr-only">Thao tác</span>
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -494,7 +544,9 @@ export function DuplicatesPageClient() {
                         className={cn(
                           tableCellPad(col.key, 'body'),
                           'align-middle',
-                          col.key !== 'image' && col.key !== 'actions' && 'max-w-0 overflow-hidden',
+                          col.key !== 'report' &&
+                            col.key !== 'actions' &&
+                            'max-w-0 overflow-hidden',
                           col.className
                         )}
                         onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
