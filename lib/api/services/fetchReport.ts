@@ -19,6 +19,7 @@ import {
   adaptDismissViolationRecurrence,
   adaptFetchViolationRecurrenceComparison,
 } from '@/lib/api/adapters/violationRecurrence.adapter';
+import { adaptCreateInspectionReport } from '@/lib/api/adapters/inspectionReport.adapter';
 import type {
   DuplicateCandidatesData,
   DuplicateCandidatesParams,
@@ -45,6 +46,10 @@ import type {
   DismissViolationRecurrenceResult,
   ViolationRecurrenceComparison,
 } from '@/lib/api/models/violationRecurrence';
+import type {
+  CreateInspectionReportInput,
+  CreateInspectionReportResult,
+} from '@/lib/api/models/inspectionReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
@@ -122,6 +127,10 @@ export type {
   ViolationRecurrenceMedia,
   ViolationRecurrenceReport,
 } from '@/lib/api/models/violationRecurrence';
+export type {
+  CreateInspectionReportInput,
+  CreateInspectionReportResult,
+} from '@/lib/api/models/inspectionReport';
 
 /** GET /v1/reports/{id} — chi tiết một báo cáo */
 export async function fetchReportDetail(id: string): Promise<ReportDetail> {
@@ -237,6 +246,17 @@ export async function dismissViolationRecurrence(
   return adaptDismissViolationRecurrence(reportId);
 }
 
+/**
+ * POST /v1/reports/{id}/inspections — [LEO] lập hồ sơ xử phạt nháp
+ * (BR-INS-001, BR-OFF-005).
+ */
+export async function createInspectionReport(
+  reportId: string,
+  body: CreateInspectionReportInput
+): Promise<CreateInspectionReportResult> {
+  return adaptCreateInspectionReport(reportId, body);
+}
+
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
@@ -253,5 +273,6 @@ const reportService = {
   dismissDuplicateReport,
   fetchViolationRecurrenceComparison,
   dismissViolationRecurrence,
+  createInspectionReport,
 };
 export default reportService;

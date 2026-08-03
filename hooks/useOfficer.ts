@@ -3,6 +3,7 @@
 import {
   assignReport,
   confirmDuplicateReport,
+  createInspectionReport,
   dismissDuplicateReport,
   dismissViolationRecurrence,
   dispatchReportToCompany,
@@ -19,6 +20,7 @@ import {
 import type {
   AssignReportInput,
   ConfirmDuplicateInput,
+  CreateInspectionReportInput,
   DispatchToCompanyInput,
   RejectReportInput,
   ReassignReportInput,
@@ -35,17 +37,40 @@ import {
   useQueries,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 // ── Query key factory ─────────────────────────────────────────────────────────
+
+/**
+ * Hash ngắn cho `search` — cache identity không chứa chuỗi tìm kiếm thô (PII risk).
+ * `queryFn` vẫn nhận full `params.search`.
+ */
+function stableSearchKey(search: string | undefined): string | undefined {
+  const s = search?.trim();
+  if (!s) return undefined;
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return `s${(h >>> 0).toString(36)}_l${s.length}`;
+}
+
+/** Tách `search` khỏi key; phần còn lại serializable an toàn hơn. */
+function queueListKeyParts(params: ReportQueueParams) {
+  const { search, ...safe } = params;
+  return [safe, stableSearchKey(search)] as const;
+}
 
 export const officerKeys = {
   all: ['officer'] as const,
   details: () => [...officerKeys.all, 'detail'] as const,
   detail: (id: string) => [...officerKeys.details(), id] as const,
   queue: () => [...officerKeys.all, 'queue'] as const,
-  queueList: (params: ReportQueueParams) => [...officerKeys.queue(), params] as const,
+  queueList: (params: ReportQueueParams) =>
+    [...officerKeys.queue(), ...queueListKeyParts(params)] as const,
   /** Danh sách nghi trùng lặp — BR-REP-031 */
   duplicateCandidates: () => [...officerKeys.all, 'duplicate-candidates'] as const,
   duplicateCandidatesList: (params: DuplicateCandidatesParams) =>
@@ -148,14 +173,25 @@ const LOCATE_QUEUE_PAGE_BATCH = 5;
 
 /**
  * Tìm `page` chứa `reportId` trong GET /v1/reports/queue (cùng filter/sort).
- * Dùng cho deep-link notification → highlight đúng trang (không chỉ page 1).
+ * Dùng `queryClient.fetchQuery` để share cache với `useReportQueue`.
  */
 export async function locateReportInQueuePage(
+  queryClient: QueryClient,
   reportId: string,
   params: Omit<ReportQueueParams, 'page'>
 ): Promise<number | null> {
   const pageSize = params.pageSize ?? 10;
-  const firstEnv = await fetchReportQueue({ ...params, page: 1, pageSize });
+
+  const fetchPage = (page: number) => {
+    const pageParams = { ...params, page, pageSize };
+    return queryClient.fetchQuery({
+      queryKey: officerKeys.queueList(pageParams),
+      queryFn: () => fetchReportQueue(pageParams),
+      staleTime: LIST_STALE_MS,
+    });
+  };
+
+  const firstEnv = await fetchPage(1);
   const first = firstEnv.data;
   if (!first) return null;
   if (first.items.some(item => item.id === reportId)) return 1;
@@ -166,9 +202,7 @@ export async function locateReportInQueuePage(
       { length: Math.min(LOCATE_QUEUE_PAGE_BATCH, totalPages - start + 1) },
       (_, i) => start + i
     );
-    const results = await Promise.all(
-      pages.map(page => fetchReportQueue({ ...params, page, pageSize }))
-    );
+    const results = await Promise.all(pages.map(page => fetchPage(page)));
     for (let i = 0; i < results.length; i++) {
       const items = results[i]?.data?.items;
       if (items?.some(item => item.id === reportId)) return pages[i] ?? null;
@@ -355,6 +389,27 @@ export function useDismissViolationRecurrence() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ reportId }: { reportId: string }) => dismissViolationRecurrence(reportId),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({
+        queryKey: officerKeys.violationRecurrenceComparison(reportId),
+      });
+      queryClient.invalidateQueries({ queryKey: officerKeys.violationRecurrenceCandidates() });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/**
+ * POST /v1/reports/{id}/inspections — [LEO] lập hồ sơ xử phạt nháp
+ * (BR-INS-001, BR-OFF-005). `assignedTeamId` bắt buộc.
+ */
+export function useCreateInspectionReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: CreateInspectionReportInput }) =>
+      createInspectionReport(reportId, body),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({
