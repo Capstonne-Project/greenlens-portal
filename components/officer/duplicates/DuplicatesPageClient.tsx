@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 
 const DUPLICATES_PAGE_SIZE = 10;
 
-type ColumnKey = 'report' | 'severity' | 'status' | 'address' | 'actions';
+type ColumnKey = 'report' | 'primary' | 'severity' | 'status' | 'address' | 'actions';
 
 const FIRST_COL: ColumnKey = 'report';
 const LAST_COL: ColumnKey = 'actions';
@@ -82,15 +82,20 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   {
     key: 'report',
     label: 'Báo cáo',
-    className: 'w-[38%] min-w-0 @[44rem]/dup-table:w-[40%]',
+    className: 'w-[32%] min-w-0 @[44rem]/dup-table:w-[34%]',
+  },
+  {
+    key: 'primary',
+    label: 'Bản gốc',
+    className: 'w-[14%] min-w-0 max-w-0',
   },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[22%] min-w-0 max-w-0',
+    className: 'w-[18%] min-w-0 max-w-0',
   },
-  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[12%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[14%] min-w-0' },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[10%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[12%] min-w-0' },
   {
     key: 'actions',
     label: '',
@@ -287,6 +292,34 @@ function ReportIdentityCell({
   );
 }
 
+/** Cột Bản gốc — kiểu Reference/Pick Up Request: nhãn vai trò + code primary bên dưới. */
+function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['primary'] }) {
+  if (!primary) {
+    return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
+  }
+
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <Link
+        href={`/officer/verify/${primary.id}`}
+        title={`Bản gốc · ${primary.id}`}
+        onClick={e => e.stopPropagation()}
+        className={cn(
+          'block min-w-0 truncate text-[11px] font-medium leading-snug text-slate-800 no-underline',
+          '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm',
+          'hover:text-sky-700 hover:underline',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+        )}
+      >
+        Bản gốc
+      </Link>
+      <p className={cn(CELL_META, 'text-slate-500')} title={primary.code}>
+        {primary.code}
+      </p>
+    </div>
+  );
+}
+
 /** Cột ⋮ — không label header; menu: So sánh / Chi tiết. */
 function DuplicateRowActions({
   row,
@@ -341,6 +374,8 @@ function renderDuplicateCell(
   switch (key) {
     case 'report':
       return <ReportIdentityCell row={row} priority={opts?.imagePriority} />;
+    case 'primary':
+      return <PrimaryReportCell primary={row.primary} />;
     case 'severity':
       return <SeverityText severity={row.severity} />;
     case 'status':
