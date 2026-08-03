@@ -1,5 +1,6 @@
 'use client';
 
+import { SuccessDialog } from '@/components/common/SuccessDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,7 @@ import {
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
-import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
+import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/models/report';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { normalizeReportQueueStatus, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
@@ -1059,37 +1060,6 @@ function ActionCard({
   );
 }
 
-function VerifyAssignPromptDialog({
-  open,
-  onCancel,
-  onAssign,
-}: {
-  open: boolean;
-  onCancel: () => void;
-  onAssign: () => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={isOpen => !isOpen && onCancel()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Xác minh thành công</DialogTitle>
-          <DialogDescription>
-            Bạn có muốn phân công đội xử lý cho báo cáo này ngay không?
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Hủy
-          </Button>
-          <Button type="button" className="bg-emerald-600 hover:bg-emerald-500" onClick={onAssign}>
-            Phân công
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function RejectReportDialog({
   open,
   reason,
@@ -1247,7 +1217,7 @@ export function VerifyDetailClient({
 
   const [pendingCategoryId, setPendingCategoryId] = useState<string>('');
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
-  const [assignPromptOpen, setAssignPromptOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
@@ -1300,7 +1270,7 @@ export function VerifyDetailClient({
   };
 
   const handleAssignAfterVerify = () => {
-    setAssignPromptOpen(false);
+    setSuccessOpen(false);
     router.push(`/officer/assign?highlightReportId=${encodeURIComponent(detail.id)}`);
   };
 
@@ -1334,11 +1304,10 @@ export function VerifyDetailClient({
     };
 
     try {
-      const result = await verifyMutation.mutateAsync({ reportId: detail.id, body });
-      toastApiSuccess(result, 'Đã xác minh báo cáo.');
+      await verifyMutation.mutateAsync({ reportId: detail.id, body });
       await refetch();
       if (detailMode === 'verify') {
-        setAssignPromptOpen(true);
+        setSuccessOpen(true);
       }
       return true;
     } catch (error) {
@@ -1472,10 +1441,21 @@ export function VerifyDetailClient({
         isContinuingVerify={verifyMutation.isPending && suspectDialogMode === 'recurrence'}
       />
 
-      <VerifyAssignPromptDialog
-        open={assignPromptOpen}
-        onCancel={() => setAssignPromptOpen(false)}
-        onAssign={handleAssignAfterVerify}
+      <SuccessDialog
+        open={successOpen}
+        onOpenChange={next => {
+          if (!next) setSuccessOpen(false);
+        }}
+        title="Thành công"
+        description="Báo cáo đã được xác minh. Bước tiếp theo, bạn có thể phân công đội xử lý ngay trên trang Phân công."
+        secondaryAction={{
+          label: 'Để sau',
+          onClick: () => setSuccessOpen(false),
+        }}
+        primaryAction={{
+          label: 'Phân công ngay',
+          onClick: handleAssignAfterVerify,
+        }}
       />
 
       <LeoAssignDialog

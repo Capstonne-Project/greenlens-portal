@@ -74,6 +74,43 @@ function NavIcon({ item }: { item: MapShellNavItem }) {
   return null;
 }
 
+/**
+ * Section label tĩnh (kiểu PROLOGISTIC "LOGISTICS / FINANCE") — không bấm được.
+ * Collapse: opacity + height + margin co về 0 (overflow hidden) để icon sát nhau mượt;
+ * expanded: hiện lại khoảng cách trên (trừ mục đầu).
+ */
+function NavSectionLabel({
+  label,
+  withTopSpacing = true,
+}: {
+  label: string;
+  /** false cho label đầu tiên (tương đương first:mt-0). */
+  withTopSpacing?: boolean;
+}) {
+  const { open, animate } = useSidebar();
+  const showLabel = !animate || open;
+
+  return (
+    <motion.div
+      initial={false}
+      animate={{
+        opacity: showLabel ? 1 : 0,
+        height: showLabel ? 'auto' : 0,
+        marginTop: showLabel && withTopSpacing ? 8 : 0,
+      }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      aria-hidden={!showLabel}
+      className={cn(
+        'overflow-hidden px-2 text-[11px] font-semibold tracking-[0.08em] whitespace-pre',
+        'text-neutral-400 uppercase select-none',
+        !showLabel && 'pointer-events-none'
+      )}
+    >
+      {label}
+    </motion.div>
+  );
+}
+
 function isInSection(path: string, item: MapShellNavItem): boolean {
   if (!item.children?.length) return false;
   if (path === item.href) return true;
@@ -263,22 +300,26 @@ export function AppSidebar({
             className="mt-8 flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto scrollbar-hide"
             aria-label="Menu chính"
           >
-            {config.mainNav.map(item =>
-              item.children?.length ? (
-                <NavDropdown key={item.id} item={item} activeId={activeId} pathname={pathname} />
-              ) : (
-                <SidebarLink
-                  key={item.id}
-                  link={{
-                    label: item.label,
-                    href: item.href,
-                    icon: <NavIcon item={item} />,
-                    badge: item.badge,
-                  }}
-                  active={activeId === item.id}
-                />
-              )
-            )}
+            {config.mainNav.map((item, index) => (
+              <div key={item.id} className="flex flex-col">
+                {item.sectionLabel ? (
+                  <NavSectionLabel label={item.sectionLabel} withTopSpacing={index > 0} />
+                ) : null}
+                {item.children?.length ? (
+                  <NavDropdown item={item} activeId={activeId} pathname={pathname} />
+                ) : (
+                  <SidebarLink
+                    link={{
+                      label: item.label,
+                      href: item.href,
+                      icon: <NavIcon item={item} />,
+                      badge: item.badge,
+                    }}
+                    active={activeId === item.id}
+                  />
+                )}
+              </div>
+            ))}
           </nav>
         </div>
 

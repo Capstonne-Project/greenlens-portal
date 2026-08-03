@@ -136,6 +136,8 @@ export function officerNotificationHref(
     case 'BadgeEarned':
     case 'LevelUp':
       return '/officer/dashboard';
+    case 'StaffInvitationAccepted':
+      return '/officer/workforce?tab=members';
     default:
       if (ref) return `/officer/tracking`;
       return '/officer/dashboard';

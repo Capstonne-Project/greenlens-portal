@@ -375,8 +375,9 @@ function metersBetween(a: ReportDetail, b: ReportDetail): number | null {
 }
 
 function formatMeters(meters: number): string {
-  if (meters < 1000) return `${meters} m`;
-  return `${(meters / 1000).toFixed(2)} km`;
+  const rounded = Math.round(meters);
+  if (rounded < 1000) return `${rounded} m`;
+  return `${Math.round(rounded / 1000)} km`;
 }
 
 function formatSimilarity(score: number | null | undefined): string | null {
@@ -596,9 +597,7 @@ function VerifiedRecordsCompare({
               )}
             >
               <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
@@ -609,9 +608,7 @@ function VerifiedRecordsCompare({
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
@@ -821,9 +818,7 @@ function RecurrenceRecordsCompare({
               )}
             >
               <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
@@ -834,9 +829,7 @@ function RecurrenceRecordsCompare({
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',

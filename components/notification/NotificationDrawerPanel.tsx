@@ -18,7 +18,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import FilledBellIcon from '@/components/ui/filled-bell-icon';
-import { CheckCheck, Loader2, MoreHorizontal, Settings2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CheckCheck, MoreHorizontal, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -36,9 +37,38 @@ const FILTERS: { key: ReadFilter; label: string }[] = [
   { key: 'unread', label: 'Chưa đọc' },
 ];
 
+const SKELETON_ROW_COUNT = 6;
+/** Khớp cạnh thumbnail hàng thật trong NotificationListItem. */
+const SKELETON_THUMB = 80;
+
 function toIsReadParam(filter: ReadFilter): boolean | undefined {
   if (filter === 'unread') return false;
   return undefined;
+}
+
+function NotificationDrawerSkeleton() {
+  return (
+    <ul aria-busy="true" aria-label="Đang tải thông báo" className="py-0.5">
+      {Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
+        <li key={i} className="px-2 py-0.5">
+          <div
+            className="flex w-full items-stretch gap-3 rounded-xl px-2 py-3"
+            style={{ minHeight: SKELETON_THUMB + 24 }}
+          >
+            <Skeleton
+              className="shrink-0 rounded-full"
+              style={{ width: SKELETON_THUMB, height: SKELETON_THUMB }}
+            />
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+              <Skeleton className="h-4 w-[88%]" />
+              <Skeleton className="h-3.5 w-[72%]" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /**
@@ -223,10 +253,7 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
 
       <div className="relative min-h-0 flex-1 overflow-y-auto scrollbar-smooth">
         {isPending ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-            Đang tải…
-          </div>
+          <NotificationDrawerSkeleton />
         ) : isError ? (
           <div className="space-y-2 p-4 text-sm">
             <p className="font-medium text-destructive">Không tải được thông báo</p>

@@ -29,6 +29,8 @@ type TooltipBubbleProps = {
   rotate: ReturnType<typeof useSpring>;
   className?: string;
   style?: React.CSSProperties;
+  /** Cho phép xuống dòng (tooltip giải thích dài). */
+  wrap?: boolean;
 };
 
 function TooltipBubble({
@@ -38,6 +40,7 @@ function TooltipBubble({
   rotate,
   className,
   style,
+  wrap = false,
 }: TooltipBubbleProps) {
   return (
     <motion.div
@@ -56,11 +59,12 @@ function TooltipBubble({
       style={{
         translateX,
         rotate,
-        whiteSpace: 'nowrap',
+        whiteSpace: wrap ? 'normal' : 'nowrap',
         ...style,
       }}
       className={cn(
         'z-100 flex -translate-x-1/2 flex-col items-center justify-center rounded-md bg-black px-3 py-1.5 text-xs shadow-xl',
+        wrap && 'max-w-[min(18rem,calc(100vw-2rem))] items-start text-left',
         className
       )}
       role="tooltip"
@@ -68,7 +72,11 @@ function TooltipBubble({
       <div className="absolute inset-x-8 -bottom-px z-30 h-px w-[20%] bg-linear-to-r from-transparent via-emerald-500 to-transparent" />
       <div className="absolute -bottom-px left-6 z-30 h-px w-[40%] bg-linear-to-r from-transparent via-sky-500 to-transparent" />
       <div className="relative z-30 text-xs font-bold text-white">{name}</div>
-      {designation ? <div className="text-[10px] text-white/90">{designation}</div> : null}
+      {designation ? (
+        <div className={cn('text-[10px] text-white/90', wrap && 'mt-0.5 leading-snug')}>
+          {designation}
+        </div>
+      ) : null}
     </motion.div>
   );
 }
@@ -109,6 +117,8 @@ export type AnimatedHoverTooltipProps = {
   children: ReactNode;
   className?: string;
   disabled?: boolean;
+  /** Cho phép nội dung tooltip xuống dòng. */
+  wrap?: boolean;
 };
 
 export function AnimatedHoverTooltip({
@@ -117,6 +127,7 @@ export function AnimatedHoverTooltip({
   children,
   className,
   disabled = false,
+  wrap = false,
 }: AnimatedHoverTooltipProps) {
   const [hovered, setHovered] = useState(false);
   const [anchor, setAnchor] = useState({ top: 0, left: 0 });
@@ -155,6 +166,7 @@ export function AnimatedHoverTooltip({
             designation={designation}
             translateX={translateX}
             rotate={rotate}
+            wrap={wrap}
             className="pointer-events-none fixed -translate-y-full"
             style={{ top: anchor.top, left: anchor.left }}
           />
