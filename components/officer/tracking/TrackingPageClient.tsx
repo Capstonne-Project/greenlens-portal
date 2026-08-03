@@ -22,6 +22,18 @@ const LeoTrackingPageClient = dynamic(
   { ssr: false, loading: TrackingFallback }
 );
 
+/**
+ * Chỉ cho phép back về route nội bộ officer — chống open-redirect.
+ * `from` là path+query tương đối (vd. `/officer/duplicates`).
+ */
+function resolveSafeOfficerFrom(raw: string | null): string | null {
+  if (!raw) return null;
+  const path = raw.trim();
+  if (!path.startsWith('/') || path.startsWith('//')) return null;
+  if (!path.startsWith('/officer/') && path !== '/officer') return null;
+  return path;
+}
+
 /** ACL LEO do proxy — không render Access Denied trên client. */
 export function TrackingPageClient() {
   const router = useRouter();
@@ -32,7 +44,8 @@ export function TrackingPageClient() {
 
   const handleBackFromDetail = () => {
     if (detailFromQuery) {
-      router.replace('/officer/tracking', { scroll: false });
+      const from = resolveSafeOfficerFrom(searchParams.get('from'));
+      router.replace(from ?? '/officer/tracking', { scroll: false });
       return;
     }
     setDetailReportId(null);

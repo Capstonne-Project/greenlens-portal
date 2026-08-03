@@ -1,0 +1,47 @@
+import type { ReportSeverityDto } from '@/lib/api/dto/report.dto';
+import type { ReportQueuePaginationDto } from '@/lib/api/dto/reportQueue.dto';
+import type { ViolationRecurrenceMediaDto } from '@/lib/api/dto/violationRecurrence.dto';
+import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
+
+/**
+ * GET /v1/reports/violation-recurrence-candidates — báo cáo Closed trước đó trong bán kính ≤50m
+ * cùng category trong 30 ngày (BR-REP-034).
+ */
+export interface ViolationRecurrenceCandidatePriorDto {
+  id: string;
+  code: string;
+  address: string;
+  status: string;
+  closedAt: string;
+  daysSinceClosed: number;
+  media: ViolationRecurrenceMediaDto[];
+}
+
+/**
+ * GET /v1/reports/violation-recurrence-candidates — một báo cáo bị gắn cờ
+ * `isSuspectedViolationRecurrence` [LEO/DEO].
+ */
+export interface ViolationRecurrenceCandidateItemDto {
+  id: string;
+  code: string;
+  categoryName: string;
+  severity: ReportSeverityDto;
+  status: ReportQueueStatus;
+  latitude: number;
+  longitude: number;
+  address: string;
+  createdAt: string;
+  media: ViolationRecurrenceMediaDto[];
+  priorClosedReport: ViolationRecurrenceCandidatePriorDto | null;
+}
+
+/** GET /v1/reports/violation-recurrence-candidates — data envelope. */
+export interface ViolationRecurrenceCandidatesDataDto {
+  items: ViolationRecurrenceCandidateItemDto[];
+  pagination: ReportQueuePaginationDto;
+}
+
+export interface ViolationRecurrenceCandidatesParamsDto {
+  page?: number;
+  pageSize?: number;
+}

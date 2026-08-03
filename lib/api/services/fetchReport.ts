@@ -2,7 +2,10 @@ import {
   adaptFetchReportDetail,
   adaptFetchReportProgress,
 } from '@/lib/api/adapters/report.adapter';
+import { adaptFetchDuplicateCandidates } from '@/lib/api/adapters/duplicateCandidate.adapter';
+import { adaptFetchDuplicateCandidateDetail } from '@/lib/api/adapters/duplicateCandidateDetail.adapter';
 import { adaptFetchReportQueue } from '@/lib/api/adapters/reportQueue.adapter';
+import { adaptFetchViolationRecurrenceCandidates } from '@/lib/api/adapters/violationRecurrenceCandidate.adapter';
 import {
   adaptAssignReport,
   adaptConfirmDuplicate,
@@ -16,8 +19,18 @@ import {
   adaptDismissViolationRecurrence,
   adaptFetchViolationRecurrenceComparison,
 } from '@/lib/api/adapters/violationRecurrence.adapter';
+import { adaptCreateInspectionReport } from '@/lib/api/adapters/inspectionReport.adapter';
+import type {
+  DuplicateCandidatesData,
+  DuplicateCandidatesParams,
+} from '@/lib/api/models/duplicateCandidate';
+import type { DuplicateCandidateDetail } from '@/lib/api/models/duplicateCandidateDetail';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
+import type {
+  ViolationRecurrenceCandidatesData,
+  ViolationRecurrenceCandidatesParams,
+} from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportProgress } from '@/lib/api/models/reportProgress';
 import type {
   AssignReportInput,
@@ -33,9 +46,31 @@ import type {
   DismissViolationRecurrenceResult,
   ViolationRecurrenceComparison,
 } from '@/lib/api/models/violationRecurrence';
+import type {
+  CreateInspectionReportInput,
+  CreateInspectionReportResult,
+} from '@/lib/api/models/inspectionReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 import type { IdempotencyRequestOptions } from '@/lib/api/idempotency';
 
+export type {
+  DuplicateCandidateItem,
+  DuplicateCandidateMedia,
+  DuplicateCandidatePrimary,
+  DuplicateCandidatesData,
+  DuplicateCandidatesParams,
+} from '@/lib/api/models/duplicateCandidate';
+export type {
+  DuplicateCandidateDetail,
+  DuplicateCandidateDetailMedia,
+  DuplicateCandidateDetailSide,
+} from '@/lib/api/models/duplicateCandidateDetail';
+export type {
+  ViolationRecurrenceCandidateItem,
+  ViolationRecurrenceCandidatePrior,
+  ViolationRecurrenceCandidatesData,
+  ViolationRecurrenceCandidatesParams,
+} from '@/lib/api/models/violationRecurrenceCandidate';
 export type {
   ReportAssignment,
   ReportDetail,
@@ -93,6 +128,10 @@ export type {
   ViolationRecurrenceMedia,
   ViolationRecurrenceReport,
 } from '@/lib/api/models/violationRecurrence';
+export type {
+  CreateInspectionReportInput,
+  CreateInspectionReportResult,
+} from '@/lib/api/models/inspectionReport';
 
 /** GET /v1/reports/{id} — chi tiết một báo cáo */
 export async function fetchReportDetail(id: string): Promise<ReportDetail> {
@@ -104,6 +143,36 @@ export async function fetchReportQueue(
   params?: ReportQueueParams
 ): Promise<ApiEnvelope<ReportQueueData>> {
   return adaptFetchReportQueue(params);
+}
+
+/**
+ * GET /v1/reports/duplicate-candidates — [LEO/DEO] danh sách báo cáo nghi ngờ trùng lặp.
+ * BR-REP-031: kèm báo cáo gốc (`primary`) để LEO so sánh và quyết định gộp/bác bỏ.
+ */
+export async function fetchDuplicateCandidates(
+  params?: DuplicateCandidatesParams
+): Promise<ApiEnvelope<DuplicateCandidatesData>> {
+  return adaptFetchDuplicateCandidates(params);
+}
+
+/**
+ * GET /v1/reports/{id}/duplicate-candidate-detail — BR-REP-031/032.
+ * `reportId` = báo cáo nghi trùng; `primaryReport` trong kết quả = báo cáo gốc.
+ */
+export async function fetchDuplicateCandidateDetail(
+  reportId: string
+): Promise<DuplicateCandidateDetail> {
+  return adaptFetchDuplicateCandidateDetail(reportId);
+}
+
+/**
+ * GET /v1/reports/violation-recurrence-candidates — [LEO/DEO] danh sách báo cáo nghi tái phạm.
+ * BR-REP-034: kèm prior Closed (+ media 2 bên) để LEO so sánh và quyết định mở thanh tra / bác bỏ.
+ */
+export async function fetchViolationRecurrenceCandidates(
+  params?: ViolationRecurrenceCandidatesParams
+): Promise<ApiEnvelope<ViolationRecurrenceCandidatesData>> {
+  return adaptFetchViolationRecurrenceCandidates(params);
 }
 
 /** GET /v1/reports/{id}/progress — [LEO] tiến trình xử lý báo cáo. */
@@ -184,9 +253,23 @@ export async function dismissViolationRecurrence(
   return adaptDismissViolationRecurrence(reportId);
 }
 
+/**
+ * POST /v1/reports/{id}/inspections — [LEO] lập hồ sơ xử phạt nháp
+ * (BR-INS-001, BR-OFF-005).
+ */
+export async function createInspectionReport(
+  reportId: string,
+  body: CreateInspectionReportInput
+): Promise<CreateInspectionReportResult> {
+  return adaptCreateInspectionReport(reportId, body);
+}
+
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
+  fetchDuplicateCandidates,
+  fetchDuplicateCandidateDetail,
+  fetchViolationRecurrenceCandidates,
   fetchReportProgress,
   assignReport,
   dispatchReportToCompany,
@@ -197,5 +280,6 @@ const reportService = {
   dismissDuplicateReport,
   fetchViolationRecurrenceComparison,
   dismissViolationRecurrence,
+  createInspectionReport,
 };
 export default reportService;
