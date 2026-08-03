@@ -12,7 +12,7 @@ import {
   ImageIcon,
   Loader2,
   MapPinned,
-  MoreHorizontal,
+  MoreVertical,
   Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -92,15 +92,15 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
     className: 'w-[28%] min-w-0 @[44rem]/dup-table:w-[30%]',
   },
   { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
-  { key: 'source', label: 'Nguồn phát hiện', className: 'w-[12%] min-w-0' },
-  { key: 'similarity', label: 'AI tương đồng', className: 'w-[9%] min-w-0' },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
     className: 'w-[16%] min-w-0 max-w-0',
   },
+  { key: 'source', label: 'Nguồn phát hiện', className: 'w-[12%] min-w-0' },
+  { key: 'similarity', label: 'AI tương đồng', className: 'w-[9%] min-w-0' },
   { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
   {
     key: 'actions',
     label: '',
@@ -344,7 +344,7 @@ function DuplicateRowActions({
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
             )}
           >
-            <MoreHorizontal className="size-4" aria-hidden />
+            <MoreVertical className="size-4" aria-hidden />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
