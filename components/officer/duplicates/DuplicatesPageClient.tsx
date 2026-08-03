@@ -95,7 +95,7 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[22%] min-w-0 max-w-0',
+    className: 'w-[18%] min-w-0 max-w-0',
   },
   { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[10%] min-w-0' },
   { key: 'similarity', label: 'AI tương đồng', className: 'w-[10%] min-w-0' },
