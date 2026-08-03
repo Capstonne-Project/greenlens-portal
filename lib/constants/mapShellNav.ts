@@ -182,13 +182,6 @@ export function getMapShellNavForRole(
     );
   } else if (role === 'LEO') {
     mainNav.push(
-      NAV_ITEMS.verify,
-      NAV_ITEMS.assign,
-      NAV_ITEMS.tracking,
-      NAV_ITEMS.community,
-      NAV_ITEMS.workforce
-    );
-    mainNav.push(
       withSection(NAV_ITEMS.map, 'Tổng quan'),
       NAV_ITEMS.overview,
       withSection(NAV_ITEMS.verify, 'Báo cáo'),
@@ -196,6 +189,7 @@ export function getMapShellNavForRole(
       NAV_ITEMS.tracking,
       NAV_ITEMS.duplicates,
       NAV_ITEMS.recurrence,
+      withSection(NAV_ITEMS.community, 'Cộng đồng'),
       withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
   } else {
