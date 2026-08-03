@@ -11,18 +11,14 @@ import {
   Eye,
   ImageIcon,
   Loader2,
-  MapPinned,
   MoreVertical,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
   DuplicateCandidateCompareDialog,
-  detectionSourceLabel,
   firstDuplicateMediaUrl,
   formatSimilarity,
-  isAiDetectionSource,
 } from '@/components/officer/duplicates/DuplicateCandidateCompareDialog';
 import {
   DropdownMenu,
@@ -43,10 +39,8 @@ import {
 } from '@/components/ui/table';
 import { useDuplicateCandidates } from '@/hooks/useOfficer';
 import type { DuplicateCandidateItem } from '@/lib/api/models/duplicateCandidate';
-import {
-  REPORT_SEVERITY_BADGE_CLASSES,
-  REPORT_SEVERITY_LABEL_VI,
-} from '@/lib/constants/reportActions';
+import type { ReportSeverity } from '@/lib/api/models/adminReport';
+import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -58,7 +52,6 @@ type ColumnKey =
   | 'report'
   | 'severity'
   | 'status'
-  | 'source'
   | 'similarity'
   | 'address'
   | 'created'
@@ -81,6 +74,14 @@ function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
 
 const ROW_BORDER = 'border-b border-slate-200';
 
+/** Traffic-light text colors for severity (no badge). */
+const SEVERITY_TEXT_CLASSES: Record<ReportSeverity, string> = {
+  Critical: 'text-red-700',
+  High: 'text-red-600',
+  Medium: 'text-orange-600',
+  Low: 'text-green-600',
+};
+
 /**
  * Proportional widths (`table-fixed`) — fluid theo content area (sidebar collapse/expand).
  * Cột đầu: ảnh + stack code / id / categoryName (kiểu Transaction row).
@@ -91,23 +92,21 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
     label: 'Báo cáo',
     className: 'w-[28%] min-w-0 @[44rem]/dup-table:w-[30%]',
   },
-  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[16%] min-w-0 max-w-0',
+    className: 'w-[22%] min-w-0 max-w-0',
   },
-  { key: 'source', label: 'Nguồn phát hiện', className: 'w-[12%] min-w-0' },
-  { key: 'similarity', label: 'AI tương đồng', className: 'w-[9%] min-w-0' },
-  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[10%] min-w-0' },
+  { key: 'similarity', label: 'AI tương đồng', className: 'w-[10%] min-w-0' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[12%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[12%] min-w-0' },
   {
     key: 'actions',
     label: '',
     className: 'w-12 @[44rem]/dup-table:w-14',
   },
 ];
-
 const BADGE_BASE =
   'inline-flex max-w-full min-w-0 items-center truncate rounded-full font-medium leading-none';
 const BADGE_SIZE =
@@ -196,13 +195,18 @@ function CreatedCell({ iso }: { iso: string }) {
   );
 }
 
-function SeverityBadge({ severity }: { severity: DuplicateCandidateItem['severity'] }) {
+function SeverityText({ severity }: { severity: DuplicateCandidateItem['severity'] }) {
+  const label = REPORT_SEVERITY_LABEL_VI[severity];
   return (
     <span
-      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_SEVERITY_BADGE_CLASSES[severity])}
-      title={REPORT_SEVERITY_LABEL_VI[severity]}
+      className={cn(
+        'block min-w-0 truncate text-[11px] font-medium leading-snug',
+        '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm',
+        SEVERITY_TEXT_CLASSES[severity] ?? 'text-slate-500'
+      )}
+      title={label}
     >
-      {REPORT_SEVERITY_LABEL_VI[severity]}
+      {label}
     </span>
   );
 }
@@ -212,31 +216,6 @@ function StatusBadge({ status }: { status: DuplicateCandidateItem['status'] }) {
   return (
     <span className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])} title={label}>
       {label}
-    </span>
-  );
-}
-
-function SourceBadge({ source }: { source: string | null }) {
-  if (!source) return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
-  const isAi = isAiDetectionSource(source);
-  return (
-    <span
-      className={cn(
-        BADGE_BASE,
-        BADGE_SIZE,
-        'gap-1',
-        isAi
-          ? 'bg-violet-50 text-violet-800 ring-1 ring-violet-200/80'
-          : 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
-      )}
-      title={`${detectionSourceLabel(source)} · ${source}`}
-    >
-      {isAi ? (
-        <Sparkles className="size-2.5 shrink-0" aria-hidden />
-      ) : (
-        <MapPinned className="size-2.5 shrink-0" aria-hidden />
-      )}
-      <span className="truncate">{isAi ? 'AI' : 'Vị trí & thời gian'}</span>
     </span>
   );
 }
@@ -376,11 +355,9 @@ function renderDuplicateCell(
     case 'report':
       return <ReportIdentityCell row={row} priority={opts?.imagePriority} />;
     case 'severity':
-      return <SeverityBadge severity={row.severity} />;
+      return <SeverityText severity={row.severity} />;
     case 'status':
       return <StatusBadge status={row.status} />;
-    case 'source':
-      return <SourceBadge source={row.duplicateDetectionSource} />;
     case 'similarity': {
       const label = formatSimilarity(row.aiSimilarityScore);
       if (!label) return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
