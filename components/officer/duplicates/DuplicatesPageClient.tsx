@@ -49,7 +49,10 @@ import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constant
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 
-const DUPLICATES_PAGE_SIZE = 10;
+const DUPLICATES_PAGE_SIZE = 5;
+
+/** Deep-link về list trùng lặp khi back từ tracking detail. */
+const DUPLICATES_LIST_PATH = '/officer/duplicates';
 
 type ColumnKey =
   | 'report'
@@ -376,7 +379,10 @@ function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['prima
         Báo cáo gốc
       </p>
       <Link
-        href={`/officer/tracking?reportId=${encodeURIComponent(primary.id)}`}
+        href={`/officer/tracking?${new URLSearchParams({
+          reportId: primary.id,
+          from: DUPLICATES_LIST_PATH,
+        }).toString()}`}
         title={primary.code}
         onClick={e => e.stopPropagation()}
         className={cn(
