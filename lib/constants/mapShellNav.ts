@@ -8,6 +8,7 @@ import {
   faFileLines,
   faGaugeHigh,
   faGear,
+  faHandHoldingHeart,
   faHistory,
   faRoute,
   faUsers,
@@ -104,6 +105,12 @@ const NAV_ITEMS = {
     href: '/officer/tracking',
     icon: faRoute,
   },
+  community: {
+    id: 'community',
+    label: 'Dọn cộng đồng',
+    href: '/officer/community',
+    icon: faHandHoldingHeart,
+  },
   duplicates: {
     id: 'duplicates',
     label: 'Trùng lặp',
@@ -174,6 +181,13 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.companies, 'Quản lý')
     );
   } else if (role === 'LEO') {
+    mainNav.push(
+      NAV_ITEMS.verify,
+      NAV_ITEMS.assign,
+      NAV_ITEMS.tracking,
+      NAV_ITEMS.community,
+      NAV_ITEMS.workforce
+    );
     mainNav.push(
       withSection(NAV_ITEMS.map, 'Tổng quan'),
       NAV_ITEMS.overview,
