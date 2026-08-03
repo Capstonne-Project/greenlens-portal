@@ -1,11 +1,15 @@
 'use client';
 
 import { isAxiosError } from '@/lib/api/core';
+import { persistAuthSession } from '@/lib/api/authSessionClient';
 import { changePassword, loginWithEmailPassword } from '@/lib/api/services/fetchAuth';
 import type { ApiErrorEnvelope } from '@/lib/api/services/fetchAuth';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getDashboardPathByRole } from '@/lib/auth/mapUser';
-import { setAuthCookies, setMustChangePasswordCookie } from '@/lib/storage/authCookies';
+import {
+  clearLegacyClientAuthCookies,
+  setMustChangePasswordCookie,
+} from '@/lib/storage/authCookies';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -20,10 +24,18 @@ export function useLogin() {
   const setAuth = useAuthStore(s => s.setAuth);
 
   return useMutation({
-    mutationFn: loginWithEmailPassword,
+    mutationFn: async (input: Parameters<typeof loginWithEmailPassword>[0]) => {
+      const envelope = await loginWithEmailPassword(input);
+      const { accessToken, refreshToken } = envelope.data;
+      const persisted = await persistAuthSession(accessToken, refreshToken);
+      if (!persisted) {
+        throw new Error('Không lưu được phiên đăng nhập. Vui lòng thử lại.');
+      }
+      return envelope;
+    },
     onSuccess: envelope => {
-      const { accessToken, refreshToken, user } = envelope.data;
-      setAuthCookies(accessToken, refreshToken);
+      const { accessToken, user } = envelope.data;
+      clearLegacyClientAuthCookies();
       const authUser = buildAuthUserFromApi(user);
       setMustChangePasswordCookie(Boolean(authUser.mustChangePassword));
       setAuth(accessToken, authUser);

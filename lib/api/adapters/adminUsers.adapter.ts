@@ -8,6 +8,7 @@ import type {
   ChangeUserRoleBodyDto,
   CreateAdminUserBodyDto,
   CreateAdminUserDataDto,
+  ToggleBanUserDataDto,
   UpdateAdminUserBodyDto,
 } from '@/lib/api/dto/adminUser.dto';
 import {
@@ -17,6 +18,7 @@ import {
   mapAdminUsersPagedDto,
   mapAdminUserMutationDataDto,
   mapCreateAdminUserDataDto,
+  mapToggleBanUserDataDto,
 } from '@/lib/api/mappers/adminUser.mapper';
 import type {
   AdminRole,
@@ -26,6 +28,7 @@ import type {
   AdminUsersListParams,
   AdminUserMutationResult,
   CreateAdminUserInput,
+  ToggleBanUserResult,
   UpdateAdminUserInput,
 } from '@/lib/api/models/adminUser';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
@@ -239,4 +242,12 @@ export async function adaptChangeAdminUserRole(
     status: res.data.status,
     data: null,
   };
+}
+
+/** PUT /v1/admin/users/{id}/ban — toggle cấm/bỏ cấm tài khoản. */
+export async function adaptToggleBanUser(id: string): Promise<ApiEnvelope<ToggleBanUserResult>> {
+  const res = await apiService.put<ApiEnvelope<ToggleBanUserDataDto>>(
+    `/v1/admin/users/${encodeURIComponent(id)}/ban`
+  );
+  return mapApiEnvelope(res.data, mapToggleBanUserDataDto);
 }

@@ -8,7 +8,7 @@ import { NotificationDrawerPanel } from './NotificationDrawerPanel';
 
 /**
  * Drawer trượt từ phải — mount 1 lần trong AppSidebar.
- * Data: REST qua React Query. Realtime: `useNotificationRealtime` gắn ở nav trigger.
+ * Data: REST qua React Query. Realtime: SignalR (`lib/realtime`) → `useNotificationRealtime` ở bell/nav.
  */
 export function NotificationDrawer() {
   const pathname = usePathname();

@@ -282,7 +282,7 @@ export function AppSidebar({
           </nav>
         </div>
 
-        <div className="relative z-10 flex shrink-0 flex-col gap-2 bg-[#f7f7f7] pt-2">
+        <div className="relative z-10 flex shrink-0 flex-col gap-2 overflow-visible bg-[#f7f7f7] pt-2">
           <NotificationNavButton
             label={notifications.label}
             icon={<NavIcon item={notifications} />}

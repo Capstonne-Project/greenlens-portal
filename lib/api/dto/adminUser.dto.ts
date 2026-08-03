@@ -74,3 +74,9 @@ export interface AdminUserMutationDataDto {
 export interface ChangeUserRoleBodyDto {
   newRole: string;
 }
+
+export interface ToggleBanUserDataDto {
+  userId: string;
+  isBanned: boolean;
+  message: string;
+}

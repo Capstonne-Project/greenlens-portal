@@ -3,6 +3,7 @@ import type {
   ConfirmDuplicateBodyDto,
   DispatchToCompanyBodyDto,
   DuplicateActionResponseDto,
+  RejectReportBodyDto,
   ReassignReportBodyDto,
   VerifyReportBodyDto,
   VerifyReportResponseDto,
@@ -12,6 +13,7 @@ import type {
   ConfirmDuplicateInput,
   DispatchToCompanyInput,
   DuplicateActionResult,
+  RejectReportInput,
   ReassignReportInput,
   VerifyReportInput,
   VerifyReportResult,
@@ -78,6 +80,21 @@ export async function adaptVerifyReport(
   const payload = mapVerifyReportBody(body);
   const res = await apiService.put<VerifyReportResponseDto>(
     `/v1/reports/${reportId}/verify`,
+    payload
+  );
+  return mapVerifyReportResponse(res.data);
+}
+
+/** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo. */
+export async function adaptRejectReport(
+  reportId: string,
+  body: RejectReportInput
+): Promise<VerifyReportResult> {
+  const payload: RejectReportBodyDto = {
+    reason: body.reason.trim(),
+  };
+  const res = await apiService.put<VerifyReportResponseDto>(
+    `/v1/reports/${reportId}/reject`,
     payload
   );
   return mapVerifyReportResponse(res.data);

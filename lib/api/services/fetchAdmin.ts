@@ -10,6 +10,7 @@ import {
   adaptChangeAdminUserRole,
   adaptCreateAdminUser,
   adaptDeleteAdminUser,
+  adaptToggleBanUser,
   adaptUpdateAdminUser,
   clearAdminAllUsersCache,
 } from '@/lib/api/adapters/adminUsers.adapter';
@@ -21,6 +22,7 @@ import type {
   AdminUsersList,
   AdminUsersListParams,
   CreateAdminUserInput,
+  ToggleBanUserResult,
   UpdateAdminUserInput,
 } from '@/lib/api/models/adminUser';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -99,7 +101,11 @@ export async function changeAdminUserRole(id: string, newRole: string): Promise<
   return adaptChangeAdminUserRole(id, newRole);
 }
 
-export default {
+export async function toggleBanAdminUser(id: string): Promise<ApiEnvelope<ToggleBanUserResult>> {
+  return adaptToggleBanUser(id);
+}
+
+const adminApi = {
   fetchAdminUsers,
   fetchAdminAllUsers,
   fetchAdminUserDetail,
@@ -108,4 +114,7 @@ export default {
   updateAdminUser,
   deleteAdminUser,
   changeAdminUserRole,
+  toggleBanAdminUser,
 };
+
+export default adminApi;

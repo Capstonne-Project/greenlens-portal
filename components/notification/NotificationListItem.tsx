@@ -27,13 +27,19 @@ const BADGE_SIZE = 28;
 type NotificationListItemProps = {
   item: NotificationItem;
   onSelect: (item: NotificationItem) => void;
+  /** Highlight tạm từ toast realtime (View / click toast). */
+  highlighted?: boolean;
 };
 
 /**
  * Row + menu kiểu Facebook.
  * PUT /v1/notifications/{id}/read — click item chưa đọc hoặc nút menu.
  */
-export function NotificationListItem({ item, onSelect }: NotificationListItemProps) {
+export function NotificationListItem({
+  item,
+  onSelect,
+  highlighted = false,
+}: NotificationListItemProps) {
   const message = item.message?.trim() || '—';
   const [menuOpen, setMenuOpen] = useState(false);
   const categoryBadge = resolveNotificationCategoryBadge(item.categoryName);
@@ -64,11 +70,13 @@ export function NotificationListItem({ item, onSelect }: NotificationListItemPro
   };
 
   return (
-    <div className="px-2 py-0.5">
+    <div className="px-2 py-0.5" id={`ntf-row-${item.id}`}>
       <div
         className={cn(
           'group relative flex w-full items-stretch gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-muted/70',
-          !item.isRead && 'bg-muted/40'
+          !item.isRead && 'bg-muted/40',
+          highlighted &&
+            'bg-emerald-50 ring-2 ring-emerald-500/50 ring-inset dark:bg-emerald-950/40'
         )}
         style={{ minHeight: ROW_H + 24 }}
       >

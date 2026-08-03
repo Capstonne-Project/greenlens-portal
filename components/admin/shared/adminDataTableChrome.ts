@@ -33,3 +33,24 @@ export const ADMIN_TABLE_SCROLL = 'w-full min-w-0';
 
 /** Natural width — avoid min-w-4xl forcing a permanent horizontal scrollbar. */
 export const ADMIN_TABLE_CLASS = 'w-full min-w-0 table-fixed';
+
+/** Compact padding for viewport-fit admin tables (e.g. users list). */
+export function adminTableCellPadCompact(
+  position: 'first' | 'middle' | 'last',
+  layer: 'head' | 'body' = 'body'
+): string {
+  const y = layer === 'head' ? 'py-2' : 'py-2.5';
+  if (position === 'first') return cn('px-0', y, 'ps-14 pe-3');
+  if (position === 'last') return cn('px-0', y, 'ps-3 pe-14');
+  return cn(y, 'px-3 sm:px-4');
+}
+
+/** Centered pagination footer under admin data tables. */
+export const ADMIN_TABLE_PAGINATION_FOOTER =
+  'flex shrink-0 flex-col items-center justify-center gap-1 px-6 py-2';
+
+export const ADMIN_TABLE_PAGINATION_META = 'text-xs text-slate-500 tabular-nums';
+
+/** Centered prev/next pagination (non-PaginationSimple). */
+export const ADMIN_TABLE_PAGINATION_NAV =
+  'flex flex-col items-center gap-2 border-t border-border px-6 py-3';

@@ -442,7 +442,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
             <Button
               onClick={() => void handleSubmit()}
               disabled={!canSubmit}
-              className="bg-foreground text-background hover:bg-foreground/90"
+              className="bg-emerald-600 text-white hover:bg-emerald-500"
             >
               <FontAwesomeIcon icon={faUserPlus} className="mr-1.5 size-3.5" aria-hidden />
               {isSubmitting ? 'Đang phân công...' : 'Phân công'}

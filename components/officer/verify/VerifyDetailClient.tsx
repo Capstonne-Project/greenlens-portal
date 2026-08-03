@@ -39,17 +39,23 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
 import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
-import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
+import {
+  DuplicateSuspectDialog,
+  type SuspectDialogMode,
+} from '@/components/officer/verify/DuplicateSuspectDialog';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
-import { useReportDetail, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
+import {
+  useRejectReport,
+  useReportDetail,
+  useReportQueue,
+  useVerifyReport,
+} from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
-import {
-  REPORT_SEVERITY_BADGE_CLASSES,
-  REPORT_SEVERITY_LABEL_VI,
-} from '@/lib/constants/reportActions';
-import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
+import { normalizeReportQueueStatus, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -60,6 +66,7 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  History,
   Hourglass,
   LayoutGrid as LayoutGridIcon,
   Layers,
@@ -67,10 +74,10 @@ import {
   MapPin,
   RefreshCw,
   Shield,
-  SlidersHorizontal,
   Tag,
   TrendingUp,
   Users,
+  XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -85,25 +92,41 @@ const SEVERITY_SET_BY_LABEL: Record<string, string> = {
 
 /** Nhãn status — dùng chung REPORT_STATUS_LABEL_VI (đồng bộ bảng Verify / Assign / Leo). */
 
+const SEVERITY_TEXT_CLASSES: Record<ReportSeverity, string> = {
+  Low: 'text-slate-600',
+  Medium: 'text-amber-700',
+  High: 'text-orange-700',
+  Critical: 'text-rose-700',
+};
+
+const STATUS_TEXT_CLASSES: Record<ReportStatus, string> = {
+  Submitted: 'text-amber-700',
+  Verified: 'text-emerald-700',
+  Dispatched: 'text-teal-700',
+  Assigned: 'text-sky-700',
+  InProgress: 'text-blue-700',
+  Resolved: 'text-green-700',
+  Reopened: 'text-violet-700',
+  Closed: 'text-zinc-600',
+  Rejected: 'text-rose-700',
+  Duplicate: 'text-orange-700',
+  PenaltyIssued: 'text-fuchsia-700',
+  ClosedNoViolation: 'text-stone-600',
+};
+
 function SeverityBadge({ severity }: { severity: ReportSeverity }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn('border-0 font-semibold', REPORT_SEVERITY_BADGE_CLASSES[severity])}
-    >
+    <span className={cn('text-base font-semibold', SEVERITY_TEXT_CLASSES[severity])}>
       {REPORT_SEVERITY_LABEL_VI[severity]}
-    </Badge>
+    </span>
   );
 }
 
 function StatusBadge({ status }: { status: ReportStatus }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn('border-0 font-semibold', REPORT_STATUS_BADGE_CLASSES[status])}
-    >
+    <span className={cn('text-base font-semibold', STATUS_TEXT_CLASSES[status])}>
       {reportStatusLabelVi(status)}
-    </Badge>
+    </span>
   );
 }
 
@@ -226,6 +249,19 @@ function formatShort(iso: string): string {
   });
 }
 
+function formatBytes(sizeBytes: number): string {
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = sizeBytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const precision = unitIndex === 0 ? 0 : value < 10 ? 1 : 0;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -234,40 +270,77 @@ function HeaderStrip({
   detail,
   pendingCategoryName,
   isPossibleDuplicate = false,
+  isSuspectedViolationRecurrence = false,
 }: {
   detail: ReportDetail;
   pendingCategoryName: string;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
 }) {
   return (
-    <CardTitle className="flex flex-wrap items-center gap-2 text-2xl font-bold tracking-tight">
-      <span>
-        Khu vực {pendingCategoryName} tại {detail.address}
+    <CardTitle className="flex min-w-0 items-start justify-between gap-3 text-2xl font-bold tracking-tight">
+      <span className="min-w-0 flex-1">
+        <span>Khu vực {pendingCategoryName} tại </span>
+        <span className="relative inline-block pr-6">
+          {detail.address}
+          {isPossibleDuplicate ? (
+            <span className="absolute -right-0.5 -top-3">
+              <AnimatedHoverTooltip name="Nghi ngờ trùng lặp">
+                <span
+                  className={cn(
+                    'inline-flex size-5 shrink-0 items-center justify-center',
+                    'rounded-full bg-amber-500 text-white shadow-sm',
+                    'ring-2 ring-white'
+                  )}
+                  aria-label="Nghi ngờ trùng lặp"
+                >
+                  <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+                </span>
+              </AnimatedHoverTooltip>
+            </span>
+          ) : null}
+          {isSuspectedViolationRecurrence ? (
+            <span className={cn('absolute -top-3', isPossibleDuplicate ? 'right-5' : '-right-0.5')}>
+              <AnimatedHoverTooltip name="Nghi ô nhiễm tái phát">
+                <span
+                  className={cn(
+                    'inline-flex size-5 shrink-0 items-center justify-center',
+                    'rounded-full bg-orange-500 text-white shadow-sm',
+                    'ring-2 ring-white'
+                  )}
+                  aria-label="Nghi ô nhiễm tái phát"
+                >
+                  <History className="size-2.5" aria-hidden strokeWidth={2.75} />
+                </span>
+              </AnimatedHoverTooltip>
+            </span>
+          ) : null}
+        </span>
       </span>
-      {isPossibleDuplicate ? (
-        <AnimatedHoverTooltip name="Nghi ngờ trùng lặp">
-          <span
-            className={cn(
-              'inline-flex size-5 shrink-0 items-center justify-center',
-              'rounded-full bg-amber-500 text-white shadow-sm',
-              'ring-2 ring-white'
-            )}
-            aria-label="báo cáo trùng lặp"
-          >
-            <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
-          </span>
-        </AnimatedHoverTooltip>
-      ) : null}
+      <span className="shrink-0 pt-0.5 text-xs font-medium text-slate-400">#{detail.code}</span>
     </CardTitle>
   );
 }
 
 const GALLERY_PREVIEW_MAX = 5;
 
-function Gallery({ media, address }: { media: ReportDetail['media']; address: string }) {
+function Gallery({
+  media,
+  address,
+  createdAt,
+}: {
+  media: ReportDetail['media'];
+  address: string;
+  createdAt: string;
+}) {
   const [showAll, setShowAll] = useState(false);
 
   const images = useMemo(() => media.filter(m => m.mediaType === 'Image'), [media]);
+  const totalSizeBytes = useMemo(
+    () =>
+      media.reduce((sum, item) => sum + (Number.isFinite(item.sizeBytes) ? item.sizeBytes : 0), 0),
+    [media]
+  );
   const total = images.length;
   const hasMore = total > GALLERY_PREVIEW_MAX;
 
@@ -282,9 +355,14 @@ function Gallery({ media, address }: { media: ReportDetail['media']; address: st
         content: (
           <div>
             <p className="text-xl font-bold text-white md:text-2xl">Ảnh {i + 1}</p>
-            <p className="mt-2 max-w-lg text-sm font-normal text-neutral-200">
-              Ảnh hiện trường báo cáo · {total} ảnh
-            </p>
+            <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
+              <span className="rounded-full bg-black/35 px-2 py-1 text-white/95">
+                {formatBytes(totalSizeBytes)}
+              </span>
+              <span className="rounded-full bg-black/35 px-2 py-1 text-white/95">
+                {formatDateTime(createdAt)}
+              </span>
+            </div>
           </div>
         ),
         overlay:
@@ -303,13 +381,25 @@ function Gallery({ media, address }: { media: ReportDetail['media']; address: st
           ) : undefined,
       };
     });
-  }, [images, total, hasMore]);
+  }, [images, total, hasMore, totalSizeBytes, createdAt]);
 
   if (total === 0) {
     return (
-      <Card className="flex h-64 items-center justify-center border-dashed shadow-none">
-        <CardContent className="p-0 text-sm text-muted-foreground">Không có hình ảnh</CardContent>
-      </Card>
+      <div>
+        <Card className="flex h-64 items-center justify-center border-dashed shadow-none">
+          <CardContent className="space-y-2 p-0 text-center text-sm text-muted-foreground">
+            <p>Không có hình ảnh</p>
+            <div className="inline-flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium">
+              <span className="rounded-full bg-muted px-2 py-1 text-foreground">
+                {formatBytes(totalSizeBytes)}
+              </span>
+              <span className="rounded-full bg-muted px-2 py-1 text-foreground">
+                {formatDateTime(createdAt)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -366,7 +456,6 @@ function LocationCard({
   detail,
   pendingCategoryName,
   pendingSeverity,
-  editing,
   pendingCategoryId,
   setPendingCategoryId,
   setPendingSeverity,
@@ -376,7 +465,6 @@ function LocationCard({
   detail: ReportDetail;
   pendingCategoryName: string;
   pendingSeverity: ReportSeverity;
-  editing: boolean;
   pendingCategoryId: string;
   setPendingCategoryId: (id: string) => void;
   setPendingSeverity: (s: ReportSeverity) => void;
@@ -384,6 +472,9 @@ function LocationCard({
   catsLoading: boolean;
 }) {
   const [mapType, setMapType] = useState<'m' | 'k'>('m');
+  const [editingCategoryField, setEditingCategoryField] = useState(false);
+  const [editingSeverityField, setEditingSeverityField] = useState(false);
+  const canEditFields = detail.status === 'Submitted';
   const mapsUrl = `https://www.google.com/maps?q=${detail.latitude},${detail.longitude}`;
 
   const readOnlyItems: Array<{
@@ -404,6 +495,7 @@ function LocationCard({
       value: detail.reopenedCount > 0 ? `${detail.reopenedCount} lần` : 'Không',
     },
   ];
+  const wasteTagNames = detail.wasteTags.map(tag => tag.nameVi.trim()).filter(Boolean);
 
   // Inline-edit Select trigger: underline only, no border-box, matches read-only display size.
   const editSelectTriggerClass =
@@ -416,7 +508,7 @@ function LocationCard({
     <div>
       <Card className="rounded-none border-0 border-t border-border bg-transparent shadow-none">
         <CardHeader className="space-y-0 p-0 pt-6">
-          <CardTitle className="text-2xl">Thông tin báo cáo ô nhiễm</CardTitle>
+          <CardTitle className="text-xl">Thông tin báo cáo ô nhiễm</CardTitle>
         </CardHeader>
         <CardContent className="p-0 pt-5 pb-6">
           <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
@@ -426,23 +518,50 @@ function LocationCard({
               </span>
               <div className="min-w-0 flex-1">
                 <Label className="font-normal text-muted-foreground">Loại ô nhiễm</Label>
-                {editing ? (
-                  <Select
-                    value={pendingCategoryId}
-                    onValueChange={setPendingCategoryId}
-                    disabled={catsLoading}
+                {canEditFields && editingCategoryField ? (
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={pendingCategoryId}
+                      onValueChange={setPendingCategoryId}
+                      disabled={catsLoading}
+                    >
+                      <SelectTrigger className={editSelectTriggerClass}>
+                        <SelectValue placeholder={catsLoading ? 'Đang tải...' : 'Chọn loại'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id} className="text-base">
+                            {cat.nameVi}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="size-8 shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => setEditingCategoryField(false)}
+                      aria-label="Xác nhận loại ô nhiễm"
+                    >
+                      <Check className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                ) : canEditFields ? (
+                  <p
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setEditingCategoryField(true)}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setEditingCategoryField(true);
+                      }
+                    }}
+                    className="cursor-pointer text-lg font-medium text-foreground transition hover:text-emerald-700"
                   >
-                    <SelectTrigger className={editSelectTriggerClass}>
-                      <SelectValue placeholder={catsLoading ? 'Đang tải...' : 'Chọn loại'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id} className="text-base">
-                          {cat.nameVi}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {pendingCategoryName}
+                  </p>
                 ) : (
                   <p className="text-lg font-medium text-foreground">{pendingCategoryName}</p>
                 )}
@@ -455,22 +574,45 @@ function LocationCard({
               </span>
               <div className="min-w-0 flex-1">
                 <Label className="font-normal text-muted-foreground">Mức độ</Label>
-                {editing ? (
-                  <Select
-                    value={pendingSeverity}
-                    onValueChange={v => setPendingSeverity(v as ReportSeverity)}
-                  >
-                    <SelectTrigger className={editSelectTriggerClass}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(['Critical', 'High', 'Medium', 'Low'] as ReportSeverity[]).map(s => (
-                        <SelectItem key={s} value={s} className="text-base">
-                          {REPORT_SEVERITY_LABEL_VI[s]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {canEditFields && editingSeverityField ? (
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <Select
+                      value={pendingSeverity}
+                      onValueChange={v => setPendingSeverity(v as ReportSeverity)}
+                    >
+                      <SelectTrigger className={editSelectTriggerClass}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(['Critical', 'High', 'Medium', 'Low'] as ReportSeverity[]).map(s => (
+                          <SelectItem key={s} value={s} className="text-base">
+                            {REPORT_SEVERITY_LABEL_VI[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="size-8 shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => setEditingSeverityField(false)}
+                      aria-label="Xác nhận mức độ"
+                    >
+                      <Check className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                ) : canEditFields ? (
+                  <div className="mt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditingSeverityField(true)}
+                      className="inline-flex cursor-pointer rounded-sm transition hover:opacity-80"
+                      aria-label="Chỉnh mức độ"
+                    >
+                      <SeverityBadge severity={pendingSeverity} />
+                    </button>
+                  </div>
                 ) : (
                   <div className="mt-0.5">
                     <SeverityBadge severity={pendingSeverity} />
@@ -490,6 +632,26 @@ function LocationCard({
                 </div>
               </div>
             ))}
+
+            <div className="flex items-start gap-3 sm:col-span-2">
+              <span className={infoIconClass}>
+                <Tag className="size-4 text-muted-foreground" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <Label className="font-normal text-muted-foreground">Thẻ rác thải</Label>
+                {wasteTagNames.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {wasteTagNames.map(name => (
+                      <Badge key={name} variant="secondary" className="font-medium">
+                        {name}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-0.5 text-base font-medium text-muted-foreground">Chưa gắn thẻ</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {detail.description ? (
@@ -569,10 +731,13 @@ function LocationCard({
   );
 }
 
-function AiInsightCard({ detail }: { detail: ReportDetail }) {
-  const suspicious = detail.priorityScore >= 0.7;
-  const possibleDuplicate = detail.reporterCount > 1;
-  const reopened = detail.reopenedCount > 0;
+function AiInsightCard({
+  detail,
+  isPossibleDuplicate,
+}: {
+  detail: ReportDetail;
+  isPossibleDuplicate: boolean;
+}) {
   const aiType = detail.aiClassifiedType?.trim();
   const hasAiType = Boolean(aiType);
   const aiConfidence = detail.aiConfidence;
@@ -582,10 +747,9 @@ function AiInsightCard({ detail }: { detail: ReportDetail }) {
         ? `${Math.round(aiConfidence * 100)}%`
         : `${aiConfidence.toFixed(0)}%`
       : 'Không có';
-  const wasteTagLabel =
-    detail.wasteTags.length > 0
-      ? detail.wasteTags.map(tag => tag.nameVi).join(', ')
-      : 'Chưa gắn thẻ';
+  const wasteTags = detail.wasteTags
+    .map(tag => ({ id: tag.tagId, name: tag.nameVi.trim() }))
+    .filter(tag => Boolean(tag.name));
   const aiSuggestedLabel = detail.aiSuggestedWasteTagCodes?.trim() || 'Không có';
   const hasAiData =
     hasAiType ||
@@ -615,31 +779,26 @@ function AiInsightCard({ detail }: { detail: ReportDetail }) {
           tone={aiConfidence != null && aiConfidence >= 0.7 ? 'warn' : 'neutral'}
         />
         <InsightRow label="Gợi ý mã thẻ rác" value={aiSuggestedLabel} tone="neutral" />
-        <InsightRow label="Thẻ rác thải" value={wasteTagLabel} tone="neutral" />
+        <Field orientation="horizontal" className="items-start justify-between gap-3">
+          <Label className="pt-1 text-base font-normal text-muted-foreground">Thẻ rác thải</Label>
+          {wasteTags.length > 0 ? (
+            <div className="flex max-w-[65%] flex-wrap justify-end gap-1.5">
+              {wasteTags.map(tag => (
+                <Badge key={tag.id} variant="secondary" className="font-medium">
+                  {tag.name}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <Badge variant="outline" className="border-0 bg-gray-100 font-semibold text-gray-500">
+              Chưa gắn thẻ
+            </Badge>
+          )}
+        </Field>
         <InsightRow
           label="Nghi ngờ trùng"
-          value={possibleDuplicate ? `${detail.reporterCount} báo cáo` : 'Không'}
-          tone={possibleDuplicate ? 'warn' : 'neutral'}
-        />
-        <InsightRow
-          label="Khả nghi"
-          value={suspicious ? 'Có' : 'Không'}
-          tone={suspicious ? 'danger' : 'neutral'}
-        />
-        <InsightRow
-          label="Đã mở lại"
-          value={reopened ? `${detail.reopenedCount} lần` : 'Không'}
-          tone={reopened ? 'warn' : 'neutral'}
-        />
-        <InsightRow
-          label="Điểm ưu tiên"
-          value={detail.priorityScore.toFixed(2)}
-          tone={suspicious ? 'warn' : 'neutral'}
-        />
-        <InsightRow
-          label="Mức độ đặt bởi"
-          value={SEVERITY_SET_BY_LABEL[detail.severitySetBy] ?? detail.severitySetBy}
-          tone={detail.severitySetBy === 'AI' ? 'warn' : 'neutral'}
+          value={isPossibleDuplicate ? 'Có' : 'Không'}
+          tone={isPossibleDuplicate ? 'warn' : 'neutral'}
         />
       </CardContent>
     </Card>
@@ -674,18 +833,20 @@ function InsightRow({
 
 function SlaActionCard({
   detail,
-  editingCategory,
-  onToggleEditCategory,
   onVerify,
+  onReject,
   isVerifying,
+  isRejecting,
   isPossibleDuplicate,
+  isSuspectedViolationRecurrence,
 }: {
   detail: ReportDetail;
-  editingCategory: boolean;
-  onToggleEditCategory: () => void;
   onVerify: () => void;
+  onReject: () => void;
   isVerifying: boolean;
+  isRejecting: boolean;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
 }) {
   const { isOverdue, remainingMs, percentElapsed, level, totalMs, hasSla } = useSlaCountdown(
     detail.createdAt,
@@ -762,34 +923,40 @@ function SlaActionCard({
         </Card>
       </CardContent>
 
-      <CardFooter className="flex-col gap-2">
-        <Button
-          variant="outline"
-          onClick={onToggleEditCategory}
-          className={
-            editingCategory
-              ? 'w-full border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800'
-              : 'w-full'
-          }
-          aria-pressed={editingCategory}
-        >
-          {editingCategory ? (
-            <Check className="mr-1.5 size-4" />
-          ) : (
-            <SlidersHorizontal className="mr-1.5 size-4" />
-          )}
-          {editingCategory ? 'Hoàn tất chỉnh' : 'Chỉnh loại'}
-        </Button>
-        <Button
-          type="button"
-          disabled={isVerifying}
-          onClick={onVerify}
-          title={isPossibleDuplicate ? 'Kiểm tra trùng trước khi xác minh' : 'Xác minh ngay'}
-          className={cn('w-full text-white', tokens.verifyBtn)}
-        >
-          {isVerifying ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
-          Xác minh
-        </Button>
+      <CardFooter>
+        <div className="flex w-full flex-col gap-2">
+          <Button
+            type="button"
+            disabled={isVerifying || isRejecting}
+            onClick={onVerify}
+            title={
+              isPossibleDuplicate
+                ? 'Kiểm tra trùng trước khi xác minh'
+                : isSuspectedViolationRecurrence
+                  ? 'Kiểm tra tái phát trước khi xác minh'
+                  : 'Xác minh ngay'
+            }
+            className={cn(
+              'w-full text-white',
+              isPossibleDuplicate || isSuspectedViolationRecurrence
+                ? tokens.verifyBtn
+                : 'bg-emerald-600 hover:bg-emerald-500'
+            )}
+          >
+            {isVerifying ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
+            Xác minh
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isVerifying || isRejecting}
+            onClick={onReject}
+            className="w-full border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800"
+          >
+            {isRejecting ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
+            Từ chối
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );
@@ -799,20 +966,22 @@ function ActionCard({
   detail,
   onAssignNow,
   status,
-  editingCategory,
-  onToggleEditCategory,
   onVerify,
+  onReject,
   isVerifying,
+  isRejecting,
   isPossibleDuplicate,
+  isSuspectedViolationRecurrence,
 }: {
   detail: ReportDetail;
   onAssignNow: () => void;
   status: ReportStatus;
-  editingCategory: boolean;
-  onToggleEditCategory: () => void;
   onVerify: () => void;
+  onReject: () => void;
   isVerifying: boolean;
+  isRejecting: boolean;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
 }) {
   if (status === 'InProgress') {
     return (
@@ -839,8 +1008,8 @@ function ActionCard({
         <CardHeader>
           <CardTitle className="text-lg">Trạng thái</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center rounded-lg bg-emerald-50/70 px-4 py-5 text-center">
-          <div className="flex size-11 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-emerald-50">
+        <CardContent className="flex flex-col items-center px-4 py-5 text-center">
+          <div className="flex size-11 items-center justify-center rounded-full border border-emerald-200 bg-white shadow-sm">
             <CheckCircle2 className="size-6 text-emerald-600" />
           </div>
           <p className="mt-3 text-lg font-semibold text-emerald-700">
@@ -854,7 +1023,7 @@ function ActionCard({
         </CardContent>
         <CardFooter>
           <Button
-            className="w-full rounded-full bg-emerald-600 hover:bg-emerald-500"
+            className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500"
             onClick={onAssignNow}
           >
             Phân công đội xử lý
@@ -880,11 +1049,12 @@ function ActionCard({
   return (
     <SlaActionCard
       detail={detail}
-      editingCategory={editingCategory}
-      onToggleEditCategory={onToggleEditCategory}
       onVerify={onVerify}
+      onReject={onReject}
       isVerifying={isVerifying}
+      isRejecting={isRejecting}
       isPossibleDuplicate={isPossibleDuplicate}
+      isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
     />
   );
 }
@@ -920,6 +1090,85 @@ function VerifyAssignPromptDialog({
   );
 }
 
+function RejectReportDialog({
+  open,
+  reason,
+  onReasonChange,
+  onCancel,
+  onSubmit,
+  isSubmitting,
+}: {
+  open: boolean;
+  reason: string;
+  onReasonChange: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+}) {
+  const reasonLength = reason.trim().length;
+  const isReasonValid = reasonLength >= 20;
+
+  return (
+    <Dialog open={open} onOpenChange={isOpen => !isOpen && !isSubmitting && onCancel()}>
+      <DialogContent className="max-w-lg p-0">
+        <DialogHeader className="space-y-2 border-b border-border bg-linear-to-b from-red-50/60 to-transparent px-6 pb-4 pt-6 text-left dark:from-red-500/5">
+          <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-white">
+              <XCircle className="size-4" aria-hidden />
+            </span>
+            Từ chối báo cáo
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+            Vui lòng nhập lý do từ chối tối thiểu 20 ký tự. Báo cáo sẽ chuyển trạng thái sang{' '}
+            <span className="font-medium text-foreground">Rejected</span>.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 px-6 py-5">
+          <Label
+            htmlFor="reject-reason"
+            className="text-xs font-medium uppercase text-muted-foreground"
+          >
+            Lý do từ chối
+          </Label>
+          <textarea
+            id="reject-reason"
+            value={reason}
+            onChange={event => onReasonChange(event.target.value)}
+            rows={4}
+            maxLength={600}
+            placeholder="Nêu rõ thông tin chưa hợp lệ để người gửi có thể chỉnh sửa lại."
+            className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition placeholder:text-muted-foreground focus:border-red-300 focus:ring-1 focus:ring-red-100"
+          />
+          <p
+            className={cn(
+              'text-right text-xs',
+              isReasonValid ? 'text-muted-foreground' : 'font-medium text-red-600'
+            )}
+          >
+            {reasonLength}/20 ký tự tối thiểu
+          </p>
+        </div>
+
+        <DialogFooter className="border-t border-border bg-muted/20 px-6 py-4">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+            Huỷ
+          </Button>
+          <Button
+            type="button"
+            onClick={onSubmit}
+            disabled={!isReasonValid || isSubmitting}
+            className="bg-red-600 text-white hover:bg-red-500"
+          >
+            {isSubmitting ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
+            {isSubmitting ? 'Đang từ chối...' : 'Xác nhận từ chối'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function VerifyDetailClient({
@@ -937,6 +1186,7 @@ export function VerifyDetailClient({
   const { data: detail, isLoading, isError, refetch } = useReportDetail(id);
   const { data: categories = [], isLoading: catsLoading } = useCatalogPollutionCategories();
   const verifyMutation = useVerifyReport();
+  const rejectMutation = useRejectReport();
 
   /** Cùng nguồn flag trùng với hàng đợi — mở DuplicateSuspectDialog trước khi verify. */
   const { data: queueSlice } = useReportQueue(
@@ -958,12 +1208,51 @@ export function VerifyDetailClient({
     queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId
   );
 
+  const isSuspectedViolationRecurrence = Boolean(
+    detail?.isSuspectedViolationRecurrence || queueItem?.isSuspectedViolationRecurrence
+  );
+
+  /** Queue item hoặc stub từ detail — đủ cho DuplicateSuspectDialog mode=recurrence. */
+  const suspectDialogRow = useMemo((): ReportQueueItem | null => {
+    if (queueItem) return queueItem;
+    if (!detail?.isSuspectedViolationRecurrence) return null;
+    const image = detail.media.find(m => m.mediaType.toLowerCase().includes('image'));
+    return {
+      id: detail.id,
+      code: detail.code,
+      categoryCode: detail.categoryCode,
+      categoryName: detail.categoryName,
+      severity: detail.severity,
+      status: normalizeReportQueueStatus(String(detail.status)),
+      latitude: detail.latitude,
+      longitude: detail.longitude,
+      address: detail.address,
+      wardCode: detail.wardCode,
+      priorityScore: detail.priorityScore,
+      createdAt: detail.createdAt,
+      slaVerifyDueAt: detail.slaVerifyDueAt,
+      slaResolveDueAt: detail.slaResolveDueAt,
+      firstImageUrl: image?.url ?? detail.media[0]?.url ?? null,
+      isPossibleDuplicate: false,
+      possibleDuplicateOfReportId: null,
+      possibleDuplicateOfReportCode: null,
+      duplicateDetectionSource: null,
+      aiSimilarityScore: null,
+      duplicateCandidateCount: 0,
+      isSuspectedViolationRecurrence: true,
+      suspectedRecurrenceOfReportId: detail.suspectedRecurrenceOfReportId,
+      suspectedRecurrenceOfReportCode: detail.priorClosedReport?.code ?? null,
+    };
+  }, [queueItem, detail]);
+
   const [pendingCategoryId, setPendingCategoryId] = useState<string>('');
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
-  const [editingCategory, setEditingCategory] = useState(false);
   const [assignPromptOpen, setAssignPromptOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Sync pending state once detail loads (runs once)
   const [synced, setSynced] = useState(false);
@@ -1012,7 +1301,7 @@ export function VerifyDetailClient({
 
   const handleAssignAfterVerify = () => {
     setAssignPromptOpen(false);
-    setAssignDialogOpen(true);
+    router.push(`/officer/assign?highlightReportId=${encodeURIComponent(detail.id)}`);
   };
 
   const handleAssigned = () => {
@@ -1020,13 +1309,25 @@ export function VerifyDetailClient({
     void refetch();
   };
 
-  const handleVerify = async () => {
-    // Đồng bộ VerifyPageClient.handleQuickVerify — nghi trùng → dialog, không gọi verify ngay
-    if (queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId) {
-      setDuplicateDialogOpen(true);
-      return;
-    }
+  const handleReject = async () => {
+    const reason = rejectReason.trim();
+    if (reason.length < 20) return;
 
+    try {
+      const result = await rejectMutation.mutateAsync({
+        reportId: detail.id,
+        body: { reason },
+      });
+      toastApiSuccess(result, 'Đã từ chối báo cáo.');
+      setRejectDialogOpen(false);
+      setRejectReason('');
+      await refetch();
+    } catch (error) {
+      toastApiError(error, 'Không thể từ chối báo cáo.');
+    }
+  };
+
+  const performVerify = async (): Promise<boolean> => {
     const body = {
       ...(pendingSeverity !== detail.severity ? { overrideSeverity: pendingSeverity } : {}),
       ...(pendingCategoryId !== detail.categoryId ? { overrideCategoryId: pendingCategoryId } : {}),
@@ -1035,14 +1336,39 @@ export function VerifyDetailClient({
     try {
       const result = await verifyMutation.mutateAsync({ reportId: detail.id, body });
       toastApiSuccess(result, 'Đã xác minh báo cáo.');
-      setEditingCategory(false);
       await refetch();
       if (detailMode === 'verify') {
         setAssignPromptOpen(true);
       }
+      return true;
     } catch (error) {
       toastApiError(error, 'Không thể xác minh báo cáo.');
+      return false;
     }
+  };
+
+  const handleVerify = async () => {
+    // Đồng bộ VerifyPageClient.handleQuickVerify — nghi trùng → dialog, không gọi verify ngay
+    if (queueItem?.isPossibleDuplicate && queueItem.possibleDuplicateOfReportId) {
+      setSuspectDialogMode('duplicate');
+      setDuplicateDialogOpen(true);
+      return;
+    }
+
+    if (isSuspectedViolationRecurrence && suspectDialogRow) {
+      setSuspectDialogMode('recurrence');
+      setDuplicateDialogOpen(true);
+      return;
+    }
+
+    await performVerify();
+  };
+
+  const handleContinueRecurrenceVerify = async () => {
+    const ok = await performVerify();
+    if (!ok) return;
+    setDuplicateDialogOpen(false);
+    setSuspectDialogMode('duplicate');
   };
 
   return (
@@ -1053,9 +1379,10 @@ export function VerifyDetailClient({
         detail={detail}
         pendingCategoryName={pendingCategoryName}
         isPossibleDuplicate={isPossibleDuplicate}
+        isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
       />
 
-      <Gallery media={detail.media} address={detail.address} />
+      <Gallery media={detail.media} address={detail.address} createdAt={detail.createdAt} />
 
       {/* Content below gallery — padded on both sides */}
       <div className="px-14 xl:px-24">
@@ -1064,7 +1391,7 @@ export function VerifyDetailClient({
           <div className="min-w-0 space-y-4">
             {/* Title block */}
             <div className="pt-2 pb-2">
-              <CardTitle className="text-3xl font-bold tracking-tight">
+              <CardTitle className="text-2xl font-semibold tracking-tight">
                 Được báo cáo bởi{' '}
                 {SEVERITY_SET_BY_LABEL[detail.severitySetBy] ?? detail.severitySetBy}
               </CardTitle>
@@ -1088,7 +1415,6 @@ export function VerifyDetailClient({
               detail={detail}
               pendingCategoryName={pendingCategoryName}
               pendingSeverity={pendingSeverity}
-              editing={editingCategory}
               pendingCategoryId={pendingCategoryId}
               setPendingCategoryId={setPendingCategoryId}
               setPendingSeverity={setPendingSeverity}
@@ -1104,37 +1430,46 @@ export function VerifyDetailClient({
 
           {/* Right — sticky: AI insight above action card */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-19 lg:self-start">
-            <AiInsightCard detail={detail} />
+            <AiInsightCard detail={detail} isPossibleDuplicate={isPossibleDuplicate} />
             <ActionCard
               detail={detail}
               onAssignNow={handleAssignNow}
               status={detail.status}
-              editingCategory={editingCategory}
-              onToggleEditCategory={() => setEditingCategory(v => !v)}
               onVerify={() => void handleVerify()}
+              onReject={() => setRejectDialogOpen(true)}
               isVerifying={verifyMutation.isPending}
+              isRejecting={rejectMutation.isPending}
               isPossibleDuplicate={isPossibleDuplicate}
+              isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
             />
           </div>
         </div>
       </div>
 
       <DuplicateSuspectDialog
-        row={duplicateDialogOpen ? queueItem : null}
+        mode={suspectDialogMode}
+        row={duplicateDialogOpen ? suspectDialogRow : null}
         parentPreview={null}
-        open={duplicateDialogOpen && Boolean(queueItem)}
+        open={duplicateDialogOpen && Boolean(suspectDialogRow)}
         onOpenChange={open => {
-          if (!open) setDuplicateDialogOpen(false);
+          if (!open) {
+            setDuplicateDialogOpen(false);
+            setSuspectDialogMode('duplicate');
+          }
         }}
         onGoToParent={() => {
           const parentId = queueItem?.possibleDuplicateOfReportId;
           setDuplicateDialogOpen(false);
+          setSuspectDialogMode('duplicate');
           if (parentId) router.push(`/officer/verify/${parentId}`);
         }}
         onResolved={() => {
           setDuplicateDialogOpen(false);
+          setSuspectDialogMode('duplicate');
           void refetch();
         }}
+        onContinueVerify={() => void handleContinueRecurrenceVerify()}
+        isContinuingVerify={verifyMutation.isPending && suspectDialogMode === 'recurrence'}
       />
 
       <VerifyAssignPromptDialog
@@ -1148,6 +1483,18 @@ export function VerifyDetailClient({
         onClose={() => setAssignDialogOpen(false)}
         reportIds={[detail.id]}
         onAssigned={handleAssigned}
+      />
+
+      <RejectReportDialog
+        open={rejectDialogOpen}
+        reason={rejectReason}
+        onReasonChange={setRejectReason}
+        onCancel={() => {
+          setRejectDialogOpen(false);
+          setRejectReason('');
+        }}
+        onSubmit={() => void handleReject()}
+        isSubmitting={rejectMutation.isPending}
       />
     </div>
   );

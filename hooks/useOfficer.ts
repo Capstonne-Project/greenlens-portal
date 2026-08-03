@@ -4,9 +4,12 @@ import {
   assignReport,
   confirmDuplicateReport,
   dismissDuplicateReport,
+  dismissViolationRecurrence,
   dispatchReportToCompany,
   fetchReportDetail,
   fetchReportQueue,
+  fetchViolationRecurrenceComparison,
+  rejectReport,
   reassignReport,
   verifyReport,
 } from '@/lib/api/services/fetchReport';
@@ -14,11 +17,12 @@ import type {
   AssignReportInput,
   ConfirmDuplicateInput,
   DispatchToCompanyInput,
+  RejectReportInput,
   ReassignReportInput,
   VerifyReportInput,
 } from '@/lib/api/services/fetchReport';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
-import type { ReportStatus } from '@/lib/constants/reportStatus';
+import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
 import {
   keepPreviousData,
@@ -37,12 +41,18 @@ export const officerKeys = {
   detail: (id: string) => [...officerKeys.details(), id] as const,
   queue: () => [...officerKeys.all, 'queue'] as const,
   queueList: (params: ReportQueueParams) => [...officerKeys.queue(), params] as const,
+  /** So sánh tái phát — BR-REP-034 */
+  violationRecurrenceComparison: (id: string) =>
+    [...officerKeys.all, 'violation-recurrence-comparison', id] as const,
 };
 
 const LIST_STALE_MS = 3 * 60 * 1000;
 
 /** Tab Phân công — BE chỉ nhận một `status`/request nên gọi song song rồi gộp. */
-const ASSIGN_QUEUE_STATUSES = ['Verified', 'Rejected'] as const satisfies readonly ReportStatus[];
+const ASSIGN_QUEUE_STATUSES = [
+  'Verified',
+  'Rejected',
+] as const satisfies readonly ReportQueueStatus[];
 
 type AssignReportQueueParams = Omit<ReportQueueParams, 'status'>;
 
@@ -68,9 +78,42 @@ export function useReportQueue(params: ReportQueueParams, options?: { enabled?: 
   });
 }
 
+const LOCATE_QUEUE_PAGE_BATCH = 5;
+
+/**
+ * Tìm `page` chứa `reportId` trong GET /v1/reports/queue (cùng filter/sort).
+ * Dùng cho deep-link notification → highlight đúng trang (không chỉ page 1).
+ */
+export async function locateReportInQueuePage(
+  reportId: string,
+  params: Omit<ReportQueueParams, 'page'>
+): Promise<number | null> {
+  const pageSize = params.pageSize ?? 10;
+  const firstEnv = await fetchReportQueue({ ...params, page: 1, pageSize });
+  const first = firstEnv.data;
+  if (!first) return null;
+  if (first.items.some(item => item.id === reportId)) return 1;
+
+  const totalPages = Math.max(1, first.pagination.totalPages);
+  for (let start = 2; start <= totalPages; start += LOCATE_QUEUE_PAGE_BATCH) {
+    const pages = Array.from(
+      { length: Math.min(LOCATE_QUEUE_PAGE_BATCH, totalPages - start + 1) },
+      (_, i) => start + i
+    );
+    const results = await Promise.all(
+      pages.map(page => fetchReportQueue({ ...params, page, pageSize }))
+    );
+    for (let i = 0; i < results.length; i++) {
+      const items = results[i]?.data?.items;
+      if (items?.some(item => item.id === reportId)) return pages[i] ?? null;
+    }
+  }
+  return null;
+}
+
 /**
  * Phân công — gộp báo cáo `Verified` + `Rejected` từ GET /v1/reports/queue.
- * Gọi 2 request song song, merge và sort `priorityScore` giảm dần.
+ * Gọi 2 request song song, merge và sort `createdAt` mới nhất trước (khớp BE sortDir Desc).
  */
 export function useAssignReportQueue(
   params: AssignReportQueueParams,
@@ -94,7 +137,7 @@ export function useAssignReportQueue(
 
     const items = payloads
       .flatMap(p => p.items)
-      .sort((a, b) => b.priorityScore - a.priorityScore || b.createdAt.localeCompare(a.createdAt));
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
     const totalItems = payloads.reduce((sum, p) => sum + p.pagination.totalItems, 0);
     const totalPages = Math.max(1, ...payloads.map(p => p.pagination.totalPages));
@@ -179,6 +222,20 @@ export function useVerifyReport() {
   });
 }
 
+/** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo (Submitted → Rejected). */
+export function useRejectReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: RejectReportInput }) =>
+      rejectReport(reportId, body),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
 /** POST /v1/reports/{id}/confirm-duplicate — BR-REP-032 xác nhận & gộp trùng. */
 export function useConfirmDuplicateReport() {
   const queryClient = useQueryClient();
@@ -201,6 +258,38 @@ export function useDismissDuplicateReport() {
     mutationFn: ({ reportId }: { reportId: string }) => dismissDuplicateReport(reportId),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/**
+ * GET /v1/reports/{id}/violation-recurrence-comparison — BR-REP-034.
+ * `id` = báo cáo hiện tại (cờ `isSuspectedViolationRecurrence`).
+ */
+export function useViolationRecurrenceComparison(
+  reportId: string,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: officerKeys.violationRecurrenceComparison(reportId),
+    queryFn: () => fetchViolationRecurrenceComparison(reportId),
+    staleTime: LIST_STALE_MS,
+    enabled: (options?.enabled ?? true) && Boolean(reportId),
+  });
+}
+
+/** POST /v1/reports/{id}/dismiss-violation-recurrence — BR-REP-034 bác bỏ nghi tái phát. */
+export function useDismissViolationRecurrence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId }: { reportId: string }) => dismissViolationRecurrence(reportId),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({
+        queryKey: officerKeys.violationRecurrenceComparison(reportId),
+      });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
     },

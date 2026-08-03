@@ -14,6 +14,8 @@ import {
   ADMIN_TABLE_ROW_BORDER,
   ADMIN_TABLE_SCROLL,
   ADMIN_TABLE_SHELL,
+  ADMIN_TABLE_PAGINATION_FOOTER,
+  ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { PaginationSimple } from '@/components/ui/pagination';
@@ -519,18 +521,16 @@ export function AdminPenaltyFrameworksView() {
         </div>
 
         {!listQuery.isPending && !listQuery.isError ? (
-          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-            <div className="min-w-0">
-              {pagination.totalPages > 1 ? (
-                <PaginationSimple
-                  page={pagination.page}
-                  totalPages={pagination.totalPages}
-                  onPageChange={p => setPage(p)}
-                  className="w-auto"
-                />
-              ) : null}
-            </div>
-            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+          <div className={ADMIN_TABLE_PAGINATION_FOOTER}>
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={p => setPage(p)}
+                className="w-auto"
+              />
+            ) : null}
+            <p className={ADMIN_TABLE_PAGINATION_META}>
               {pagination.totalItems.toLocaleString('vi-VN')} rows
             </p>
           </div>

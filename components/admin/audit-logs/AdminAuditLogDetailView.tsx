@@ -8,6 +8,7 @@ import {
   formatAuditDateTime,
   getAuditActionBadgeClass,
 } from '@/utils/auditLogUi';
+import { roleDisplayVi } from '@/utils/adminUserUi';
 import { ArrowLeft, Database, Globe2, Loader2, Monitor, ScrollText, UserRound } from 'lucide-react';
 import Link from 'next/link';
 
@@ -145,7 +146,12 @@ export function AdminAuditLogDetailView({ logId }: AdminAuditLogDetailViewProps)
           icon={Monitor}
           className="md:col-span-2"
         />
-        <MetaCard label="Actor ID" value={data.actorId ?? 'Hệ thống'} icon={UserRound} />
+        <MetaCard
+          label="Vai trò"
+          value={data.actorRole ? roleDisplayVi(data.actorRole) : '—'}
+          icon={UserRound}
+        />
+        <MetaCard label="User ID" value={data.userId ?? 'Hệ thống'} icon={UserRound} />
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">

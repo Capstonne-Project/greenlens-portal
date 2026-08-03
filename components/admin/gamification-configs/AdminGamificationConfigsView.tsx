@@ -7,6 +7,8 @@ import {
   ADMIN_TABLE_ROW_BORDER,
   ADMIN_TABLE_SCROLL,
   ADMIN_TABLE_SHELL,
+  ADMIN_TABLE_PAGINATION_FOOTER,
+  ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import SaveIcon from '@/components/ui/save-icon';
@@ -96,51 +98,20 @@ export function AdminGamificationConfigsView() {
       : 'Không tải được cấu hình gamification.';
 
   return (
-    <div className="w-full min-w-0 space-y-6">
-      <header className="flex flex-col gap-2">
+    <div className="w-full min-w-0 space-y-4">
+      <header>
         <p className="text-sm text-muted-foreground">
           Cấu hình điểm cho từng hành động (verify, resolve, reject…). Thay đổi điểm và bật/tắt hành
           động theo BR-GAM.
         </p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        {[
-          {
-            label: 'Tổng cấu hình',
-            value: String((listQuery.data ?? []).length),
-            hint: 'Toàn bộ actionType',
-          },
-          {
-            label: 'Đang bật',
-            value: String(activeCount),
-            hint: 'Cộng/trừ điểm đang áp dụng',
-          },
-          {
-            label: 'Đã tắt',
-            value: String(inactiveCount),
-            hint: 'Tạm ngưng',
-          },
-        ].map(card => (
-          <article
-            key={card.label}
-            className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {card.label}
-            </p>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-emerald-950">{card.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{card.hint}</p>
-          </article>
-        ))}
-      </section>
-
       <div className="flex flex-wrap gap-2">
         {(
           [
-            { id: 'all', label: 'Tất cả' },
-            { id: 'active', label: 'Đang bật' },
-            { id: 'inactive', label: 'Đã tắt' },
+            { id: 'all', label: 'Tất cả', count: (listQuery.data ?? []).length },
+            { id: 'active', label: 'Đang bật', count: activeCount },
+            { id: 'inactive', label: 'Đã tắt', count: inactiveCount },
           ] as const
         ).map(tab => (
           <button
@@ -148,13 +119,23 @@ export function AdminGamificationConfigsView() {
             type="button"
             onClick={() => setStatusFilter(tab.id)}
             className={cn(
-              'rounded-full border px-3 py-1.5 text-sm font-medium transition',
+              'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition',
               statusFilter === tab.id
                 ? 'border-emerald-600/30 bg-emerald-600/10 text-emerald-900'
                 : 'border-border text-muted-foreground hover:bg-muted'
             )}
           >
             {tab.label}
+            <span
+              className={cn(
+                'inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
+                statusFilter === tab.id
+                  ? 'bg-emerald-600/15 text-emerald-900'
+                  : 'bg-muted text-muted-foreground'
+              )}
+            >
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
@@ -312,8 +293,8 @@ export function AdminGamificationConfigsView() {
         </div>
 
         {!listQuery.isPending && !listQuery.isError && (listQuery.data ?? []).length > 0 ? (
-          <div className="flex shrink-0 items-center justify-end gap-4 px-6 py-3">
-            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+          <div className={ADMIN_TABLE_PAGINATION_FOOTER}>
+            <p className={ADMIN_TABLE_PAGINATION_META}>
               {items.length.toLocaleString('vi-VN')} rows
             </p>
           </div>

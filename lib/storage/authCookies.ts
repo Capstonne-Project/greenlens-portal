@@ -14,13 +14,15 @@ function readCookie(name: string): string | undefined {
   return match ? decodeURIComponent(match[1]) : undefined;
 }
 
-/** Read access token from document cookie (client only). */
-export function getAccessTokenFromCookie(): string | undefined {
+/**
+ * Legacy client-readable token cookies (pre-HttpOnly migration).
+ * HttpOnly cookies are invisible here — use only for one-time migration.
+ */
+export function getLegacyAccessTokenFromCookie(): string | undefined {
   return readCookie(AUTH_COOKIE_ACCESS);
 }
 
-/** Read refresh token from document cookie (client only). */
-export function getRefreshTokenFromCookie(): string | undefined {
+export function getLegacyRefreshTokenFromCookie(): string | undefined {
   return readCookie(AUTH_COOKIE_REFRESH);
 }
 
@@ -30,7 +32,6 @@ export function getMustChangePasswordFromCookie(): boolean {
 }
 
 const ONE_DAY_SEC = 60 * 60 * 24;
-const SEVEN_DAYS_SEC = ONE_DAY_SEC * 7;
 
 function cookieFlags(maxAgeSec: number): string {
   const isProd = process.env.NODE_ENV === 'production';
@@ -38,13 +39,7 @@ function cookieFlags(maxAgeSec: number): string {
   return `Path=/; Max-Age=${maxAgeSec}; SameSite=Lax${secure}`;
 }
 
-/** Persist tokens in cookies for middleware / reload (non-httpOnly — readable by client). */
-export function setAuthCookies(accessToken: string, refreshToken: string): void {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${AUTH_COOKIE_ACCESS}=${encodeURIComponent(accessToken)}; ${cookieFlags(ONE_DAY_SEC)}`;
-  document.cookie = `${AUTH_COOKIE_REFRESH}=${encodeURIComponent(refreshToken)}; ${cookieFlags(SEVEN_DAYS_SEC)}`;
-}
-
+/** Flag cookie only (not a secret) — still client-writable for UX gating. */
 export function setMustChangePasswordCookie(value: boolean): void {
   if (typeof document === 'undefined') return;
   if (value) {
@@ -59,7 +54,8 @@ export function clearMustChangePasswordCookie(): void {
   document.cookie = `${AUTH_COOKIE_MUST_CHANGE_PASSWORD}=; Path=/; Max-Age=0`;
 }
 
-export function clearAuthCookies(): void {
+/** Clear legacy non-HttpOnly token cookies left from older clients. */
+export function clearLegacyClientAuthCookies(): void {
   if (typeof document === 'undefined') return;
   document.cookie = `${AUTH_COOKIE_ACCESS}=; Path=/; Max-Age=0`;
   document.cookie = `${AUTH_COOKIE_REFRESH}=; Path=/; Max-Age=0`;

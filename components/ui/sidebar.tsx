@@ -93,8 +93,9 @@ export function DesktopSidebar({
       data-sidebar-desktop=""
       className={cn(
         // overflow-x clips labels during width tween; overflow-y scrolls long nav.
+        // Không dùng overflow-hidden 2 trục — clip badge noti (absolute) trên rail 60px.
         // Collapsed rail is 60px — use px-3 so content ≥36px and size-9 active chips aren't clipped.
-        'hidden h-full w-[60px] shrink-0 overflow-hidden bg-[#f7f7f7] px-3 py-4 md:flex md:flex-col',
+        'hidden h-full w-[60px] shrink-0 overflow-x-hidden overflow-y-auto bg-[#f7f7f7] px-3 py-4 md:flex md:flex-col',
         className
       )}
       animate={{

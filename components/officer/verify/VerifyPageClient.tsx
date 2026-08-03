@@ -14,6 +14,7 @@ import {
   Eye,
   Filter,
   FlaskConical,
+  History,
   ImageIcon,
   Leaf,
   Loader2,
@@ -25,7 +26,10 @@ import {
 } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
 
-import { DuplicateSuspectDialog } from '@/components/officer/verify/DuplicateSuspectDialog';
+import {
+  DuplicateSuspectDialog,
+  type SuspectDialogMode,
+} from '@/components/officer/verify/DuplicateSuspectDialog';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
@@ -57,7 +61,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
+import { locateReportInQueuePage, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
@@ -785,7 +789,13 @@ function VerifyRowActions({
       <button
         type="button"
         disabled={isVerifying}
-        title={row.isPossibleDuplicate ? 'Kiểm tra trùng trước khi xác minh' : 'Xác minh ngay'}
+        title={
+          row.isPossibleDuplicate
+            ? 'Kiểm tra trùng trước khi xác minh'
+            : row.isSuspectedViolationRecurrence
+              ? 'Kiểm tra tái phát trước khi xác minh'
+              : 'Xác minh ngay'
+        }
         aria-label={`Xác minh ${row.code}`}
         onClick={e => {
           e.stopPropagation();
@@ -839,11 +849,19 @@ export function VerifyPageClient() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [duplicateDialogRow, setDuplicateDialogRow] = useState<ReportQueueItem | null>(null);
+  const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
   const [pairFocus, setPairFocus] = useState<{ childId: string; parentId: string } | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  /** Khi deep-link từ noti: bỏ filter/search tạm để locate + list cùng params. */
+  const [deepLinkMode, setDeepLinkMode] = useState(false);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const highlightClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const deepLinkHighlightAppliedRef = useRef<string | null>(null);
+  const pendingDeepLinkIdRef = useRef<string | null>(null);
+  const resolvedDeepLinkIdRef = useRef<string | null>(null);
+  const locateStartedForRef = useRef<string | null>(null);
+  const deepLinkTargetPageRef = useRef<number | null>(null);
+  const pageRef = useRef(1);
+  const isFetchingRef = useRef(false);
   const verifyMutation = useVerifyReport();
 
   const yearOnlyDefaults = getPresetDateInputs('all');
@@ -1000,22 +1018,38 @@ export function VerifyPageClient() {
     toolbarDatePreset,
   ]);
 
-  const listParams = useMemo(
-    () => ({
+  const listParams = useMemo(() => {
+    const base = {
       page,
       pageSize: VERIFY_PAGE_SIZE,
       status: 'Submitted' as const,
-      sortBy: 'PriorityScore' as const,
+      sortBy: 'CreatedAt' as const,
       sortDir: 'Desc' as const,
+    };
+    /** Deep-link từ noti: queue sạch (không filter/search) khớp locate. */
+    if (deepLinkMode) return base;
+    return {
+      ...base,
       ...(applied.severity !== 'all' ? { severity: applied.severity } : {}),
       ...effectiveDateRange,
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
-    }),
-    [page, applied.severity, applied.categoryId, effectiveDateRange, debouncedSearch]
-  );
+    };
+  }, [
+    page,
+    deepLinkMode,
+    applied.severity,
+    applied.categoryId,
+    effectiveDateRange,
+    debouncedSearch,
+  ]);
 
   const { data, isPending, isFetching, isError, refetch } = useReportQueue(listParams);
+
+  useEffect(() => {
+    pageRef.current = page;
+    isFetchingRef.current = isFetching;
+  }, [page, isFetching]);
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
@@ -1053,30 +1087,156 @@ export function VerifyPageClient() {
 
   const scrollToRow = (id: string) => {
     requestAnimationFrame(() => {
-      rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      rowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
+  };
+
+  const finishDeepLink = (id: string, opts?: { clearHighlight?: boolean }) => {
+    resolvedDeepLinkIdRef.current = id;
+    setDeepLinkMode(false);
+    if (opts?.clearHighlight) {
+      setHighlightedId(null);
+      return;
+    }
+    if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
+    highlightClearRef.current = setTimeout(() => {
+      setHighlightedId(null);
+    }, 4000);
   };
 
   /** Deep-link từ notification: `/officer/verify?highlight={reportId}` */
   useEffect(() => {
     const highlightId = searchParams.get('highlight')?.trim() || null;
-    if (!highlightId || isPending) return;
-    if (deepLinkHighlightAppliedRef.current === highlightId) return;
-    deepLinkHighlightAppliedRef.current = highlightId;
+    if (!highlightId) return;
+
+    pendingDeepLinkIdRef.current = highlightId;
+    resolvedDeepLinkIdRef.current = null;
+    locateStartedForRef.current = null;
+    deepLinkTargetPageRef.current = null;
 
     if (highlightClearRef.current) clearTimeout(highlightClearRef.current);
-    setHighlightedId(highlightId);
 
-    if (items.some(item => item.id === highlightId)) {
-      window.setTimeout(() => scrollToRow(highlightId), 160);
-    }
+    const yearDefaults = getPresetDateInputs('all');
+    const defaults = {
+      severity: 'all' as SeverityFilter,
+      datePreset: 'all' as DatePreset,
+      customFrom: yearDefaults.from,
+      customTo: yearDefaults.to,
+      categoryId: '',
+    };
 
-    highlightClearRef.current = setTimeout(() => {
-      setHighlightedId(null);
-    }, 4000);
+    /** Defer setState — tránh cascade render sync trong effect (React 19 lint). */
+    queueMicrotask(() => {
+      setHighlightedId(highlightId);
+      setPairFocus(null);
+      setDeepLinkMode(true);
+      setSearch('');
+      setToolbarDatePreset('all');
+      setApplied(defaults);
+      setDraft(defaults);
+      setPage(1);
+    });
 
     router.replace('/officer/verify', { scroll: false });
-  }, [searchParams, isPending, items, router]);
+  }, [searchParams, router]);
+
+  /** Resolve: item đã có trên trang hiện tại, hoặc locate sang đúng page. */
+  useEffect(() => {
+    const highlightId = pendingDeepLinkIdRef.current;
+    if (!highlightId) return;
+    if (resolvedDeepLinkIdRef.current === highlightId) return;
+    if (isPending) return;
+
+    if (items.some(item => item.id === highlightId)) {
+      deepLinkTargetPageRef.current = null;
+      finishDeepLink(highlightId);
+      return;
+    }
+
+    /** Đã locate xong — chờ data của trang đích settle. */
+    if (deepLinkTargetPageRef.current != null) {
+      if (page !== deepLinkTargetPageRef.current || isFetching) return;
+      deepLinkTargetPageRef.current = null;
+      finishDeepLink(highlightId, { clearHighlight: true });
+      return;
+    }
+
+    if (locateStartedForRef.current === highlightId) return;
+    locateStartedForRef.current = highlightId;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const foundPage = await locateReportInQueuePage(highlightId, {
+          pageSize: VERIFY_PAGE_SIZE,
+          status: 'Submitted',
+          sortBy: 'CreatedAt',
+          sortDir: 'Desc',
+        });
+        if (cancelled || pendingDeepLinkIdRef.current !== highlightId) return;
+
+        if (foundPage == null) {
+          finishDeepLink(highlightId, { clearHighlight: true });
+          return;
+        }
+
+        const currentPage = pageRef.current;
+        if (foundPage === currentPage) {
+          if (isFetchingRef.current) {
+            locateStartedForRef.current = null;
+            return;
+          }
+          finishDeepLink(highlightId, { clearHighlight: true });
+          return;
+        }
+
+        deepLinkTargetPageRef.current = foundPage;
+        setPage(foundPage);
+      } catch {
+        if (!cancelled) finishDeepLink(highlightId, { clearHighlight: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      /** Strict Mode remount: cho locate lại nếu chưa có target page. */
+      if (
+        resolvedDeepLinkIdRef.current !== highlightId &&
+        deepLinkTargetPageRef.current == null &&
+        locateStartedForRef.current === highlightId
+      ) {
+        locateStartedForRef.current = null;
+      }
+    };
+  }, [items, isPending, isFetching, page]);
+
+  /** Scroll tới row highlight — retry đến khi ref gắn (kể cả dưới fold / sau đổi page). */
+  useEffect(() => {
+    if (!highlightedId) return;
+    if (!items.some(item => item.id === highlightedId)) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 45;
+
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = rowRefs.current.get(highlightedId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (attempts++ < maxAttempts) {
+        requestAnimationFrame(tryScroll);
+      }
+    };
+
+    const timer = window.setTimeout(tryScroll, 80);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [highlightedId, items, page]);
 
   const focusDuplicatePair = (row: ReportQueueItem) => {
     const parentId = row.possibleDuplicateOfReportId;
@@ -1086,6 +1246,7 @@ export function VerifyPageClient() {
     // Child (isPossibleDuplicate) trượt ngay dưới parent; highlight child
     setPairFocus({ childId: row.id, parentId });
     setHighlightedId(row.id);
+    setSuspectDialogMode('duplicate');
     setDuplicateDialogRow(row);
 
     // Đợi layout animation + reorder xong rồi scroll tới cặp (gốc → nghi trùng bên dưới)
@@ -1098,20 +1259,45 @@ export function VerifyPageClient() {
       return;
     }
 
+    if (row.isSuspectedViolationRecurrence) {
+      setSuspectDialogMode('recurrence');
+      setDuplicateDialogRow(row);
+      return;
+    }
+
+    await performVerify(row);
+  };
+
+  /** Verify thật — bỏ qua gate trùng/tái phát (dùng sau dialog recurrence). */
+  const performVerify = async (row: ReportQueueItem): Promise<boolean> => {
     setVerifyingId(row.id);
     try {
       const result = await verifyMutation.mutateAsync({ reportId: row.id, body: {} });
       toastApiSuccess(result, 'Đã xác minh báo cáo.');
+      return true;
     } catch (error) {
       toastApiError(error, 'Không thể xác minh báo cáo.');
+      return false;
     } finally {
       setVerifyingId(null);
     }
   };
 
+  /** Dialog tái phát → xác minh bình thường (giữ cờ tái phát trên BE nếu chưa dismiss). */
+  const handleContinueRecurrenceVerify = async () => {
+    const row = duplicateDialogRow;
+    if (!row) return;
+    const ok = await performVerify(row);
+    if (!ok) return;
+    setDuplicateDialogRow(null);
+    setSuspectDialogMode('duplicate');
+    clearPairFocusSoon();
+  };
+
   const handleDuplicateDialogOpenChange = (open: boolean) => {
     if (open) return;
     setDuplicateDialogRow(null);
+    setSuspectDialogMode('duplicate');
     clearPairFocusSoon();
   };
 
@@ -1352,22 +1538,20 @@ export function VerifyPageClient() {
         </div>
 
         {pagination ? (
-          <div className="flex shrink-0 items-center justify-between gap-4 px-6 py-3">
-            <div className="min-w-0">
-              {pagination.totalPages > 1 ? (
-                <PaginationSimple
-                  page={page}
-                  totalPages={pagination.totalPages}
-                  onPageChange={nextPage => {
-                    setPairFocus(null);
-                    setHighlightedId(null);
-                    setPage(nextPage);
-                  }}
-                  className="w-auto"
-                />
-              ) : null}
-            </div>
-            <p className="shrink-0 text-xs text-slate-500 tabular-nums">
+          <div className="relative flex shrink-0 items-center justify-center px-6 py-3">
+            {pagination.totalPages > 1 ? (
+              <PaginationSimple
+                page={page}
+                totalPages={pagination.totalPages}
+                onPageChange={nextPage => {
+                  setPairFocus(null);
+                  setHighlightedId(null);
+                  setPage(nextPage);
+                }}
+                className="mx-auto w-auto justify-center"
+              />
+            ) : null}
+            <p className="absolute right-6 top-1/2 -translate-y-1/2 text-xs text-slate-500 tabular-nums">
               {pagination.totalItems.toLocaleString('vi-VN')} báo cáo
             </p>
           </div>
@@ -1375,6 +1559,7 @@ export function VerifyPageClient() {
       </div>
 
       <DuplicateSuspectDialog
+        mode={suspectDialogMode}
         row={duplicateDialogRow}
         parentPreview={parentPreview}
         open={Boolean(duplicateDialogRow)}
@@ -1384,6 +1569,10 @@ export function VerifyPageClient() {
           setPairFocus(null);
           setHighlightedId(null);
         }}
+        onContinueVerify={() => void handleContinueRecurrenceVerify()}
+        isContinuingVerify={Boolean(
+          verifyingId && duplicateDialogRow && verifyingId === duplicateDialogRow.id
+        )}
       />
     </>
   );
@@ -1401,6 +1590,7 @@ function renderVerifyCell(
           url={row.firstImageUrl}
           alt={row.code}
           isPossibleDuplicate={row.isPossibleDuplicate}
+          isSuspectedViolationRecurrence={row.isSuspectedViolationRecurrence}
           priority={opts?.imagePriority}
         />
       );
@@ -1451,11 +1641,13 @@ function ReportThumb({
   url,
   alt,
   isPossibleDuplicate = false,
+  isSuspectedViolationRecurrence = false,
   priority = false,
 }: {
   url: string | null;
   alt: string;
   isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
   /** Above-the-fold thumbs — tránh Next LCP lazy warning. */
   priority?: boolean;
 }) {
@@ -1480,23 +1672,56 @@ function ReportThumb({
     </div>
   );
 
-  if (!isPossibleDuplicate) return thumb;
+  if (!isPossibleDuplicate && !isSuspectedViolationRecurrence) return thumb;
 
   return (
     <div className="relative inline-flex">
       {thumb}
-      <AnimatedHoverTooltip name="báo cáo trùng lặp" className="absolute -right-1.5 -top-1.5 z-10">
-        <span
-          className={cn(
-            'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
-            'rounded-full bg-amber-500 text-white shadow-sm',
-            'ring-2 ring-white'
-          )}
-          aria-label="báo cáo trùng lặp"
+      {isPossibleDuplicate ? (
+        <AnimatedHoverTooltip
+          name="Nghi ngờ trùng lặp"
+          className="absolute -right-1.5 -top-1.5 z-10"
         >
-          <Copy className="size-2 @[44rem]/verify-table:size-2.5" aria-hidden strokeWidth={2.75} />
-        </span>
-      </AnimatedHoverTooltip>
+          <span
+            className={cn(
+              'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
+              'rounded-full bg-amber-500 text-white shadow-sm',
+              'ring-2 ring-white'
+            )}
+            aria-label="Nghi ngờ trùng lặp"
+          >
+            <Copy
+              className="size-2 @[44rem]/verify-table:size-2.5"
+              aria-hidden
+              strokeWidth={2.75}
+            />
+          </span>
+        </AnimatedHoverTooltip>
+      ) : null}
+      {isSuspectedViolationRecurrence ? (
+        <AnimatedHoverTooltip
+          name="Nghi ô nhiễm tái phát"
+          className={cn(
+            'absolute z-10',
+            isPossibleDuplicate ? '-right-1.5 top-3.5' : '-right-1.5 -top-1.5'
+          )}
+        >
+          <span
+            className={cn(
+              'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
+              'rounded-full bg-orange-500 text-white shadow-sm',
+              'ring-2 ring-white'
+            )}
+            aria-label="Nghi ô nhiễm tái phát"
+          >
+            <History
+              className="size-2 @[44rem]/verify-table:size-2.5"
+              aria-hidden
+              strokeWidth={2.75}
+            />
+          </span>
+        </AnimatedHoverTooltip>
+      ) : null}
     </div>
   );
 }

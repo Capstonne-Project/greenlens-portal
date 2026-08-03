@@ -2,13 +2,16 @@
 
 import { AdminUserChangeRoleDialog } from '@/components/admin/users/AdminUserChangeRoleDialog';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
-import { useAdminUserDetail } from '@/hooks/useAdminUsers';
+import { useAdminUserDetail, useToggleBanAdminUser } from '@/hooks/useAdminUsers';
 import type { AdminUserDetail } from '@/lib/api/models/adminUser';
 import { getAdminUserMutationError, isAdminUserNotFound } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
-import { Loader2, UserCog } from 'lucide-react';
+import axios from 'axios';
+import { Loader2, ScrollText, ShieldBan, UserCog } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface AdminUserDetailDialogProps {
   userId: string | null;
@@ -52,7 +55,11 @@ export function AdminUserDetailDialog({
   onChangeRole,
 }: AdminUserDetailDialogProps) {
   const { data, isPending, isError, error, refetch } = useAdminUserDetail(userId);
+  const toggleBan = useToggleBanAdminUser();
   const [internalChangeRole, setInternalChangeRole] = useState(false);
+  const [banOverride, setBanOverride] = useState<{ userId: string; isBanned: boolean } | null>(
+    null
+  );
 
   const open = userId != null;
   const notFound = isAdminUserNotFound(error);
@@ -65,6 +72,26 @@ export function AdminUserDetailDialog({
     }
     setInternalChangeRole(true);
   };
+
+  const handleToggleBan = () => {
+    if (!data) return;
+    toggleBan.mutate(data.id, {
+      onSuccess: envelope => {
+        setBanOverride({ userId: data.id, isBanned: envelope.data.isBanned });
+        toast.success(envelope.data.message || 'Đã cập nhật trạng thái cấm.');
+      },
+      onError: err => {
+        if (axios.isAxiosError(err) && err.response?.status === 422) {
+          toast.error('Không thể tự cấm tài khoản của chính mình.');
+          return;
+        }
+        toast.error(getAdminUserMutationError(err, 'Không thể cập nhật trạng thái cấm.'));
+      },
+    });
+  };
+
+  const isBanned =
+    banOverride != null && banOverride.userId === userId ? banOverride.isBanned : false;
 
   const close = () => {
     setInternalChangeRole(false);
@@ -153,12 +180,37 @@ export function AdminUserDetailDialog({
             </dl>
 
             <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <Link
+                href={`/admin/audit-logs?entityType=User&entityId=${encodeURIComponent(data.id)}`}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
+                onClick={close}
+              >
+                <ScrollText className="size-4" aria-hidden />
+                Nhật ký
+              </Link>
               <button
                 type="button"
                 onClick={close}
                 className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
               >
                 Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleBan}
+                disabled={toggleBan.isPending}
+                className={`inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium disabled:opacity-60 ${
+                  isBanned
+                    ? 'border-lime-300 bg-lime-50 text-lime-900 hover:bg-lime-100'
+                    : 'border-red-200 bg-red-50 text-red-900 hover:bg-red-100'
+                }`}
+              >
+                {toggleBan.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <ShieldBan className="size-4" aria-hidden />
+                )}
+                {isBanned ? 'Bỏ cấm' : 'Cấm tài khoản'}
               </button>
               <button
                 type="button"

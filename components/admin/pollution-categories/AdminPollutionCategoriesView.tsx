@@ -6,6 +6,7 @@ import {
   type PollutionCategoryFormValues,
 } from '@/components/admin/pollution-categories/PollutionCategoryFormDialog';
 import { PollutionCategoryCard } from '@/components/admin/pollution-categories/PollutionCategoryCard';
+import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import {
   useAdminPollutionCategoriesList,
   useArchivePollutionCategory,
@@ -270,7 +271,7 @@ export function AdminPollutionCategoriesView() {
           </div>
 
           {pagination && pagination.totalPages > 1 ? (
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className={ADMIN_TABLE_PAGINATION_NAV}>
               <span className="text-xs text-muted-foreground">
                 Trang {pagination.page}/{Math.max(1, pagination.totalPages)} ·{' '}
                 {pagination.totalItems.toLocaleString('vi-VN')} danh mục

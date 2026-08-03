@@ -2,6 +2,7 @@
 
 import { useNotificationsPreview } from '@/hooks/useNotification';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
+import { useAuthStore } from '@/lib/store/authStore';
 import { useNotificationUiStore } from '@/lib/store/notificationUiStore';
 import { cn } from '@/lib/utils';
 import { Bell } from 'lucide-react';
@@ -20,9 +21,12 @@ type NotificationHeaderBellProps = {
 export function NotificationHeaderBell({ className }: NotificationHeaderBellProps) {
   const toggleDrawer = useNotificationUiStore(s => s.toggleDrawer);
   const isDrawerOpen = useNotificationUiStore(s => s.isDrawerOpen);
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  const token = useAuthStore(s => s.token);
+  const realtimeOn = isAuthenticated && Boolean(token);
 
   const { data } = useNotificationsPreview(1);
-  useNotificationRealtime(true);
+  useNotificationRealtime(realtimeOn);
 
   const unreadCount = data?.unreadCount ?? 0;
   const badgeLabel = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;

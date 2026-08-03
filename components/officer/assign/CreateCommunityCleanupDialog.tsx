@@ -15,11 +15,17 @@ import { Label } from '@/components/ui/label';
 import UsersGroupIcon from '@/components/ui/users-group-icon';
 import { MeetingPointMapPicker } from '@/components/officer/assign/MeetingPointMapPicker';
 import { useCreateCommunityCleanup } from '@/hooks/useCommunityCleanup';
-import { TEAMS_ASSIGN_PAGE_SIZE, useTeamDetail, useTeamsInfiniteList } from '@/hooks/useTeams';
+import {
+  TEAMS_ASSIGN_PAGE_SIZE,
+  teamKeys,
+  useTeamDetail,
+  useTeamsInfiniteList,
+} from '@/hooks/useTeams';
 import type { TeamMember } from '@/lib/api/services/fetchTeam';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
-import { HeartHandshake, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { CalendarClock, ClipboardList, HeartHandshake, Loader2, MapPin, Users } from 'lucide-react';
 import { useCallback, useMemo, useState, type UIEvent } from 'react';
 
 export interface CreateCommunityCleanupDialogProps {
@@ -48,6 +54,26 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
   );
 }
 
+function SectionHeading({
+  icon: Icon,
+  title,
+  hint,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+        <Icon className="size-3.5" />
+      </span>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+    </div>
+  );
+}
+
 function RadioRow({
   label,
   sublabel,
@@ -63,7 +89,7 @@ function RadioRow({
     <label
       className={cn(
         'flex cursor-pointer items-center gap-3 px-3.5 py-2.5 transition',
-        checked ? 'bg-muted/70' : 'hover:bg-muted/40'
+        checked ? 'bg-emerald-50/70 dark:bg-emerald-500/10' : 'hover:bg-muted/40'
       )}
     >
       <input
@@ -130,6 +156,7 @@ export function CreateCommunityCleanupDialog({
   onCreated,
 }: CreateCommunityCleanupDialogProps) {
   const createMutation = useCreateCommunityCleanup();
+  const queryClient = useQueryClient();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -210,6 +237,10 @@ export function CreateCommunityCleanupDialog({
     if (id === teamId) return;
     setTeamId(id);
     setLeaderUserId(null);
+    // Membership thay đổi qua flow accept-invitation (mobile) không invalidate
+    // cache của portal — luôn lấy dữ liệu mới nhất khi LEO chọn team ở đây,
+    // tránh hiển thị "chưa có thành viên" do cache cũ còn hạn (staleTime 3').
+    void queryClient.invalidateQueries({ queryKey: teamKeys.detail(id) });
   };
 
   const isSubmitting = createMutation.isPending;
@@ -254,7 +285,7 @@ export function CreateCommunityCleanupDialog({
       }}
     >
       <DialogContent
-        className="flex h-auto max-h-[90vh] w-full max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
         onInteractOutside={e => {
           if (isSubmitting) e.preventDefault();
         }}
@@ -262,9 +293,11 @@ export function CreateCommunityCleanupDialog({
           if (isSubmitting) e.preventDefault();
         }}
       >
-        <DialogHeader className="shrink-0 space-y-2 border-b border-border px-8 pb-4 pt-7 pr-14 text-left">
+        <DialogHeader className="shrink-0 space-y-2 border-b border-border bg-linear-to-b from-emerald-50/60 to-transparent px-8 pb-4 pt-7 pr-14 text-left dark:from-emerald-500/5">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-foreground">
-            <HeartHandshake className="size-4 shrink-0 text-foreground" aria-hidden />
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <HeartHandshake className="size-4" aria-hidden />
+            </span>
             Mở chương trình dọn cộng đồng
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
@@ -274,167 +307,198 @@ export function CreateCommunityCleanupDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div key={formKey} className="max-h-[62vh] shrink-0 overflow-y-auto px-8 py-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <FieldLabel htmlFor="cc-title">Tên chương trình</FieldLabel>
-              <Input
-                id="cc-title"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Dọn rác kênh Nhiêu Lộc — Cộng đồng"
-                maxLength={200}
-                className="mt-1.5"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <FieldLabel htmlFor="cc-description">Mô tả (tuỳ chọn)</FieldLabel>
-              <textarea
-                id="cc-description"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={2}
-                placeholder="Mang găng tay, nước uống. Tập trung cổng công viên."
-                className={TEXTAREA_CLASS}
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <FieldLabel>Đội dọn dẹp</FieldLabel>
-              <div className="mt-1.5">
-                <ListShell
-                  loading={teamsLoading}
-                  emptyMessage="Không có đội dọn dẹp cộng đồng."
-                  onScroll={handleTeamsScroll}
-                  footer={
-                    teamsFetchingNext ? (
-                      <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
-                        <Loader2 className="size-3.5 animate-spin" />
-                        Đang tải thêm...
-                      </div>
-                    ) : null
-                  }
-                >
-                  {teams.length > 0 ? (
-                    <ul className="divide-y divide-border">
-                      {teams.map(team => (
-                        <li key={team.id}>
-                          <RadioRow
-                            label={team.name}
-                            sublabel={`${team.officeName} · ${team.memberCount} thành viên`}
-                            checked={teamId === team.id}
-                            onSelect={() => selectTeam(team.id)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </ListShell>
+        <div key={formKey} className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+          <div className="space-y-6">
+            {/* Thông tin chương trình */}
+            <section className="space-y-3">
+              <SectionHeading icon={ClipboardList} title="Thông tin chương trình" />
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <FieldLabel htmlFor="cc-title">Tên chương trình</FieldLabel>
+                  <Input
+                    id="cc-title"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    placeholder="Dọn rác kênh Nhiêu Lộc — Cộng đồng"
+                    maxLength={200}
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="cc-description">Mô tả (tuỳ chọn)</FieldLabel>
+                  <textarea
+                    id="cc-description"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    rows={2}
+                    placeholder="Mang găng tay, nước uống. Tập trung cổng công viên."
+                    className={TEXTAREA_CLASS}
+                  />
+                </div>
               </div>
-            </div>
+            </section>
 
-            <div className="sm:col-span-2">
-              <FieldLabel>Leader (Cleaner được chỉ định)</FieldLabel>
-              <div className="mt-1.5">
-                {!teamId ? (
-                  <div className="flex h-16 items-center justify-center gap-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-                    <UsersGroupIcon size={14} className="text-muted-foreground" />
-                    Chọn đội dọn dẹp trước
+            <div className="h-px bg-border" />
+
+            {/* Đội & Leader */}
+            <section className="space-y-3">
+              <SectionHeading icon={Users} title="Đội dọn dẹp & Leader" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <FieldLabel>Đội dọn dẹp</FieldLabel>
+                  <div className="mt-1.5">
+                    <ListShell
+                      loading={teamsLoading}
+                      emptyMessage="Không có đội dọn dẹp cộng đồng."
+                      onScroll={handleTeamsScroll}
+                      footer={
+                        teamsFetchingNext ? (
+                          <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
+                            <Loader2 className="size-3.5 animate-spin" />
+                            Đang tải thêm...
+                          </div>
+                        ) : null
+                      }
+                    >
+                      {teams.length > 0 ? (
+                        <ul className="divide-y divide-border">
+                          {teams.map(team => (
+                            <li key={team.id}>
+                              <RadioRow
+                                label={team.name}
+                                sublabel={`${team.officeName} · ${team.memberCount} thành viên`}
+                                checked={teamId === team.id}
+                                onSelect={() => selectTeam(team.id)}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </ListShell>
                   </div>
-                ) : (
-                  <ListShell loading={membersLoading} emptyMessage="Đội này chưa có thành viên.">
-                    {members.length > 0 ? (
-                      <ul className="divide-y divide-border">
-                        {members.map(member => (
-                          <li key={member.userId}>
-                            <RadioRow
-                              label={member.fullName}
-                              sublabel={member.email}
-                              checked={leaderUserId === member.userId}
-                              onSelect={() => setLeaderUserId(member.userId)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </ListShell>
-                )}
-              </div>
-            </div>
+                </div>
 
-            <div>
-              <FieldLabel htmlFor="cc-starts">Bắt đầu dọn</FieldLabel>
-              <div className="mt-1.5">
-                <DateTimePicker
-                  id="cc-starts"
-                  value={startsAt}
-                  onChange={setStartsAt}
-                  placeholder="Chọn ngày giờ bắt đầu"
-                />
+                <div>
+                  <FieldLabel>Leader (Cleaner được chỉ định)</FieldLabel>
+                  <div className="mt-1.5">
+                    {!teamId ? (
+                      <div className="flex h-full min-h-31 items-center justify-center gap-2 rounded-lg border border-dashed border-border text-center text-sm text-muted-foreground">
+                        <UsersGroupIcon size={14} className="text-muted-foreground" />
+                        Chọn đội dọn dẹp trước
+                      </div>
+                    ) : (
+                      <ListShell
+                        loading={membersLoading}
+                        emptyMessage="Đội này chưa có thành viên."
+                      >
+                        {members.length > 0 ? (
+                          <ul className="divide-y divide-border">
+                            {members.map(member => (
+                              <li key={member.userId}>
+                                <RadioRow
+                                  label={member.fullName}
+                                  sublabel={member.email}
+                                  checked={leaderUserId === member.userId}
+                                  onSelect={() => setLeaderUserId(member.userId)}
+                                />
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </ListShell>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <FieldLabel htmlFor="cc-ends">Kết thúc (tuỳ chọn)</FieldLabel>
-              <div className="mt-1.5">
-                <DateTimePicker
-                  id="cc-ends"
-                  value={endsAt}
-                  onChange={setEndsAt}
-                  placeholder="Chọn ngày giờ kết thúc"
-                  clearable
-                />
-              </div>
-            </div>
-            <div>
-              <FieldLabel htmlFor="cc-join-closes">Đóng đăng ký lúc (tuỳ chọn)</FieldLabel>
-              <div className="mt-1.5">
-                <DateTimePicker
-                  id="cc-join-closes"
-                  value={joinClosesAt}
-                  onChange={setJoinClosesAt}
-                  placeholder="Chọn ngày giờ đóng đăng ký"
-                  clearable
-                />
-              </div>
-            </div>
-            <div>
-              <FieldLabel htmlFor="cc-max">Số người tối đa</FieldLabel>
-              <Input
-                id="cc-max"
-                type="number"
-                min={1}
-                max={200}
-                value={maxParticipants}
-                onChange={e => setMaxParticipants(e.target.value)}
-                className="mt-1.5"
-              />
-            </div>
+            </section>
 
-            <div className="sm:col-span-2">
-              <FieldLabel htmlFor="cc-meeting-note">Ghi chú điểm tập trung (tuỳ chọn)</FieldLabel>
-              <Input
-                id="cc-meeting-note"
-                value={meetingNote}
-                onChange={e => setMeetingNote(e.target.value)}
-                placeholder="Cổng công viên 23/9"
-                className="mt-1.5"
-              />
-            </div>
+            <div className="h-px bg-border" />
 
-            <div className="sm:col-span-2">
-              <FieldLabel>Điểm tập trung trên bản đồ</FieldLabel>
-              <div className="mt-1.5">
-                <MeetingPointMapPicker
-                  latitude={meetingLat}
-                  longitude={meetingLng}
-                  onChange={(lat, lng) => {
-                    setMeetingLat(lat);
-                    setMeetingLng(lng);
-                  }}
-                />
+            {/* Thời gian */}
+            <section className="space-y-3">
+              <SectionHeading icon={CalendarClock} title="Thời gian" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <FieldLabel htmlFor="cc-starts">Bắt đầu dọn</FieldLabel>
+                  <div className="mt-1.5">
+                    <DateTimePicker
+                      id="cc-starts"
+                      value={startsAt}
+                      onChange={setStartsAt}
+                      placeholder="Chọn ngày giờ bắt đầu"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="cc-max">Số người tối đa</FieldLabel>
+                  <Input
+                    id="cc-max"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={maxParticipants}
+                    onChange={e => setMaxParticipants(e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="cc-ends">Kết thúc (tuỳ chọn)</FieldLabel>
+                  <div className="mt-1.5">
+                    <DateTimePicker
+                      id="cc-ends"
+                      value={endsAt}
+                      onChange={setEndsAt}
+                      placeholder="Chọn ngày giờ kết thúc"
+                      minDate={startsAt ? new Date(startsAt) : undefined}
+                      clearable
+                    />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="cc-join-closes">Đóng đăng ký lúc (tuỳ chọn)</FieldLabel>
+                  <div className="mt-1.5">
+                    <DateTimePicker
+                      id="cc-join-closes"
+                      value={joinClosesAt}
+                      onChange={setJoinClosesAt}
+                      placeholder="Chọn ngày giờ đóng đăng ký"
+                      clearable
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+            </section>
+
+            <div className="h-px bg-border" />
+
+            {/* Điểm tập trung */}
+            <section className="space-y-3">
+              <SectionHeading icon={MapPin} title="Điểm tập trung" />
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <FieldLabel htmlFor="cc-meeting-note">
+                    Ghi chú điểm tập trung (tuỳ chọn)
+                  </FieldLabel>
+                  <Input
+                    id="cc-meeting-note"
+                    value={meetingNote}
+                    onChange={e => setMeetingNote(e.target.value)}
+                    placeholder="Cổng công viên 23/9"
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <MeetingPointMapPicker
+                    latitude={meetingLat}
+                    longitude={meetingLng}
+                    onChange={(lat, lng) => {
+                      setMeetingLat(lat);
+                      setMeetingLng(lng);
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 

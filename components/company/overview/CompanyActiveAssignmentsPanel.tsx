@@ -5,27 +5,24 @@ import { cn } from '@/lib/utils';
 import {
   assignmentStatusClasses,
   assignmentStatusLabel,
-  formatCompanyDateTime,
   formatSlaRemaining,
   queueSeverityClasses,
   queueSeverityLabel,
-  teamTaskAcceptanceClasses,
-  teamTaskAcceptanceText,
 } from '@/utils/companyUi';
 import { ArrowRight, ClipboardList, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+const PREVIEW_LIMIT = 3;
 
 function ProgressMini({ value }: { value: number }) {
   const pct = Math.min(100, Math.max(0, value));
   return (
     <div className="flex items-center gap-1.5">
-      <div className="h-1.5 w-14 overflow-hidden rounded-full bg-emerald-100">
+      <div className="h-1.5 w-12 overflow-hidden rounded-full bg-emerald-100">
         <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
       </div>
-      <span className="w-8 text-right text-[10px] font-semibold tabular-nums text-emerald-800">
-        {pct}%
-      </span>
+      <span className="text-[10px] font-semibold tabular-nums text-emerald-800">{pct}%</span>
     </div>
   );
 }
@@ -50,18 +47,29 @@ export function CompanyActiveAssignmentsPanel({
     return () => window.clearInterval(id);
   }, []);
 
-  const rows = (items ?? []).slice(0, 8);
-  const count = totalItems > 0 ? totalItems : rows.length;
+  const allItems = useMemo(() => items ?? [], [items]);
+  const rows = allItems.slice(0, PREVIEW_LIMIT);
+  const count = totalItems > 0 ? totalItems : allItems.length;
+
+  const overdueCount = useMemo(() => {
+    return allItems.filter(row => {
+      if (!row.report.slaResolveDueAt) return false;
+      const dueMs = new Date(row.report.slaResolveDueAt).getTime();
+      return !Number.isNaN(dueMs) && dueMs < now;
+    }).length;
+  }, [allItems, now]);
 
   return (
-    <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2 shadow-sm sm:p-2.5">
-      <header className="mb-1.5 flex shrink-0 items-start justify-between gap-2">
+    <article className="flex shrink-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2.5 shadow-sm sm:p-3">
+      <header className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="text-[11px] font-semibold text-foreground sm:text-xs">
+          <h2 className="text-xs font-semibold text-foreground sm:text-sm">
             Phân công đang theo dõi
           </h2>
-          <p className="mt-0.5 text-[9px] text-muted-foreground">
-            Team → báo cáo · tiến độ · SLA · người phân công
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            {count > 0
+              ? `${count} task${overdueCount > 0 ? ` · ${overdueCount} quá hạn` : ''}`
+              : 'Tóm tắt nhanh — chi tiết tại trang Phân công'}
           </p>
         </div>
         <Link
@@ -73,139 +81,89 @@ export function CompanyActiveAssignmentsPanel({
         </Link>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {isPending ? (
-          <div className="flex h-full items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-            Đang tải phân công…
-          </div>
-        ) : isError ? (
-          <p className="py-6 text-center text-xs text-destructive">
-            Không tải được danh sách phân công.
-          </p>
-        ) : rows.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center">
-            <ClipboardList className="size-8 text-emerald-200" aria-hidden />
-            <p className="text-xs text-muted-foreground">Chưa có task phân công nào.</p>
-          </div>
-        ) : (
-          <div className="h-full overflow-auto">
-            <table className="w-full min-w-[720px] text-left text-[10px]">
-              <thead className="sticky top-0 z-10 bg-card text-muted-foreground">
-                <tr className="border-b border-border">
-                  <th className="pb-1.5 pr-2 font-semibold">Báo cáo</th>
-                  <th className="pb-1.5 pr-2 font-semibold">Đội</th>
-                  <th className="pb-1.5 pr-2 font-semibold">Tiến độ</th>
-                  <th className="pb-1.5 pr-2 font-semibold">Phân công</th>
-                  <th className="pb-1.5 pr-2 font-semibold">SLA</th>
-                  <th className="pb-1.5 font-semibold">Bởi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(row => {
-                  const dueMs = row.report.slaResolveDueAt
-                    ? new Date(row.report.slaResolveDueAt).getTime()
-                    : null;
-                  const slaHours =
-                    dueMs !== null && !Number.isNaN(dueMs)
-                      ? (dueMs - now) / (60 * 60 * 1000)
-                      : null;
-                  const slaUrgent =
-                    dueMs !== null && !Number.isNaN(dueMs) && dueMs - now < 24 * 60 * 60 * 1000;
+      {isPending ? (
+        <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Đang tải phân công…
+        </div>
+      ) : isError ? (
+        <p className="py-4 text-center text-xs text-destructive">
+          Không tải được danh sách phân công.
+        </p>
+      ) : rows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+          <ClipboardList className="size-7 text-emerald-200" aria-hidden />
+          <p className="text-xs text-muted-foreground">Chưa có task phân công nào.</p>
+        </div>
+      ) : (
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {rows.map(row => {
+            const dueMs = row.report.slaResolveDueAt
+              ? new Date(row.report.slaResolveDueAt).getTime()
+              : null;
+            const slaHours =
+              dueMs !== null && !Number.isNaN(dueMs) ? (dueMs - now) / (60 * 60 * 1000) : null;
+            const slaOverdue = slaHours !== null && slaHours < 0;
+            const detailHref = `/company/assignments?reportId=${encodeURIComponent(row.report.reportId)}`;
 
-                  return (
-                    <tr
-                      key={row.assignmentId}
-                      className="border-b border-border/60 last:border-0 hover:bg-muted/30"
+            return (
+              <li key={row.assignmentId}>
+                <Link
+                  href={detailHref}
+                  className="block rounded-xl border border-border/70 bg-muted/20 px-2.5 py-2 text-[10px] transition hover:border-emerald-200 hover:bg-emerald-50/40"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-mono text-[11px] font-semibold text-emerald-800">
+                      {row.report.code}
+                    </span>
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+                        queueSeverityClasses(row.report.severity)
+                      )}
                     >
-                      <td className="py-1.5 pr-2">
-                        <Link
-                          href={`/company/assignments?reportId=${encodeURIComponent(row.report.reportId)}`}
-                          className="group block min-w-0"
-                        >
-                          <span className="font-mono font-semibold text-emerald-800 group-hover:underline">
-                            {row.report.code}
-                          </span>
-                          <span className="mt-0.5 block truncate text-muted-foreground">
-                            {row.report.address}
-                          </span>
-                          <span
-                            className={cn(
-                              'mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
-                              queueSeverityClasses(row.report.severity)
-                            )}
-                          >
-                            {queueSeverityLabel(row.report.severity)}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        <p className="max-w-[100px] truncate font-medium">{row.team.teamName}</p>
-                        <p className="text-muted-foreground">{row.team.memberCount} TV</p>
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        <ProgressMini value={row.progressPercent} />
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
-                            assignmentStatusClasses(row.assignmentStatus)
-                          )}
-                        >
-                          {assignmentStatusLabel(row.assignmentStatus)}
-                        </span>
-                        <span
-                          className={cn(
-                            'mt-1 block w-fit rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1 ring-inset',
-                            teamTaskAcceptanceClasses(row.assignmentStatus, row.startedAt)
-                          )}
-                        >
-                          {teamTaskAcceptanceText(row.assignmentStatus, row.startedAt)}
-                        </span>
-                        <time
-                          dateTime={row.assignedAt}
-                          className="mt-0.5 block text-muted-foreground"
-                        >
-                          {formatCompanyDateTime(row.assignedAt)}
-                        </time>
-                      </td>
-                      <td className="py-1.5 pr-2">
-                        {row.report.slaResolveDueAt ? (
-                          <span
-                            className={cn(
-                              'font-medium tabular-nums',
-                              slaUrgent ? 'text-destructive' : 'text-foreground'
-                            )}
-                          >
-                            {slaHours !== null ? formatSlaRemaining(slaHours) : '—'}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="max-w-[90px] truncate py-1.5">{row.assignedByName}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                      {queueSeverityLabel(row.report.severity)}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-muted-foreground">{row.team.teamName}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+                        assignmentStatusClasses(row.assignmentStatus)
+                      )}
+                    >
+                      {assignmentStatusLabel(row.assignmentStatus)}
+                    </span>
+                    <ProgressMini value={row.progressPercent} />
+                  </div>
+                  {row.report.slaResolveDueAt ? (
+                    <p
+                      className={cn(
+                        'mt-1.5 font-medium tabular-nums',
+                        slaOverdue ? 'text-destructive' : 'text-muted-foreground'
+                      )}
+                    >
+                      {slaHours !== null ? formatSlaRemaining(slaHours) : '—'}
+                    </p>
+                  ) : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {count > rows.length ? (
-        <p className="mt-1 shrink-0 text-[9px] text-muted-foreground">
-          Hiển thị {rows.length}/{count} task ·{' '}
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          +{count - rows.length} task khác ·{' '}
           <Link
             href="/company/assignments"
             className="font-medium text-emerald-800 hover:underline"
           >
-            xem thêm
+            mở trang Phân công
           </Link>
         </p>
-      ) : count > 0 ? (
-        <p className="mt-1 shrink-0 text-[9px] text-muted-foreground">{count} task phân công</p>
       ) : null}
     </article>
   );

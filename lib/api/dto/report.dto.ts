@@ -23,11 +23,11 @@ export interface ReportAssignmentDto {
   status: string;
   note: string;
   assignedAt: string;
-  startedAt: string;
-  completedAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
   progressPercent: number;
   progressNote: string;
-  progressUpdatedAt: string;
+  progressUpdatedAt: string | null;
 }
 
 /** GET /v1/reports/{id} — `data.wasteTags[]` */
@@ -39,6 +39,40 @@ export interface ReportWasteTagDto {
   iconUrl: string;
 }
 
+/** GET /v1/reports/{id} — `data.satisfaction` */
+export interface ReportSatisfactionDto {
+  isSatisfied: boolean;
+  rating: number;
+  comment: string;
+  ratedAt: string;
+}
+
+/** GET /v1/reports/{id} — `data.pendingReopenRequest` */
+export interface ReportPendingReopenRequestDto {
+  requestId: string;
+  reason: string;
+  requestedAt: string;
+  evidenceMedia: ReportMediaDto[];
+}
+
+/** GET /v1/reports/{id} — `data.mergedReports[]` */
+export interface ReportMergedChildDto {
+  id: string;
+  code: string;
+  imageUrl: string | null;
+  createdAt: string;
+  status: ReportStatusDto;
+}
+
+/** GET /v1/reports/{id} — `data.priorClosedReport` */
+export interface ReportPriorClosedReportDto {
+  id: string;
+  code: string;
+  closedAt: string;
+  categoryCode: string;
+  hadPriorInspection: boolean;
+}
+
 /** GET /v1/reports/{id} — `data` (Swagger BE). */
 export interface ReportDetailDto {
   id: string;
@@ -48,7 +82,8 @@ export interface ReportDetailDto {
   categoryCode: string;
   categoryName: string;
   severity: ReportSeverityDto;
-  severitySetBy: SeveritySetByDto;
+  /** BE có thể trả `Ai` (không đúng casing `AI`). */
+  severitySetBy: SeveritySetByDto | string;
   status: ReportStatusDto;
   description: string;
   latitude: number;
@@ -76,6 +111,16 @@ export interface ReportDetailDto {
   closedAt?: string | null;
   slaVerifyDueAt?: string | null;
   slaResolveDueAt?: string | null;
+  satisfaction?: ReportSatisfactionDto | null;
+  hasCurrentUserRated?: boolean;
+  hasPendingReopenRequest?: boolean;
+  pendingReopenRequest?: ReportPendingReopenRequestDto | null;
+  mergedIntoPrimaryReportId?: string | null;
+  mergedIntoPrimaryReportCode?: string | null;
+  mergedReports?: ReportMergedChildDto[] | null;
+  isSuspectedViolationRecurrence?: boolean;
+  suspectedRecurrenceOfReportId?: string | null;
+  priorClosedReport?: ReportPriorClosedReportDto | null;
 }
 
 /** GET /v1/reports/{id} — envelope response. */
