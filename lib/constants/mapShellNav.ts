@@ -7,6 +7,7 @@ import {
   faFileLines,
   faGaugeHigh,
   faGear,
+  faHandHoldingHeart,
   faRoute,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -97,6 +98,12 @@ const NAV_ITEMS = {
     href: '/officer/tracking',
     icon: faRoute,
   },
+  community: {
+    id: 'community',
+    label: 'Dọn cộng đồng',
+    href: '/officer/community',
+    icon: faHandHoldingHeart,
+  },
   workforce: {
     id: 'workforce',
     label: 'Đội ngũ',
@@ -143,7 +150,13 @@ export function getMapShellNavForRole(
   if (role === 'DEO') {
     mainNav.push(NAV_ITEMS.reports, NAV_ITEMS.companies);
   } else if (role === 'LEO') {
-    mainNav.push(NAV_ITEMS.verify, NAV_ITEMS.assign, NAV_ITEMS.tracking, NAV_ITEMS.workforce);
+    mainNav.push(
+      NAV_ITEMS.verify,
+      NAV_ITEMS.assign,
+      NAV_ITEMS.tracking,
+      NAV_ITEMS.community,
+      NAV_ITEMS.workforce
+    );
   }
 
   const brand = role === 'LEO' ? BRAND_LEO : role === 'DEO' ? BRAND_DEO : BRAND_DEFAULT;
