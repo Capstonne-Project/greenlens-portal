@@ -95,8 +95,8 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
     label: 'Bản gốc',
     className: 'w-[12%] min-w-0 max-w-0',
   },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
   { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[11%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
   {
     key: 'actions',
     label: '',
