@@ -174,55 +174,81 @@ function MediaStrip({
   media,
   code,
   onPreview,
+  heroSide,
 }: {
   media: DuplicateCandidateDetailMedia[];
   code: string;
   onPreview: ReportPreviewHandler;
+  /** Nghi trùng: ảnh lớn bên phải · Gốc: ảnh lớn bên trái */
+  heroSide: 'left' | 'right';
 }) {
   const images = toPreviewImages(media, code);
   if (!images.length) {
     return (
-      <div className="flex aspect-video items-center justify-center rounded-lg bg-slate-100 text-slate-400 ring-1 ring-slate-200/80">
+      <div className="flex h-48 items-center justify-center rounded-lg bg-slate-100 text-slate-400 ring-1 ring-slate-200/80 sm:h-56">
         <ImageIcon className="size-8" aria-hidden />
       </div>
     );
   }
 
   const hero = images[0]!;
-  const rest = images.slice(1, 5);
+  const rest = images.slice(1);
+
+  const heroButton = (
+    <button
+      type="button"
+      className={cn(
+        'relative min-h-0 min-w-0 self-stretch overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80',
+        rest.length > 0 ? 'flex-[1.75]' : 'w-full flex-1'
+      )}
+      onClick={() => onPreview(hero)}
+      aria-label={`Xem ảnh ${code}`}
+    >
+      <Image
+        src={hero.url}
+        alt={hero.label}
+        fill
+        className="object-cover"
+        sizes="(max-width:768px) 70vw, 30vw"
+        unoptimized
+        priority={false}
+      />
+    </button>
+  );
+
+  if (rest.length === 0) {
+    return <div className="flex h-48 sm:h-56">{heroButton}</div>;
+  }
+
+  const stack = (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 self-stretch">
+      {rest.map((img, i) => (
+        <button
+          key={`${img.url}-${i}`}
+          type="button"
+          className="relative min-h-0 w-full flex-1 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80"
+          onClick={() => onPreview(img)}
+          aria-label={img.label}
+        >
+          <Image src={img.url} alt="" fill className="object-cover" sizes="120px" unoptimized />
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="space-y-2">
-      <button
-        type="button"
-        className="relative aspect-video w-full overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80"
-        onClick={() => onPreview(hero)}
-        aria-label={`Xem ảnh ${code}`}
-      >
-        <Image
-          src={hero.url}
-          alt={hero.label}
-          fill
-          className="object-cover"
-          sizes="(max-width:768px) 100vw, 40vw"
-          unoptimized
-        />
-      </button>
-      {rest.length > 0 ? (
-        <div className="grid grid-cols-4 gap-1.5">
-          {rest.map((img, i) => (
-            <button
-              key={`${img.url}-${i}`}
-              type="button"
-              className="relative aspect-square overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80"
-              onClick={() => onPreview(img)}
-              aria-label={img.label}
-            >
-              <Image src={img.url} alt="" fill className="object-cover" sizes="80px" unoptimized />
-            </button>
-          ))}
-        </div>
-      ) : null}
+    <div className="flex h-48 gap-1.5 sm:h-56">
+      {heroSide === 'left' ? (
+        <>
+          {heroButton}
+          {stack}
+        </>
+      ) : (
+        <>
+          {stack}
+          {heroButton}
+        </>
+      )}
     </div>
   );
 }
@@ -394,7 +420,12 @@ function DetailBody({
             roleTone="suspect"
             fromPath={fromPath}
           />
-          <MediaStrip media={report.media} code={report.code} onPreview={onPreview} />
+          <MediaStrip
+            media={report.media}
+            code={report.code}
+            onPreview={onPreview}
+            heroSide="right"
+          />
         </section>
 
         <section className="min-w-0 space-y-3 rounded-xl border border-emerald-200/80 bg-emerald-50/20 p-3 sm:p-4">
@@ -410,6 +441,7 @@ function DetailBody({
                 media={primaryReport.media}
                 code={primaryReport.code}
                 onPreview={onPreview}
+                heroSide="left"
               />
             </>
           ) : (
