@@ -321,12 +321,12 @@ function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['prima
     <div className="min-w-0 space-y-0.5">
       <p
         className={cn(
-          'truncate text-[11px] font-medium leading-snug text-slate-800',
-          '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm'
+          'truncate text-[10px] font-medium leading-snug text-slate-800',
+          '@[44rem]/dup-table:text-[11px] @[56rem]/dup-table:text-xs'
         )}
-        title="Bản gốc"
+        title="Báo cáo gốc"
       >
-        Bản gốc
+        Báo cáo gốc
       </p>
       <Link
         href={`/officer/verify/${primary.id}`}
