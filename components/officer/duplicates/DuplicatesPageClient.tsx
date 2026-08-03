@@ -244,8 +244,8 @@ function SourceBadge({ source }: { source: string | null }) {
 }
 
 /**
- * Cột đầu kiểu Transaction: thumb vuông + stack
- * categoryName → id (+ copy) → code (link xanh + copy).
+ * Cột đầu kiểu Transaction: thumb vuông (căn giữa dọc) + stack
+ * id (link xanh + copy) → code (+ copy) → categoryName (muted).
  */
 function ReportIdentityCell({
   row,
@@ -257,7 +257,7 @@ function ReportIdentityCell({
   const url = firstDuplicateMediaUrl(row.media);
 
   return (
-    <div className="flex min-w-0 items-start gap-3">
+    <div className="flex min-w-0 items-center gap-3">
       <div className={THUMB_SQUARE}>
         {url ? (
           <Image
@@ -277,20 +277,20 @@ function ReportIdentityCell({
       </div>
 
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p
-          className="truncate text-[12px] font-semibold leading-snug text-slate-800 @[44rem]/dup-table:text-sm"
-          title={row.categoryName || undefined}
-        >
-          {row.categoryName?.trim() || '—'}
-        </p>
-
         <div className="group/copyrow flex min-w-0 items-center gap-1">
-          <span
-            className="min-w-0 truncate text-[11px] tabular-nums text-slate-800 @[44rem]/dup-table:text-xs"
+          <Link
+            href={`/officer/verify/${row.id}`}
             title={row.id}
+            onClick={e => e.stopPropagation()}
+            className={cn(
+              'min-w-0 truncate text-[12px] font-semibold tabular-nums text-sky-700 no-underline',
+              '@[44rem]/dup-table:text-sm',
+              'hover:text-sky-800 hover:underline',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+            )}
           >
             {row.id}
-          </span>
+          </Link>
           <CopyIconButton
             value={row.id}
             label="Sao chép ID báo cáo"
@@ -299,25 +299,25 @@ function ReportIdentityCell({
         </div>
 
         <div className="group/copyrow flex min-w-0 items-center gap-1">
-          <Link
-            href={`/officer/verify/${row.id}`}
+          <span
+            className="min-w-0 truncate text-[11px] font-medium tabular-nums text-slate-800 @[44rem]/dup-table:text-xs"
             title={row.code}
-            onClick={e => e.stopPropagation()}
-            className={cn(
-              'min-w-0 truncate text-[11px] font-medium tabular-nums text-sky-700 no-underline',
-              '@[44rem]/dup-table:text-xs',
-              'hover:text-sky-800 hover:underline',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
-            )}
           >
             {row.code}
-          </Link>
+          </span>
           <CopyIconButton
             value={row.code}
             label={`Sao chép mã ${row.code}`}
             successMessage="Đã sao chép mã báo cáo."
           />
         </div>
+
+        <p
+          className="truncate text-[11px] leading-snug text-slate-500 @[44rem]/dup-table:text-xs"
+          title={row.categoryName || undefined}
+        >
+          {row.categoryName?.trim() || '—'}
+        </p>
       </div>
     </div>
   );
