@@ -3,6 +3,7 @@ import {
   adaptFetchReportProgress,
 } from '@/lib/api/adapters/report.adapter';
 import { adaptFetchDuplicateCandidates } from '@/lib/api/adapters/duplicateCandidate.adapter';
+import { adaptFetchDuplicateCandidateDetail } from '@/lib/api/adapters/duplicateCandidateDetail.adapter';
 import { adaptFetchReportQueue } from '@/lib/api/adapters/reportQueue.adapter';
 import { adaptFetchViolationRecurrenceCandidates } from '@/lib/api/adapters/violationRecurrenceCandidate.adapter';
 import {
@@ -22,6 +23,7 @@ import type {
   DuplicateCandidatesData,
   DuplicateCandidatesParams,
 } from '@/lib/api/models/duplicateCandidate';
+import type { DuplicateCandidateDetail } from '@/lib/api/models/duplicateCandidateDetail';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type {
@@ -52,6 +54,11 @@ export type {
   DuplicateCandidatesData,
   DuplicateCandidatesParams,
 } from '@/lib/api/models/duplicateCandidate';
+export type {
+  DuplicateCandidateDetail,
+  DuplicateCandidateDetailMedia,
+  DuplicateCandidateDetailSide,
+} from '@/lib/api/models/duplicateCandidateDetail';
 export type {
   ViolationRecurrenceCandidateItem,
   ViolationRecurrenceCandidatePrior,
@@ -136,6 +143,16 @@ export async function fetchDuplicateCandidates(
   params?: DuplicateCandidatesParams
 ): Promise<ApiEnvelope<DuplicateCandidatesData>> {
   return adaptFetchDuplicateCandidates(params);
+}
+
+/**
+ * GET /v1/reports/{id}/duplicate-candidate-detail — BR-REP-031/032.
+ * `reportId` = báo cáo nghi trùng; `primaryReport` trong kết quả = báo cáo gốc.
+ */
+export async function fetchDuplicateCandidateDetail(
+  reportId: string
+): Promise<DuplicateCandidateDetail> {
+  return adaptFetchDuplicateCandidateDetail(reportId);
 }
 
 /**
@@ -224,6 +241,7 @@ const reportService = {
   fetchReportDetail,
   fetchReportQueue,
   fetchDuplicateCandidates,
+  fetchDuplicateCandidateDetail,
   fetchViolationRecurrenceCandidates,
   fetchReportProgress,
   assignReport,

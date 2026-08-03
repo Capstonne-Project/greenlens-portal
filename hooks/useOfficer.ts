@@ -7,6 +7,7 @@ import {
   dismissViolationRecurrence,
   dispatchReportToCompany,
   fetchDuplicateCandidates,
+  fetchDuplicateCandidateDetail,
   fetchReportDetail,
   fetchReportQueue,
   fetchViolationRecurrenceCandidates,
@@ -49,6 +50,9 @@ export const officerKeys = {
   duplicateCandidates: () => [...officerKeys.all, 'duplicate-candidates'] as const,
   duplicateCandidatesList: (params: DuplicateCandidatesParams) =>
     [...officerKeys.duplicateCandidates(), params] as const,
+  /** Chi tiết so sánh nghi trùng vs gốc — BR-REP-031/032 */
+  duplicateCandidateDetail: (id: string) =>
+    [...officerKeys.all, 'duplicate-candidate-detail', id] as const,
   /** Danh sách nghi tái phạm — BR-REP-034 */
   violationRecurrenceCandidates: () =>
     [...officerKeys.all, 'violation-recurrence-candidates'] as const,
@@ -106,6 +110,19 @@ export function useDuplicateCandidates(
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
     enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * GET /v1/reports/{id}/duplicate-candidate-detail — BR-REP-031/032.
+ * `id` = báo cáo nghi trùng; kết quả gồm `report` + `primaryReport` (gốc).
+ */
+export function useDuplicateCandidateDetail(reportId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: officerKeys.duplicateCandidateDetail(reportId),
+    queryFn: () => fetchDuplicateCandidateDetail(reportId),
+    staleTime: LIST_STALE_MS,
+    enabled: (options?.enabled ?? true) && Boolean(reportId),
   });
 }
 
@@ -294,6 +311,8 @@ export function useConfirmDuplicateReport() {
     onSuccess: (_data, { reportId, body }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(body.primaryReportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.duplicateCandidateDetail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.duplicateCandidates() });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
     },
@@ -307,6 +326,8 @@ export function useDismissDuplicateReport() {
     mutationFn: ({ reportId }: { reportId: string }) => dismissDuplicateReport(reportId),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.duplicateCandidateDetail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.duplicateCandidates() });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
     },

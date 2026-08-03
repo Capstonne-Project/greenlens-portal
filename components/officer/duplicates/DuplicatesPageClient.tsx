@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-  ArrowRightLeft,
   Check,
   CircleHelp,
   Copy,
@@ -18,7 +18,6 @@ import {
 import { toast } from 'sonner';
 
 import {
-  DuplicateCandidateCompareDialog,
   firstDuplicateMediaUrl,
   formatSimilarity,
 } from '@/components/officer/duplicates/DuplicateCandidateCompareDialog';
@@ -400,14 +399,8 @@ function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['prima
   );
 }
 
-/** Cột ⋮ — không label header; menu: So sánh / Chi tiết. */
-function DuplicateRowActions({
-  row,
-  onCompare,
-}: {
-  row: DuplicateCandidateItem;
-  onCompare: () => void;
-}) {
+/** Cột ⋮ — menu: Chi tiết so sánh (trang detail). */
+function DuplicateRowActions({ row }: { row: DuplicateCandidateItem }) {
   return (
     <div className="flex justify-end" onClick={e => e.stopPropagation()}>
       <DropdownMenu>
@@ -425,17 +418,8 @@ function DuplicateRowActions({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem
-            className="cursor-pointer gap-2"
-            onClick={() => {
-              onCompare();
-            }}
-          >
-            <ArrowRightLeft className="size-4" aria-hidden />
-            So sánh với gốc
-          </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer gap-2">
-            <Link href={`/officer/verify/${row.id}`}>
+            <Link href={`/officer/duplicates/${row.id}`}>
               <Eye className="size-4" aria-hidden />
               Xem chi tiết
             </Link>
@@ -485,11 +469,10 @@ function renderDuplicateCell(
 }
 
 export function DuplicatesPageClient() {
+  const router = useRouter();
   const user = useAuthStore(s => s.user);
   const fullName = user?.name?.trim() || 'Người dùng';
   const [page, setPage] = useState(1);
-  const [compareItem, setCompareItem] = useState<DuplicateCandidateItem | null>(null);
-  const [compareOpen, setCompareOpen] = useState(false);
 
   const { data, isPending, isFetching, isError, refetch } = useDuplicateCandidates({
     page,
@@ -499,16 +482,8 @@ export function DuplicatesPageClient() {
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
 
-  const openCompare = (row: DuplicateCandidateItem) => {
-    setCompareItem(row);
-    setCompareOpen(true);
-  };
-
-  const handleCompareOpenChange = (open: boolean) => {
-    setCompareOpen(open);
-    if (!open) {
-      window.setTimeout(() => setCompareItem(null), 200);
-    }
+  const openDetail = (row: DuplicateCandidateItem) => {
+    router.push(`/officer/duplicates/${row.id}`);
   };
 
   return (
@@ -610,7 +585,7 @@ export function DuplicatesPageClient() {
                       ROW_BORDER,
                       'cursor-pointer transition-colors hover:bg-amber-50/40'
                     )}
-                    onClick={() => openCompare(row)}
+                    onClick={() => openDetail(row)}
                   >
                     {COLUMN_DEFS.map(col => (
                       <TableCell
@@ -626,7 +601,7 @@ export function DuplicatesPageClient() {
                         onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
                       >
                         {col.key === 'actions' ? (
-                          <DuplicateRowActions row={row} onCompare={() => openCompare(row)} />
+                          <DuplicateRowActions row={row} />
                         ) : (
                           renderDuplicateCell(col.key, row, {
                             imagePriority: rowIndex < 2,
@@ -657,12 +632,6 @@ export function DuplicatesPageClient() {
           </div>
         ) : null}
       </div>
-
-      <DuplicateCandidateCompareDialog
-        item={compareItem}
-        open={compareOpen}
-        onOpenChange={handleCompareOpenChange}
-      />
     </>
   );
 }
