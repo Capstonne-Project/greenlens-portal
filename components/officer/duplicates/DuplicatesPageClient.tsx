@@ -260,8 +260,8 @@ function ReportIdentityCell({
             title={row.id}
             onClick={e => e.stopPropagation()}
             className={cn(
-              'min-w-0 truncate text-[12px] font-semibold tabular-nums text-sky-700 no-underline',
-              '@[44rem]/dup-table:text-sm',
+              'min-w-0 truncate text-[11px] font-semibold tabular-nums text-sky-700 no-underline',
+              '@[44rem]/dup-table:text-xs',
               'hover:text-sky-800 hover:underline',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
             )}
