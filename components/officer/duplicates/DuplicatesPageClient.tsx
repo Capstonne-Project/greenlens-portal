@@ -113,8 +113,6 @@ const BADGE_BASE =
 const BADGE_SIZE =
   'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/dup-table:px-2 @[44rem]/dup-table:py-0.5 @[44rem]/dup-table:text-xs';
 
-const CELL_TEXT_MUTED =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-600 @[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm';
 const CELL_META =
   'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/dup-table:text-xs';
 const HEAD_LABEL =
@@ -397,8 +395,15 @@ function renderDuplicateCell(
     }
     case 'address':
       return (
-        <span className={CELL_TEXT_MUTED} title={row.address}>
-          {row.address || '—'}
+        <span
+          className={cn(
+            'block min-w-0 text-[11px] leading-snug text-slate-600',
+            '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm',
+            'line-clamp-2 wrap-break-word whitespace-normal'
+          )}
+          title={row.address || undefined}
+        >
+          {row.address?.trim() || '—'}
         </span>
       );
     case 'created':
