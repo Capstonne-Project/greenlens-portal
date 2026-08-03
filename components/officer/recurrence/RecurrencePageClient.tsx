@@ -3,9 +3,28 @@
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRightLeft, CircleHelp, Eye, History, ImageIcon, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import {
+  Check,
+  CircleHelp,
+  Copy,
+  ExternalLink,
+  Eye,
+  History,
+  ImageIcon,
+  Info,
+  Loader2,
+  MoreVertical,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-import { RecurrenceCandidateCompareDialog } from '@/components/officer/recurrence/RecurrenceCandidateCompareDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
@@ -20,10 +39,8 @@ import {
 import { useViolationRecurrenceCandidates } from '@/hooks/useOfficer';
 import type { ViolationRecurrenceCandidateItem } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ViolationRecurrenceMedia } from '@/lib/api/models/violationRecurrence';
-import {
-  REPORT_SEVERITY_BADGE_CLASSES,
-  REPORT_SEVERITY_LABEL_VI,
-} from '@/lib/constants/reportActions';
+import type { ReportSeverity } from '@/lib/api/models/report';
+import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -31,19 +48,20 @@ import { cn } from '@/lib/utils';
 
 const RECURRENCE_PAGE_SIZE = 10;
 
+/** Deep-link về list tái phát khi back từ tracking detail. */
+const RECURRENCE_LIST_PATH = '/officer/recurrence';
+
 type ColumnKey =
-  | 'image'
-  | 'code'
-  | 'category'
+  | 'report'
+  | 'prior'
   | 'severity'
   | 'status'
-  | 'prior'
-  | 'daysSince'
   | 'address'
   | 'created'
+  | 'daysSince'
   | 'actions';
 
-const FIRST_COL: ColumnKey = 'image';
+const FIRST_COL: ColumnKey = 'report';
 const LAST_COL: ColumnKey = 'actions';
 
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
@@ -60,28 +78,42 @@ function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
 
 const ROW_BORDER = 'border-b border-slate-200';
 
+/** Traffic-light text colors for severity (no badge) — khớp DuplicatesPageClient. */
+const SEVERITY_TEXT_CLASSES: Record<ReportSeverity, string> = {
+  Critical: 'text-red-700',
+  High: 'text-red-600',
+  Medium: 'text-orange-600',
+  Low: 'text-green-600',
+};
+
+/**
+ * Proportional widths (`table-fixed`) — cùng bố cục DuplicatesPageClient.
+ * Cột `daysSince` thay slot `AI tương đồng`; cột `prior` thay slot `Bản gốc`.
+ */
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   {
-    key: 'image',
-    label: REPORT_QUEUE_COLUMN_LABEL.image,
-    className: 'w-14 @[44rem]/rec-table:w-20',
+    key: 'report',
+    label: 'Báo cáo',
+    className: 'w-[28%] min-w-0 @[44rem]/rec-table:w-[30%]',
   },
-  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[10%] min-w-0' },
-  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[11%] min-w-0' },
-  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[8%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[9%] min-w-0' },
-  { key: 'prior', label: 'Báo cáo đã đóng', className: 'w-[10%] min-w-0' },
-  { key: 'daysSince', label: 'Ngày từ khi đóng', className: 'w-[9%] min-w-0' },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[15%] min-w-0 max-w-0',
+    className: 'w-[16%] min-w-0 max-w-0',
   },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
   { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
+  { key: 'daysSince', label: 'Ngày từ khi đóng', className: 'w-[9%] min-w-0' },
+  {
+    key: 'prior',
+    label: 'Báo cáo đã đóng',
+    className: 'w-[13%] min-w-0 max-w-0',
+  },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
   {
     key: 'actions',
-    label: REPORT_QUEUE_COLUMN_LABEL.actions,
-    className: 'w-[4.75rem] @[44rem]/rec-table:w-[5.5rem]',
+    label: '',
+    className: 'w-12 @[44rem]/rec-table:w-14',
   },
 ];
 
@@ -90,22 +122,67 @@ const BADGE_BASE =
 const BADGE_SIZE =
   'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/rec-table:px-2 @[44rem]/rec-table:py-0.5 @[44rem]/rec-table:text-xs';
 
-const CELL_TEXT =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-700 @[44rem]/rec-table:text-xs @[56rem]/rec-table:text-sm';
-const CELL_TEXT_MUTED =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-600 @[44rem]/rec-table:text-xs @[56rem]/rec-table:text-sm';
 const CELL_META =
   'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/rec-table:text-xs';
 const HEAD_LABEL =
   'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/rec-table:text-[0.6875rem]';
 
-const THUMB_FRAME =
-  'relative h-8 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100 @[44rem]/rec-table:h-9 @[44rem]/rec-table:w-14 @[56rem]/rec-table:h-10 @[56rem]/rec-table:w-16';
+const THUMB_SQUARE =
+  'relative size-9 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80 @[44rem]/rec-table:size-10';
 
 function firstImageUrl(media: ViolationRecurrenceMedia[] | undefined): string | null {
   if (!media?.length) return null;
   const image = media.find(m => m.type.toLowerCase().includes('image'));
   return image?.thumbnailUrl || image?.url || media[0]?.thumbnailUrl || media[0]?.url || null;
+}
+
+async function copyText(value: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(successMessage);
+  } catch {
+    toast.error('Không thể sao chép. Hãy chọn và copy thủ công.');
+  }
+}
+
+function CopyIconButton({
+  value,
+  label,
+  successMessage,
+}: {
+  value: string;
+  label: string;
+  successMessage: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={e => {
+        e.stopPropagation();
+        void (async () => {
+          await copyText(value, successMessage);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        })();
+      }}
+      className={cn(
+        'inline-flex size-5 shrink-0 items-center justify-center rounded text-slate-400',
+        'opacity-0 transition-opacity group-hover/copyrow:opacity-100',
+        'hover:bg-slate-100 hover:text-slate-700',
+        'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+      )}
+    >
+      {copied ? (
+        <Check className="size-3 text-emerald-600" aria-hidden />
+      ) : (
+        <Copy className="size-3" aria-hidden />
+      )}
+    </button>
+  );
 }
 
 function formatCreatedParts(isoString: string): { date: string; time: string } {
@@ -126,20 +203,39 @@ function formatCreatedParts(isoString: string): { date: string; time: string } {
 function CreatedCell({ iso }: { iso: string }) {
   const { date, time } = formatCreatedParts(iso);
   return (
-    <span className={cn(CELL_META, 'text-slate-800')} title={`${date} ${time}`}>
-      <span className="font-medium">{date}</span>
-      <span className="hidden text-slate-400 @[48rem]/rec-table:inline"> {time}</span>
-    </span>
+    <div className="min-w-0 space-y-0.5" title={`${date} ${time}`}>
+      <span
+        className={cn(
+          'block truncate text-[10px] font-medium leading-snug text-slate-800',
+          '@[44rem]/rec-table:text-[11px] @[56rem]/rec-table:text-xs'
+        )}
+      >
+        {date}
+      </span>
+      <span
+        className={cn(
+          'block truncate text-[10px] tabular-nums leading-snug text-slate-500',
+          '@[44rem]/rec-table:text-xs'
+        )}
+      >
+        {time}
+      </span>
+    </div>
   );
 }
 
-function SeverityBadge({ severity }: { severity: ViolationRecurrenceCandidateItem['severity'] }) {
+function SeverityText({ severity }: { severity: ViolationRecurrenceCandidateItem['severity'] }) {
+  const label = REPORT_SEVERITY_LABEL_VI[severity];
   return (
     <span
-      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_SEVERITY_BADGE_CLASSES[severity])}
-      title={REPORT_SEVERITY_LABEL_VI[severity]}
+      className={cn(
+        'block min-w-0 truncate text-[11px] font-medium leading-snug',
+        '@[44rem]/rec-table:text-xs @[56rem]/rec-table:text-sm',
+        SEVERITY_TEXT_CLASSES[severity] ?? 'text-slate-500'
+      )}
+      title={label}
     >
-      {REPORT_SEVERITY_LABEL_VI[severity]}
+      {label}
     </span>
   );
 }
@@ -153,100 +249,225 @@ function StatusBadge({ status }: { status: ViolationRecurrenceCandidateItem['sta
   );
 }
 
-function ReportThumb({
-  url,
-  alt,
+/**
+ * Cột đầu kiểu Transaction (Duplicates): thumb vuông + stack
+ * id (link xanh + copy) → code (+ copy) → categoryName (muted).
+ * Badge History góc thumb = cờ nghi tái phát.
+ */
+function ReportIdentityCell({
+  row,
   priority = false,
 }: {
-  url: string | null;
-  alt: string;
+  row: ViolationRecurrenceCandidateItem;
   priority?: boolean;
 }) {
-  const thumb = !url ? (
-    <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
-      <ImageIcon
-        className="size-3 @[44rem]/rec-table:size-3.5 @[56rem]/rec-table:size-4"
-        aria-hidden
-      />
-    </div>
-  ) : (
-    <div className={THUMB_FRAME}>
-      <Image
-        src={url}
-        alt={alt}
-        fill
-        sizes="(max-width: 640px) 3rem, 4rem"
-        className="object-cover"
-        unoptimized
-        priority={priority}
-      />
-    </div>
-  );
+  const url = firstImageUrl(row.media);
 
   return (
-    <div className="relative inline-flex">
-      {thumb}
-      <span
-        className={cn(
-          'absolute -right-1.5 -top-1.5 z-10',
-          'inline-flex size-4 items-center justify-center @[44rem]/rec-table:size-5',
-          'rounded-full bg-orange-500 text-white shadow-sm ring-2 ring-white'
-        )}
-        aria-label="Nghi tái phát"
-        title="Nghi ô nhiễm tái phát"
-      >
-        <History className="size-2 @[44rem]/rec-table:size-2.5" aria-hidden strokeWidth={2.75} />
-      </span>
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="relative shrink-0">
+        <div className={THUMB_SQUARE}>
+          {url ? (
+            <Image
+              src={url}
+              alt={row.code}
+              fill
+              sizes="40px"
+              className="object-cover"
+              unoptimized
+              priority={priority}
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-slate-400">
+              <ImageIcon className="size-4" aria-hidden />
+            </div>
+          )}
+        </div>
+        <span
+          className={cn(
+            'absolute -right-1.5 -top-1.5 z-10',
+            'inline-flex size-4 items-center justify-center @[44rem]/rec-table:size-5',
+            'rounded-full bg-orange-500 text-white shadow-sm ring-2 ring-white'
+          )}
+          aria-label="Nghi tái phát"
+          title="Nghi ô nhiễm tái phát"
+        >
+          <History className="size-2 @[44rem]/rec-table:size-2.5" aria-hidden strokeWidth={2.75} />
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <Link
+            href={`/officer/verify/${row.id}`}
+            title={row.id}
+            onClick={e => e.stopPropagation()}
+            className={cn(
+              'min-w-0 truncate text-[11px] font-semibold tabular-nums text-sky-700 no-underline',
+              '@[44rem]/rec-table:text-xs',
+              'hover:text-sky-800 hover:underline',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+            )}
+          >
+            {row.id}
+          </Link>
+          <CopyIconButton
+            value={row.id}
+            label="Sao chép ID báo cáo"
+            successMessage="Đã sao chép ID báo cáo."
+          />
+        </div>
+
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <span
+            className="min-w-0 truncate text-[11px] font-medium tabular-nums text-slate-800 @[44rem]/rec-table:text-xs"
+            title={row.code}
+          >
+            {row.code}
+          </span>
+          <CopyIconButton
+            value={row.code}
+            label={`Sao chép mã ${row.code}`}
+            successMessage="Đã sao chép mã báo cáo."
+          />
+        </div>
+
+        <p
+          className="truncate text-[11px] leading-snug text-slate-500 @[44rem]/rec-table:text-xs"
+          title={row.categoryName || undefined}
+        >
+          {row.categoryName?.trim() || '—'}
+        </p>
+      </div>
     </div>
   );
 }
 
-function RecurrenceRowActions({
-  row,
-  onCompare,
-}: {
-  row: ViolationRecurrenceCandidateItem;
-  onCompare: () => void;
-}) {
+const DAYS_SINCE_TOOLTIP =
+  'Số ngày từ lúc đóng báo cáo trước đó đến khi tạo báo cáo hiện tại. Càng gần ngày đóng thì mức nghi tái phát càng cao (≤50m, cùng loại, trong 30 ngày).';
+
+/** Slot tương đương cột AI tương đồng — hiển thị daysSinceClosed. */
+function DaysSinceCell({ days }: { days: number | null | undefined }) {
+  if (days == null) {
+    return (
+      <div className="flex min-w-0 items-center gap-1" onClick={e => e.stopPropagation()}>
+        <span className={cn(CELL_META, 'text-slate-400')}>—</span>
+        <AnimatedHoverTooltip name={DAYS_SINCE_TOOLTIP} wrap>
+          <button
+            type="button"
+            aria-label="Giải thích số ngày từ khi đóng"
+            className={cn(
+              'inline-flex size-4 shrink-0 items-center justify-center rounded-full text-slate-400',
+              'transition-colors hover:text-slate-600',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+            )}
+          >
+            <Info className="size-3.5" aria-hidden />
+          </button>
+        </AnimatedHoverTooltip>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-      <button
-        type="button"
-        title="So sánh với báo cáo đã đóng"
-        aria-label={`So sánh ${row.code} với báo cáo đã đóng`}
-        onClick={e => {
-          e.stopPropagation();
-          onCompare();
-        }}
+    <div className="flex min-w-0 items-center gap-1" onClick={e => e.stopPropagation()}>
+      <span
         className={cn(
-          'inline-flex size-7 items-center justify-center rounded-md @[44rem]/rec-table:size-8',
-          'bg-orange-500 text-white shadow-sm',
-          'transition-[background-color,box-shadow,transform] duration-150',
-          'hover:bg-orange-400 hover:shadow',
-          'active:scale-[0.97]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-1'
+          'min-w-0 truncate text-[11px] font-medium tabular-nums leading-snug',
+          '@[44rem]/rec-table:text-xs @[56rem]/rec-table:text-sm',
+          days <= 7 ? 'text-rose-600' : days <= 30 ? 'text-orange-700' : 'text-slate-800'
         )}
+        title={`${days} ngày từ khi đóng báo cáo trước`}
       >
-        <ArrowRightLeft
-          className="size-3.5 @[44rem]/rec-table:size-4"
-          aria-hidden
-          strokeWidth={2.25}
-        />
-      </button>
+        {days} ngày
+      </span>
+      <AnimatedHoverTooltip name={DAYS_SINCE_TOOLTIP} wrap>
+        <button
+          type="button"
+          aria-label="Giải thích số ngày từ khi đóng"
+          className={cn(
+            'inline-flex size-4 shrink-0 items-center justify-center rounded-full text-slate-400',
+            'transition-colors hover:text-slate-600',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+          )}
+        >
+          <Info className="size-3.5" aria-hidden />
+        </button>
+      </AnimatedHoverTooltip>
+    </div>
+  );
+}
+
+/** Cột Báo cáo đã đóng — cùng pattern PrimaryReportCell (Duplicates). */
+function PriorClosedReportCell({
+  prior,
+}: {
+  prior: ViolationRecurrenceCandidateItem['priorClosedReport'];
+}) {
+  if (!prior) {
+    return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
+  }
+
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <p
+        className={cn(
+          'truncate text-[10px] font-medium leading-snug text-slate-800',
+          '@[44rem]/rec-table:text-[11px] @[56rem]/rec-table:text-xs'
+        )}
+        title="Báo cáo đã đóng"
+      >
+        Báo cáo đã đóng
+      </p>
       <Link
-        href={`/officer/verify/${row.id}`}
-        title="Xem chi tiết"
-        aria-label={`Xem chi tiết ${row.code}`}
+        href={`/officer/tracking?${new URLSearchParams({
+          reportId: prior.id,
+          from: RECURRENCE_LIST_PATH,
+        }).toString()}`}
+        title={prior.code}
         onClick={e => e.stopPropagation()}
         className={cn(
-          'inline-flex size-7 items-center justify-center rounded-md @[44rem]/rec-table:size-8',
-          'text-slate-600 transition-colors',
-          'hover:bg-slate-100 hover:text-slate-900',
+          'inline-flex max-w-full min-w-0 items-center gap-1',
+          'text-[10px] tabular-nums leading-snug text-slate-600 underline underline-offset-2',
+          '@[44rem]/rec-table:text-xs',
+          'hover:text-sky-700',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
         )}
       >
-        <Eye className="size-3.5 @[44rem]/rec-table:size-4" aria-hidden />
+        <span className="truncate">{prior.code}</span>
+        <ExternalLink className="size-3 shrink-0 opacity-70" aria-hidden />
       </Link>
+    </div>
+  );
+}
+
+/** Cột ⋮ — menu: Chi tiết so sánh (trang detail). */
+function RecurrenceRowActions({ row }: { row: ViolationRecurrenceCandidateItem }) {
+  return (
+    <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Thao tác ${row.code}`}
+            className={cn(
+              'inline-flex size-8 items-center justify-center rounded-md text-slate-500',
+              'transition-colors hover:bg-slate-100 hover:text-slate-800',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+            )}
+          >
+            <MoreVertical className="size-4" aria-hidden />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem asChild className="cursor-pointer gap-2">
+            <Link href={`/officer/recurrence/${row.id}`}>
+              <Eye className="size-4" aria-hidden />
+              Xem chi tiết
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -257,57 +478,27 @@ function renderRecurrenceCell(
   opts?: { imagePriority?: boolean }
 ) {
   switch (key) {
-    case 'image':
-      return (
-        <ReportThumb url={firstImageUrl(row.media)} alt={row.code} priority={opts?.imagePriority} />
-      );
-    case 'code':
-      return (
-        <span className={cn(CELL_TEXT, 'font-medium')} title={row.code}>
-          {row.code}
-        </span>
-      );
-    case 'category':
-      return (
-        <span className={CELL_TEXT} title={row.categoryName}>
-          {row.categoryName || '—'}
-        </span>
-      );
+    case 'report':
+      return <ReportIdentityCell row={row} priority={opts?.imagePriority} />;
+    case 'prior':
+      return <PriorClosedReportCell prior={row.priorClosedReport} />;
+    case 'daysSince':
+      return <DaysSinceCell days={row.priorClosedReport?.daysSinceClosed} />;
     case 'severity':
-      return <SeverityBadge severity={row.severity} />;
+      return <SeverityText severity={row.severity} />;
     case 'status':
       return <StatusBadge status={row.status} />;
-    case 'prior':
-      return row.priorClosedReport ? (
-        <span
-          className={cn(CELL_TEXT, 'font-medium text-sky-800')}
-          title={row.priorClosedReport.code}
-        >
-          {row.priorClosedReport.code}
-        </span>
-      ) : (
-        <span className={cn(CELL_META, 'text-slate-400')}>—</span>
-      );
-    case 'daysSince': {
-      const days = row.priorClosedReport?.daysSinceClosed;
-      if (days == null) return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
+    case 'address':
       return (
         <span
           className={cn(
-            CELL_META,
-            'font-medium',
-            days <= 7 ? 'text-rose-600' : days <= 30 ? 'text-orange-700' : 'text-slate-700'
+            'block min-w-0 text-[11px] leading-snug text-slate-600',
+            '@[44rem]/rec-table:text-xs @[56rem]/rec-table:text-sm',
+            'line-clamp-2 wrap-break-word whitespace-normal'
           )}
-          title={`${days} ngày từ khi đóng báo cáo trước`}
+          title={row.address || undefined}
         >
-          {days} ngày
-        </span>
-      );
-    }
-    case 'address':
-      return (
-        <span className={CELL_TEXT_MUTED} title={row.address}>
-          {row.address || '—'}
+          {row.address?.trim() || '—'}
         </span>
       );
     case 'created':
@@ -320,11 +511,10 @@ function renderRecurrenceCell(
 }
 
 export function RecurrencePageClient() {
+  const router = useRouter();
   const user = useAuthStore(s => s.user);
   const fullName = user?.name?.trim() || 'Người dùng';
   const [page, setPage] = useState(1);
-  const [compareItem, setCompareItem] = useState<ViolationRecurrenceCandidateItem | null>(null);
-  const [compareOpen, setCompareOpen] = useState(false);
 
   const { data, isPending, isFetching, isError, refetch } = useViolationRecurrenceCandidates({
     page,
@@ -334,16 +524,8 @@ export function RecurrencePageClient() {
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
 
-  const openCompare = (row: ViolationRecurrenceCandidateItem) => {
-    setCompareItem(row);
-    setCompareOpen(true);
-  };
-
-  const handleCompareOpenChange = (open: boolean) => {
-    setCompareOpen(open);
-    if (!open) {
-      window.setTimeout(() => setCompareItem(null), 200);
-    }
+  const openDetail = (row: ViolationRecurrenceCandidateItem) => {
+    router.push(`/officer/recurrence/${row.id}`);
   };
 
   return (
@@ -395,9 +577,13 @@ export function RecurrencePageClient() {
                       col.className
                     )}
                   >
-                    <span className={HEAD_LABEL} title={col.label}>
-                      {col.label}
-                    </span>
+                    {col.label ? (
+                      <span className={HEAD_LABEL} title={col.label}>
+                        {col.label}
+                      </span>
+                    ) : (
+                      <span className="sr-only">Thao tác</span>
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -441,7 +627,7 @@ export function RecurrencePageClient() {
                       ROW_BORDER,
                       'cursor-pointer transition-colors hover:bg-orange-50/40'
                     )}
-                    onClick={() => openCompare(row)}
+                    onClick={() => openDetail(row)}
                   >
                     {COLUMN_DEFS.map(col => (
                       <TableCell
@@ -449,13 +635,15 @@ export function RecurrencePageClient() {
                         className={cn(
                           tableCellPad(col.key, 'body'),
                           'align-middle',
-                          col.key !== 'image' && col.key !== 'actions' && 'max-w-0 overflow-hidden',
+                          col.key !== 'report' &&
+                            col.key !== 'actions' &&
+                            'max-w-0 overflow-hidden',
                           col.className
                         )}
                         onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
                       >
                         {col.key === 'actions' ? (
-                          <RecurrenceRowActions row={row} onCompare={() => openCompare(row)} />
+                          <RecurrenceRowActions row={row} />
                         ) : (
                           renderRecurrenceCell(col.key, row, {
                             imagePriority: rowIndex < 2,
@@ -486,12 +674,6 @@ export function RecurrencePageClient() {
           </div>
         ) : null}
       </div>
-
-      <RecurrenceCandidateCompareDialog
-        item={compareItem}
-        open={compareOpen}
-        onOpenChange={handleCompareOpenChange}
-      />
     </>
   );
 }
