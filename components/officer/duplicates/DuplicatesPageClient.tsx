@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 
 const DUPLICATES_PAGE_SIZE = 10;
 
-type ColumnKey = 'report' | 'primary' | 'severity' | 'status' | 'address' | 'actions';
+type ColumnKey = 'report' | 'primary' | 'severity' | 'status' | 'address' | 'created' | 'actions';
 
 const FIRST_COL: ColumnKey = 'report';
 const LAST_COL: ColumnKey = 'actions';
@@ -76,26 +76,27 @@ const SEVERITY_TEXT_CLASSES: Record<ReportSeverity, string> = {
 
 /**
  * Proportional widths (`table-fixed`) — fluid theo content area (sidebar collapse/expand).
- * Cột đầu: ảnh + stack id / ngày tạo / code / categoryName.
+ * Cột đầu: ảnh + stack id / code / categoryName.
  */
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   {
     key: 'report',
     label: 'Báo cáo',
-    className: 'w-[32%] min-w-0 @[44rem]/dup-table:w-[34%]',
-  },
-  {
-    key: 'primary',
-    label: 'Bản gốc',
-    className: 'w-[14%] min-w-0 max-w-0',
+    className: 'w-[28%] min-w-0 @[44rem]/dup-table:w-[30%]',
   },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[18%] min-w-0 max-w-0',
+    className: 'w-[16%] min-w-0 max-w-0',
   },
-  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[10%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[12%] min-w-0' },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
+  {
+    key: 'primary',
+    label: 'Bản gốc',
+    className: 'w-[12%] min-w-0 max-w-0',
+  },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[11%] min-w-0' },
   {
     key: 'actions',
     label: '',
@@ -180,6 +181,16 @@ function formatCreatedParts(isoString: string): { date: string; time: string } {
   };
 }
 
+function CreatedCell({ iso }: { iso: string }) {
+  const { date, time } = formatCreatedParts(iso);
+  return (
+    <span className={cn(CELL_META, 'text-slate-800')} title={`${date} ${time}`}>
+      <span className="font-medium">{date}</span>
+      <span className="hidden text-slate-400 @[48rem]/dup-table:inline"> {time}</span>
+    </span>
+  );
+}
+
 function SeverityText({ severity }: { severity: DuplicateCandidateItem['severity'] }) {
   const label = REPORT_SEVERITY_LABEL_VI[severity];
   return (
@@ -207,7 +218,7 @@ function StatusBadge({ status }: { status: DuplicateCandidateItem['status'] }) {
 
 /**
  * Cột đầu kiểu Transaction: thumb vuông (căn giữa dọc) + stack
- * id (link xanh + copy) → ngày tạo → code (+ copy) → categoryName (muted).
+ * id (link xanh + copy) → code (+ copy) → categoryName (muted).
  */
 function ReportIdentityCell({
   row,
@@ -217,8 +228,6 @@ function ReportIdentityCell({
   priority?: boolean;
 }) {
   const url = firstDuplicateMediaUrl(row.media);
-  const { date, time } = formatCreatedParts(row.createdAt);
-  const createdLabel = `${date} ${time}`;
 
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -261,11 +270,6 @@ function ReportIdentityCell({
             successMessage="Đã sao chép ID báo cáo."
           />
         </div>
-
-        <p className={cn(CELL_META, 'text-slate-500')} title={createdLabel}>
-          <span className="font-medium text-slate-700">{date}</span>
-          <span className="hidden text-slate-400 @[48rem]/dup-table:inline"> {time}</span>
-        </p>
 
         <div className="group/copyrow flex min-w-0 items-center gap-1">
           <span
@@ -393,6 +397,8 @@ function renderDuplicateCell(
           {row.address?.trim() || '—'}
         </span>
       );
+    case 'created':
+      return <CreatedCell iso={row.createdAt} />;
     case 'actions':
       return null;
     default:
