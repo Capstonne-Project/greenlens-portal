@@ -329,7 +329,7 @@ function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['prima
         Báo cáo gốc
       </p>
       <Link
-        href={`/officer/verify/${primary.id}`}
+        href={`/officer/tracking?reportId=${encodeURIComponent(primary.id)}`}
         title={primary.code}
         onClick={e => e.stopPropagation()}
         className={cn(
