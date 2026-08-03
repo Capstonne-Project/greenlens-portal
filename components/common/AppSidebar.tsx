@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -76,19 +76,35 @@ function NavIcon({ item }: { item: MapShellNavItem }) {
 
 /**
  * Section label tĩnh (kiểu PROLOGISTIC "LOGISTICS / FINANCE") — không bấm được.
- * Giữ trong DOM khi collapse (opacity fade theo Framer) để width tween không giật layout.
+ * Collapse: opacity + height + margin co về 0 (overflow hidden) để icon sát nhau mượt;
+ * expanded: hiện lại khoảng cách trên (trừ mục đầu).
  */
-function NavSectionLabel({ label }: { label: string }) {
+function NavSectionLabel({
+  label,
+  withTopSpacing = true,
+}: {
+  label: string;
+  /** false cho label đầu tiên (tương đương first:mt-0). */
+  withTopSpacing?: boolean;
+}) {
   const { open, animate } = useSidebar();
   const showLabel = !animate || open;
 
   return (
     <motion.div
       initial={false}
-      animate={{ opacity: showLabel ? 1 : 0 }}
-      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      animate={{
+        opacity: showLabel ? 1 : 0,
+        height: showLabel ? 'auto' : 0,
+        marginTop: showLabel && withTopSpacing ? 8 : 0,
+      }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       aria-hidden={!showLabel}
-      className="mt-2 px-2 text-[11px] font-semibold tracking-[0.08em] whitespace-pre text-neutral-400 uppercase select-none first:mt-0"
+      className={cn(
+        'overflow-hidden px-2 text-[11px] font-semibold tracking-[0.08em] whitespace-pre',
+        'text-neutral-400 uppercase select-none',
+        !showLabel && 'pointer-events-none'
+      )}
     >
       {label}
     </motion.div>
@@ -284,9 +300,11 @@ export function AppSidebar({
             className="mt-8 flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto scrollbar-hide"
             aria-label="Menu chính"
           >
-            {config.mainNav.map(item => (
-              <Fragment key={item.id}>
-                {item.sectionLabel ? <NavSectionLabel label={item.sectionLabel} /> : null}
+            {config.mainNav.map((item, index) => (
+              <div key={item.id} className="flex flex-col">
+                {item.sectionLabel ? (
+                  <NavSectionLabel label={item.sectionLabel} withTopSpacing={index > 0} />
+                ) : null}
                 {item.children?.length ? (
                   <NavDropdown item={item} activeId={activeId} pathname={pathname} />
                 ) : (
@@ -300,7 +318,7 @@ export function AppSidebar({
                     active={activeId === item.id}
                   />
                 )}
-              </Fragment>
+              </div>
             ))}
           </nav>
         </div>
