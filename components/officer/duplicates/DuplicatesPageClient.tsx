@@ -8,6 +8,7 @@ import {
   Check,
   CircleHelp,
   Copy,
+  ExternalLink,
   Eye,
   ImageIcon,
   Loader2,
@@ -184,10 +185,24 @@ function formatCreatedParts(isoString: string): { date: string; time: string } {
 function CreatedCell({ iso }: { iso: string }) {
   const { date, time } = formatCreatedParts(iso);
   return (
-    <span className={cn(CELL_META, 'text-slate-800')} title={`${date} ${time}`}>
-      <span className="font-medium">{date}</span>
-      <span className="hidden text-slate-400 @[48rem]/dup-table:inline"> {time}</span>
-    </span>
+    <div className="min-w-0 space-y-0.5" title={`${date} ${time}`}>
+      <span
+        className={cn(
+          'block truncate text-[11px] font-medium leading-snug text-slate-800',
+          '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm'
+        )}
+      >
+        {date}
+      </span>
+      <span
+        className={cn(
+          'block truncate text-[10px] tabular-nums leading-snug text-slate-500',
+          '@[44rem]/dup-table:text-xs'
+        )}
+      >
+        {time}
+      </span>
+    </div>
   );
 }
 
@@ -296,7 +311,7 @@ function ReportIdentityCell({
   );
 }
 
-/** Cột Bản gốc — kiểu Reference/Pick Up Request: nhãn vai trò + code primary bên dưới. */
+/** Cột Bản gốc — kiểu Pick Up Status: nhãn dòng 1 + code link gạch chân dòng 2. */
 function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['primary'] }) {
   if (!primary) {
     return <span className={cn(CELL_META, 'text-slate-400')}>—</span>;
@@ -304,22 +319,30 @@ function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['prima
 
   return (
     <div className="min-w-0 space-y-0.5">
+      <p
+        className={cn(
+          'truncate text-[11px] font-medium leading-snug text-slate-800',
+          '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm'
+        )}
+        title="Bản gốc"
+      >
+        Bản gốc
+      </p>
       <Link
         href={`/officer/verify/${primary.id}`}
-        title={`Bản gốc · ${primary.id}`}
+        title={primary.code}
         onClick={e => e.stopPropagation()}
         className={cn(
-          'block min-w-0 truncate text-[11px] font-medium leading-snug text-slate-800 no-underline',
-          '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm',
-          'hover:text-sky-700 hover:underline',
+          'inline-flex max-w-full min-w-0 items-center gap-1',
+          'text-[10px] tabular-nums leading-snug text-slate-600 underline underline-offset-2',
+          '@[44rem]/dup-table:text-xs',
+          'hover:text-sky-700',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
         )}
       >
-        Bản gốc
+        <span className="truncate">{primary.code}</span>
+        <ExternalLink className="size-3 shrink-0 opacity-70" aria-hidden />
       </Link>
-      <p className={cn(CELL_META, 'text-slate-500')} title={primary.code}>
-        {primary.code}
-      </p>
     </div>
   );
 }
