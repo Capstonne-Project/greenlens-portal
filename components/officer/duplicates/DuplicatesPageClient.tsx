@@ -245,7 +245,7 @@ function SourceBadge({ source }: { source: string | null }) {
 
 /**
  * Cột đầu kiểu Transaction: thumb vuông + stack
- * code (link xanh + copy) → id (+ copy) → categoryName (muted).
+ * categoryName → id (+ copy) → code (link xanh + copy).
  */
 function ReportIdentityCell({
   row,
@@ -277,26 +277,12 @@ function ReportIdentityCell({
       </div>
 
       <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="group/copyrow flex min-w-0 items-center gap-1">
-          <Link
-            href={`/officer/verify/${row.id}`}
-            title={row.code}
-            onClick={e => e.stopPropagation()}
-            className={cn(
-              'min-w-0 truncate text-[12px] font-semibold tabular-nums text-sky-700 no-underline',
-              '@[44rem]/dup-table:text-sm',
-              'hover:text-sky-800 hover:underline',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
-            )}
-          >
-            {row.code}
-          </Link>
-          <CopyIconButton
-            value={row.code}
-            label={`Sao chép mã ${row.code}`}
-            successMessage="Đã sao chép mã báo cáo."
-          />
-        </div>
+        <p
+          className="truncate text-[12px] font-semibold leading-snug text-slate-800 @[44rem]/dup-table:text-sm"
+          title={row.categoryName || undefined}
+        >
+          {row.categoryName?.trim() || '—'}
+        </p>
 
         <div className="group/copyrow flex min-w-0 items-center gap-1">
           <span
@@ -312,12 +298,26 @@ function ReportIdentityCell({
           />
         </div>
 
-        <p
-          className="truncate text-[11px] leading-snug text-slate-500 @[44rem]/dup-table:text-xs"
-          title={row.categoryName || undefined}
-        >
-          {row.categoryName?.trim() || '—'}
-        </p>
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <Link
+            href={`/officer/verify/${row.id}`}
+            title={row.code}
+            onClick={e => e.stopPropagation()}
+            className={cn(
+              'min-w-0 truncate text-[11px] font-medium tabular-nums text-sky-700 no-underline',
+              '@[44rem]/dup-table:text-xs',
+              'hover:text-sky-800 hover:underline',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+            )}
+          >
+            {row.code}
+          </Link>
+          <CopyIconButton
+            value={row.code}
+            label={`Sao chép mã ${row.code}`}
+            successMessage="Đã sao chép mã báo cáo."
+          />
+        </div>
       </div>
     </div>
   );
