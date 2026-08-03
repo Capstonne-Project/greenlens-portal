@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Eye,
   ImageIcon,
+  Info,
   Loader2,
   MoreVertical,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ import { toast } from 'sonner';
 import {
   DuplicateCandidateCompareDialog,
   firstDuplicateMediaUrl,
+  formatSimilarity,
 } from '@/components/officer/duplicates/DuplicateCandidateCompareDialog';
 import {
   DropdownMenu,
@@ -26,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
@@ -48,7 +51,15 @@ import { cn } from '@/lib/utils';
 
 const DUPLICATES_PAGE_SIZE = 10;
 
-type ColumnKey = 'report' | 'primary' | 'severity' | 'status' | 'address' | 'created' | 'actions';
+type ColumnKey =
+  | 'report'
+  | 'primary'
+  | 'severity'
+  | 'status'
+  | 'address'
+  | 'created'
+  | 'similarity'
+  | 'actions';
 
 const FIRST_COL: ColumnKey = 'report';
 const LAST_COL: ColumnKey = 'actions';
@@ -92,10 +103,11 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   },
   { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
   { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
+  { key: 'similarity', label: 'AI tương đồng', className: 'w-[9%] min-w-0' },
   {
     key: 'primary',
     label: 'Bản gốc',
-    className: 'w-[14%] min-w-0 max-w-0',
+    className: 'w-[13%] min-w-0 max-w-0',
   },
   { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
   {
@@ -188,8 +200,8 @@ function CreatedCell({ iso }: { iso: string }) {
     <div className="min-w-0 space-y-0.5" title={`${date} ${time}`}>
       <span
         className={cn(
-          'block truncate text-[11px] font-medium leading-snug text-slate-800',
-          '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm'
+          'block truncate text-[10px] font-medium leading-snug text-slate-800',
+          '@[44rem]/dup-table:text-[11px] @[56rem]/dup-table:text-xs'
         )}
       >
         {date}
@@ -311,6 +323,41 @@ function ReportIdentityCell({
   );
 }
 
+/** AI tương đồng — điểm % + icon Info (kiểu cột Price) kèm tooltip giải thích. */
+const AI_SIMILARITY_TOOLTIP =
+  'Hệ thống AI so ảnh của báo cáo này với ảnh báo cáo gốc và cho điểm từ 0% đến 100%. Điểm càng cao thì ảnh càng giống. Đây chỉ là gợi ý hỗ trợ xem xét.';
+
+function SimilarityCell({ score }: { score: number | null }) {
+  const label = formatSimilarity(score);
+
+  return (
+    <div className="flex min-w-0 items-center gap-1" onClick={e => e.stopPropagation()}>
+      <span
+        className={cn(
+          'min-w-0 truncate text-[11px] font-medium tabular-nums leading-snug text-slate-800',
+          '@[44rem]/dup-table:text-xs @[56rem]/dup-table:text-sm'
+        )}
+        title={label ?? undefined}
+      >
+        {label ?? '—'}
+      </span>
+      <AnimatedHoverTooltip name={AI_SIMILARITY_TOOLTIP} wrap>
+        <button
+          type="button"
+          aria-label="Giải thích điểm AI tương đồng"
+          className={cn(
+            'inline-flex size-4 shrink-0 items-center justify-center rounded-full text-slate-400',
+            'transition-colors hover:text-slate-600',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+          )}
+        >
+          <Info className="size-3.5" aria-hidden />
+        </button>
+      </AnimatedHoverTooltip>
+    </div>
+  );
+}
+
 /** Cột Bản gốc — kiểu Pick Up Status: nhãn dòng 1 + code link gạch chân dòng 2. */
 function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['primary'] }) {
   if (!primary) {
@@ -403,6 +450,8 @@ function renderDuplicateCell(
       return <ReportIdentityCell row={row} priority={opts?.imagePriority} />;
     case 'primary':
       return <PrimaryReportCell primary={row.primary} />;
+    case 'similarity':
+      return <SimilarityCell score={row.aiSimilarityScore} />;
     case 'severity':
       return <SeverityText severity={row.severity} />;
     case 'status':
