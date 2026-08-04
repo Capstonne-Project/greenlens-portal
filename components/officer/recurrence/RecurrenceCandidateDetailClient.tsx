@@ -7,6 +7,7 @@ import {
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useViolationRecurrenceComparison } from '@/hooks/useOfficer';
 import type {
@@ -19,7 +20,7 @@ import {
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Check, Copy, FileText, ImageIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, FileText, ImageIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -408,6 +409,50 @@ const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
   },
 ];
 
+/** Skeleton mirror layout so sánh — media 2 cột + hàng field. */
+function CompareDetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-5" aria-busy aria-label="Đang tải">
+      <div className="flex shrink-0 items-stretch gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-48 w-full rounded-lg sm:h-56" />
+        </div>
+        <div
+          className="mx-1 flex w-10 shrink-0 items-center justify-center sm:mx-2 sm:w-14"
+          aria-hidden
+        >
+          <Skeleton className="h-3 w-full rounded-full" />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-48 w-full rounded-lg sm:h-56" />
+        </div>
+      </div>
+
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <Skeleton className="h-7 w-28 rounded-lg" />
+        <Skeleton className="h-7 w-32 rounded-full" />
+      </div>
+
+      <div>
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="grid grid-cols-2">
+            <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 sm:px-5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="flex flex-col items-center gap-1.5 px-2 py-4 sm:px-5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Body so sánh — MediaStrip + LinkPulse + bảng field (dialog style).
  * Badge + #code nằm trên ảnh như layout trước.
@@ -435,7 +480,7 @@ function RecurrenceCompareBody({
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <SidePanelHeader
             side={current}
-            roleLabel="Nghi tái phát"
+            roleLabel="Nghi tái diễn"
             roleTone="suspect"
             fromPath={fromPath}
           />
@@ -557,13 +602,13 @@ export function RecurrenceCandidateDetailClient() {
             Quay lại danh sách
           </Button>
           {isFetching && !isPending ? (
-            <Loader2 className="size-4 animate-spin text-slate-400" aria-label="Đang cập nhật" />
+            <Skeleton className="size-4 rounded-full" aria-label="Đang cập nhật" />
           ) : null}
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-              Chi tiết báo cáo tái phát
+              Chi tiết báo cáo tái diễn
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               Đối chiếu báo cáo hiện tại với báo cáo đã đóng để quyết định mở thanh tra hoặc bác bỏ
@@ -583,12 +628,10 @@ export function RecurrenceCandidateDetailClient() {
       </header>
 
       {isPending ? (
-        <div className="flex h-48 items-center justify-center">
-          <Loader2 className="size-8 animate-spin text-slate-400" />
-        </div>
+        <CompareDetailSkeleton />
       ) : isError || !data ? (
         <div className="flex h-48 flex-col items-center justify-center gap-2 text-center">
-          <p className="text-sm text-destructive">Không tải được chi tiết so sánh tái phát.</p>
+          <p className="text-sm text-destructive">Không tải được chi tiết so sánh tái diễn.</p>
           <button
             type="button"
             onClick={() => void refetch()}

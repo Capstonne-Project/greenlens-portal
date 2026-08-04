@@ -1,16 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Check,
+  ChevronUp,
   CircleHelp,
   Copy,
   ExternalLink,
   Eye,
-  History,
+  FileText,
   ImageIcon,
   Info,
   Loader2,
@@ -36,15 +37,26 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useViolationRecurrenceCandidates } from '@/hooks/useOfficer';
+import { useReportInspections, useViolationRecurrenceCandidates } from '@/hooks/useOfficer';
+import type { ReportInspectionSummary } from '@/lib/api/models/inspectionReport';
 import type { ViolationRecurrenceCandidateItem } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ViolationRecurrenceMedia } from '@/lib/api/models/violationRecurrence';
 import type { ReportSeverity } from '@/lib/api/models/report';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
+import {
+  inspectionShowsClosedAt,
+  inspectionShowsPenaltyFields,
+  inspectionSlaIsOverdue,
+  inspectionStatusBadgeClass,
+  inspectionStatusLabelVi,
+  resolveInspectionSubjectName,
+} from '@/lib/constants/inspectionStatus';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { violationLevelLabelVi } from '@/lib/constants/violationLevel';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const RECURRENCE_PAGE_SIZE = 10;
 
@@ -64,11 +76,14 @@ type ColumnKey =
 const FIRST_COL: ColumnKey = 'report';
 const LAST_COL: ColumnKey = 'actions';
 
+/** Padding ngang cột Báo cáo — header label & thumb cùng mép trái content. */
+const FIRST_COL_PAD_X = 'ps-6 pe-2 @[44rem]/rec-table:ps-12 @[44rem]/rec-table:pe-3';
+
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
   const y =
     layer === 'head' ? 'py-2.5 @[44rem]/rec-table:py-3.5' : 'py-2.5 @[44rem]/rec-table:py-4';
   if (colKey === FIRST_COL) {
-    return cn('px-0', y, 'ps-6 pe-2 @[44rem]/rec-table:ps-12 @[44rem]/rec-table:pe-3');
+    return cn('px-0', y, FIRST_COL_PAD_X);
   }
   if (colKey === LAST_COL) {
     return cn('px-0', y, 'ps-1.5 pe-4 @[44rem]/rec-table:ps-3 @[44rem]/rec-table:pe-6');
@@ -106,7 +121,7 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'daysSince', label: 'Ngày từ khi đóng', className: 'w-[9%] min-w-0' },
   {
     key: 'prior',
-    label: 'Báo cáo đã đóng',
+    label: 'Báo cáo gốc',
     className: 'w-[13%] min-w-0 max-w-0',
   },
   { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
@@ -127,8 +142,11 @@ const CELL_META =
 const HEAD_LABEL =
   'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/rec-table:text-[0.6875rem]';
 
-const THUMB_SQUARE =
-  'relative size-9 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80 @[44rem]/rec-table:size-10';
+const THUMB_SIZE = 'size-9 @[44rem]/rec-table:size-10';
+const THUMB_SQUARE = cn(
+  'relative shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80',
+  THUMB_SIZE
+);
 
 function firstImageUrl(media: ViolationRecurrenceMedia[] | undefined): string | null {
   if (!media?.length) return null;
@@ -252,20 +270,55 @@ function StatusBadge({ status }: { status: ViolationRecurrenceCandidateItem['sta
 /**
  * Cột đầu kiểu Transaction (Duplicates): thumb vuông + stack
  * id (link xanh + copy) → code (+ copy) → categoryName (muted).
- * Badge History góc thumb = cờ nghi tái phát.
+ *
+ * Alignment (CustomerGo):
+ * - Thumb thẳng hàng label header «BÁO CÁO» (mép content cột).
+ * - Chevron lệch trái thumb một khoảng nhỏ; đóng = ngửa lên, mở = úp xuống.
  */
 function ReportIdentityCell({
   row,
   priority = false,
+  expandable = false,
+  expanded = false,
+  onToggleExpand,
 }: {
   row: ViolationRecurrenceCandidateItem;
   priority?: boolean;
+  expandable?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }) {
   const url = firstImageUrl(row.media);
 
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      <div className="relative shrink-0">
+    <div className="relative flex min-w-0 items-center gap-2.5">
+      {expandable ? (
+        <button
+          type="button"
+          aria-label={expanded ? 'Thu gọn hồ sơ xử phạt' : 'Mở hồ sơ xử phạt'}
+          aria-expanded={expanded}
+          onClick={e => {
+            e.stopPropagation();
+            onToggleExpand?.();
+          }}
+          className={cn(
+            'absolute top-1/2 right-full z-10 mr-1 -translate-y-1/2',
+            'inline-flex size-6 shrink-0 items-center justify-center rounded-md text-slate-500',
+            'transition-colors hover:text-slate-800',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+          )}
+        >
+          <ChevronUp
+            className={cn(
+              'size-4 transition-transform duration-300 ease-out',
+              expanded && 'rotate-180'
+            )}
+            aria-hidden
+          />
+        </button>
+      ) : null}
+
+      <div className="shrink-0">
         <div className={THUMB_SQUARE}>
           {url ? (
             <Image
@@ -283,17 +336,6 @@ function ReportIdentityCell({
             </div>
           )}
         </div>
-        <span
-          className={cn(
-            'absolute -right-1.5 -top-1.5 z-10',
-            'inline-flex size-4 items-center justify-center @[44rem]/rec-table:size-5',
-            'rounded-full bg-orange-500 text-white shadow-sm ring-2 ring-white'
-          )}
-          aria-label="Nghi tái phát"
-          title="Nghi ô nhiễm tái phát"
-        >
-          <History className="size-2 @[44rem]/rec-table:size-2.5" aria-hidden strokeWidth={2.75} />
-        </span>
       </div>
 
       <div className="min-w-0 flex-1 space-y-0.5">
@@ -344,7 +386,7 @@ function ReportIdentityCell({
 }
 
 const DAYS_SINCE_TOOLTIP =
-  'Số ngày từ lúc đóng báo cáo trước đó đến khi tạo báo cáo hiện tại. Càng gần ngày đóng thì mức nghi tái phát càng cao (≤50m, cùng loại, trong 30 ngày).';
+  'Số ngày từ lúc đóng báo cáo trước đó đến khi tạo báo cáo hiện tại. Càng gần ngày đóng thì mức nghi tái diễn càng cao (≤50m, cùng loại, trong 30 ngày).';
 
 /** Slot tương đương cột AI tương đồng — hiển thị daysSinceClosed. */
 function DaysSinceCell({ days }: { days: number | null | undefined }) {
@@ -472,14 +514,319 @@ function RecurrenceRowActions({ row }: { row: ViolationRecurrenceCandidateItem }
   );
 }
 
+function formatVnd(amount: number | null | undefined): string {
+  if (amount == null) return '—';
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatShortDateTime(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Dòng tiền theo status (BE §6):
+ * - Draft/InProgress/ClosedNoViolation → ẩn
+ * - PartiallyPaid → Đã nộp X / Tổng Y
+ * - PenaltyIssued+ → Đã nộp X (X có thể 0đ)
+ */
+function inspectionPaymentLine(inspection: ReportInspectionSummary): string | null {
+  if (!inspectionShowsPenaltyFields(inspection.status)) return null;
+
+  const paid = inspection.paidAmount ?? 0;
+  const penalty = inspection.penaltyAmount;
+
+  if (inspection.status === 'PartiallyPaid' && penalty != null) {
+    return `Đã nộp ${formatVnd(paid)} / Tổng ${formatVnd(penalty)}`;
+  }
+
+  if (penalty != null) {
+    return `${formatVnd(penalty)} · Đã nộp ${formatVnd(paid)}`;
+  }
+
+  return `Đã nộp ${formatVnd(paid)}`;
+}
+
+/** Đường chữ L — kéo dài thêm đúng độ cao py để sát hàng report phía trên. */
+function InspectionTreeConnector() {
+  return (
+    <>
+      {/* dọc: từ mép trên panel (bù py-4/5 + mt) → giữa icon */}
+      <span
+        className={cn(
+          'pointer-events-none absolute bottom-1/2 left-1/2 w-px -translate-x-1/2 bg-slate-300',
+          '-top-[calc(1rem+0.125rem)] @[44rem]/rec-table:-top-[calc(1.25rem+0.125rem)]'
+        )}
+      />
+      {/* ngang: giữa icon → mép trái FileText */}
+      <span className="pointer-events-none absolute top-1/2 left-1/2 h-px w-[calc(50%+0.625rem)] bg-slate-300" />
+    </>
+  );
+}
+
+/** Khung chung expand: rail chữ L + slot nội dung. */
+function InspectionExpandShell({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'relative flex items-start gap-2.5 overflow-visible bg-slate-50/80 py-4 @[44rem]/rec-table:py-5',
+        FIRST_COL_PAD_X,
+        'pe-4 @[44rem]/rec-table:pe-6'
+      )}
+    >
+      <div className={cn('relative mt-0.5 shrink-0', THUMB_SIZE)} aria-hidden>
+        <InspectionTreeConnector />
+      </div>
+      <span
+        className={cn(
+          'relative z-1 mt-0.5 inline-flex shrink-0 items-center justify-center rounded-lg',
+          THUMB_SIZE,
+          'bg-white text-slate-500 ring-1 ring-slate-200/80'
+        )}
+        aria-hidden
+      >
+        <FileText className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+function InspectionBriefLoading() {
+  return (
+    <InspectionExpandShell>
+      <div className="space-y-1.5 py-0.5" aria-busy="true" aria-label="Đang tải hồ sơ xử phạt">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-56" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+    </InspectionExpandShell>
+  );
+}
+
+function InspectionBriefEmpty() {
+  return (
+    <InspectionExpandShell>
+      <p className="text-[12px] text-slate-500 @[44rem]/rec-table:text-[13px]">
+        Chưa có hồ sơ xử phạt
+      </p>
+    </InspectionExpandShell>
+  );
+}
+
+function InspectionBriefError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <InspectionExpandShell>
+      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+        <span className="text-destructive">Không tải được hồ sơ xử phạt</span>
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation();
+            onRetry();
+          }}
+          className="font-medium text-sky-700 hover:underline"
+        >
+          Thử lại
+        </button>
+      </div>
+    </InspectionExpandShell>
+  );
+}
+
+/**
+ * Nested brief — layout theo UX LEO:
+ * Hồ sơ xử phạt [badge nhỏ góc trên phải]
+ * Đối tượng: {name|[Chưa cập nhật]} [Tái phạm?]
+ * hint (nếu chưa có tên) · Người lập · Tạo
+ *                            Hạn xử lý · (ngày đóng)
+ */
+function InspectionBriefPanel({ inspection }: { inspection: ReportInspectionSummary }) {
+  const subjectName = resolveInspectionSubjectName(
+    inspection.violatingEntityName,
+    inspection.violatorName
+  );
+  const hasSubject = Boolean(subjectName);
+  const statusLabel = inspectionStatusLabelVi(inspection.status);
+  const showPenalty = inspectionShowsPenaltyFields(inspection.status);
+  const showClosedAt = inspectionShowsClosedAt(inspection.status);
+  const slaOverdue = inspectionSlaIsOverdue(inspection.status, inspection.slaInspectionDueAt);
+  const paymentLine = inspectionPaymentLine(inspection);
+  const officer = inspection.createdByOfficerName?.trim() || '—';
+  const created = formatShortDateTime(inspection.createdAt);
+  const sla = formatShortDateTime(inspection.slaInspectionDueAt);
+
+  const metaLine = [
+    `Người lập ${officer}`,
+    `Tạo ${created}`,
+    showPenalty ? `Mức ${violationLevelLabelVi(inspection.violationLevel)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Link
+      href={`/officer/recurrence/inspections/${inspection.id}`}
+      className={cn(
+        'relative flex items-start gap-2.5 overflow-visible bg-slate-50/80 py-4 @[44rem]/rec-table:py-5',
+        FIRST_COL_PAD_X,
+        'pe-4 @[44rem]/rec-table:pe-6',
+        'transition-colors hover:bg-slate-100/90',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+      )}
+      aria-label={`Xem chi tiết hồ sơ xử phạt — ${statusLabel}`}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className={cn('relative mt-0.5 shrink-0', THUMB_SIZE)} aria-hidden>
+        <InspectionTreeConnector />
+      </div>
+
+      <span
+        className={cn(
+          'relative z-1 mt-0.5 inline-flex shrink-0 items-center justify-center rounded-lg',
+          THUMB_SIZE,
+          'bg-white text-slate-500 ring-1 ring-slate-200/80'
+        )}
+        aria-hidden
+      >
+        <FileText className="size-4" />
+      </span>
+
+      <div className="flex min-w-0 flex-1 gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* Hàng 1: «Hồ sơ xử phạt» + badge nhỏ góc trên phải tiêu đề */}
+          <div className="inline-flex max-w-full min-w-0 items-start gap-1.5">
+            <p className="truncate text-[12px] font-semibold leading-snug text-slate-900 @[44rem]/rec-table:text-[13px]">
+              Hồ sơ xử phạt
+            </p>
+            <span
+              className={cn(
+                'mt-px inline-flex max-w-[9rem] shrink-0 truncate rounded-full px-1 py-px',
+                'text-[9px] font-medium leading-none tracking-tight',
+                inspectionStatusBadgeClass(inspection.status)
+              )}
+              title={statusLabel}
+            >
+              {statusLabel}
+            </span>
+          </div>
+
+          {/* Hàng 2: Đối tượng — luôn có nhãn rõ */}
+          <div className="min-w-0">
+            <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-snug text-slate-800 @[44rem]/rec-table:text-[13px]">
+              <span className="text-slate-500">Đối tượng:</span>
+              <span
+                className={cn(
+                  'min-w-0 font-medium',
+                  hasSubject ? 'text-slate-800' : 'text-slate-500'
+                )}
+                title={
+                  hasSubject
+                    ? subjectName!
+                    : 'Đối tượng: Chưa cập nhật (sẽ được Đội thanh tra bổ sung sau khi khảo sát)'
+                }
+              >
+                {hasSubject ? subjectName : 'Chưa cập nhật'}
+              </span>
+              {!hasSubject ? (
+                <span className="text-[11px] font-normal text-slate-400 @[44rem]/rec-table:text-xs">
+                  (sẽ được Đội thanh tra bổ sung sau khi khảo sát)
+                </span>
+              ) : null}
+              {inspection.isRepeatOffender ? (
+                <span className="inline-flex shrink-0 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-800">
+                  Tái phạm
+                </span>
+              ) : null}
+            </p>
+          </div>
+
+          {/* Hàng 3: meta */}
+          <p
+            className="truncate text-[11px] text-slate-500 @[44rem]/rec-table:text-xs"
+            title={metaLine}
+          >
+            {metaLine}
+          </p>
+
+          {paymentLine ? (
+            <p
+              className="truncate text-[11px] font-medium tabular-nums text-slate-700 @[44rem]/rec-table:text-xs"
+              title={paymentLine}
+            >
+              {paymentLine}
+            </p>
+          ) : null}
+        </div>
+
+        {/* Cột phải: hạn xử lý + ngày đóng */}
+        <div className="hidden min-w-30 shrink-0 space-y-0.5 text-right sm:block">
+          <p
+            className={cn(
+              'text-[11px] tabular-nums @[44rem]/rec-table:text-xs',
+              slaOverdue ? 'font-medium text-red-600' : 'text-slate-600'
+            )}
+            title={
+              inspection.slaInspectionDueAt
+                ? `Hạn xử lý: ${sla}${slaOverdue ? ' (quá hạn)' : ''}`
+                : undefined
+            }
+          >
+            Hạn xử lý {sla}
+            {slaOverdue ? ' · Quá hạn' : ''}
+          </p>
+          {showClosedAt ? (
+            <p
+              className="text-[10px] tabular-nums text-slate-400 @[44rem]/rec-table:text-[11px]"
+              title={
+                inspection.closedAt
+                  ? `Ngày đóng: ${formatShortDateTime(inspection.closedAt)}`
+                  : undefined
+              }
+            >
+              Ngày đóng {formatShortDateTime(inspection.closedAt)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+type ReportCellExpand = {
+  expandable?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+};
+
 function renderRecurrenceCell(
   key: ColumnKey,
   row: ViolationRecurrenceCandidateItem,
-  opts?: { imagePriority?: boolean }
+  opts?: { imagePriority?: boolean } & ReportCellExpand
 ) {
   switch (key) {
     case 'report':
-      return <ReportIdentityCell row={row} priority={opts?.imagePriority} />;
+      return (
+        <ReportIdentityCell
+          row={row}
+          priority={opts?.imagePriority}
+          expandable={opts?.expandable}
+          expanded={opts?.expanded}
+          onToggleExpand={opts?.onToggleExpand}
+        />
+      );
     case 'prior':
       return <PriorClosedReportCell prior={row.priorClosedReport} />;
     case 'daysSince':
@@ -510,6 +857,91 @@ function renderRecurrenceCell(
   }
 }
 
+/** Parent report + nested inspection — GET …/inspections chỉ khi expand. */
+function RecurrenceCandidateRows({
+  row,
+  rowIndex,
+  onOpenDetail,
+}: {
+  row: ViolationRecurrenceCandidateItem;
+  rowIndex: number;
+  onOpenDetail: (row: ViolationRecurrenceCandidateItem) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const {
+    data: inspectionsData,
+    isPending,
+    isError,
+    isFetching,
+    refetch,
+  } = useReportInspections(row.id, expanded);
+
+  const inspection = inspectionsData?.items[0] ?? null;
+
+  return (
+    <Fragment>
+      <TableRow
+        className={cn(
+          'cursor-pointer transition-colors hover:bg-orange-50/40',
+          expanded ? 'border-b-0' : ROW_BORDER
+        )}
+        onClick={() => onOpenDetail(row)}
+      >
+        {COLUMN_DEFS.map(col => (
+          <TableCell
+            key={col.key}
+            className={cn(
+              tableCellPad(col.key, 'body'),
+              'align-middle',
+              col.key === 'report' && 'overflow-visible',
+              col.key !== 'report' && col.key !== 'actions' && 'max-w-0 overflow-hidden',
+              col.className
+            )}
+            onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
+          >
+            {col.key === 'actions' ? (
+              <RecurrenceRowActions row={row} />
+            ) : (
+              renderRecurrenceCell(col.key, row, {
+                imagePriority: rowIndex < 2,
+                expandable: true,
+                expanded,
+                onToggleExpand: () => setExpanded(v => !v),
+              })
+            )}
+          </TableCell>
+        ))}
+      </TableRow>
+
+      <TableRow className={cn(ROW_BORDER, 'hover:bg-transparent')}>
+        <TableCell colSpan={COLUMN_DEFS.length} className="p-0 align-top">
+          <div
+            className={cn(
+              'grid transition-[grid-template-rows] duration-300 ease-out',
+              expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            )}
+          >
+            <div className="min-h-0 overflow-hidden">
+              {expanded ? (
+                isPending || (isFetching && !inspectionsData) ? (
+                  <InspectionBriefLoading />
+                ) : isError ? (
+                  <InspectionBriefError onRetry={() => void refetch()} />
+                ) : inspection ? (
+                  <InspectionBriefPanel inspection={inspection} />
+                ) : (
+                  <InspectionBriefEmpty />
+                )
+              ) : null}
+            </div>
+          </div>
+        </TableCell>
+      </TableRow>
+    </Fragment>
+  );
+}
+
 export function RecurrencePageClient() {
   const router = useRouter();
   const user = useAuthStore(s => s.user);
@@ -533,12 +965,12 @@ export function RecurrencePageClient() {
       <header className="mb-6 shrink-0">
         <div className="border-b border-slate-200 pb-3">
           <div className="flex items-center gap-[0.35rem]">
-            <h1 className="text-lg font-bold tracking-tight text-slate-900">Tái phát</h1>
+            <h1 className="text-lg font-bold tracking-tight text-slate-900">Tái diễn</h1>
             <button
               type="button"
               className="inline-flex cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-[0.15rem] text-slate-500 hover:bg-slate-400/15 hover:text-slate-700"
               title="Báo cáo cùng loại, ≤50m so với báo cáo đã đóng trong 30 ngày — so sánh để quyết định mở thanh tra hoặc bác bỏ."
-              aria-label="Thông tin danh sách nghi tái phát"
+              aria-label="Thông tin danh sách nghi tái diễn"
             >
               <CircleHelp className="size-4" aria-hidden />
             </button>
@@ -599,7 +1031,7 @@ export function RecurrencePageClient() {
                 <TableRow className={ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <p className="text-sm text-destructive">
-                      Không tải được danh sách nghi tái phát.
+                      Không tải được danh sách nghi tái diễn.
                     </p>
                     <button
                       type="button"
@@ -615,43 +1047,18 @@ export function RecurrencePageClient() {
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
                       <SaveIcon size={44} className="opacity-30" />
-                      <span>Không có báo cáo nghi tái phát</span>
+                      <span>Không có báo cáo nghi tái diễn</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 items.map((row, rowIndex) => (
-                  <TableRow
+                  <RecurrenceCandidateRows
                     key={row.id}
-                    className={cn(
-                      ROW_BORDER,
-                      'cursor-pointer transition-colors hover:bg-orange-50/40'
-                    )}
-                    onClick={() => openDetail(row)}
-                  >
-                    {COLUMN_DEFS.map(col => (
-                      <TableCell
-                        key={col.key}
-                        className={cn(
-                          tableCellPad(col.key, 'body'),
-                          'align-middle',
-                          col.key !== 'report' &&
-                            col.key !== 'actions' &&
-                            'max-w-0 overflow-hidden',
-                          col.className
-                        )}
-                        onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
-                      >
-                        {col.key === 'actions' ? (
-                          <RecurrenceRowActions row={row} />
-                        ) : (
-                          renderRecurrenceCell(col.key, row, {
-                            imagePriority: rowIndex < 2,
-                          })
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                    row={row}
+                    rowIndex={rowIndex}
+                    onOpenDetail={openDetail}
+                  />
                 ))
               )}
             </TableBody>
@@ -669,7 +1076,7 @@ export function RecurrencePageClient() {
               />
             ) : null}
             <p className="absolute right-6 top-1/2 -translate-y-1/2 text-xs text-slate-500 tabular-nums">
-              {pagination.totalItems.toLocaleString('vi-VN')} báo cáo nghi tái phát
+              {pagination.totalItems.toLocaleString('vi-VN')} báo cáo nghi tái diễn
             </p>
           </div>
         ) : null}

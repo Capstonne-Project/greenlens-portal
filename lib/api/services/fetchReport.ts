@@ -19,7 +19,14 @@ import {
   adaptDismissViolationRecurrence,
   adaptFetchViolationRecurrenceComparison,
 } from '@/lib/api/adapters/violationRecurrence.adapter';
-import { adaptCreateInspectionReport } from '@/lib/api/adapters/inspectionReport.adapter';
+import {
+  adaptAssignInspectionTeam,
+  adaptCreateInspectionReport,
+  adaptFetchInspectionDetail,
+  adaptFetchInspectionOfficerQueue,
+  adaptFetchInspectionPayments,
+  adaptFetchReportInspections,
+} from '@/lib/api/adapters/inspectionReport.adapter';
 import type {
   DuplicateCandidatesData,
   DuplicateCandidatesParams,
@@ -47,8 +54,15 @@ import type {
   ViolationRecurrenceComparison,
 } from '@/lib/api/models/violationRecurrence';
 import type {
+  AssignInspectionTeamInput,
+  AssignInspectionTeamResult,
   CreateInspectionReportInput,
   CreateInspectionReportResult,
+  InspectionDetail,
+  InspectionOfficerQueueData,
+  InspectionOfficerQueueParams,
+  InspectionPaymentsHistory,
+  ReportInspectionsList,
 } from '@/lib/api/models/inspectionReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 import type { IdempotencyRequestOptions } from '@/lib/api/idempotency';
@@ -129,8 +143,24 @@ export type {
   ViolationRecurrenceReport,
 } from '@/lib/api/models/violationRecurrence';
 export type {
+  AssignInspectionTeamInput,
+  AssignInspectionTeamResult,
   CreateInspectionReportInput,
   CreateInspectionReportResult,
+  InspectionChecklistEvidence,
+  InspectionDetail,
+  InspectionOfficerQueueData,
+  InspectionOfficerQueueItem,
+  InspectionOfficerQueueParams,
+  InspectionOfficerQueueSortDir,
+  InspectionPayment,
+  InspectionPaymentsHistory,
+  InspectionStatus,
+  ReportInspectionSummary,
+  ReportInspectionsList,
+  ViolatingEntity,
+  ViolatingEntityType,
+  ViolationLevel,
 } from '@/lib/api/models/inspectionReport';
 
 /** GET /v1/reports/{id} — chi tiết một báo cáo */
@@ -264,6 +294,47 @@ export async function createInspectionReport(
   return adaptCreateInspectionReport(reportId, body);
 }
 
+/**
+ * GET /v1/reports/{id}/inspections — [LEO/Inspector] hồ sơ xử phạt của báo cáo.
+ */
+export async function fetchReportInspections(reportId: string): Promise<ReportInspectionsList> {
+  return adaptFetchReportInspections(reportId);
+}
+
+/**
+ * GET /v1/inspections/{id} — [InspectionLEO] chi tiết hồ sơ xử phạt.
+ */
+export async function fetchInspectionDetail(id: string): Promise<InspectionDetail> {
+  return adaptFetchInspectionDetail(id);
+}
+
+/**
+ * GET /v1/inspections/{id}/payments — [Inspector/LEO] lịch sử nộp phạt (BR-INS-020).
+ */
+export async function fetchInspectionPayments(id: string): Promise<InspectionPaymentsHistory> {
+  return adaptFetchInspectionPayments(id);
+}
+
+/**
+ * PUT /v1/inspections/{id}/assign-team — gán / đổi đội kiểm tra.
+ */
+export async function assignInspectionTeam(
+  id: string,
+  body: AssignInspectionTeamInput
+): Promise<AssignInspectionTeamResult> {
+  return adaptAssignInspectionTeam(id, body);
+}
+
+/**
+ * GET /v1/inspections/officer-queue — [LEO/DEO] hàng đợi hồ sơ xử phạt.
+ * FE nên truyền `pageSize: 8` khi gọi (BE có thể mặc định 20).
+ */
+export async function fetchInspectionOfficerQueue(
+  params?: InspectionOfficerQueueParams
+): Promise<ApiEnvelope<InspectionOfficerQueueData>> {
+  return adaptFetchInspectionOfficerQueue(params);
+}
+
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
@@ -281,5 +352,10 @@ const reportService = {
   fetchViolationRecurrenceComparison,
   dismissViolationRecurrence,
   createInspectionReport,
+  fetchReportInspections,
+  fetchInspectionDetail,
+  fetchInspectionPayments,
+  assignInspectionTeam,
+  fetchInspectionOfficerQueue,
 };
 export default reportService;

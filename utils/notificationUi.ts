@@ -252,47 +252,98 @@ export function formatNotificationShortTime(iso: string): string {
   }).format(d);
 }
 
-export type NotificationTimeGroup = 'new' | 'today' | 'earlier';
+/**
+ * Bucket section kiểu Meta (Facebook / Instagram Activity) — ưu tiên hybrid:
+ *
+ * | Key        | Label VI   | Rule                                              |
+ * |------------|------------|---------------------------------------------------|
+ * | new        | Mới        | `!isRead` (xấp xỉ "unseen/new" khi chưa có seenAt) |
+ * | today      | Hôm nay    | đã đọc + `createdAt` trong hôm nay (local)         |
+ * | yesterday  | Hôm qua    | đã đọc + hôm qua                                   |
+ * | thisWeek   | Tuần này   | đã đọc + trong 7 ngày gần nhất (trừ hôm nay/qua)   |
+ * | earlier    | Trước đó   | còn lại                                            |
+ *
+ * Industry notes:
+ * - Facebook Web (vi): "Mới" + "Hôm nay" (+ older) — New ≈ unread/unseen.
+ * - Instagram: Today / Yesterday / This week / Earlier (thiếu New).
+ * - X/Twitter: Today / Yesterday / Older.
+ *
+ * Field API đủ: `createdAt` + `isRead`. Optional sau:
+ * - `seenAt` / `isSeen` — New = unseen (mở drawer ≠ đọc hết).
+ * - BE sort `createdAt desc` — FE giữ thứ tự trong từng bucket.
+ */
+export type NotificationTimeGroup = 'new' | 'today' | 'yesterday' | 'thisWeek' | 'earlier';
 
 export const NOTIFICATION_TIME_GROUP_LABEL: Record<NotificationTimeGroup, string> = {
   new: 'Mới',
   today: 'Hôm nay',
+  yesterday: 'Hôm qua',
+  thisWeek: 'Tuần này',
   earlier: 'Trước đó',
 };
+
+const TIME_GROUP_ORDER: readonly NotificationTimeGroup[] = [
+  'new',
+  'today',
+  'yesterday',
+  'thisWeek',
+  'earlier',
+] as const;
 
 function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-/** Nhóm thông báo: Mới (chưa đọc) → Hôm nay (đã đọc hôm nay) → Trước đó. */
+function addLocalDays(dayStart: Date, days: number): Date {
+  return new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + days);
+}
+
+/** Gán 1 item → đúng 1 bucket (first-match). Invalid `createdAt` → earlier. */
+export function resolveNotificationTimeGroup(
+  item: Pick<NotificationItem, 'isRead' | 'createdAt'>,
+  now: Date = new Date()
+): NotificationTimeGroup {
+  if (!item.isRead) return 'new';
+
+  const created = new Date(item.createdAt);
+  if (Number.isNaN(created.getTime())) return 'earlier';
+
+  const todayStart = startOfLocalDay(now);
+  if (created >= todayStart) return 'today';
+
+  const yesterdayStart = addLocalDays(todayStart, -1);
+  if (created >= yesterdayStart) return 'yesterday';
+
+  const weekStart = addLocalDays(todayStart, -6);
+  if (created >= weekStart) return 'thisWeek';
+
+  return 'earlier';
+}
+
+/**
+ * Nhóm list theo móc thời gian Meta-style.
+ * O(n) — một pass; giữ nguyên order API trong mỗi bucket.
+ */
 export function groupNotificationsByTime(
-  items: NotificationItem[]
+  items: NotificationItem[],
+  now: Date = new Date()
 ): { group: NotificationTimeGroup; items: NotificationItem[] }[] {
-  const todayStart = startOfLocalDay(new Date());
   const buckets: Record<NotificationTimeGroup, NotificationItem[]> = {
     new: [],
     today: [],
+    yesterday: [],
+    thisWeek: [],
     earlier: [],
   };
 
   for (const item of items) {
-    const created = new Date(item.createdAt);
-    if (Number.isNaN(created.getTime())) {
-      buckets.earlier.push(item);
-      continue;
-    }
-    if (!item.isRead) {
-      buckets.new.push(item);
-    } else if (created >= todayStart) {
-      buckets.today.push(item);
-    } else {
-      buckets.earlier.push(item);
-    }
+    buckets[resolveNotificationTimeGroup(item, now)].push(item);
   }
 
-  return (['new', 'today', 'earlier'] as const)
-    .filter(g => buckets[g].length > 0)
-    .map(group => ({ group, items: buckets[group] }));
+  return TIME_GROUP_ORDER.filter(g => buckets[g].length > 0).map(group => ({
+    group,
+    items: buckets[group],
+  }));
 }
 
 export function notificationThumbnailFallback(

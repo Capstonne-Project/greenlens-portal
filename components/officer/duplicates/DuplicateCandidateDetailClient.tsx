@@ -7,6 +7,7 @@ import {
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDuplicateCandidateDetail } from '@/hooks/useOfficer';
 import type {
@@ -20,7 +21,7 @@ import {
 } from '@/lib/constants/reportActions';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Check, Copy, ImageIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, ImageIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -412,6 +413,51 @@ const DUPLICATE_COMPARE_FIELDS: DuplicateCompareField[] = [
   },
 ];
 
+/** Skeleton mirror layout so sánh — media 2 cột + hàng field. */
+function CompareDetailSkeleton() {
+  return (
+    <div className="flex flex-col gap-5" aria-busy aria-label="Đang tải">
+      <div className="flex shrink-0 items-stretch gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-48 w-full rounded-lg sm:h-56" />
+        </div>
+        <div
+          className="mx-1 flex w-10 shrink-0 items-center justify-center sm:mx-2 sm:w-14"
+          aria-hidden
+        >
+          <Skeleton className="h-3 w-full rounded-full" />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-48 w-full rounded-lg sm:h-56" />
+        </div>
+      </div>
+
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <Skeleton className="h-7 w-28 rounded-lg" />
+        <Skeleton className="h-7 w-32 rounded-full" />
+        <Skeleton className="h-7 w-20 rounded-full" />
+      </div>
+
+      <div>
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="grid grid-cols-2">
+            <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 sm:px-5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <div className="flex flex-col items-center gap-1.5 px-2 py-4 sm:px-5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DuplicateCompareBody({
   detail,
   fromPath,
@@ -573,7 +619,7 @@ export function DuplicateCandidateDetailClient() {
             Quay lại danh sách
           </Button>
           {isFetching && !isPending ? (
-            <Loader2 className="size-4 animate-spin text-slate-400" aria-label="Đang cập nhật" />
+            <Skeleton className="size-4 rounded-full" aria-label="Đang cập nhật" />
           ) : null}
         </div>
         <div>
@@ -587,9 +633,7 @@ export function DuplicateCandidateDetailClient() {
       </header>
 
       {isPending ? (
-        <div className="flex h-48 items-center justify-center">
-          <Loader2 className="size-8 animate-spin text-slate-400" />
-        </div>
+        <CompareDetailSkeleton />
       ) : isError || !data ? (
         <div className="flex h-48 flex-col items-center justify-center gap-2 text-center">
           <p className="text-sm text-destructive">Không tải được chi tiết so sánh trùng lặp.</p>
