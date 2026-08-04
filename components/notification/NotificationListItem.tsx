@@ -12,6 +12,7 @@ import type { NotificationItem } from '@/lib/api/models/notification';
 import { cn } from '@/lib/utils';
 import {
   formatNotificationRelativeTime,
+  formatNotificationShortTime,
   getNotificationMutationError,
   resolveNotificationCategoryBadge,
 } from '@/utils/notificationUi';
@@ -20,15 +21,45 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-/** Chiều cao hàng = cạnh thumbnail vuông. */
-const ROW_H = 80;
-const BADGE_SIZE = 28;
+type NotificationListDensity = 'default' | 'compact';
+
+/** Chiều cao hàng = cạnh thumbnail vuông. Compact = nhỏ hơn default 2 size. */
+const DENSITY = {
+  default: {
+    rowH: 80,
+    badge: 28,
+    padY: 'py-3',
+    gap: 'gap-3',
+    message: 'line-clamp-3 text-sm leading-5',
+    time: 'text-xs',
+    icon: 'size-6',
+    menuBtn: 'size-9',
+    menuIcon: 'size-5',
+    unreadDot: 'size-3.5',
+    extraMinH: 24,
+  },
+  compact: {
+    rowH: 64,
+    badge: 24,
+    padY: 'py-2',
+    gap: 'gap-2.5',
+    message: 'line-clamp-3 text-xs leading-4',
+    time: 'text-[11px]',
+    icon: 'size-5',
+    menuBtn: 'size-8',
+    menuIcon: 'size-4',
+    unreadDot: 'size-3',
+    extraMinH: 16,
+  },
+} as const;
 
 type NotificationListItemProps = {
   item: NotificationItem;
   onSelect: (item: NotificationItem) => void;
   /** Highlight tạm từ toast realtime (View / click toast). */
   highlighted?: boolean;
+  /** `compact` dùng trong drawer — avatar/text nhỏ hơn inbox 2 size. */
+  density?: NotificationListDensity;
 };
 
 /**
@@ -39,7 +70,9 @@ export function NotificationListItem({
   item,
   onSelect,
   highlighted = false,
+  density = 'default',
 }: NotificationListItemProps) {
+  const d = DENSITY[density];
   const message = item.message?.trim() || '—';
   const [menuOpen, setMenuOpen] = useState(false);
   const categoryBadge = resolveNotificationCategoryBadge(item.categoryName);
@@ -73,33 +106,38 @@ export function NotificationListItem({
     <div className="px-2 py-0.5" id={`ntf-row-${item.id}`}>
       <div
         className={cn(
-          'group relative flex w-full items-stretch gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-muted/70',
+          'group relative flex w-full items-stretch rounded-xl px-2 transition-colors hover:bg-muted/70',
+          d.gap,
+          d.padY,
           !item.isRead && 'bg-muted/40',
           highlighted &&
             'bg-emerald-50 ring-2 ring-emerald-500/50 ring-inset dark:bg-emerald-950/40'
         )}
-        style={{ minHeight: ROW_H + 24 }}
+        style={{ minHeight: d.rowH + d.extraMinH }}
       >
         <button
           type="button"
           onClick={handleSelect}
-          className="flex min-w-0 flex-1 cursor-pointer items-stretch gap-3 border-0 bg-transparent p-0 text-left"
+          className={cn(
+            'flex min-w-0 flex-1 cursor-pointer items-stretch border-0 bg-transparent p-0 text-left',
+            d.gap
+          )}
         >
           {/* overflow-visible để badge FB không bị cắt */}
-          <div className="relative shrink-0" style={{ width: ROW_H, height: ROW_H }}>
+          <div className="relative shrink-0" style={{ width: d.rowH, height: d.rowH }}>
             <div className="relative size-full overflow-hidden rounded-full bg-muted">
               {item.thumbnailUrl ? (
                 <Image
                   src={item.thumbnailUrl}
                   alt=""
                   fill
-                  sizes={`${ROW_H}px`}
+                  sizes={`${d.rowH}px`}
                   className="object-cover"
                   unoptimized
                 />
               ) : (
                 <span className="flex size-full items-center justify-center text-muted-foreground">
-                  <ImageIcon className="size-6 opacity-50" aria-hidden />
+                  <ImageIcon className={cn(d.icon, 'opacity-50')} aria-hidden />
                 </span>
               )}
             </div>
@@ -107,7 +145,7 @@ export function NotificationListItem({
             {categoryBadge && CategoryIcon ? (
               <AnimatedHoverTooltip
                 name={item.categoryName?.trim() || categoryBadge.label}
-                className="absolute -right-2 -bottom-1 z-1"
+                className="absolute -right-1.5 -bottom-0.5 z-1"
               >
                 <span
                   className={cn(
@@ -115,26 +153,33 @@ export function NotificationListItem({
                     'border-[2.5px] border-background text-white shadow-sm',
                     categoryBadge.badgeClassName
                   )}
-                  style={{ width: BADGE_SIZE, height: BADGE_SIZE }}
+                  style={{ width: d.badge, height: d.badge }}
                   aria-label={item.categoryName?.trim() || categoryBadge.label}
                 >
-                  <CategoryIcon className="size-3.5" strokeWidth={2.25} aria-hidden />
+                  <CategoryIcon
+                    className={density === 'compact' ? 'size-3' : 'size-3.5'}
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
                 </span>
               </AnimatedHoverTooltip>
             ) : null}
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col justify-between" style={{ height: ROW_H }}>
+          <div className="flex min-w-0 flex-1 flex-col justify-between" style={{ height: d.rowH }}>
             <span
               className={cn(
-                'line-clamp-3 overflow-hidden text-sm leading-5 text-foreground',
+                'overflow-hidden text-foreground',
+                d.message,
                 !item.isRead && 'font-medium'
               )}
             >
               {message}
             </span>
-            <span className="text-xs font-semibold text-brand">
-              {formatNotificationRelativeTime(item.createdAt)}
+            <span className={cn('font-semibold text-brand', d.time)}>
+              {density === 'compact'
+                ? formatNotificationShortTime(item.createdAt)
+                : formatNotificationRelativeTime(item.createdAt)}
             </span>
           </div>
         </button>
@@ -153,14 +198,15 @@ export function NotificationListItem({
                 type="button"
                 aria-label="Thêm hành động"
                 className={cn(
-                  'inline-flex size-9 cursor-pointer items-center justify-center rounded-full',
+                  'inline-flex cursor-pointer items-center justify-center rounded-full',
+                  d.menuBtn,
                   'bg-muted text-foreground transition-colors',
                   'hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   'data-[state=open]:bg-muted'
                 )}
                 onClick={e => e.stopPropagation()}
               >
-                <MoreHorizontal className="size-5" aria-hidden />
+                <MoreHorizontal className={d.menuIcon} aria-hidden />
               </button>
             </DropdownMenuTrigger>
 
@@ -204,7 +250,10 @@ export function NotificationListItem({
 
         {!item.isRead && !menuOpen ? (
           <span
-            className="pointer-events-none absolute top-1/2 right-3 size-3.5 -translate-y-1/2 rounded-full bg-emerald-600 group-hover:opacity-0"
+            className={cn(
+              'pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-full bg-emerald-600 group-hover:opacity-0',
+              d.unreadDot
+            )}
             aria-hidden
           />
         ) : null}

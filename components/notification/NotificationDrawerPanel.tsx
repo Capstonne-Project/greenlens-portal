@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import {
   getNotificationDrawerLinks,
   getNotificationMutationError,
+  groupNotificationsByTime,
+  NOTIFICATION_TIME_GROUP_LABEL,
   resolveNotificationHref,
   type NotificationPortal,
 } from '@/utils/notificationUi';
@@ -38,8 +40,8 @@ const FILTERS: { key: ReadFilter; label: string }[] = [
 ];
 
 const SKELETON_ROW_COUNT = 6;
-/** Khớp cạnh thumbnail hàng thật trong NotificationListItem. */
-const SKELETON_THUMB = 80;
+/** Khớp density compact của NotificationListItem (avatar 80→64). */
+const SKELETON_THUMB = 64;
 
 function toIsReadParam(filter: ReadFilter): boolean | undefined {
   if (filter === 'unread') return false;
@@ -52,17 +54,17 @@ function NotificationDrawerSkeleton() {
       {Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
         <li key={i} className="px-2 py-0.5">
           <div
-            className="flex w-full items-stretch gap-3 rounded-xl px-2 py-3"
-            style={{ minHeight: SKELETON_THUMB + 24 }}
+            className="flex w-full items-stretch gap-2.5 rounded-xl px-2 py-2"
+            style={{ minHeight: SKELETON_THUMB + 16 }}
           >
             <Skeleton
               className="shrink-0 rounded-full"
               style={{ width: SKELETON_THUMB, height: SKELETON_THUMB }}
             />
-            <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
-              <Skeleton className="h-4 w-[88%]" />
-              <Skeleton className="h-3.5 w-[72%]" />
-              <Skeleton className="h-3 w-16" />
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+              <Skeleton className="h-3.5 w-[88%]" />
+              <Skeleton className="h-3 w-[72%]" />
+              <Skeleton className="h-2.5 w-14" />
             </div>
           </div>
         </li>
@@ -102,6 +104,11 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
   const items = data?.items ?? [];
   const unreadCount = data?.unreadCount ?? 0;
   const links = getNotificationDrawerLinks(portal);
+  const groupedItems = groupNotificationsByTime(items);
+  const hasNewGroup = groupedItems.some(g => g.group === 'new');
+  /** Facebook: "Xem tất cả" nằm cạnh header Mới; không có Mới → footer. */
+  const showSeeAllInNewHeader = Boolean(links.inboxHref && hasNewGroup);
+  const showSeeAllFooter = Boolean(links.inboxHref && !hasNewGroup);
 
   /** Scroll tới hàng + bỏ highlight sau vài giây (chỉ khi tìm thấy row). */
   useEffect(() => {
@@ -271,21 +278,45 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
             {activeFilter === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo nào'}
           </div>
         ) : (
-          <ul className={cn(isFetching && 'opacity-70')}>
-            {items.map(item => (
-              <li key={item.id}>
-                <NotificationListItem
-                  item={item}
-                  onSelect={handleSelect}
-                  highlighted={item.id === highlightedNotificationId}
-                />
-              </li>
+          <div className={cn(isFetching && 'opacity-70')}>
+            {groupedItems.map(({ group, items: groupItems }) => (
+              <section key={group} aria-labelledby={`ntf-group-${group}`}>
+                <div className="flex items-center justify-between gap-2 px-4 pb-1 pt-3">
+                  <h3
+                    id={`ntf-group-${group}`}
+                    className="text-[15px] font-bold tracking-tight text-foreground"
+                  >
+                    {NOTIFICATION_TIME_GROUP_LABEL[group]}
+                  </h3>
+                  {group === 'new' && showSeeAllInNewHeader && links.inboxHref ? (
+                    <Link
+                      href={links.inboxHref}
+                      onClick={closeDrawer}
+                      className="shrink-0 text-xs font-semibold text-brand hover:underline"
+                    >
+                      Xem tất cả
+                    </Link>
+                  ) : null}
+                </div>
+                <ul>
+                  {groupItems.map(item => (
+                    <li key={item.id}>
+                      <NotificationListItem
+                        item={item}
+                        onSelect={handleSelect}
+                        highlighted={item.id === highlightedNotificationId}
+                        density="compact"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
-      {links.inboxHref ? (
+      {showSeeAllFooter && links.inboxHref ? (
         <footer className="flex shrink-0 items-center justify-between gap-2 bg-muted/30 px-3 py-2.5">
           <Link
             href={links.inboxHref}
