@@ -302,14 +302,14 @@ function HeaderStrip({
           ) : null}
           {isSuspectedViolationRecurrence ? (
             <span className={cn('absolute -top-3', isPossibleDuplicate ? 'right-5' : '-right-0.5')}>
-              <AnimatedHoverTooltip name="Nghi ô nhiễm tái phát">
+              <AnimatedHoverTooltip name="Nghi ô nhiễm tái diễn">
                 <span
                   className={cn(
                     'inline-flex size-5 shrink-0 items-center justify-center',
                     'rounded-full bg-orange-500 text-white shadow-sm',
                     'ring-2 ring-white'
                   )}
-                  aria-label="Nghi ô nhiễm tái phát"
+                  aria-label="Nghi ô nhiễm tái diễn"
                 >
                   <History className="size-2.5" aria-hidden strokeWidth={2.75} />
                 </span>
@@ -934,7 +934,7 @@ function SlaActionCard({
               isPossibleDuplicate
                 ? 'Kiểm tra trùng trước khi xác minh'
                 : isSuspectedViolationRecurrence
-                  ? 'Kiểm tra tái phát trước khi xác minh'
+                  ? 'Kiểm tra tái diễn trước khi xác minh'
                   : 'Xác minh ngay'
             }
             className={cn(

@@ -202,7 +202,7 @@ function CompareThumb({
             'shadow-sm ring-1 ring-white/30'
           )}
         >
-          {resolvedBadge === 'Tái phát' ? (
+          {resolvedBadge === 'Tái diễn' ? (
             <History className="size-2.5" aria-hidden strokeWidth={2.75} />
           ) : (
             <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
@@ -725,7 +725,7 @@ function RecurrenceRecordsCompare({
             url={currentImageUrl}
             alt={`${current.code} · Báo cáo hiện tại`}
             tone="suspect"
-            badgeLabel="Tái phát"
+            badgeLabel="Tái diễn"
             onPreview={onPreview}
           />
         </div>
@@ -899,11 +899,11 @@ function RecurrenceSuspectDialogBody({
   const handleDismiss = async () => {
     try {
       const result = await dismissMutation.mutateAsync({ reportId });
-      toastApiSuccess(result, 'Đã xóa nghi ô nhiễm tái phát.');
+      toastApiSuccess(result, 'Đã xóa nghi ô nhiễm tái diễn.');
       onOpenChange(false);
       onResolved?.();
     } catch (error) {
-      toastApiError(error, 'Không thể xóa nghi ô nhiễm tái phát.');
+      toastApiError(error, 'Không thể xóa nghi ô nhiễm tái diễn.');
     }
   };
 
@@ -939,7 +939,7 @@ function RecurrenceSuspectDialogBody({
               <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
                 <DialogHeader className="space-y-0 text-left">
                   <DialogTitle className="text-lg text-slate-900">
-                    Không tải được so sánh tái phát
+                    Không tải được so sánh tái diễn
                   </DialogTitle>
                   <DialogDescription className="text-sm text-slate-600">
                     Không thể đối chiếu với báo cáo Closed trước (
@@ -964,7 +964,7 @@ function RecurrenceSuspectDialogBody({
                   ) : (
                     <XCircle className="size-4" aria-hidden />
                   )}
-                  Xóa nghi tái phát
+                  Xóa nghi tái diễn
                 </Button>
                 <Button
                   type="button"
@@ -994,15 +994,15 @@ function RecurrenceSuspectDialogBody({
                     </div>
                     <div className="min-w-0 space-y-1.5 pt-0.5">
                       <DialogTitle className="text-lg leading-snug text-slate-900">
-                        Nghi ô nhiễm tái phát
+                        Nghi ô nhiễm tái diễn
                       </DialogTitle>
                       <DialogDescription className="text-sm leading-relaxed text-slate-600">
                         Đối chiếu báo cáo hiện tại với case Closed trước{' '}
                         <span className="font-semibold tabular-nums text-slate-800">
                           {comparison.priorClosedReport.code}
                         </span>
-                        . Rác tái phát thông thường →{' '}
-                        <span className="font-semibold text-slate-800">Xóa nghi tái phát</span>. Cần
+                        . Rác tái diễn thông thường →{' '}
+                        <span className="font-semibold text-slate-800">Xóa nghi tái diễn</span>. Cần
                         xử lý tiếp →{' '}
                         <span className="font-semibold text-slate-800">Tiếp tục xác minh</span>.
                       </DialogDescription>
@@ -1040,7 +1040,7 @@ function RecurrenceSuspectDialogBody({
                   ) : (
                     <XCircle className="size-4" aria-hidden />
                   )}
-                  Xóa nghi tái phát
+                  Xóa nghi tái diễn
                 </Button>
                 <Button
                   type="button"

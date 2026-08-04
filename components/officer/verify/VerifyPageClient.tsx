@@ -802,7 +802,7 @@ function VerifyRowActions({
           row.isPossibleDuplicate
             ? 'Kiểm tra trùng trước khi xác minh'
             : row.isSuspectedViolationRecurrence
-              ? 'Kiểm tra tái phát trước khi xác minh'
+              ? 'Kiểm tra tái diễn trước khi xác minh'
               : 'Xác minh ngay'
         }
         aria-label={`Xác minh ${row.code}`}
@@ -1819,7 +1819,7 @@ function ReportThumb({
       ) : null}
       {isSuspectedViolationRecurrence ? (
         <AnimatedHoverTooltip
-          name="Nghi ô nhiễm tái phát"
+          name="Nghi ô nhiễm tái diễn"
           className={cn(
             'absolute z-10',
             isPossibleDuplicate ? '-right-1.5 top-3.5' : '-right-1.5 -top-1.5'
@@ -1831,7 +1831,7 @@ function ReportThumb({
               'rounded-full bg-orange-500 text-white shadow-sm',
               'ring-2 ring-white'
             )}
-            aria-label="Nghi ô nhiễm tái phát"
+            aria-label="Nghi ô nhiễm tái diễn"
           >
             <History
               className="size-2 @[44rem]/verify-table:size-2.5"
