@@ -148,6 +148,8 @@ export function mapInspectionDetailDto(dto: InspectionDetailDto): InspectionDeta
     id: dto.id ?? '',
     reportId: trimOrNull(dto.reportId),
     reportCode: trimOrNull(dto.reportCode),
+    latitude: toNullableNumber(dto.latitude),
+    longitude: toNullableNumber(dto.longitude),
     status: dto.status ?? '',
     assignedTeamId: trimOrNull(dto.assignedTeamId),
     assignedTeamName: trimOrNull(dto.assignedTeamName),

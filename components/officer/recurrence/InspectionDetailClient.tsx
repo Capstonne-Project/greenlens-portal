@@ -352,14 +352,40 @@ function MinuteItemRow({
   );
 }
 
-function hasArrivalCoords(data: InspectionDetail): boolean {
+function isValidCoordPair(
+  lat: number | null | undefined,
+  lng: number | null | undefined
+): lat is number {
   return (
-    data.arrivalLatitude != null &&
-    data.arrivalLongitude != null &&
-    Number.isFinite(data.arrivalLatitude) &&
-    Number.isFinite(data.arrivalLongitude) &&
-    !(data.arrivalLatitude === 0 && data.arrivalLongitude === 0)
+    lat != null &&
+    lng != null &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    !(lat === 0 && lng === 0)
   );
+}
+
+/** Ưu tiên GPS xác nhận hiện trường; fallback tọa độ báo cáo (`latitude` / `longitude`). */
+function resolveFieldMapCoords(data: InspectionDetail): {
+  latitude: number;
+  longitude: number;
+  source: 'arrival' | 'report';
+} | null {
+  if (isValidCoordPair(data.arrivalLatitude, data.arrivalLongitude)) {
+    return {
+      latitude: data.arrivalLatitude,
+      longitude: data.arrivalLongitude!,
+      source: 'arrival',
+    };
+  }
+  if (isValidCoordPair(data.latitude, data.longitude)) {
+    return {
+      latitude: data.latitude,
+      longitude: data.longitude!,
+      source: 'report',
+    };
+  }
+  return null;
 }
 
 function DetailSkeleton() {
@@ -997,104 +1023,96 @@ function InspectionDetailHeader({
   data: InspectionDetail;
   onAssignClick: (mode: 'assign' | 'change') => void;
 }) {
+  const pathname = usePathname();
   const slaOverdue = inspectionSlaIsOverdue(data.status, data.slaInspectionDueAt);
   const teamAssigned = hasAssignedTeam(data.assignedTeamId);
   const canTeamAction = canManageInspectionTeam(data.status);
+  const teamLabel = teamAssigned ? data.assignedTeamName?.trim() || 'Đã gán đội' : EMPTY.team;
+
+  const reportHref = data.reportId
+    ? `/officer/verify/${data.reportId}?from=${encodeURIComponent(pathname)}`
+    : null;
 
   return (
     <header className="border-b border-slate-200 pb-4">
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8">
-        {/* Trái — hồ sơ: tiêu đề + mã/id + người lập */}
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-              Hồ sơ xử phạt
-            </h1>
-            <span
-              className={cn(
-                'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                inspectionStatusBadgeClass(data.status)
-              )}
-            >
-              {inspectionStatusLabelVi(data.status)}
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            Hồ sơ xử phạt
+          </h1>
+          <span
+            className={cn(
+              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
+              inspectionStatusBadgeClass(data.status)
+            )}
+          >
+            {inspectionStatusLabelVi(data.status)}
+          </span>
+          {data.isRepeatOffender ? (
+            <span className="inline-flex rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
+              Tái phạm
             </span>
-            {data.isRepeatOffender ? (
-              <span className="inline-flex rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
-                Tái phạm
-              </span>
-            ) : null}
-          </div>
-
-          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            <div className="flex min-w-0 max-w-full items-center gap-1.5">
-              {data.reportId ? (
-                <Link
-                  href={`/officer/verify/${data.reportId}`}
-                  className="truncate text-sm font-semibold tabular-nums text-sky-700 hover:underline"
-                >
-                  {data.reportCode?.trim() || 'Báo cáo gốc'}
-                </Link>
-              ) : (
-                <span className="truncate text-sm font-semibold tabular-nums text-slate-800">
-                  {data.reportCode?.trim() || '—'}
-                </span>
-              )}
-              {data.reportCode?.trim() ? (
-                <CopyIconButton value={data.reportCode.trim()} label="Mã báo cáo" />
-              ) : null}
-            </div>
-
-            <div className="flex min-w-0 max-w-full items-center gap-1.5">
-              <span className="min-w-0 truncate text-sm font-semibold tabular-nums text-slate-600">
-                {data.id}
-              </span>
-              <CopyIconButton value={data.id} label="Id hồ sơ" />
-            </div>
-          </div>
-
-          <p className="text-sm text-slate-500">
-            Người lập {data.createdByOfficerName?.trim() || '—'}
-            <span aria-hidden className="mx-1.5 text-slate-300">
-              ·
-            </span>
-            Tạo {formatViDateTime(data.createdAt)}
-          </p>
-
-          {slaOverdue ? (
-            <p className="inline-flex rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200/80">
-              Hạn xử lý đã quá hạn — {formatViDateTime(data.slaInspectionDueAt)}
-            </p>
           ) : null}
         </div>
 
-        {/* Phải — đội thanh tra */}
-        <div className="min-w-0">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 sm:text-base">
-              <Users className="size-4 text-slate-900" aria-hidden />
-              Đội thanh tra
-            </h2>
-            {canTeamAction ? (
-              <Button
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex min-w-0 max-w-full items-center gap-1.5">
+            {reportHref ? (
+              <Link
+                href={reportHref}
+                className="truncate text-sm font-semibold tabular-nums text-sky-700 hover:underline"
+              >
+                {data.reportCode?.trim() || 'Báo cáo gốc'}
+              </Link>
+            ) : (
+              <span className="truncate text-sm font-semibold tabular-nums text-slate-800">
+                {data.reportCode?.trim() || '—'}
+              </span>
+            )}
+            {data.reportCode?.trim() ? (
+              <CopyIconButton value={data.reportCode.trim()} label="Mã báo cáo" />
+            ) : null}
+          </div>
+
+          <div className="flex min-w-0 max-w-full items-center gap-1.5">
+            <span className="min-w-0 truncate text-sm font-semibold tabular-nums text-slate-600">
+              {data.id}
+            </span>
+            <CopyIconButton value={data.id} label="Id hồ sơ" />
+          </div>
+        </div>
+
+        <p className="text-sm text-slate-500">
+          Người lập {data.createdByOfficerName?.trim() || '—'}
+          <span aria-hidden className="mx-1.5 text-slate-300">
+            ·
+          </span>
+          Tạo {formatViDateTime(data.createdAt)}
+        </p>
+
+        <p className="text-sm text-slate-500">
+          Đội thanh tra: {teamLabel}
+          {canTeamAction ? (
+            <>
+              <span aria-hidden className="mx-1.5 text-slate-300">
+                ·
+              </span>
+              <button
                 type="button"
-                size="sm"
-                className="h-8 bg-sky-700 text-xs text-white hover:bg-sky-600"
+                className="font-medium text-sky-700 hover:underline"
                 onClick={() => onAssignClick(teamAssigned ? 'change' : 'assign')}
               >
                 {teamAssigned ? 'Đổi đội' : 'Gán đội'}
-              </Button>
-            ) : null}
-          </div>
-          <Panel>
-            {teamAssigned ? (
-              <p className="text-sm font-semibold text-slate-900">
-                {data.assignedTeamName?.trim() || 'Đã gán đội'}
-              </p>
-            ) : (
-              <p className="text-sm text-slate-500">{EMPTY.team}</p>
-            )}
-          </Panel>
-        </div>
+              </button>
+            </>
+          ) : null}
+        </p>
+
+        {slaOverdue ? (
+          <p className="inline-flex rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200/80">
+            Hạn xử lý đã quá hạn — {formatViDateTime(data.slaInspectionDueAt)}
+          </p>
+        ) : null}
       </div>
     </header>
   );
@@ -1107,9 +1125,9 @@ function SubjectLocationMinutesSection({ data }: { data: InspectionDetail }) {
   const showClosed = inspectionShowsClosedAt(data.status);
   const showPenaltyFields = inspectionShowsPenaltyFields(data.status);
   const slaOverdue = inspectionSlaIsOverdue(data.status, data.slaInspectionDueAt);
-  const hasCoords = hasArrivalCoords(data);
-  const mapsHref = hasCoords
-    ? `https://www.google.com/maps?q=${data.arrivalLatitude},${data.arrivalLongitude}`
+  const fieldCoords = resolveFieldMapCoords(data);
+  const mapsHref = fieldCoords
+    ? `https://www.google.com/maps?q=${fieldCoords.latitude},${fieldCoords.longitude}`
     : null;
 
   const displayName = entity?.name?.trim() || subjectName;
@@ -1199,20 +1217,27 @@ function SubjectLocationMinutesSection({ data }: { data: InspectionDetail }) {
             Vị trí hiện trường
           </h2>
           <Panel className="overflow-hidden !p-0">
-            {hasCoords ? (
+            {fieldCoords ? (
               <>
                 <ReportLocationMap
-                  latitude={data.arrivalLatitude!}
-                  longitude={data.arrivalLongitude!}
+                  latitude={fieldCoords.latitude}
+                  longitude={fieldCoords.longitude}
                   className="h-56 w-full sm:h-64"
                 />
                 <div className="flex flex-wrap items-start justify-between gap-2 border-t border-slate-100 px-4 py-3">
                   <div className="min-w-0">
                     <p className="text-sm text-slate-700">
-                      {data.arrivalNote?.trim() || displayAddress || 'Vị trí xác nhận hiện trường'}
+                      {fieldCoords.source === 'arrival'
+                        ? data.arrivalNote?.trim() ||
+                          displayAddress ||
+                          'Vị trí xác nhận hiện trường'
+                        : displayAddress || 'Vị trí GPS báo cáo'}
                     </p>
                     <p className="mt-0.5 text-[11px] tabular-nums text-slate-500">
-                      {data.arrivalLatitude!.toFixed(5)}, {data.arrivalLongitude!.toFixed(5)}
+                      {fieldCoords.latitude.toFixed(5)}, {fieldCoords.longitude.toFixed(5)}
+                      {fieldCoords.source === 'report'
+                        ? ' · GPS báo cáo'
+                        : ' · Xác nhận hiện trường'}
                     </p>
                   </div>
                   {mapsHref ? (
@@ -1231,11 +1256,10 @@ function SubjectLocationMinutesSection({ data }: { data: InspectionDetail }) {
             ) : (
               <div className="flex h-56 flex-col items-center justify-center gap-2 px-4 text-center">
                 <MapPin className="size-6 text-slate-300" aria-hidden />
-                <p className="text-sm text-slate-500">
-                  Chưa có tọa độ hiện trường (`arrivalLatitude` / `arrivalLongitude`).
-                </p>
+                <p className="text-sm text-slate-500">Chưa có tọa độ vị trí.</p>
                 <p className="text-xs text-slate-400">
-                  Bản đồ sẽ hiển thị sau khi Đội thanh tra xác nhận hiện trường trên Mobile.
+                  Hiển thị GPS báo cáo (`latitude` / `longitude`) hoặc tọa độ xác nhận hiện trường
+                  khi Đội thanh tra check-in.
                 </p>
               </div>
             )}
@@ -1402,10 +1426,10 @@ function InspectionDetailBody({ data }: { data: InspectionDetail }) {
   const paidRatio =
     penalty != null && penalty > 0 ? Math.min(100, Math.round((paid / penalty) * 100)) : null;
 
-  const mapsHref =
-    data.arrivalLatitude != null && data.arrivalLongitude != null
-      ? `https://www.google.com/maps?q=${data.arrivalLatitude},${data.arrivalLongitude}`
-      : null;
+  const fieldCoords = resolveFieldMapCoords(data);
+  const mapsHref = fieldCoords
+    ? `https://www.google.com/maps?q=${fieldCoords.latitude},${fieldCoords.longitude}`
+    : null;
 
   const waitingAccept = data.status === 'Draft' && !data.acceptedAt ? EMPTY.waitingAccept : null;
 
@@ -1417,22 +1441,28 @@ function InspectionDetailBody({ data }: { data: InspectionDetail }) {
         icon={<Camera className="size-4 text-slate-900" />}
         description="Theo dõi các bước xử lý hồ sơ — media checklist tách riêng phía dưới"
         action={
-          <span
-            className={cn(
-              'text-[11px] tabular-nums',
-              slaOverdue ? 'font-medium text-red-600' : 'text-slate-500'
-            )}
-          >
-            Hạn xử lý {formatViDateTime(data.slaInspectionDueAt)}
-            {slaOverdue ? ' · Quá hạn' : ''}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            {waitingAccept ? (
+              <span
+                title={waitingAccept}
+                className="inline-flex max-w-full items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200/70"
+              >
+                <Clock className="size-3 shrink-0" aria-hidden />
+                <span className="truncate">Chờ đội nhận việc</span>
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                'text-[11px] tabular-nums',
+                slaOverdue ? 'font-medium text-red-600' : 'text-slate-500'
+              )}
+            >
+              Hạn xử lý {formatViDateTime(data.slaInspectionDueAt)}
+              {slaOverdue ? ' · Quá hạn' : ''}
+            </span>
+          </div>
         }
       >
-        {waitingAccept ? (
-          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200/80">
-            {waitingAccept}
-          </p>
-        ) : null}
         <InvestigationProgressTimeline
           steps={steps}
           activeKey={activeKey}

@@ -341,7 +341,7 @@ function ReportIdentityCell({
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="group/copyrow flex min-w-0 items-center gap-1">
           <Link
-            href={`/officer/verify/${row.id}`}
+            href={`/officer/verify/${row.id}?from=${encodeURIComponent('/officer/recurrence')}`}
             title={row.id}
             onClick={e => e.stopPropagation()}
             className={cn(

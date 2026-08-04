@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LeoTrackingReportDetail } from './LeoTrackingReportDetail';
+import { resolveSafeOfficerFrom } from '@/utils/officerNavigation';
 
 function TrackingFallback() {
   return (
@@ -21,18 +22,6 @@ const LeoTrackingPageClient = dynamic(
   () => import('./LeoTrackingPageClient').then(m => m.LeoTrackingPageClient),
   { ssr: false, loading: TrackingFallback }
 );
-
-/**
- * Chỉ cho phép back về route nội bộ officer — chống open-redirect.
- * `from` là path+query tương đối (vd. `/officer/duplicates`).
- */
-function resolveSafeOfficerFrom(raw: string | null): string | null {
-  if (!raw) return null;
-  const path = raw.trim();
-  if (!path.startsWith('/') || path.startsWith('//')) return null;
-  if (!path.startsWith('/officer/') && path !== '/officer') return null;
-  return path;
-}
 
 /** ACL LEO do proxy — không render Access Denied trên client. */
 export function TrackingPageClient() {

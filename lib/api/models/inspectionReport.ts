@@ -139,6 +139,9 @@ export interface InspectionDetail {
   id: string;
   reportId: string | null;
   reportCode: string | null;
+  /** Tọa độ báo cáo gốc (GPS báo cáo). */
+  latitude: number | null;
+  longitude: number | null;
   status: InspectionStatus;
   assignedTeamId: string | null;
   assignedTeamName: string | null;

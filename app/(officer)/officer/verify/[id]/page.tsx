@@ -1,3 +1,6 @@
+import { Suspense } from 'react';
+
+import OfficerVerifyDetailLoading from '@/app/(officer)/officer/verify/[id]/loading';
 import { VerifyDetailRouteClient } from '@/components/officer/verify/VerifyDetailRouteClient';
 
 type PageProps = {
@@ -7,5 +10,9 @@ type PageProps = {
 export default async function OfficerVerifyDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  return <VerifyDetailRouteClient id={id} />;
+  return (
+    <Suspense fallback={<OfficerVerifyDetailLoading />}>
+      <VerifyDetailRouteClient id={id} />
+    </Suspense>
+  );
 }
