@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Bell, UserRound, Shield, Building2, type LucideIcon } from 'lucide-react';
+import { Bell, UserRound, Shield, Building2, Upload, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -10,6 +10,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'user-round': UserRound,
   shield: Shield,
   building: Building2,
+  upload: Upload,
 };
 
 export type SettingsNavItem = {

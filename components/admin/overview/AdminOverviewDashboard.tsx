@@ -5,6 +5,7 @@ import {
   OverviewPerformanceBars,
   OverviewPollutionAnalytics,
   OverviewQueueAging,
+  OverviewReportTrend,
   OverviewResolutionBars,
 } from '@/components/admin/overview/OverviewAnalyticsCharts';
 import { OverviewAlertsCard } from '@/components/admin/overview/OverviewAlertsCard';
@@ -43,6 +44,7 @@ export function AdminOverviewDashboard() {
     officerPerformance,
     pollutionAnalytics,
     reportFunnel,
+    reportTrend,
     queueAging,
     resolutionDistribution,
     isPending,
@@ -114,9 +116,12 @@ export function AdminOverviewDashboard() {
 
         {/* Column 2 — trend + alerts */}
         <div className="min-h-0 md:col-span-1 lg:col-span-5 lg:col-start-4 lg:row-start-1">
+          <OverviewReportTrend points={reportTrend} />
+        </div>
+        <div className="min-h-0 md:col-span-1 lg:col-span-5 lg:col-start-4 lg:row-start-2">
           <OverviewPollutionAnalytics items={pollutionAnalytics} />
         </div>
-        <div className="min-h-0 md:col-span-2 lg:col-span-5 lg:col-start-4 lg:row-start-2 lg:row-span-2">
+        <div className="min-h-0 md:col-span-2 lg:col-span-5 lg:col-start-4 lg:row-start-3 lg:row-span-1">
           <OverviewAlertsCard
             alerts={alerts}
             isError={isAlertsError}

@@ -1,6 +1,7 @@
 'use client';
 
 import { NotificationTemplateFormDialog } from '@/components/admin/notification-templates/NotificationTemplateFormDialog';
+import { NotificationTemplateTestDialog } from '@/components/admin/notification-templates/NotificationTemplateTestDialog';
 import {
   ADMIN_TABLE_CLASS,
   ADMIN_TABLE_HEAD_CELL,
@@ -34,6 +35,7 @@ import {
   useNotificationTemplateDetail,
   useNotificationTemplatesList,
   usePublishNotificationTemplate,
+  useTestNotificationTemplate,
   useUpdateNotificationTemplate,
 } from '@/hooks/useNotificationTemplates';
 import type {
@@ -48,11 +50,12 @@ import {
   notificationTypeLabel,
 } from '@/lib/constants/notificationTemplates';
 import { cn } from '@/lib/utils';
+import { resolveApiToastMessage } from '@/utils/apiToastMessage';
 import {
   formatNotificationTemplateDate,
   getNotificationTemplateMutationError,
 } from '@/utils/notificationTemplateUi';
-import { Loader2, Pencil, Plus, Power, Upload } from 'lucide-react';
+import { Loader2, Pencil, Plus, Power, Send, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -96,6 +99,7 @@ export function AdminNotificationTemplatesView() {
   const [publishFilter, setPublishFilter] = useState<PublishFilter>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [testTarget, setTestTarget] = useState<NotificationTemplateListItem | null>(null);
 
   const listParams = useMemo<NotificationTemplatesListParams>(() => {
     const params: NotificationTemplatesListParams = {
@@ -114,6 +118,7 @@ export function AdminNotificationTemplatesView() {
   const updateMutation = useUpdateNotificationTemplate();
   const deleteMutation = useDeleteNotificationTemplate();
   const publishMutation = usePublishNotificationTemplate();
+  const testMutation = useTestNotificationTemplate();
 
   const items = (listQuery.data?.items ?? []).filter(i => i.isActive);
   const pagination = listQuery.data?.pagination;
@@ -123,6 +128,7 @@ export function AdminNotificationTemplatesView() {
   const busyRowId =
     (deleteMutation.isPending && deleteMutation.variables) ||
     (publishMutation.isPending && publishMutation.variables?.id) ||
+    (testMutation.isPending && testMutation.variables?.id) ||
     null;
 
   const onCreate = (values: NotificationTemplateWriteInput) => {
@@ -449,6 +455,19 @@ export function AdminNotificationTemplatesView() {
                         <div className="flex flex-wrap justify-end gap-1.5">
                           <button
                             type="button"
+                            disabled={rowBusy || !item.isActive}
+                            onClick={() => setTestTarget(item)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
+                          >
+                            {rowBusy && testMutation.variables?.id === item.id ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                            ) : (
+                              <Send className="size-3.5" aria-hidden />
+                            )}
+                            Test
+                          </button>
+                          <button
+                            type="button"
                             disabled={rowBusy}
                             onClick={() => setEditId(item.id)}
                             className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
@@ -527,6 +546,34 @@ export function AdminNotificationTemplatesView() {
         onClose={() => setEditId(null)}
         onSubmit={onUpdate}
         onRetryDetail={() => void detailQuery.refetch()}
+      />
+
+      <NotificationTemplateTestDialog
+        open={Boolean(testTarget)}
+        templateTitle={testTarget?.titleVi ?? ''}
+        busy={testMutation.isPending}
+        onClose={() => {
+          if (!testMutation.isPending) setTestTarget(null);
+        }}
+        onSubmit={email => {
+          if (!testTarget) return;
+          testMutation.mutate(
+            { id: testTarget.id, body: { recipientEmail: email } },
+            {
+              onSuccess: env => {
+                toast.success(
+                  resolveApiToastMessage(
+                    env.data?.message ?? env.message,
+                    'Đã gửi thử mẫu thông báo.'
+                  )
+                );
+                setTestTarget(null);
+              },
+              onError: err =>
+                toast.error(getNotificationTemplateMutationError(err, 'Không thể gửi thử mẫu.')),
+            }
+          );
+        }}
       />
     </div>
   );
