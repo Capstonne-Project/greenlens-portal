@@ -991,11 +991,13 @@ function ActionCard({
         <CardHeader>
           <CardTitle className="text-lg">Trạng thái</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center rounded-lg bg-purple-50/70 px-4 py-5 text-center">
-          <div className="flex size-11 items-center justify-center rounded-full bg-purple-100 ring-4 ring-purple-50">
-            <Hourglass className="size-6 text-purple-600" />
+        <CardContent className="flex flex-col items-center px-4 py-5 text-center">
+          <div className="flex size-11 items-center justify-center rounded-full border border-blue-200 bg-white shadow-sm">
+            <Hourglass className="size-6 text-blue-600" />
           </div>
-          <p className="mt-3 text-lg font-semibold text-purple-700">Đang xử lý</p>
+          <p className={cn('mt-3 text-lg font-semibold', STATUS_TEXT_CLASSES.InProgress)}>
+            Đang xử lý
+          </p>
           <CardDescription className="mt-1 text-base">
             Báo cáo đã được phân công đội và đang trong quá trình khắc phục.
           </CardDescription>
@@ -1036,13 +1038,42 @@ function ActionCard({
   }
 
   if (status !== 'Submitted') {
+    const isClosedFamily = status === 'Closed' || status === 'ClosedNoViolation';
+    const isRejected = status === 'Rejected';
+    const iconWrapClass = isRejected
+      ? 'border-rose-200'
+      : isClosedFamily
+        ? 'border-zinc-200'
+        : 'border-slate-200';
+    const Icon = isRejected ? XCircle : isClosedFamily ? CheckCircle2 : Shield;
+    const iconClass = isRejected
+      ? 'text-rose-600'
+      : isClosedFamily
+        ? 'text-zinc-500'
+        : 'text-slate-500';
+
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Trạng thái</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center rounded-lg bg-muted/50 px-4 py-5 text-center">
-          <p className="text-lg font-semibold text-foreground">{status}</p>
+        <CardContent className="flex flex-col items-center px-4 py-5 text-center">
+          <div
+            className={cn(
+              'flex size-11 items-center justify-center rounded-full border bg-white shadow-sm',
+              iconWrapClass
+            )}
+          >
+            <Icon className={cn('size-6', iconClass)} />
+          </div>
+          <p className={cn('mt-3 text-lg font-semibold', STATUS_TEXT_CLASSES[status])}>
+            {reportStatusLabelVi(status)}
+          </p>
+          {isClosedFamily ? (
+            <CardDescription className="mt-1 text-base">
+              Báo cáo đã đóng và không còn trong hàng đợi xác minh.
+            </CardDescription>
+          ) : null}
         </CardContent>
       </Card>
     );
@@ -1492,7 +1523,7 @@ function BackLink({ onBack }: { onBack?: () => void }) {
   const content = (
     <>
       <ArrowLeft className="size-3.5" />
-      Quay lại danh sách
+      {onBack ? 'Quay lại' : 'Quay lại danh sách'}
     </>
   );
 
