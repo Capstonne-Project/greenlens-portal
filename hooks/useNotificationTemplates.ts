@@ -6,12 +6,14 @@ import {
   fetchNotificationTemplateDetail,
   fetchNotificationTemplates,
   publishNotificationTemplate,
+  testNotificationTemplate,
   updateNotificationTemplate,
   type NotificationTemplateWriteInput,
   type NotificationTemplatesList,
   type NotificationTemplatesListParams,
   type PublishNotificationTemplateInput,
 } from '@/lib/api/services/fetchNotificationTemplate';
+import type { TestNotificationTemplateInput } from '@/lib/api/models/gamification';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -98,5 +100,13 @@ export function usePublishNotificationTemplate() {
       void qc.invalidateQueries({ queryKey: notificationTemplateKeys.all });
       void qc.invalidateQueries({ queryKey: notificationTemplateKeys.detail(vars.id) });
     },
+  });
+}
+
+/** POST /v1/admin/notification-templates/{id}/test */
+export function useTestNotificationTemplate() {
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: TestNotificationTemplateInput }) =>
+      testNotificationTemplate(id, body),
   });
 }

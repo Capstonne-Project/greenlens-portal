@@ -4,6 +4,7 @@
 import {
   adaptAddCompanyTeamMember,
   adaptArchiveCompanyTeam,
+  adaptDeleteCompanyTeam,
   adaptAssignCompanyTeam,
   adaptCompanyAssignmentDetail,
   adaptCompanyAssignments,
@@ -32,6 +33,7 @@ import {
   adaptSuspendCompany,
   adaptUpdateCompanyServiceAreas,
 } from '@/lib/api/adapters/companies.adapter';
+import type { IdempotencyRequestOptions } from '@/lib/api/idempotency';
 import type {
   AddCompanyTeamMemberInput,
   ArchiveCompanyTeamInput,
@@ -291,6 +293,11 @@ export async function archiveCompanyTeam(
   return adaptArchiveCompanyTeam(id, body);
 }
 
+/** DELETE /v1/teams/company-teams/{id} — xóa team công ty [CompanyManager]. */
+export async function deleteCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
+  return adaptDeleteCompanyTeam(id);
+}
+
 /** GET /v1/companies/my/contract-history — lịch sử kỳ hợp đồng công ty CM. */
 export async function fetchMyCompanyContractHistory(): Promise<
   ApiEnvelope<MyCompanyContractHistory>
@@ -330,9 +337,10 @@ export async function fetchCompanyAssignmentDetail(
  */
 export async function assignCompanyTeam(
   reportId: string,
-  body: AssignCompanyTeamInput
+  body: AssignCompanyTeamInput,
+  options?: IdempotencyRequestOptions
 ): Promise<void> {
-  return adaptAssignCompanyTeam(reportId, body);
+  return adaptAssignCompanyTeam(reportId, body, options);
 }
 
 const companyApi = {
@@ -358,6 +366,7 @@ const companyApi = {
   createCompanyTeam,
   renameCompanyTeam,
   archiveCompanyTeam,
+  deleteCompanyTeam,
   fetchMyCompanyContractHistory,
   fetchMyCompanyKpi,
   fetchCompanyQueue,

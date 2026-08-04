@@ -66,7 +66,8 @@ import {
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { locateReportInQueuePage, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
-import { toastApiError } from '@/lib/api/toast';
+import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/models/report';
@@ -874,6 +875,7 @@ export function VerifyPageClient() {
   const pageRef = useRef(1);
   const isFetchingRef = useRef(false);
   const verifyMutation = useVerifyReport();
+  const verifyIdempotencyKeysRef = useRef(createIdempotencyKeyStore());
 
   const yearOnlyDefaults = getPresetDateInputs('all');
 
@@ -1283,8 +1285,13 @@ export function VerifyPageClient() {
   const performVerify = async (row: ReportQueueItem): Promise<boolean> => {
     setVerifyingId(row.id);
     try {
-      await verifyMutation.mutateAsync({ reportId: row.id, body: {} });
-      setSuccessReportId(row.id);
+      const result = await verifyMutation.mutateAsync({
+        reportId: row.id,
+        body: {},
+        idempotencyKey: verifyIdempotencyKeysRef.current.get(row.id),
+      });
+      verifyIdempotencyKeysRef.current.reset();
+      toastApiSuccess(result, 'Đã xác minh báo cáo.');
       return true;
     } catch (error) {
       toastApiError(error, 'Không thể xác minh báo cáo.');

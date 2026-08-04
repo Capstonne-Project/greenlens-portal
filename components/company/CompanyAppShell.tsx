@@ -63,7 +63,7 @@ export function CompanyAppShell({ children }: { children: React.ReactNode }) {
             className={cn(
               'min-h-0 min-w-0 flex-1 overscroll-contain',
               isOverview
-                ? 'overflow-hidden pt-2 md:pt-3'
+                ? 'overflow-x-hidden overflow-y-auto overscroll-contain pt-2 md:pt-3 lg:overflow-hidden'
                 : 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5',
               isAssignments && 'scrollbar-hide'
             )}

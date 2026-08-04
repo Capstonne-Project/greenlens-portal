@@ -1,3 +1,9 @@
+import { adaptExportMyData, adaptSubmitUserConsent } from '@/lib/api/adapters/userPrivacy.adapter';
+import type {
+  UserConsentInput,
+  UserConsentResult,
+  UserDataExportFile,
+} from '@/lib/api/models/userPrivacy';
 import type { ApiEnvelope } from './fetchAuth';
 import apiService from '../core';
 
@@ -29,6 +35,8 @@ export interface AvatarUploadResult {
   message: string;
 }
 
+export type { UserConsentInput, UserConsentResult, UserDataExportFile };
+
 export async function getMyProfile(): Promise<ApiEnvelope<UserProfile>> {
   const res = await apiService.get<ApiEnvelope<UserProfile>>('/v1/users/profile');
   return res.data;
@@ -51,8 +59,20 @@ export async function uploadMyAvatar(file: File): Promise<ApiEnvelope<AvatarUplo
   return res.data;
 }
 
+/** POST /v1/users/me/consent — BR-DAT-005 */
+export async function submitUserConsent(body: UserConsentInput): Promise<UserConsentResult> {
+  return adaptSubmitUserConsent(body);
+}
+
+/** GET /v1/users/me/data-export */
+export async function exportMyData(): Promise<UserDataExportFile> {
+  return adaptExportMyData();
+}
+
 export default {
   getMyProfile,
   updateMyProfile,
   uploadMyAvatar,
+  submitUserConsent,
+  exportMyData,
 };

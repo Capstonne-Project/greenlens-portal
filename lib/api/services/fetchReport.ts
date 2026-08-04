@@ -65,6 +65,7 @@ import type {
   ReportInspectionsList,
 } from '@/lib/api/models/inspectionReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import type { IdempotencyRequestOptions } from '@/lib/api/idempotency';
 
 export type {
   DuplicateCandidateItem,
@@ -213,16 +214,21 @@ export async function fetchReportProgress(id: string): Promise<ReportProgress> {
  * POST /v1/reports/{reportId}/assign — [LEO] gán community team.
  * Company Manager dùng `assignCompanyTeam` → POST .../assign-company-team.
  */
-export async function assignReport(reportId: string, body: AssignReportInput): Promise<void> {
-  return adaptAssignReport(reportId, body);
+export async function assignReport(
+  reportId: string,
+  body: AssignReportInput,
+  options?: IdempotencyRequestOptions
+): Promise<void> {
+  return adaptAssignReport(reportId, body, options);
 }
 
 /** POST /v1/reports/{id}/dispatch-to-company — LEO điều phối task đến công ty DVMT. */
 export async function dispatchReportToCompany(
   reportId: string,
-  body: DispatchToCompanyInput
+  body: DispatchToCompanyInput,
+  options?: IdempotencyRequestOptions
 ): Promise<void> {
-  return adaptDispatchToCompany(reportId, body);
+  return adaptDispatchToCompany(reportId, body, options);
 }
 
 /** PUT /v1/reports/{reportId}/reassign — chuyển giao đội (Assigned/Declined). */
@@ -233,9 +239,10 @@ export async function reassignReport(reportId: string, body: ReassignReportInput
 /** PUT /v1/reports/{id}/verify — LEO xác minh báo cáo (Submitted → Verified). */
 export async function verifyReport(
   reportId: string,
-  body: VerifyReportInput
+  body: VerifyReportInput,
+  options?: IdempotencyRequestOptions
 ): Promise<VerifyReportResult> {
-  return adaptVerifyReport(reportId, body);
+  return adaptVerifyReport(reportId, body, options);
 }
 
 /** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo (Submitted → Rejected). */

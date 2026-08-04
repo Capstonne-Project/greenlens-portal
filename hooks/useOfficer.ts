@@ -48,6 +48,12 @@ import {
 } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+type IdempotentVars<TBody> = {
+  reportId: string;
+  body: TBody;
+  idempotencyKey?: string;
+};
+
 // ── Query key factory ─────────────────────────────────────────────────────────
 
 /**
@@ -312,8 +318,8 @@ export function useAssignReportQueue(
 export function useDispatchReportToCompany() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ reportId, body }: { reportId: string; body: DispatchToCompanyInput }) =>
-      dispatchReportToCompany(reportId, body),
+    mutationFn: ({ reportId, body, idempotencyKey }: IdempotentVars<DispatchToCompanyInput>) =>
+      dispatchReportToCompany(reportId, body, { idempotencyKey }),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
@@ -326,8 +332,8 @@ export function useDispatchReportToCompany() {
 export function useAssignReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ reportId, body }: { reportId: string; body: AssignReportInput }) =>
-      assignReport(reportId, body),
+    mutationFn: ({ reportId, body, idempotencyKey }: IdempotentVars<AssignReportInput>) =>
+      assignReport(reportId, body, { idempotencyKey }),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
@@ -354,8 +360,8 @@ export function useReassignReport() {
 export function useVerifyReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ reportId, body }: { reportId: string; body: VerifyReportInput }) =>
-      verifyReport(reportId, body),
+    mutationFn: ({ reportId, body, idempotencyKey }: IdempotentVars<VerifyReportInput>) =>
+      verifyReport(reportId, body, { idempotencyKey }),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });

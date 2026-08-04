@@ -1,0 +1,1 @@
+export const ADMIN_BLOCKED_WORDS_PAGE_SIZE = 12;

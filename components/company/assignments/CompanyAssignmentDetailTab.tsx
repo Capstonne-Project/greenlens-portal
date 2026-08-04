@@ -1,5 +1,6 @@
 'use client';
 
+import { CompanyReportProgressSection } from '@/components/company/assignments/CompanyReportProgressSection';
 import { useCompanyAssignmentDetail } from '@/hooks/useCompany';
 import type {
   CompanyAssignmentDetail,
@@ -24,6 +25,7 @@ import {
   Loader2,
   MapPin,
   Tag,
+  TrendingUp,
   UsersRound,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -639,6 +641,13 @@ export function CompanyAssignmentDetailTab({ reportId, onBack }: CompanyAssignme
             })}
           </div>
         )}
+      </Section>
+
+      <Section
+        title="Tiến trình API (progress)"
+        icon={<TrendingUp className="size-4" aria-hidden />}
+      >
+        <CompanyReportProgressSection reportId={reportId} />
       </Section>
 
       <Section title="Lịch sử trạng thái" icon={<Clock3 className="size-4" aria-hidden />}>

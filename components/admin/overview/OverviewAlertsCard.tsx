@@ -91,7 +91,7 @@ export function OverviewAlertsCard({
           </div>
         </div>
       ) : (
-        <ul className="max-h-[160px] space-y-1.5 overflow-y-auto pr-1">
+        <ul className="max-h-[min(280px,45vh)] space-y-1.5 overflow-y-auto pr-1 lg:max-h-[160px]">
           {list.map((alert, index) => {
             const sev = severityStyles(alert.severity);
             return (

@@ -4,6 +4,10 @@ import {
   CompanyTeamArchiveDialog,
   type CompanyTeamArchiveTarget,
 } from '@/components/company/teams/CompanyTeamArchiveDialog';
+import {
+  CompanyTeamDeleteDialog,
+  type CompanyTeamDeleteTarget,
+} from '@/components/company/teams/CompanyTeamDeleteDialog';
 import { CompanyTeamCreateDialog } from '@/components/company/teams/CompanyTeamCreateDialog';
 import { CompanyTeamRenameDialog } from '@/components/company/teams/CompanyTeamRenameDialog';
 import {
@@ -11,7 +15,11 @@ import {
   COMPANY_PAGINATION_FOOTER,
   COMPANY_PAGINATION_META,
 } from '@/components/company/shared/companyPaginationChrome';
-import { useArchiveCompanyTeam, useCompanyTeamsList } from '@/hooks/useCompany';
+import {
+  useArchiveCompanyTeam,
+  useCompanyTeamsList,
+  useDeleteCompanyTeam,
+} from '@/hooks/useCompany';
 import {
   Select,
   SelectContent,
@@ -30,6 +38,7 @@ import {
   Plus,
   Power,
   RefreshCw,
+  Trash2,
   UsersRound,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -45,6 +54,7 @@ export function CompanyTeamsView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<CompanyTeamArchiveTarget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CompanyTeamDeleteTarget | null>(null);
 
   const isActiveParam =
     activeFilter === 'all' ? undefined : activeFilter === 'active' ? true : false;
@@ -56,6 +66,7 @@ export function CompanyTeamsView() {
   });
 
   const archiveTeam = useArchiveCompanyTeam();
+  const deleteTeam = useDeleteCompanyTeam();
   const teams = data?.items ?? [];
   const pagination = data?.pagination;
 
@@ -81,6 +92,17 @@ export function CompanyTeamsView() {
           ),
       }
     );
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteTeam.mutate(deleteTarget.id, {
+      onSuccess: env => {
+        toast.success(env.message ?? 'Đã xóa đội');
+        setDeleteTarget(null);
+      },
+      onError: err => toast.error(getCompanyMutationError(err, 'Không thể xóa đội')),
+    });
   };
 
   return (
@@ -205,6 +227,25 @@ export function CompanyTeamsView() {
                     )}
                     {team.isActive ? 'Vô hiệu' : 'Kích hoạt'}
                   </button>
+                  <button
+                    type="button"
+                    disabled={deleteTeam.isPending && deleteTarget?.id === team.id}
+                    onClick={() =>
+                      setDeleteTarget({
+                        id: team.id,
+                        name: team.name,
+                        memberCount: team.memberCount,
+                      })
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                  >
+                    {deleteTeam.isPending && deleteTarget?.id === team.id ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    ) : (
+                      <Trash2 className="size-3.5" aria-hidden />
+                    )}
+                    Xóa
+                  </button>
                 </div>
               </li>
             ))}
@@ -255,6 +296,16 @@ export function CompanyTeamsView() {
         onConfirm={confirmArchiveToggle}
         onClose={() => {
           if (!archiveTeam.isPending) setArchiveTarget(null);
+        }}
+      />
+
+      <CompanyTeamDeleteDialog
+        open={Boolean(deleteTarget)}
+        team={deleteTarget}
+        submitting={deleteTeam.isPending}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          if (!deleteTeam.isPending) setDeleteTarget(null);
         }}
       />
     </div>

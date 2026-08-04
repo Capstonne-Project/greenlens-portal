@@ -132,7 +132,7 @@ export function CompanyOverviewDashboard() {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col gap-2 overflow-hidden">
+    <div className="flex min-h-0 w-full min-w-0 flex-col gap-2 lg:h-full lg:overflow-hidden">
       {dashPending && !overview ? (
         <CompanyOverviewSkeleton />
       ) : dashError && !overview ? (
@@ -157,12 +157,12 @@ export function CompanyOverviewDashboard() {
             {isFetching || assignmentsPending ? ' · làm mới' : ''}
           </p>
 
-          <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]">
-            <div className="min-h-0 lg:col-span-12 lg:row-start-1">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto] lg:overflow-y-auto">
+            <div className="min-h-0 md:col-span-2 lg:col-span-12 lg:row-start-1">
               <CompanyOverviewSummaryCharts overview={mergedOverview} />
             </div>
 
-            <div className="min-h-0 lg:col-span-12 lg:row-start-2">
+            <div className="min-h-0 md:col-span-2 lg:col-span-12 lg:row-start-2">
               <CompanyActiveAssignmentsPanel
                 items={assignmentItems}
                 totalItems={assignmentTotal}
@@ -171,26 +171,26 @@ export function CompanyOverviewDashboard() {
               />
             </div>
 
-            <div className="min-h-0 lg:col-span-4 lg:row-start-3">
+            <div className="min-h-0 md:col-span-1 lg:col-span-4 lg:row-start-3">
               <CompanyWorkloadTrend points={workloadTrend} />
             </div>
-            <div className="min-h-0 lg:col-span-4 lg:row-start-3">
+            <div className="min-h-0 md:col-span-1 lg:col-span-4 lg:row-start-3">
               <CompanyTaskStatusDonut items={mergedTaskStatus} />
             </div>
-            <div className="min-h-0 lg:col-span-4 lg:row-start-3">
+            <div className="min-h-0 md:col-span-2 lg:col-span-4 lg:row-start-3">
               <CompanyQueueAgingDonut items={queueAging} />
             </div>
 
-            <div className="lg:col-span-3 lg:row-start-4 lg:self-start">
+            <div className="md:col-span-1 lg:col-span-3 lg:row-start-4 lg:self-start">
               <CompanyUpcomingDeadlines items={mergedUpcomingDeadlines} />
             </div>
-            <div className="lg:col-span-3 lg:row-start-4 lg:self-start">
+            <div className="md:col-span-1 lg:col-span-3 lg:row-start-4 lg:self-start">
               <CompanyRecentActivities items={mergedRecentActivities} />
             </div>
-            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
+            <div className="min-h-0 md:col-span-1 lg:col-span-3 lg:row-start-4">
               <CompanyTeamPerformanceTable items={mergedTeamPerformance} />
             </div>
-            <div className="min-h-0 lg:col-span-3 lg:row-start-4">
+            <div className="min-h-0 md:col-span-1 lg:col-span-3 lg:row-start-4">
               <CompanyStaffPerformanceTable items={staffPerformance} />
             </div>
           </div>
@@ -203,19 +203,19 @@ export function CompanyOverviewDashboard() {
 function CompanyOverviewSkeleton() {
   return (
     <div
-      className="grid h-full min-h-0 gap-2 lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]"
+      className="grid min-h-0 grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]"
       aria-busy="true"
       aria-label="Đang tải tổng quan"
     >
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-12 lg:row-start-1" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-12 lg:row-start-2" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-4 lg:row-start-3" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-4 lg:row-start-3" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-4 lg:row-start-3" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
-      <div className="animate-pulse rounded-card bg-muted lg:col-span-3 lg:row-start-4" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-2 lg:col-span-12 lg:row-start-1" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-2 lg:col-span-12 lg:row-start-2" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-1 lg:col-span-4 lg:row-start-3" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-1 lg:col-span-4 lg:row-start-3" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-2 lg:col-span-4 lg:row-start-3" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-1 lg:col-span-3 lg:row-start-4" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-1 lg:col-span-3 lg:row-start-4" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-1 lg:col-span-3 lg:row-start-4" />
+      <div className="animate-pulse rounded-card bg-muted md:col-span-1 lg:col-span-3 lg:row-start-4" />
     </div>
   );
 }
