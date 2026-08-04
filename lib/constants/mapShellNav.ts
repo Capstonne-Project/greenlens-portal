@@ -5,6 +5,7 @@ import {
   faClipboardList,
   faClone,
   faEarthAmericas,
+  faFileInvoice,
   faFileLines,
   faGaugeHigh,
   faGear,
@@ -119,9 +120,15 @@ const NAV_ITEMS = {
   },
   recurrence: {
     id: 'recurrence',
-    label: 'Tái phát',
+    label: 'Tái diễn',
     href: '/officer/recurrence',
     icon: faHistory,
+  },
+  inspections: {
+    id: 'inspections',
+    label: 'Hồ sơ xử phạt',
+    href: '/officer/inspections',
+    icon: faFileInvoice,
   },
   workforce: {
     id: 'workforce',
@@ -178,6 +185,7 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.reports, 'Báo cáo'),
       NAV_ITEMS.duplicates,
       NAV_ITEMS.recurrence,
+      NAV_ITEMS.inspections,
       withSection(NAV_ITEMS.companies, 'Quản lý')
     );
   } else if (role === 'LEO') {
@@ -187,8 +195,9 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.verify, 'Báo cáo'),
       NAV_ITEMS.assign,
       NAV_ITEMS.tracking,
-      NAV_ITEMS.duplicates,
       NAV_ITEMS.recurrence,
+      NAV_ITEMS.inspections,
+      NAV_ITEMS.duplicates,
       withSection(NAV_ITEMS.community, 'Cộng đồng'),
       withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
