@@ -8,6 +8,7 @@ import {
   createCompanyStaff,
   createCompanyTeam,
   deleteCompany,
+  deleteCompanyTeam,
   fetchCompanies,
   fetchCompanyAssignmentDetail,
   fetchCompanyAssignments,
@@ -475,6 +476,20 @@ export function useArchiveCompanyTeam() {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
       queryClient.invalidateQueries({ queryKey: companyKeys.teamOptions() });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
+    },
+  });
+}
+
+/** DELETE /v1/teams/company-teams/{id} — [CompanyManager]. */
+export function useDeleteCompanyTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteCompanyTeam(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamOptions() });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
     },
   });
 }

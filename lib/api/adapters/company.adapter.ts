@@ -159,6 +159,14 @@ export async function adaptArchiveCompanyTeam(
   return res.data;
 }
 
+/** DELETE /v1/teams/company-teams/{id} — xóa team công ty [CompanyManager]. */
+export async function adaptDeleteCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
+  const res = await apiService.delete<ApiEnvelope<string | null>>(
+    `/v1/teams/company-teams/${encodeURIComponent(id)}`
+  );
+  return res.data;
+}
+
 /** GET /v1/companies/my/contract-history — lịch sử kỳ hợp đồng công ty CM. */
 export async function adaptMyCompanyContractHistory(): Promise<
   ApiEnvelope<MyCompanyContractHistory>
