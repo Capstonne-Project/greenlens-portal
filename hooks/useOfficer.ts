@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  assignInspectionTeam,
   assignReport,
   confirmDuplicateReport,
   createInspectionReport,
@@ -9,7 +10,11 @@ import {
   dispatchReportToCompany,
   fetchDuplicateCandidates,
   fetchDuplicateCandidateDetail,
+  fetchInspectionDetail,
+  fetchInspectionOfficerQueue,
+  fetchInspectionPayments,
   fetchReportDetail,
+  fetchReportInspections,
   fetchReportQueue,
   fetchViolationRecurrenceCandidates,
   fetchViolationRecurrenceComparison,
@@ -18,6 +23,7 @@ import {
   verifyReport,
 } from '@/lib/api/services/fetchReport';
 import type {
+  AssignInspectionTeamInput,
   AssignReportInput,
   ConfirmDuplicateInput,
   CreateInspectionReportInput,
@@ -27,6 +33,7 @@ import type {
   VerifyReportInput,
 } from '@/lib/api/services/fetchReport';
 import type { DuplicateCandidatesParams } from '@/lib/api/models/duplicateCandidate';
+import type { InspectionOfficerQueueParams } from '@/lib/api/models/inspectionReport';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type { ViolationRecurrenceCandidatesParams } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
@@ -86,7 +93,24 @@ export const officerKeys = {
   /** So sánh tái phát — BR-REP-034 */
   violationRecurrenceComparison: (id: string) =>
     [...officerKeys.all, 'violation-recurrence-comparison', id] as const,
+  /** GET /v1/reports/{id}/inspections — hồ sơ xử phạt theo báo cáo */
+  reportInspections: (reportId: string) =>
+    [...officerKeys.all, 'report-inspections', reportId] as const,
+  /** GET /v1/inspections/{id} — chi tiết hồ sơ xử phạt */
+  inspectionDetail: (id: string) => [...officerKeys.all, 'inspection-detail', id] as const,
+  /** GET /v1/inspections/{id}/payments — lịch sử nộp phạt */
+  inspectionPayments: (id: string) => [...officerKeys.all, 'inspection-payments', id] as const,
+  /** GET /v1/inspections/officer-queue — hàng đợi hồ sơ xử phạt [LEO/DEO] */
+  inspectionOfficerQueue: () => [...officerKeys.all, 'inspection-officer-queue'] as const,
+  inspectionOfficerQueueList: (params: InspectionOfficerQueueParams) =>
+    [...officerKeys.inspectionOfficerQueue(), ...inspectionQueueListKeyParts(params)] as const,
 };
+
+/** Tách `search` khỏi key hàng đợi hồ sơ — tránh PII thô trên queryKey. */
+function inspectionQueueListKeyParts(params: InspectionOfficerQueueParams) {
+  const { search, ...safe } = params;
+  return [safe, stableSearchKey(search)] as const;
+}
 
 const LIST_STALE_MS = 3 * 60 * 1000;
 
@@ -162,6 +186,24 @@ export function useViolationRecurrenceCandidates(
   return useQuery({
     queryKey: officerKeys.violationRecurrenceCandidatesList(params),
     queryFn: () => fetchViolationRecurrenceCandidates(params),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * GET /v1/inspections/officer-queue — [LEO/DEO] hàng đợi hồ sơ xử phạt.
+ * Filter: status, team, unassigned, SLA, date range, search.
+ */
+export function useInspectionOfficerQueue(
+  params: InspectionOfficerQueueParams,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: officerKeys.inspectionOfficerQueueList(params),
+    queryFn: () => fetchInspectionOfficerQueue(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
@@ -402,6 +444,43 @@ export function useDismissViolationRecurrence() {
 }
 
 /**
+ * GET /v1/reports/{id}/inspections — hồ sơ xử phạt gắn báo cáo.
+ * `enabled` = false cho đến khi user expand row (tránh N+1 lúc load list).
+ */
+export function useReportInspections(reportId: string, enabled = true) {
+  return useQuery({
+    queryKey: officerKeys.reportInspections(reportId),
+    queryFn: () => fetchReportInspections(reportId),
+    enabled: Boolean(reportId) && enabled,
+    staleTime: LIST_STALE_MS,
+  });
+}
+
+/**
+ * GET /v1/inspections/{id} — [InspectionLEO] chi tiết hồ sơ xử phạt.
+ */
+export function useInspectionDetail(id: string, enabled = true) {
+  return useQuery({
+    queryKey: officerKeys.inspectionDetail(id),
+    queryFn: () => fetchInspectionDetail(id),
+    enabled: Boolean(id) && enabled,
+    staleTime: LIST_STALE_MS,
+  });
+}
+
+/**
+ * GET /v1/inspections/{id}/payments — [Inspector/LEO] lịch sử nộp phạt (BR-INS-020).
+ */
+export function useInspectionPayments(id: string, enabled = true) {
+  return useQuery({
+    queryKey: officerKeys.inspectionPayments(id),
+    queryFn: () => fetchInspectionPayments(id),
+    enabled: Boolean(id) && enabled,
+    staleTime: LIST_STALE_MS,
+  });
+}
+
+/**
  * POST /v1/reports/{id}/inspections — [LEO] lập hồ sơ xử phạt nháp
  * (BR-INS-001, BR-OFF-005). `assignedTeamId` bắt buộc.
  */
@@ -415,9 +494,36 @@ export function useCreateInspectionReport() {
       queryClient.invalidateQueries({
         queryKey: officerKeys.violationRecurrenceComparison(reportId),
       });
+      queryClient.invalidateQueries({ queryKey: officerKeys.reportInspections(reportId) });
+      queryClient.invalidateQueries({
+        queryKey: [...officerKeys.all, 'inspection-detail'],
+      });
       queryClient.invalidateQueries({ queryKey: officerKeys.violationRecurrenceCandidates() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.inspectionOfficerQueue() });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/**
+ * PUT /v1/inspections/{id}/assign-team — gán / đổi đội kiểm tra.
+ */
+export function useAssignInspectionTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      inspectionId,
+      body,
+    }: {
+      inspectionId: string;
+      body: AssignInspectionTeamInput;
+    }) => assignInspectionTeam(inspectionId, body),
+    onSuccess: (_data, { inspectionId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.inspectionDetail(inspectionId) });
+      queryClient.invalidateQueries({ queryKey: [...officerKeys.all, 'report-inspections'] });
+      queryClient.invalidateQueries({ queryKey: officerKeys.violationRecurrenceCandidates() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.inspectionOfficerQueue() });
     },
   });
 }
