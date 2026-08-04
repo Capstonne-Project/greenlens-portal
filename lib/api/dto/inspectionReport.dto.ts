@@ -113,6 +113,9 @@ export interface InspectionDetailDto {
   id: string;
   reportId?: string | null;
   reportCode?: string | null;
+  /** Tọa độ báo cáo gốc (GPS báo cáo). */
+  latitude?: number | null;
+  longitude?: number | null;
   /** Draft | InProgress | PenaltyIssued | PartiallyPaid | Paid | Overdue | Closed | ClosedNoViolation */
   status?: string | null;
   assignedTeamId?: string | null;
