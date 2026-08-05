@@ -30,7 +30,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { OfficeWardSelect } from '@/components/officer/companies/OfficeWardSelect';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,11 +72,7 @@ import { useReportInspections, useViolationRecurrenceCandidates } from '@/hooks/
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type { ReportInspectionSummary } from '@/lib/api/models/inspectionReport';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
-import type {
-  ViolationRecurrenceCandidateItem,
-  ViolationRecurrenceCandidatesSortBy,
-  ViolationRecurrenceCandidatesSortDir,
-} from '@/lib/api/models/violationRecurrenceCandidate';
+import type { ViolationRecurrenceCandidateItem } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ViolationRecurrenceMedia } from '@/lib/api/models/violationRecurrence';
 import type { ReportSeverity } from '@/lib/api/models/report';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
@@ -195,8 +190,6 @@ const THUMB_SQUARE = cn(
 type DatePreset = 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'thisYear';
 type StatusFilter = 'all' | ReportQueueStatus;
 type SeverityFilter = 'all' | ReportSeverity;
-type SortByFilter = '' | ViolationRecurrenceCandidatesSortBy;
-type SortDirFilter = '' | ViolationRecurrenceCandidatesSortDir;
 
 interface AppliedFilters {
   status: StatusFilter;
@@ -205,11 +198,8 @@ interface AppliedFilters {
   customFrom: string;
   customTo: string;
   categoryId: string;
-  wardCode: string;
   minDays: string;
   maxDays: string;
-  sortBy: SortByFilter;
-  sortDir: SortDirFilter;
 }
 
 const DATE_PRESETS: { key: DatePreset; label: string }[] = [
@@ -244,17 +234,11 @@ const SEVERITY_FILTERS: { key: SeverityFilter; label: string }[] = [
   { key: 'Low', label: REPORT_SEVERITY_LABEL_VI.Low },
 ];
 
-const SORT_BY_OPTIONS: { key: ViolationRecurrenceCandidatesSortBy; label: string }[] = [
-  { key: 'CreatedAt', label: 'Ngày tạo' },
-  { key: 'Severity', label: 'Mức độ' },
-  { key: 'PriorClosedAt', label: 'Ngày đóng prior' },
-  { key: 'PriorityScore', label: 'Điểm ưu tiên' },
-];
-
-const SORT_DIR_OPTIONS: { key: ViolationRecurrenceCandidatesSortDir; label: string }[] = [
-  { key: 'Asc', label: 'Tăng dần' },
-  { key: 'Desc', label: 'Giảm dần' },
-];
+/** Mặc định mới nhất trước — GET .../violation-recurrence-candidates. */
+const DEFAULT_LIST_SORT = {
+  sortBy: 'CreatedAt' as const,
+  sortDir: 'Desc' as const,
+};
 
 const CATEGORY_LUCIDE_ICONS: Record<string, LucideIcon> = {
   SMOKE: Cloud,
@@ -435,11 +419,8 @@ function clearedFilters(): AppliedFilters {
     customFrom: yearDefaults.from,
     customTo: yearDefaults.to,
     categoryId: '',
-    wardCode: '',
     minDays: '',
     maxDays: '',
-    sortBy: '',
-    sortDir: '',
   };
 }
 
@@ -451,10 +432,8 @@ function countDrawerActiveFilters(f: AppliedFilters): number {
       ? 1
       : 0) +
     (f.categoryId ? 1 : 0) +
-    (f.wardCode.trim() ? 1 : 0) +
     (parseNonNegativeInt(f.minDays) != null ? 1 : 0) +
-    (parseNonNegativeInt(f.maxDays) != null ? 1 : 0) +
-    (f.sortBy || f.sortDir ? 1 : 0)
+    (parseNonNegativeInt(f.maxDays) != null ? 1 : 0)
   );
 }
 
@@ -806,27 +785,7 @@ function RecurrenceFilterDrawer({
             </div>
           </DrawerFilterSection>
 
-          <DrawerFilterSection title="Phường/xã">
-            <div className="space-y-2">
-              <OfficeWardSelect
-                value={draft.wardCode}
-                onChange={wardCode => onDraftChange({ wardCode })}
-                active={open}
-                placeholder="Tất cả phường/xã"
-              />
-              {draft.wardCode.trim() ? (
-                <button
-                  type="button"
-                  onClick={() => onDraftChange({ wardCode: '' })}
-                  className="text-xs font-medium text-slate-500 hover:text-slate-800"
-                >
-                  Bỏ chọn phường/xã
-                </button>
-              ) : null}
-            </div>
-          </DrawerFilterSection>
-
-          <DrawerFilterSection title="Số ngày từ khi đóng prior">
+          <DrawerFilterSection title="Số ngày từ khi đóng prior" last>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <span className="mb-2 block text-xs font-bold text-slate-400">Tối thiểu</span>
@@ -855,57 +814,6 @@ function RecurrenceFilterDrawer({
                   className="h-11 border-slate-200 bg-white shadow-none"
                   aria-label="Số ngày tối đa từ khi đóng prior"
                 />
-              </div>
-            </div>
-          </DrawerFilterSection>
-
-          <DrawerFilterSection title="Sắp xếp" last>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <span className="mb-2 block text-xs font-bold text-slate-400">Theo</span>
-                <Select
-                  value={draft.sortBy || '__default__'}
-                  onValueChange={value =>
-                    onDraftChange({
-                      sortBy: value === '__default__' ? '' : (value as SortByFilter),
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-11 w-full border-slate-200 bg-white">
-                    <SelectValue placeholder="Mặc định" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__default__">Mặc định</SelectItem>
-                    {SORT_BY_OPTIONS.map(opt => (
-                      <SelectItem key={opt.key} value={opt.key}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <span className="mb-2 block text-xs font-bold text-slate-400">Hướng</span>
-                <Select
-                  value={draft.sortDir || '__default__'}
-                  onValueChange={value =>
-                    onDraftChange({
-                      sortDir: value === '__default__' ? '' : (value as SortDirFilter),
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-11 w-full border-slate-200 bg-white">
-                    <SelectValue placeholder="Mặc định" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__default__">Mặc định</SelectItem>
-                    {SORT_DIR_OPTIONS.map(opt => (
-                      <SelectItem key={opt.key} value={opt.key}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </DrawerFilterSection>
@@ -1774,16 +1682,14 @@ export function RecurrencePageClient() {
     () => ({
       page,
       pageSize: RECURRENCE_PAGE_SIZE,
+      ...DEFAULT_LIST_SORT,
       ...(applied.status !== 'all' ? { status: applied.status } : {}),
       ...(applied.severity !== 'all' ? { severity: applied.severity } : {}),
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
-      ...(applied.wardCode.trim() ? { wardCode: applied.wardCode.trim() } : {}),
       ...effectiveDateRange,
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       ...(minDaysParsed != null ? { minDaysSincePriorClosed: minDaysParsed } : {}),
       ...(maxDaysParsed != null ? { maxDaysSincePriorClosed: maxDaysParsed } : {}),
-      ...(applied.sortBy ? { sortBy: applied.sortBy } : {}),
-      ...(applied.sortBy && applied.sortDir ? { sortDir: applied.sortDir } : {}),
     }),
     [page, applied, effectiveDateRange, debouncedSearch, minDaysParsed, maxDaysParsed]
   );
