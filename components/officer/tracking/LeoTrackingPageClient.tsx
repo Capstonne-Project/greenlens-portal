@@ -67,8 +67,6 @@ const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES.filter(
   (status): status is Exclude<LeoMyReportsStatus, 'Submitted'> => status !== 'Submitted'
 );
 
-const LEO_TRACKING_STATUS_SET = new Set<string>(LEO_TRACKING_STATUSES);
-
 type LeoTrackingStatus = (typeof LEO_TRACKING_STATUSES)[number];
 type LeoStatusTab = 'All' | LeoTrackingStatus;
 type LeoViewMode = 'list' | 'board';
@@ -203,7 +201,7 @@ function LeoStatusTabBar({
   viewMode,
   onViewModeChange,
 }: {
-  tabs: Array<{ key: LeoStatusTab; label: string; count: number }>;
+  tabs: Array<{ key: LeoStatusTab; label: string }>;
   activeKey: LeoStatusTab;
   onChange: (key: LeoStatusTab) => void;
   viewMode: LeoViewMode;
@@ -271,14 +269,11 @@ function LeoStatusTabBar({
                 aria-selected={isActive}
                 onClick={() => onChange(tab.key)}
                 className={cn(
-                  'flex items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors first:pl-0',
+                  'whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors first:pl-0',
                   isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 {tab.label}
-                <span className="rounded-sm bg-white px-1.5 py-0.5 text-xs font-bold tabular-nums text-muted-foreground shadow-sm">
-                  {tab.count}
-                </span>
               </button>
             );
           })}
@@ -760,35 +755,15 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
 
   const items = useMemo(() => data?.items ?? EMPTY_LEO_ITEMS, [data?.items]);
 
-  const statusCounts = useMemo(() => {
-    const totals = data?.pagination.totalItems ?? items.length;
-    const counts = { All: totals } as Record<LeoStatusTab, number>;
-    for (const s of LEO_TRACKING_STATUSES) counts[s] = 0;
-
-    if (statusTab === 'All') {
-      counts.All = items.length;
-      for (const item of items) {
-        if (LEO_TRACKING_STATUS_SET.has(item.status)) {
-          counts[item.status as LeoTrackingStatus] += 1;
-        }
-      }
-      return counts;
-    }
-
-    counts[statusTab] = totals;
-    return counts;
-  }, [data?.pagination.totalItems, items, statusTab]);
-
-  const tabConfigs: Array<{ key: LeoStatusTab; label: string; count: number }> = useMemo(
+  const tabConfigs: Array<{ key: LeoStatusTab; label: string }> = useMemo(
     () => [
-      { key: 'All', label: 'Tất cả', count: statusCounts.All },
+      { key: 'All', label: 'Tất cả' },
       ...LEO_TRACKING_STATUSES.map(s => ({
         key: s,
         label: reportStatusLabelVi(s),
-        count: statusCounts[s],
       })),
     ],
-    [statusCounts]
+    []
   );
 
   /** Tổng trang từ BE (`pagination.totalPages`), tính theo `pageSize` server nhận. */
