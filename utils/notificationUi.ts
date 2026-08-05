@@ -135,7 +135,18 @@ export function officerNotificationHref(
       return '/officer/verify';
     case 'BadgeEarned':
     case 'LevelUp':
+    case 'BadgeProgressNear':
       return '/officer/dashboard';
+    case 'CommunityCleanupStarted':
+    case 'CommunityCleanupProgressUpdated':
+    case 'CommunityCleanupVerificationSubmitted':
+    case 'CommunityCleanupVerificationRejected':
+    case 'CommunityCleanupVerified':
+    case 'CommunityCleanupCheckInReminder':
+    case 'CommunityCleanupOpened':
+    case 'CommunityCleanupLeaderAssigned':
+      if (ref) return `/officer/community?eventId=${encodeURIComponent(ref)}`;
+      return '/officer/community';
     default:
       if (ref) return `/officer/tracking`;
       return '/officer/dashboard';
