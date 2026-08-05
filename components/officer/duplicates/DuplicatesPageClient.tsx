@@ -174,7 +174,6 @@ const THUMB_SQUARE =
 type DatePreset = 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'thisYear';
 type StatusFilter = 'all' | ReportQueueStatus;
 type SeverityFilter = 'all' | ReportSeverity;
-type DetectionSourceFilter = 'all' | 'Tier1' | 'AI';
 
 interface AppliedFilters {
   status: StatusFilter;
@@ -183,8 +182,6 @@ interface AppliedFilters {
   customFrom: string;
   customTo: string;
   categoryId: string;
-  duplicateDetectionSource: DetectionSourceFilter;
-  minAiSimilarityScore: string;
 }
 
 const DATE_PRESETS: { key: DatePreset; label: string }[] = [
@@ -217,12 +214,6 @@ const SEVERITY_FILTERS: { key: SeverityFilter; label: string }[] = [
   { key: 'High', label: REPORT_SEVERITY_LABEL_VI.High },
   { key: 'Medium', label: REPORT_SEVERITY_LABEL_VI.Medium },
   { key: 'Low', label: REPORT_SEVERITY_LABEL_VI.Low },
-];
-
-const DETECTION_SOURCE_FILTERS: { key: DetectionSourceFilter; label: string }[] = [
-  { key: 'all', label: 'Tất cả' },
-  { key: 'Tier1', label: 'Vị trí & thời gian (Tier 1)' },
-  { key: 'AI', label: 'AI (Tier 2)' },
 ];
 
 /** Mặc định mới nhất trước — GET .../duplicate-candidates. */
@@ -392,15 +383,6 @@ function buildDateFromParts(d: string, m: string, y: string): string {
   return `${y}-${m ? pad2(Number(m)) : ''}-${d ? pad2(Number(d)) : ''}`;
 }
 
-/** Parse điểm AI 0–1; empty → unset; invalid → null. */
-function parseMinAiSimilarityScore(value: string): number | undefined | null {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  const n = Number(trimmed);
-  if (!Number.isFinite(n) || n < 0 || n > 1) return null;
-  return n;
-}
-
 function clearedFilters(): AppliedFilters {
   const yearDefaults = getPresetDateInputs('all');
   return {
@@ -410,22 +392,17 @@ function clearedFilters(): AppliedFilters {
     customFrom: yearDefaults.from,
     customTo: yearDefaults.to,
     categoryId: '',
-    duplicateDetectionSource: 'all',
-    minAiSimilarityScore: '',
   };
 }
 
 function countDrawerActiveFilters(f: AppliedFilters): number {
-  const minAi = parseMinAiSimilarityScore(f.minAiSimilarityScore);
   return (
     (f.status !== 'all' ? 1 : 0) +
     (f.severity !== 'all' ? 1 : 0) +
     (f.datePreset !== 'all' || isCompleteDateInput(f.customFrom) || isCompleteDateInput(f.customTo)
       ? 1
       : 0) +
-    (f.categoryId ? 1 : 0) +
-    (f.duplicateDetectionSource !== 'all' ? 1 : 0) +
-    (typeof minAi === 'number' ? 1 : 0)
+    (f.categoryId ? 1 : 0)
   );
 }
 
@@ -746,7 +723,7 @@ function DuplicatesFilterDrawer({
             </div>
           </DrawerFilterSection>
 
-          <DrawerFilterSection title="Loại ô nhiễm">
+          <DrawerFilterSection title="Loại ô nhiễm" last>
             <div className="grid grid-cols-3 gap-2">
               {categories.map(cat => {
                 const selected = draft.categoryId === cat.id;
@@ -775,45 +752,6 @@ function DuplicatesFilterDrawer({
                 </div>
               ) : null}
             </div>
-          </DrawerFilterSection>
-
-          <DrawerFilterSection title="Nguồn phát hiện">
-            <div className="flex flex-wrap items-center gap-2">
-              {DETECTION_SOURCE_FILTERS.map(opt => {
-                const active = draft.duplicateDetectionSource === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => onDraftChange({ duplicateDetectionSource: opt.key })}
-                    aria-pressed={active}
-                    className={cn(
-                      'inline-flex h-9 w-fit shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border px-3 text-xs font-medium',
-                      active
-                        ? 'border-slate-900 bg-slate-900 text-white'
-                        : 'border-slate-200 bg-white text-slate-900'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </DrawerFilterSection>
-
-          <DrawerFilterSection title="Điểm tương đồng AI tối thiểu" last>
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={1}
-              step={0.01}
-              value={draft.minAiSimilarityScore}
-              onChange={e => onDraftChange({ minAiSimilarityScore: e.target.value })}
-              placeholder="vd. 0.7"
-              className="h-11 border-slate-200 bg-white shadow-none"
-              aria-label="Điểm tương đồng AI tối thiểu (0–1)"
-            />
           </DrawerFilterSection>
         </div>
 
@@ -1215,8 +1153,6 @@ export function DuplicatesPageClient() {
     toolbarDatePreset,
   ]);
 
-  const minAiParsed = parseMinAiSimilarityScore(applied.minAiSimilarityScore);
-
   const listParams = useMemo(
     () => ({
       page,
@@ -1227,12 +1163,8 @@ export function DuplicatesPageClient() {
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
       ...effectiveDateRange,
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
-      ...(applied.duplicateDetectionSource !== 'all'
-        ? { duplicateDetectionSource: applied.duplicateDetectionSource }
-        : {}),
-      ...(typeof minAiParsed === 'number' ? { minAiSimilarityScore: minAiParsed } : {}),
     }),
-    [page, applied, effectiveDateRange, debouncedSearch, minAiParsed]
+    [page, applied, effectiveDateRange, debouncedSearch]
   );
 
   const { data, isPending, isFetching, isError, refetch } = useDuplicateCandidates(listParams);
@@ -1288,13 +1220,6 @@ export function DuplicatesPageClient() {
   };
 
   const handleApplyDraft = () => {
-    if (draft.minAiSimilarityScore.trim()) {
-      const parsed = parseMinAiSimilarityScore(draft.minAiSimilarityScore);
-      if (parsed === null) {
-        toast.error('Điểm tương đồng AI phải là số từ 0 đến 1.');
-        return;
-      }
-    }
     setApplied(draft);
     setToolbarDatePreset('all');
     setPage(1);
