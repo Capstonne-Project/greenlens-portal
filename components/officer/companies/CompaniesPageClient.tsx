@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CircleHelp, Loader2, MoreVertical, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Building2, Loader2, MoreVertical, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { CompanyAssignAreaDialog } from '@/components/officer/companies/CompanyCreatePageClient';
@@ -38,12 +38,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { useCompaniesList, useDeleteCompany, useReactivateCompany } from '@/hooks/useCompany';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import type { CompanyContractType, CompanyListItem, CompanyStatus } from '@/lib/api/models/company';
 import { COMPANIES_PAGE_SIZE } from '@/lib/api/models/company';
-import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 import { getCompanyMutationError } from '@/utils/companyErrors';
 
@@ -295,8 +293,6 @@ function renderCompanyCell(
 }
 
 export function CompaniesPageClient() {
-  const user = useAuthStore(s => s.user);
-  const fullName = user?.name?.trim() || 'Người dùng';
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [toolbarStatus, setToolbarStatus] = useState<StatusFilter>('all');
@@ -416,30 +412,18 @@ export function CompaniesPageClient() {
     <>
       <header className="mb-6 shrink-0">
         <div className="border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-[0.35rem]">
-            <h1 className="text-lg font-bold tracking-tight text-slate-900">Doanh nghiệp</h1>
-            <button
-              type="button"
-              className="inline-flex cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-[0.15rem] text-slate-500 hover:bg-slate-400/15 hover:text-slate-700"
-              aria-label="Thông tin danh sách doanh nghiệp"
-            >
-              <CircleHelp className="size-4" aria-hidden />
-            </button>
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
+              <Building2 className="size-7" aria-hidden />
+            </span>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900">Doanh nghiệp</h1>
+              <p className="text-xs font-normal text-slate-500">
+                Quản lý doanh nghiệp đối tác xử lý — hợp đồng, khu vực phụ trách và trạng thái hoạt
+                động
+              </p>
+            </div>
           </div>
-          <TypewriterEffectSmooth
-            words={[
-              { text: 'Welcome', className: 'font-normal text-slate-500' },
-              { text: 'back,', className: 'font-normal text-slate-500' },
-              {
-                text: fullName,
-                className: 'font-medium text-slate-800 dark:text-slate-100',
-              },
-            ]}
-            className="mt-1 my-0"
-            textClassName="text-sm font-normal sm:text-sm md:text-sm lg:text-sm xl:text-sm"
-            cursorClassName="h-3.5 w-0.5 bg-slate-400 sm:h-3.5 xl:h-3.5"
-            hideCursorOnComplete
-          />
         </div>
 
         {/* Layout: status pills trái; search (Gooey) | Create phải */}

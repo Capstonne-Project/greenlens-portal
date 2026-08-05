@@ -18,7 +18,6 @@ import { Card, CardDescription, CardTitle, HoverEffect } from '@/components/ui/c
 import { Input } from '@/components/ui/input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
-import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeoMyReports } from '@/hooks/useLeoOffices';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
@@ -42,12 +41,12 @@ import { faCalendar } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   ChevronDown,
-  CircleHelp,
   Clock,
   ImageIcon,
   LayoutGrid,
   List,
   Loader2,
+  Route,
   Search,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -811,36 +810,18 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="mb-3 shrink-0">
         <div className="border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-[0.35rem]">
-            <h1 className="text-lg font-bold tracking-tight text-slate-900">Theo dõi xử lý</h1>
-            <button
-              type="button"
-              className="inline-flex cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-[0.15rem] text-slate-500 hover:bg-slate-400/15 hover:text-slate-700"
-              aria-label="Thông tin theo dõi xử lý"
-            >
-              <CircleHelp className="size-4" aria-hidden />
-            </button>
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
+              <Route className="size-7" aria-hidden />
+            </span>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900">Theo dõi xử lý</h1>
+              <p className="text-xs font-normal text-slate-500">
+                Theo dõi tiến độ báo cáo thuộc văn phòng của bạn — trạng thái, đội phụ trách và hạn
+                xử lý
+              </p>
+            </div>
           </div>
-          {data?.localOfficeName ? (
-            <TypewriterEffectSmooth
-              words={[
-                { text: 'Welcome', className: 'font-normal text-slate-500' },
-                { text: 'back,', className: 'font-normal text-slate-500' },
-                ...data.localOfficeName
-                  .trim()
-                  .split(/\s+/)
-                  .filter(Boolean)
-                  .map(text => ({
-                    text,
-                    className: 'font-medium text-slate-800 dark:text-slate-100',
-                  })),
-              ]}
-              className="mt-1 my-0"
-              textClassName="text-xs font-normal sm:text-xs md:text-xs lg:text-xs xl:text-xs"
-              cursorClassName="h-3 w-0.5 bg-slate-400 sm:h-3 xl:h-3"
-              hideCursorOnComplete
-            />
-          ) : null}
         </div>
       </header>
 
