@@ -1771,8 +1771,7 @@ export function RecurrencePageClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Tái diễn</h1>
               <p className="text-xs font-normal text-slate-500">
-                Báo cáo nghi tái phạm cùng loại trong ≤25m sau khi prior đã đóng trong 30 ngày — so
-                sánh để mở thanh tra hoặc bác bỏ
+                Xem xét các báo cáo nghi bị ô nhiễm tái diễn sau khi đã xử lý xong
               </p>
             </div>
           </div>

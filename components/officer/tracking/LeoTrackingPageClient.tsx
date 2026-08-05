@@ -792,8 +792,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Theo dõi xử lý</h1>
               <p className="text-xs font-normal text-slate-500">
-                Theo dõi tiến độ báo cáo thuộc văn phòng của bạn — trạng thái, đội phụ trách và hạn
-                xử lý
+                Theo dõi tiến độ xử lý các báo cáo tại văn phòng của bạn
               </p>
             </div>
           </div>

@@ -1236,8 +1236,7 @@ export function DuplicatesPageClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Trùng lặp</h1>
               <p className="text-xs font-normal text-slate-500">
-                Báo cáo nghi trùng (Tier 1 vị trí/thời gian hoặc Tier 2 AI) — so sánh với báo cáo
-                gốc để gộp hoặc bác bỏ
+                So sánh các báo cáo nghi trùng lặp để gộp hoặc giữ lại
               </p>
             </div>
           </div>

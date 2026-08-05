@@ -419,8 +419,7 @@ export function CompaniesPageClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Doanh nghiệp</h1>
               <p className="text-xs font-normal text-slate-500">
-                Quản lý doanh nghiệp đối tác xử lý — hợp đồng, khu vực phụ trách và trạng thái hoạt
-                động
+                Quản lý danh sách doanh nghiệp đối tác và hợp đồng của họ
               </p>
             </div>
           </div>

@@ -16,8 +16,7 @@ export function LeoAssignPageClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Phân công</h1>
               <p className="text-xs font-normal text-slate-500">
-                Phân công đội xử lý cho báo cáo đã xác minh — chọn đội phù hợp để triển khai hiện
-                trường
+                Phân công đội xử lý cho các báo cáo đã được xác minh
               </p>
             </div>
           </div>

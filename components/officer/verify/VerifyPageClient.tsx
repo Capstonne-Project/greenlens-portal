@@ -1336,8 +1336,7 @@ export function VerifyPageClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Xác minh</h1>
               <p className="text-xs font-normal text-slate-500">
-                Duyệt báo cáo mới gửi — kiểm tra nội dung, vị trí và xử lý nghi trùng/tái phát trước
-                khi chuyển bước tiếp theo
+                Duyệt và xác minh các báo cáo ô nhiễm mới được gửi lên
               </p>
             </div>
           </div>

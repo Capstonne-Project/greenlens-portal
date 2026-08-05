@@ -1114,7 +1114,7 @@ export function InspectionsPageClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Hồ sơ xử phạt</h1>
               <p className="text-xs font-normal text-slate-500">
-                Quản lý hồ sơ xử phạt và thanh tra — gán đội, theo dõi SLA và kết quả xử lý
+                Quản lý hồ sơ xử phạt và theo dõi kết quả thanh tra
               </p>
             </div>
           </div>
