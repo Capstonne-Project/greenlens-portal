@@ -11,6 +11,7 @@ import {
   faGear,
   faHandHoldingHeart,
   faHistory,
+  faRotateLeft,
   faRoute,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -106,6 +107,12 @@ const NAV_ITEMS = {
     href: '/officer/tracking',
     icon: faRoute,
   },
+  reopen: {
+    id: 'reopen',
+    label: 'Xử lý lại',
+    href: '/officer/reopen',
+    icon: faRotateLeft,
+  },
   community: {
     id: 'community',
     label: 'Dọn cộng đồng',
@@ -195,6 +202,7 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.verify, 'Báo cáo'),
       NAV_ITEMS.assign,
       NAV_ITEMS.tracking,
+      NAV_ITEMS.reopen,
       NAV_ITEMS.recurrence,
       NAV_ITEMS.inspections,
       NAV_ITEMS.duplicates,

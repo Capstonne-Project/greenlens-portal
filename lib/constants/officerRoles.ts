@@ -25,6 +25,7 @@ export const OFFICER_ROUTE_ACL: ReadonlyArray<{
   { prefix: '/officer/verify', roles: ['LEO'] },
   { prefix: '/officer/assign', roles: ['LEO'] },
   { prefix: '/officer/tracking', roles: ['LEO'] },
+  { prefix: '/officer/reopen', roles: ['LEO'] },
   { prefix: '/officer/workforce', roles: ['LEO'] },
   { prefix: '/officer/companies', roles: ['DEO'] },
   { prefix: '/officer/reports', roles: ['DEO'] },
