@@ -3,11 +3,14 @@ import {
   faBuilding,
   faClipboardCheck,
   faClipboardList,
+  faClone,
   faEarthAmericas,
+  faFileInvoice,
   faFileLines,
   faGaugeHigh,
   faGear,
   faHandHoldingHeart,
+  faHistory,
   faRoute,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -32,6 +35,11 @@ export type MapShellNavItem = {
   badge?: number;
   /** Mục con trong sidebar (dropdown) — giữ type; hiện LEO không dùng. */
   children?: MapShellNavChildItem[];
+  /**
+   * Section label tĩnh (kiểu "LOGISTICS / FINANCE") render NGAY TRÊN item này.
+   * Không phải nav bấm được — chỉ là tiêu đề phân vùng. Dùng chung cho mọi role qua AppSidebar.
+   */
+  sectionLabel?: string;
 };
 
 export type MapShellBrand = {
@@ -104,6 +112,24 @@ const NAV_ITEMS = {
     href: '/officer/community',
     icon: faHandHoldingHeart,
   },
+  duplicates: {
+    id: 'duplicates',
+    label: 'Trùng lặp',
+    href: '/officer/duplicates',
+    icon: faClone,
+  },
+  recurrence: {
+    id: 'recurrence',
+    label: 'Tái diễn',
+    href: '/officer/recurrence',
+    icon: faHistory,
+  },
+  inspections: {
+    id: 'inspections',
+    label: 'Hồ sơ xử phạt',
+    href: '/officer/inspections',
+    icon: faFileInvoice,
+  },
   workforce: {
     id: 'workforce',
     label: 'Đội ngũ',
@@ -139,24 +165,44 @@ const BRAND_DEFAULT: MapShellBrand = {
   tagline: 'Hệ thống điều hành',
 };
 
+/** Gắn section label tĩnh lên item (label render phía trên item trong sidebar). */
+function withSection(item: MapShellNavItem, sectionLabel: string): MapShellNavItem {
+  return { ...item, sectionLabel };
+}
+
 /** Sidebar map shell — nav chính theo role (DEO / LEO). */
 export function getMapShellNavForRole(
   systemRole: UserRole | string | undefined
 ): MapShellNavConfig {
   const role = parseOfficerApiRole(systemRole);
 
-  const mainNav: MapShellNavItem[] = [NAV_ITEMS.map, NAV_ITEMS.overview];
+  const mainNav: MapShellNavItem[] = [];
 
   if (role === 'DEO') {
-    mainNav.push(NAV_ITEMS.reports, NAV_ITEMS.companies);
+    mainNav.push(
+      withSection(NAV_ITEMS.map, 'Tổng quan'),
+      NAV_ITEMS.overview,
+      withSection(NAV_ITEMS.reports, 'Báo cáo'),
+      NAV_ITEMS.duplicates,
+      NAV_ITEMS.recurrence,
+      NAV_ITEMS.inspections,
+      withSection(NAV_ITEMS.companies, 'Quản lý')
+    );
   } else if (role === 'LEO') {
     mainNav.push(
-      NAV_ITEMS.verify,
+      withSection(NAV_ITEMS.map, 'Tổng quan'),
+      NAV_ITEMS.overview,
+      withSection(NAV_ITEMS.verify, 'Báo cáo'),
       NAV_ITEMS.assign,
       NAV_ITEMS.tracking,
-      NAV_ITEMS.community,
-      NAV_ITEMS.workforce
+      NAV_ITEMS.recurrence,
+      NAV_ITEMS.inspections,
+      NAV_ITEMS.duplicates,
+      withSection(NAV_ITEMS.community, 'Cộng đồng'),
+      withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
+  } else {
+    mainNav.push(NAV_ITEMS.map, NAV_ITEMS.overview);
   }
 
   const brand = role === 'LEO' ? BRAND_LEO : role === 'DEO' ? BRAND_DEO : BRAND_DEFAULT;

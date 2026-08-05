@@ -14,6 +14,7 @@ import { createNotificationHub } from '@/lib/realtime';
 import type { RealTimeNotificationPayload } from '@/lib/realtime/types';
 import type { NotificationItem, NotificationsList } from '@/lib/api/models/notification';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import { COMPANY_QUEUE_REFRESH_NOTIFICATION_TYPES, companyKeys } from '@/hooks/useCompany';
 import { notificationKeys } from '@/hooks/useNotification';
 import { showNotificationRealtimeToast } from '@/components/notification/NotificationRealtimeToast';
 
@@ -55,6 +56,18 @@ function scheduleRestSync(queryClient: QueryClient) {
     restSyncTimer = null;
     void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
   }, 500);
+}
+
+function refreshCompanyQueueBadge(queryClient: QueryClient, notificationType: string) {
+  if (
+    !COMPANY_QUEUE_REFRESH_NOTIFICATION_TYPES.includes(
+      notificationType as (typeof COMPANY_QUEUE_REFRESH_NOTIFICATION_TYPES)[number]
+    )
+  ) {
+    return;
+  }
+  void queryClient.invalidateQueries({ queryKey: companyKeys.queueCount() });
+  void queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'queue'] });
 }
 
 /**
@@ -151,6 +164,7 @@ export function useNotificationRealtime(enabled = true): void {
           message: event.notification.message,
         });
         applyReceivedOptimistic(queryClient, event.notification);
+        refreshCompanyQueueBadge(queryClient, event.notification.type);
       }
     });
 

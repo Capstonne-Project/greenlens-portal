@@ -2,8 +2,17 @@
 
 import { isAxiosError } from '@/lib/api/core';
 import { persistAuthSession } from '@/lib/api/authSessionClient';
-import { changePassword, loginWithEmailPassword } from '@/lib/api/services/fetchAuth';
-import type { ApiErrorEnvelope } from '@/lib/api/services/fetchAuth';
+import {
+  changePassword,
+  forgotPassword,
+  loginWithEmailPassword,
+  resetPassword,
+} from '@/lib/api/services/fetchAuth';
+import type {
+  ApiErrorEnvelope,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+} from '@/lib/api/services/fetchAuth';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getDashboardPathByRole } from '@/lib/auth/mapUser';
 import {
@@ -49,6 +58,25 @@ export function useLogin() {
   });
 }
 
+/** Public — POST /v1/auth/forgot-password */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (body: ForgotPasswordRequest) => forgotPassword(body),
+  });
+}
+
+/** Public — POST /v1/auth/reset-password */
+export function useResetPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: (body: ResetPasswordRequest) => resetPassword(body),
+    onSuccess: () => {
+      router.push('/login');
+    },
+  });
+}
+
 /** First-login / forced change — POST /v1/auth/change-password (authenticated). */
 export function useChangePassword() {
   const router = useRouter();
@@ -89,4 +117,23 @@ export function getChangePasswordErrorMessage(error: unknown): string {
     }
   }
   return 'Không đổi được mật khẩu. Vui lòng thử lại.';
+}
+
+export function getForgotPasswordErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const body = error.response?.data as ApiErrorEnvelope | undefined;
+    if (body?.message) return body.message;
+  }
+  return 'Không gửi được mã OTP. Vui lòng kiểm tra email và thử lại.';
+}
+
+export function getResetPasswordErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const body = error.response?.data as ApiErrorEnvelope | undefined;
+    if (body?.message) return body.message;
+    if (error.response?.status === 422) {
+      return 'Mã OTP không hợp lệ hoặc đã hết hạn.';
+    }
+  }
+  return 'Không đặt lại được mật khẩu. Vui lòng thử lại.';
 }

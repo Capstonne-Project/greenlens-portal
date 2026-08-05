@@ -1,5 +1,6 @@
 'use client';
 
+import { UserPrivacySection } from '@/components/settings/UserPrivacySection';
 import { useProfile, useUpdateProfile, useUploadAvatar } from '@/hooks/useUser';
 import { userProfileToAuthUser } from '@/lib/auth/profileMappers';
 import { PROFILE_PORTAL_CONFIG, type ProfilePortalVariant } from '@/lib/constants/profilePortal';
@@ -428,6 +429,8 @@ export function UserProfileView({ variant }: UserProfileViewProps) {
           </form>
         </section>
       </div>
+
+      {(variant === 'admin' || variant === 'company') && <UserPrivacySection />}
     </div>
   );
 }

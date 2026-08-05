@@ -154,3 +154,14 @@ const apiService = {
 };
 
 export default apiService;
+
+export {
+  createIdempotencyKey,
+  createIdempotencyKeyStore,
+  executeIdempotentRequest,
+  IDEMPOTENCY_ERROR_CODES,
+  IDEMPOTENCY_HEADER,
+  mergeIdempotencyConfig,
+  withOptionalIdempotency,
+} from './idempotency';
+export type { IdempotencyRequestOptions } from './idempotency';

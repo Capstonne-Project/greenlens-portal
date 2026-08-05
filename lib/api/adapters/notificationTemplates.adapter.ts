@@ -6,6 +6,10 @@ import type {
   NotificationTemplatesListParamsDto,
   PublishNotificationTemplateBodyDto,
 } from '@/lib/api/dto/notificationTemplate.dto';
+import type {
+  TestNotificationTemplateBodyDto,
+  TestNotificationTemplateResultDto,
+} from '@/lib/api/dto/gamification.dto';
 import {
   mapCreateNotificationTemplateDataDto,
   mapNotificationTemplateDetailDto,
@@ -19,6 +23,10 @@ import type {
   NotificationTemplatesListParams,
   PublishNotificationTemplateInput,
 } from '@/lib/api/models/notificationTemplate';
+import type {
+  TestNotificationTemplateInput,
+  TestNotificationTemplateResult,
+} from '@/lib/api/models/gamification';
 import apiService from '@/lib/api/core';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
 
@@ -118,6 +126,28 @@ export async function adaptDeleteNotificationTemplate(id: string): Promise<ApiEn
     status: res.data.status,
     data: null,
   };
+}
+
+/** POST /v1/admin/notification-templates/{id}/test */
+export async function adaptTestNotificationTemplate(
+  id: string,
+  body: TestNotificationTemplateInput
+): Promise<ApiEnvelope<TestNotificationTemplateResult>> {
+  const email = body.recipientEmail.trim();
+  const payload: TestNotificationTemplateBodyDto = {
+    recipientEmail: email,
+    email,
+  };
+
+  const res = await apiService.post<ApiEnvelope<TestNotificationTemplateResultDto>>(
+    `/v1/admin/notification-templates/${encodeURIComponent(id)}/test`,
+    payload
+  );
+
+  return mapApiEnvelope(res.data, dto => ({
+    message: dto.message?.trim() ?? '',
+    sent: dto.sent !== false,
+  }));
 }
 
 /** PATCH /v1/admin/notification-templates/{id}/publish */

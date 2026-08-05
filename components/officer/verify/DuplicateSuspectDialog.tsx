@@ -202,7 +202,7 @@ function CompareThumb({
             'shadow-sm ring-1 ring-white/30'
           )}
         >
-          {resolvedBadge === 'Tái phát' ? (
+          {resolvedBadge === 'Tái diễn' ? (
             <History className="size-2.5" aria-hidden strokeWidth={2.75} />
           ) : (
             <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
@@ -375,8 +375,9 @@ function metersBetween(a: ReportDetail, b: ReportDetail): number | null {
 }
 
 function formatMeters(meters: number): string {
-  if (meters < 1000) return `${meters} m`;
-  return `${(meters / 1000).toFixed(2)} km`;
+  const rounded = Math.round(meters);
+  if (rounded < 1000) return `${rounded} m`;
+  return `${Math.round(rounded / 1000)} km`;
 }
 
 function formatSimilarity(score: number | null | undefined): string | null {
@@ -596,9 +597,7 @@ function VerifiedRecordsCompare({
               )}
             >
               <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
@@ -609,9 +608,7 @@ function VerifiedRecordsCompare({
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
@@ -728,7 +725,7 @@ function RecurrenceRecordsCompare({
             url={currentImageUrl}
             alt={`${current.code} · Báo cáo hiện tại`}
             tone="suspect"
-            badgeLabel="Tái phát"
+            badgeLabel="Tái diễn"
             onPreview={onPreview}
           />
         </div>
@@ -821,9 +818,7 @@ function RecurrenceRecordsCompare({
               )}
             >
               <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
@@ -834,9 +829,7 @@ function RecurrenceRecordsCompare({
                 </div>
               </div>
               <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
-                <p className="text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
-                  {field.label}
-                </p>
+                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
                 <div
                   className={cn(
                     'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
@@ -906,11 +899,11 @@ function RecurrenceSuspectDialogBody({
   const handleDismiss = async () => {
     try {
       const result = await dismissMutation.mutateAsync({ reportId });
-      toastApiSuccess(result, 'Đã xóa nghi ô nhiễm tái phát.');
+      toastApiSuccess(result, 'Đã xóa nghi ô nhiễm tái diễn.');
       onOpenChange(false);
       onResolved?.();
     } catch (error) {
-      toastApiError(error, 'Không thể xóa nghi ô nhiễm tái phát.');
+      toastApiError(error, 'Không thể xóa nghi ô nhiễm tái diễn.');
     }
   };
 
@@ -946,7 +939,7 @@ function RecurrenceSuspectDialogBody({
               <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
                 <DialogHeader className="space-y-0 text-left">
                   <DialogTitle className="text-lg text-slate-900">
-                    Không tải được so sánh tái phát
+                    Không tải được so sánh tái diễn
                   </DialogTitle>
                   <DialogDescription className="text-sm text-slate-600">
                     Không thể đối chiếu với báo cáo Closed trước (
@@ -971,7 +964,7 @@ function RecurrenceSuspectDialogBody({
                   ) : (
                     <XCircle className="size-4" aria-hidden />
                   )}
-                  Xóa nghi tái phát
+                  Xóa nghi tái diễn
                 </Button>
                 <Button
                   type="button"
@@ -1001,15 +994,15 @@ function RecurrenceSuspectDialogBody({
                     </div>
                     <div className="min-w-0 space-y-1.5 pt-0.5">
                       <DialogTitle className="text-lg leading-snug text-slate-900">
-                        Nghi ô nhiễm tái phát
+                        Nghi ô nhiễm tái diễn
                       </DialogTitle>
                       <DialogDescription className="text-sm leading-relaxed text-slate-600">
                         Đối chiếu báo cáo hiện tại với case Closed trước{' '}
                         <span className="font-semibold tabular-nums text-slate-800">
                           {comparison.priorClosedReport.code}
                         </span>
-                        . Rác tái phát thông thường →{' '}
-                        <span className="font-semibold text-slate-800">Xóa nghi tái phát</span>. Cần
+                        . Rác tái diễn thông thường →{' '}
+                        <span className="font-semibold text-slate-800">Xóa nghi tái diễn</span>. Cần
                         xử lý tiếp →{' '}
                         <span className="font-semibold text-slate-800">Tiếp tục xác minh</span>.
                       </DialogDescription>
@@ -1047,7 +1040,7 @@ function RecurrenceSuspectDialogBody({
                   ) : (
                     <XCircle className="size-4" aria-hidden />
                   )}
-                  Xóa nghi tái phát
+                  Xóa nghi tái diễn
                 </Button>
                 <Button
                   type="button"

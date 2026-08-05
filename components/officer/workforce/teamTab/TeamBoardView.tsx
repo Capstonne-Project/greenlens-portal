@@ -626,7 +626,7 @@ export function BoardView({
           <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-muted/30">
             <div className="flex shrink-0 items-center gap-2 px-4 py-3.5">
               <span className="size-2.5 rounded-full bg-blue-500" />
-              <h3 className="text-sm font-semibold text-slate-800">Đội Kiểm tra</h3>
+              <h3 className="text-sm font-semibold text-slate-800">Đội Thanh tra</h3>
               <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 px-1.5 text-[11px] font-semibold text-slate-500">
                 {inspLoading ? '…' : inspectionPagination.totalItems}
               </span>

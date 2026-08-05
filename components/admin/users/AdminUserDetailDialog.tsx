@@ -3,11 +3,13 @@
 import { AdminUserChangeRoleDialog } from '@/components/admin/users/AdminUserChangeRoleDialog';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
 import { useAdminUserDetail, useToggleBanAdminUser } from '@/hooks/useAdminUsers';
+import { useLockGamificationUser } from '@/hooks/useGamification';
 import type { AdminUserDetail } from '@/lib/api/models/adminUser';
+import { resolveApiToastMessage } from '@/utils/apiToastMessage';
 import { getAdminUserMutationError, isAdminUserNotFound } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
 import axios from 'axios';
-import { Loader2, ScrollText, ShieldBan, UserCog } from 'lucide-react';
+import { Loader2, ScrollText, ShieldBan, Trophy, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -56,6 +58,7 @@ export function AdminUserDetailDialog({
 }: AdminUserDetailDialogProps) {
   const { data, isPending, isError, error, refetch } = useAdminUserDetail(userId);
   const toggleBan = useToggleBanAdminUser();
+  const lockGamification = useLockGamificationUser();
   const [internalChangeRole, setInternalChangeRole] = useState(false);
   const [banOverride, setBanOverride] = useState<{ userId: string; isBanned: boolean } | null>(
     null
@@ -88,6 +91,24 @@ export function AdminUserDetailDialog({
         toast.error(getAdminUserMutationError(err, 'Không thể cập nhật trạng thái cấm.'));
       },
     });
+  };
+
+  const handleLockGamification = () => {
+    if (!data) return;
+    lockGamification.mutate(
+      { userId: data.id, body: { reason: 'Admin lock via portal' } },
+      {
+        onSuccess: env => {
+          toast.success(
+            resolveApiToastMessage(
+              env.data?.message ?? env.message,
+              'Đã khóa gamification cho người dùng.'
+            )
+          );
+        },
+        onError: err => toast.error(getAdminUserMutationError(err, 'Không thể khóa gamification.')),
+      }
+    );
   };
 
   const isBanned =
@@ -212,6 +233,21 @@ export function AdminUserDetailDialog({
                 )}
                 {isBanned ? 'Bỏ cấm' : 'Cấm tài khoản'}
               </button>
+              {data.role === 'Citizen' ? (
+                <button
+                  type="button"
+                  onClick={handleLockGamification}
+                  disabled={lockGamification.isPending}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-60"
+                >
+                  {lockGamification.isPending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Trophy className="size-4" aria-hidden />
+                  )}
+                  Khóa gamification
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={handleChangeRole}

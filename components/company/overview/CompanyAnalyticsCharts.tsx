@@ -100,7 +100,7 @@ export function CompanyOverviewSummaryCharts({ overview }: { overview: CompanyDa
   const gaugeFilled = (slaPct / 100) * gaugeC;
 
   return (
-    <section className="grid h-full min-h-0 gap-2 lg:grid-cols-3">
+    <section className="grid h-full min-h-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <CardShell title="Khối lượng nhiệm vụ" subtitle="Đã giao · hoàn thành · đang chờ">
         <div className="flex h-full min-h-[72px] items-end gap-3 px-1">
           {taskBars.map(bar => (

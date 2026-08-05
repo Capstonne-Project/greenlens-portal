@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LeoTrackingReportDetail } from './LeoTrackingReportDetail';
+import { resolveSafeOfficerFrom } from '@/utils/officerNavigation';
 
 function TrackingFallback() {
   return (
@@ -32,7 +33,8 @@ export function TrackingPageClient() {
 
   const handleBackFromDetail = () => {
     if (detailFromQuery) {
-      router.replace('/officer/tracking', { scroll: false });
+      const from = resolveSafeOfficerFrom(searchParams.get('from'));
+      router.replace(from ?? '/officer/tracking', { scroll: false });
       return;
     }
     setDetailReportId(null);

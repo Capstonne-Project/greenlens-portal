@@ -8,6 +8,7 @@ import {
   createCompanyStaff,
   createCompanyTeam,
   deleteCompany,
+  deleteCompanyTeam,
   fetchCompanies,
   fetchCompanyAssignmentDetail,
   fetchCompanyAssignments,
@@ -296,12 +297,35 @@ export function useCompanyAllTeamOptions() {
   };
 }
 
+/** Notification types that add items to company dispatch queue — sidebar badge refresh. */
+export const COMPANY_QUEUE_REFRESH_NOTIFICATION_TYPES = ['CompanyReportDispatched'] as const;
+
+function decrementQueueCountEnvelope(
+  old: ApiEnvelope<CompanyQueueList> | undefined
+): ApiEnvelope<CompanyQueueList> | undefined {
+  if (!old?.data?.pagination) return old;
+  const nextTotal = Math.max(0, old.data.pagination.totalItems - 1);
+  if (nextTotal === old.data.pagination.totalItems) return old;
+  return {
+    ...old,
+    data: {
+      ...old.data,
+      pagination: {
+        ...old.data.pagination,
+        totalItems: nextTotal,
+      },
+    },
+  };
+}
+
 export function useCompanyQueueCount() {
   return useQuery({
     queryKey: companyKeys.queueCount(),
     queryFn: () => fetchCompanyQueue({ page: 1, pageSize: 1 }),
     select: (envelope: ApiEnvelope<CompanyQueueList>) => envelope.data.pagination.totalItems,
     staleTime: 60 * 1000,
+    /** Poll fallback when SignalR off — badge vẫn cập nhật sau LEO dispatch. */
+    refetchInterval: 60 * 1000,
   });
 }
 
@@ -456,13 +480,38 @@ export function useArchiveCompanyTeam() {
   });
 }
 
+/** DELETE /v1/teams/company-teams/{id} — [CompanyManager]. */
+export function useDeleteCompanyTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteCompanyTeam(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamOptions() });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
+    },
+  });
+}
+
 /** Company Manager — POST /v1/reports/{id}/assign-company-team (không phải LEO `/assign`). */
 export function useAssignCompanyTeam() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ reportId, body }: { reportId: string; body: AssignCompanyTeamInput }) =>
-      assignCompanyTeam(reportId, body),
+    mutationFn: ({
+      reportId,
+      body,
+      idempotencyKey,
+    }: {
+      reportId: string;
+      body: AssignCompanyTeamInput;
+      idempotencyKey?: string;
+    }) => assignCompanyTeam(reportId, body, { idempotencyKey }),
     onSuccess: () => {
+      queryClient.setQueryData<ApiEnvelope<CompanyQueueList>>(
+        companyKeys.queueCount(),
+        decrementQueueCountEnvelope
+      );
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'queue'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'assignments'] });
     },

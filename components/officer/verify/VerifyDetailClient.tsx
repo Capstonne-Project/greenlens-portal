@@ -1,5 +1,6 @@
 'use client';
 
+import { SuccessDialog } from '@/components/common/SuccessDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,8 +53,9 @@ import {
 } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
-import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/services/fetchReport';
+import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/models/report';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { normalizeReportQueueStatus, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
@@ -82,7 +84,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 const SEVERITY_SET_BY_LABEL: Record<string, string> = {
   User: 'Người dùng',
@@ -301,14 +303,14 @@ function HeaderStrip({
           ) : null}
           {isSuspectedViolationRecurrence ? (
             <span className={cn('absolute -top-3', isPossibleDuplicate ? 'right-5' : '-right-0.5')}>
-              <AnimatedHoverTooltip name="Nghi ô nhiễm tái phát">
+              <AnimatedHoverTooltip name="Nghi ô nhiễm tái diễn">
                 <span
                   className={cn(
                     'inline-flex size-5 shrink-0 items-center justify-center',
                     'rounded-full bg-orange-500 text-white shadow-sm',
                     'ring-2 ring-white'
                   )}
-                  aria-label="Nghi ô nhiễm tái phát"
+                  aria-label="Nghi ô nhiễm tái diễn"
                 >
                   <History className="size-2.5" aria-hidden strokeWidth={2.75} />
                 </span>
@@ -933,7 +935,7 @@ function SlaActionCard({
               isPossibleDuplicate
                 ? 'Kiểm tra trùng trước khi xác minh'
                 : isSuspectedViolationRecurrence
-                  ? 'Kiểm tra tái phát trước khi xác minh'
+                  ? 'Kiểm tra tái diễn trước khi xác minh'
                   : 'Xác minh ngay'
             }
             className={cn(
@@ -989,11 +991,13 @@ function ActionCard({
         <CardHeader>
           <CardTitle className="text-lg">Trạng thái</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center rounded-lg bg-purple-50/70 px-4 py-5 text-center">
-          <div className="flex size-11 items-center justify-center rounded-full bg-purple-100 ring-4 ring-purple-50">
-            <Hourglass className="size-6 text-purple-600" />
+        <CardContent className="flex flex-col items-center px-4 py-5 text-center">
+          <div className="flex size-11 items-center justify-center rounded-full border border-blue-200 bg-white shadow-sm">
+            <Hourglass className="size-6 text-blue-600" />
           </div>
-          <p className="mt-3 text-lg font-semibold text-purple-700">Đang xử lý</p>
+          <p className={cn('mt-3 text-lg font-semibold', STATUS_TEXT_CLASSES.InProgress)}>
+            Đang xử lý
+          </p>
           <CardDescription className="mt-1 text-base">
             Báo cáo đã được phân công đội và đang trong quá trình khắc phục.
           </CardDescription>
@@ -1034,13 +1038,42 @@ function ActionCard({
   }
 
   if (status !== 'Submitted') {
+    const isClosedFamily = status === 'Closed' || status === 'ClosedNoViolation';
+    const isRejected = status === 'Rejected';
+    const iconWrapClass = isRejected
+      ? 'border-rose-200'
+      : isClosedFamily
+        ? 'border-zinc-200'
+        : 'border-slate-200';
+    const Icon = isRejected ? XCircle : isClosedFamily ? CheckCircle2 : Shield;
+    const iconClass = isRejected
+      ? 'text-rose-600'
+      : isClosedFamily
+        ? 'text-zinc-500'
+        : 'text-slate-500';
+
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Trạng thái</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center rounded-lg bg-muted/50 px-4 py-5 text-center">
-          <p className="text-lg font-semibold text-foreground">{status}</p>
+        <CardContent className="flex flex-col items-center px-4 py-5 text-center">
+          <div
+            className={cn(
+              'flex size-11 items-center justify-center rounded-full border bg-white shadow-sm',
+              iconWrapClass
+            )}
+          >
+            <Icon className={cn('size-6', iconClass)} />
+          </div>
+          <p className={cn('mt-3 text-lg font-semibold', STATUS_TEXT_CLASSES[status])}>
+            {reportStatusLabelVi(status)}
+          </p>
+          {isClosedFamily ? (
+            <CardDescription className="mt-1 text-base">
+              Báo cáo đã đóng và không còn trong hàng đợi xác minh.
+            </CardDescription>
+          ) : null}
         </CardContent>
       </Card>
     );
@@ -1056,37 +1089,6 @@ function ActionCard({
       isPossibleDuplicate={isPossibleDuplicate}
       isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
     />
-  );
-}
-
-function VerifyAssignPromptDialog({
-  open,
-  onCancel,
-  onAssign,
-}: {
-  open: boolean;
-  onCancel: () => void;
-  onAssign: () => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={isOpen => !isOpen && onCancel()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Xác minh thành công</DialogTitle>
-          <DialogDescription>
-            Bạn có muốn phân công đội xử lý cho báo cáo này ngay không?
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Hủy
-          </Button>
-          <Button type="button" className="bg-emerald-600 hover:bg-emerald-500" onClick={onAssign}>
-            Phân công
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -1186,6 +1188,7 @@ export function VerifyDetailClient({
   const { data: detail, isLoading, isError, refetch } = useReportDetail(id);
   const { data: categories = [], isLoading: catsLoading } = useCatalogPollutionCategories();
   const verifyMutation = useVerifyReport();
+  const verifyIdempotencyKeyRef = useRef(createIdempotencyKeyStore());
   const rejectMutation = useRejectReport();
 
   /** Cùng nguồn flag trùng với hàng đợi — mở DuplicateSuspectDialog trước khi verify. */
@@ -1247,7 +1250,7 @@ export function VerifyDetailClient({
 
   const [pendingCategoryId, setPendingCategoryId] = useState<string>('');
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
-  const [assignPromptOpen, setAssignPromptOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
@@ -1300,7 +1303,7 @@ export function VerifyDetailClient({
   };
 
   const handleAssignAfterVerify = () => {
-    setAssignPromptOpen(false);
+    setSuccessOpen(false);
     router.push(`/officer/assign?highlightReportId=${encodeURIComponent(detail.id)}`);
   };
 
@@ -1334,11 +1337,16 @@ export function VerifyDetailClient({
     };
 
     try {
-      const result = await verifyMutation.mutateAsync({ reportId: detail.id, body });
+      const result = await verifyMutation.mutateAsync({
+        reportId: detail.id,
+        body,
+        idempotencyKey: verifyIdempotencyKeyRef.current.get(detail.id),
+      });
+      verifyIdempotencyKeyRef.current.reset();
       toastApiSuccess(result, 'Đã xác minh báo cáo.');
       await refetch();
       if (detailMode === 'verify') {
-        setAssignPromptOpen(true);
+        setSuccessOpen(true);
       }
       return true;
     } catch (error) {
@@ -1472,10 +1480,21 @@ export function VerifyDetailClient({
         isContinuingVerify={verifyMutation.isPending && suspectDialogMode === 'recurrence'}
       />
 
-      <VerifyAssignPromptDialog
-        open={assignPromptOpen}
-        onCancel={() => setAssignPromptOpen(false)}
-        onAssign={handleAssignAfterVerify}
+      <SuccessDialog
+        open={successOpen}
+        onOpenChange={next => {
+          if (!next) setSuccessOpen(false);
+        }}
+        title="Thành công"
+        description="Báo cáo đã được xác minh. Bước tiếp theo, bạn có thể phân công đội xử lý ngay trên trang Phân công."
+        secondaryAction={{
+          label: 'Để sau',
+          onClick: () => setSuccessOpen(false),
+        }}
+        primaryAction={{
+          label: 'Phân công ngay',
+          onClick: handleAssignAfterVerify,
+        }}
       />
 
       <LeoAssignDialog
@@ -1504,7 +1523,7 @@ function BackLink({ onBack }: { onBack?: () => void }) {
   const content = (
     <>
       <ArrowLeft className="size-3.5" />
-      Quay lại danh sách
+      {onBack ? 'Quay lại' : 'Quay lại danh sách'}
     </>
   );
 

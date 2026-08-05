@@ -9,7 +9,14 @@ import type { AuthUser } from '@/lib/store/authStore';
 import { decodeJwt, jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
-const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/otp', '/renew-password'];
+const AUTH_ROUTES = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/otp',
+  '/renew-password',
+];
 const RENEW_PASSWORD_PATH = '/renew-password';
 
 const ROLE_CLAIM = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';

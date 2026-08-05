@@ -24,8 +24,8 @@ export function AdminOverviewHeaderBar() {
   const updatedAt = updatedAtMs > 0 ? new Date(updatedAtMs) : null;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-[#e8e8e8] pt-2 sm:flex-row sm:items-center sm:justify-between">
-      <p className="min-w-0 text-[11px] text-muted-foreground">
+    <div className="flex flex-col gap-2 border-t border-[#e8e8e8] pt-2 sm:gap-2.5">
+      <p className="min-w-0 text-[10px] leading-relaxed text-muted-foreground sm:text-[11px]">
         {overview
           ? `${updatedAt ? `Cập nhật ${formatUpdatedAt(updatedAt)}` : 'Đang đồng bộ…'}${
               isFetching ? ' · làm mới' : ''

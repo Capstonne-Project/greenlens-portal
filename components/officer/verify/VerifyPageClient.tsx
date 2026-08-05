@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   BadgeCheck,
+  Check,
   ChevronDown,
   CircleHelp,
   Cloud,
@@ -25,7 +26,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
+import { toast } from 'sonner';
 
+import { SuccessDialog } from '@/components/common/SuccessDialog';
 import {
   DuplicateSuspectDialog,
   type SuspectDialogMode,
@@ -64,41 +67,30 @@ import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue
 import { locateReportInQueuePage, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/models/report';
-import {
-  REPORT_SEVERITY_BADGE_CLASSES,
-  REPORT_SEVERITY_LABEL_VI,
-} from '@/lib/constants/reportActions';
+import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 
 const VERIFY_PAGE_SIZE = 10;
 
-type ColumnKey =
-  | 'image'
-  | 'code'
-  | 'category'
-  | 'severity'
-  | 'status'
-  | 'priority'
-  | 'address'
-  | 'created'
-  | 'verifySla'
-  | 'actions';
+type ColumnKey = 'code' | 'address' | 'severity' | 'created' | 'verifySla' | 'status' | 'actions';
 
 /** Vertical rhythm; padding scales with `@container/verify-table` khi sidebar mở hẹp content. */
-const FIRST_COL: ColumnKey = 'image';
+const FIRST_COL: ColumnKey = 'code';
 const LAST_COL: ColumnKey = 'actions';
 
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
   const y =
     layer === 'head' ? 'py-2.5 @[44rem]/verify-table:py-3.5' : 'py-2.5 @[44rem]/verify-table:py-4';
   if (colKey === FIRST_COL) {
-    return cn('px-0', y, 'ps-6 pe-2 @[44rem]/verify-table:ps-12 @[44rem]/verify-table:pe-3');
+    return cn('px-0', y, 'ps-4 pe-1.5 @[44rem]/verify-table:ps-6 @[44rem]/verify-table:pe-2');
   }
   if (colKey === LAST_COL) {
     return cn('px-0', y, 'ps-1.5 pe-4 @[44rem]/verify-table:ps-3 @[44rem]/verify-table:pe-6');
@@ -108,28 +100,34 @@ function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
 
 const ROW_BORDER = 'border-b border-slate-200';
 
+/** Traffic-light text — parity Assign / Duplicates. */
+const SEVERITY_TEXT_CLASSES: Record<ReportSeverity, string> = {
+  Critical: 'text-red-700',
+  High: 'text-red-600',
+  Medium: 'text-orange-600',
+  Low: 'text-green-600',
+};
+
 /**
  * Proportional widths (`table-fixed`) — fluid theo content area (sidebar collapse/expand).
- * Chữ / badge / padding co qua `@container/verify-table`, không wrap loạn.
+ * `code` = identity (thumb + id/code/category). Bỏ điểm ưu tiên.
+ * Thứ tự: địa chỉ → mức độ → ngày tạo → hạn xác minh → trạng thái → hành động.
  */
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   {
-    key: 'image',
-    label: REPORT_QUEUE_COLUMN_LABEL.image,
-    className: 'w-14 @[44rem]/verify-table:w-20',
+    key: 'code',
+    label: 'Báo cáo',
+    className: 'w-[26%] min-w-0 @[44rem]/verify-table:w-[28%]',
   },
-  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[9%] min-w-0' },
-  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[11%] min-w-0' },
-  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[9%] min-w-0' },
-  { key: 'priority', label: REPORT_QUEUE_COLUMN_LABEL.priority, className: 'w-[8%] min-w-0' },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
     className: 'w-[16%] min-w-0 max-w-0',
   },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
   { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
   { key: 'verifySla', label: REPORT_QUEUE_COLUMN_LABEL.verifySla, className: 'w-[10%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[11%] min-w-0' },
   {
     key: 'actions',
     label: REPORT_QUEUE_COLUMN_LABEL.actions,
@@ -143,15 +141,14 @@ const BADGE_BASE =
 const BADGE_SIZE =
   'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/verify-table:px-2 @[44rem]/verify-table:py-0.5 @[44rem]/verify-table:text-xs';
 
-const CELL_TEXT =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-700 @[44rem]/verify-table:text-xs @[56rem]/verify-table:text-sm';
-const CELL_TEXT_MUTED =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-600 @[44rem]/verify-table:text-xs @[56rem]/verify-table:text-sm';
 const CELL_META =
   'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/verify-table:text-xs';
 const HEAD_LABEL =
   'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/verify-table:text-[0.6875rem]';
 
+/** Thumbnail vuông — parity Assign / Duplicates. */
+const THUMB_SQUARE =
+  'relative size-9 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80 @[44rem]/verify-table:size-10';
 // ── Filter presets (lọc theo `createdAt`, tính theo lịch VN UTC+7) ─────────────
 
 type DatePreset = 'all' | 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'thisYear';
@@ -728,11 +725,24 @@ function formatCreatedParts(isoString: string): { date: string; time: string } {
 function CreatedCell({ iso }: { iso: string }) {
   const { date, time } = formatCreatedParts(iso);
   return (
-    <span className={cn(CELL_META, 'text-slate-800')} title={`${date} ${time}`}>
-      <span className="font-medium">{date}</span>
-      {/* Khi sidebar mở / bảng hẹp: ẩn giờ để tránh wrap 2 dòng. */}
-      <span className="hidden text-slate-400 @[48rem]/verify-table:inline"> {time}</span>
-    </span>
+    <div className="min-w-0 space-y-0.5" title={`${date} ${time}`}>
+      <span
+        className={cn(
+          'block truncate text-[10px] font-medium leading-snug text-slate-800',
+          '@[44rem]/verify-table:text-[11px] @[56rem]/verify-table:text-xs'
+        )}
+      >
+        {date}
+      </span>
+      <span
+        className={cn(
+          'block truncate text-[10px] tabular-nums leading-snug text-slate-500',
+          '@[44rem]/verify-table:text-xs'
+        )}
+      >
+        {time}
+      </span>
+    </div>
   );
 }
 
@@ -793,7 +803,7 @@ function VerifyRowActions({
           row.isPossibleDuplicate
             ? 'Kiểm tra trùng trước khi xác minh'
             : row.isSuspectedViolationRecurrence
-              ? 'Kiểm tra tái phát trước khi xác minh'
+              ? 'Kiểm tra tái diễn trước khi xác minh'
               : 'Xác minh ngay'
         }
         aria-label={`Xác minh ${row.code}`}
@@ -841,6 +851,7 @@ function VerifyRowActions({
 
 export function VerifyPageClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const user = useAuthStore(s => s.user);
   const fullName = user?.name?.trim() || 'Người dùng';
@@ -848,6 +859,7 @@ export function VerifyPageClient() {
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [successReportId, setSuccessReportId] = useState<string | null>(null);
   const [duplicateDialogRow, setDuplicateDialogRow] = useState<ReportQueueItem | null>(null);
   const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
   const [pairFocus, setPairFocus] = useState<{ childId: string; parentId: string } | null>(null);
@@ -863,6 +875,7 @@ export function VerifyPageClient() {
   const pageRef = useRef(1);
   const isFetchingRef = useRef(false);
   const verifyMutation = useVerifyReport();
+  const verifyIdempotencyKeysRef = useRef(createIdempotencyKeyStore());
 
   const yearOnlyDefaults = getPresetDateInputs('all');
 
@@ -1167,7 +1180,7 @@ export function VerifyPageClient() {
     let cancelled = false;
     void (async () => {
       try {
-        const foundPage = await locateReportInQueuePage(highlightId, {
+        const foundPage = await locateReportInQueuePage(queryClient, highlightId, {
           pageSize: VERIFY_PAGE_SIZE,
           status: 'Submitted',
           sortBy: 'CreatedAt',
@@ -1208,7 +1221,7 @@ export function VerifyPageClient() {
         locateStartedForRef.current = null;
       }
     };
-  }, [items, isPending, isFetching, page]);
+  }, [items, isPending, isFetching, page, queryClient]);
 
   /** Scroll tới row highlight — retry đến khi ref gắn (kể cả dưới fold / sau đổi page). */
   useEffect(() => {
@@ -1272,7 +1285,12 @@ export function VerifyPageClient() {
   const performVerify = async (row: ReportQueueItem): Promise<boolean> => {
     setVerifyingId(row.id);
     try {
-      const result = await verifyMutation.mutateAsync({ reportId: row.id, body: {} });
+      const result = await verifyMutation.mutateAsync({
+        reportId: row.id,
+        body: {},
+        idempotencyKey: verifyIdempotencyKeysRef.current.get(row.id),
+      });
+      verifyIdempotencyKeysRef.current.reset();
       toastApiSuccess(result, 'Đã xác minh báo cáo.');
       return true;
     } catch (error) {
@@ -1507,9 +1525,7 @@ export function VerifyPageClient() {
                             className={cn(
                               tableCellPad(col.key, 'body'),
                               'align-middle',
-                              col.key !== 'image' &&
-                                col.key !== 'actions' &&
-                                'max-w-0 overflow-hidden',
+                              col.key !== 'actions' && 'min-w-0 overflow-hidden',
                               col.className
                             )}
                             onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
@@ -1574,6 +1590,30 @@ export function VerifyPageClient() {
           verifyingId && duplicateDialogRow && verifyingId === duplicateDialogRow.id
         )}
       />
+
+      <SuccessDialog
+        open={Boolean(successReportId)}
+        onOpenChange={next => {
+          if (!next) setSuccessReportId(null);
+        }}
+        title="Thành công"
+        description="Báo cáo đã được xác minh. Bước tiếp theo, bạn có thể phân công đội xử lý ngay trên trang Phân công."
+        secondaryAction={{
+          label: 'Để sau',
+          onClick: () => setSuccessReportId(null),
+        }}
+        primaryAction={{
+          label: 'Phân công ngay',
+          onClick: () => {
+            const id = successReportId;
+            setSuccessReportId(null);
+            if (!id) return;
+            router.push(
+              `/officer/assign?${new URLSearchParams({ highlightReportId: id }).toString()}`
+            );
+          },
+        }}
+      />
     </>
   );
 }
@@ -1584,48 +1624,28 @@ function renderVerifyCell(
   opts?: { imagePriority?: boolean }
 ) {
   switch (key) {
-    case 'image':
-      return (
-        <ReportThumb
-          url={row.firstImageUrl}
-          alt={row.code}
-          isPossibleDuplicate={row.isPossibleDuplicate}
-          isSuspectedViolationRecurrence={row.isSuspectedViolationRecurrence}
-          priority={opts?.imagePriority}
-        />
-      );
     case 'code':
+      return <ReportIdentityCell row={row} imagePriority={opts?.imagePriority} />;
+    case 'address':
       return (
-        <span className={cn(CELL_TEXT, 'font-medium')} title={row.code}>
-          {row.code}
-        </span>
-      );
-    case 'category':
-      return (
-        <span className={CELL_TEXT} title={row.categoryName}>
-          {row.categoryName}
+        <span
+          className={cn(
+            'line-clamp-2 min-w-0 text-[11px] leading-snug wrap-break-word text-slate-600',
+            '@[44rem]/verify-table:text-xs @[56rem]/verify-table:text-sm'
+          )}
+          title={row.address}
+        >
+          {row.address?.trim() || '—'}
         </span>
       );
     case 'severity':
-      return <SeverityBadge severity={row.severity} />;
-    case 'status':
-      return <StatusBadge status={row.status} />;
-    case 'priority':
-      return (
-        <span className={cn(CELL_META, 'font-medium text-slate-700')}>
-          {row.priorityScore.toFixed(2)}
-        </span>
-      );
-    case 'address':
-      return (
-        <span className={CELL_TEXT_MUTED} title={row.address}>
-          {row.address}
-        </span>
-      );
+      return <SeverityText severity={row.severity} />;
     case 'created':
       return <CreatedCell iso={row.createdAt} />;
     case 'verifySla':
       return <SlaCell dueAt={row.slaVerifyDueAt} />;
+    case 'status':
+      return <StatusBadge status={row.status} />;
     case 'actions':
       return null;
     default:
@@ -1633,10 +1653,119 @@ function renderVerifyCell(
   }
 }
 
-/** Landscape thumb — co theo container (sidebar expanded). */
-const THUMB_FRAME =
-  'relative h-8 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100 @[44rem]/verify-table:h-9 @[44rem]/verify-table:w-14 @[56rem]/verify-table:h-10 @[56rem]/verify-table:w-16';
+async function copyText(value: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(successMessage);
+  } catch {
+    toast.error('Không thể sao chép. Hãy chọn và copy thủ công.');
+  }
+}
 
+function CopyIconButton({
+  value,
+  label,
+  successMessage,
+}: {
+  value: string;
+  label: string;
+  successMessage: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={e => {
+        e.stopPropagation();
+        void (async () => {
+          await copyText(value, successMessage);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        })();
+      }}
+      className={cn(
+        'inline-flex size-5 shrink-0 items-center justify-center rounded text-slate-400',
+        'opacity-0 transition-opacity group-hover/copyrow:opacity-100',
+        'hover:bg-slate-100 hover:text-slate-700',
+        'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+      )}
+    >
+      {copied ? (
+        <Check className="size-3 text-emerald-600" aria-hidden />
+      ) : (
+        <Copy className="size-3" aria-hidden />
+      )}
+    </button>
+  );
+}
+
+/**
+ * Identity: thumb vuông (+ badge nghi trùng/tái phát) + stack id / code / category.
+ */
+function ReportIdentityCell({
+  row,
+  imagePriority = false,
+}: {
+  row: ReportQueueItem;
+  imagePriority?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <ReportThumb
+        url={row.firstImageUrl}
+        alt={row.code}
+        isPossibleDuplicate={row.isPossibleDuplicate}
+        isSuspectedViolationRecurrence={row.isSuspectedViolationRecurrence}
+        priority={imagePriority}
+      />
+
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <span
+            className={cn(
+              'min-w-0 truncate text-[11px] font-semibold tabular-nums text-sky-700',
+              '@[44rem]/verify-table:text-xs'
+            )}
+            title={row.id}
+          >
+            {row.id}
+          </span>
+          <CopyIconButton
+            value={row.id}
+            label="Sao chép ID báo cáo"
+            successMessage="Đã sao chép ID báo cáo."
+          />
+        </div>
+
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <span
+            className="min-w-0 truncate text-[11px] font-medium tabular-nums text-slate-800 @[44rem]/verify-table:text-xs"
+            title={row.code}
+          >
+            {row.code}
+          </span>
+          <CopyIconButton
+            value={row.code}
+            label={`Sao chép mã ${row.code}`}
+            successMessage="Đã sao chép mã báo cáo."
+          />
+        </div>
+
+        <p
+          className="truncate text-[11px] leading-snug text-slate-500 @[44rem]/verify-table:text-xs"
+          title={row.categoryName || undefined}
+        >
+          {row.categoryName?.trim() || '—'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Square thumb — giữ badge nghi trùng / tái phát. */
 function ReportThumb({
   url,
   alt,
@@ -1652,19 +1781,16 @@ function ReportThumb({
   priority?: boolean;
 }) {
   const thumb = !url ? (
-    <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
-      <ImageIcon
-        className="size-3 @[44rem]/verify-table:size-3.5 @[56rem]/verify-table:size-4"
-        aria-hidden
-      />
+    <div className={cn(THUMB_SQUARE, 'flex items-center justify-center text-slate-400')}>
+      <ImageIcon className="size-4" aria-hidden />
     </div>
   ) : (
-    <div className={THUMB_FRAME}>
+    <div className={THUMB_SQUARE}>
       <Image
         src={url}
         alt={alt}
         fill
-        sizes="(max-width: 640px) 3rem, 4rem"
+        sizes="40px"
         className="object-cover"
         unoptimized
         priority={priority}
@@ -1675,7 +1801,7 @@ function ReportThumb({
   if (!isPossibleDuplicate && !isSuspectedViolationRecurrence) return thumb;
 
   return (
-    <div className="relative inline-flex">
+    <div className="relative inline-flex shrink-0">
       {thumb}
       {isPossibleDuplicate ? (
         <AnimatedHoverTooltip
@@ -1700,7 +1826,7 @@ function ReportThumb({
       ) : null}
       {isSuspectedViolationRecurrence ? (
         <AnimatedHoverTooltip
-          name="Nghi ô nhiễm tái phát"
+          name="Nghi ô nhiễm tái diễn"
           className={cn(
             'absolute z-10',
             isPossibleDuplicate ? '-right-1.5 top-3.5' : '-right-1.5 -top-1.5'
@@ -1712,7 +1838,7 @@ function ReportThumb({
               'rounded-full bg-orange-500 text-white shadow-sm',
               'ring-2 ring-white'
             )}
-            aria-label="Nghi ô nhiễm tái phát"
+            aria-label="Nghi ô nhiễm tái diễn"
           >
             <History
               className="size-2 @[44rem]/verify-table:size-2.5"
@@ -1726,13 +1852,18 @@ function ReportThumb({
   );
 }
 
-function SeverityBadge({ severity }: { severity: ReportSeverity }) {
+function SeverityText({ severity }: { severity: ReportSeverity }) {
+  const label = REPORT_SEVERITY_LABEL_VI[severity];
   return (
     <span
-      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_SEVERITY_BADGE_CLASSES[severity])}
-      title={REPORT_SEVERITY_LABEL_VI[severity]}
+      className={cn(
+        'block min-w-0 truncate text-[11px] font-medium leading-snug',
+        '@[44rem]/verify-table:text-xs @[56rem]/verify-table:text-sm',
+        SEVERITY_TEXT_CLASSES[severity] ?? 'text-slate-500'
+      )}
+      title={label}
     >
-      {REPORT_SEVERITY_LABEL_VI[severity]}
+      {label}
     </span>
   );
 }

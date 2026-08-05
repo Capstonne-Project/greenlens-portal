@@ -2,7 +2,10 @@ import {
   adaptFetchReportDetail,
   adaptFetchReportProgress,
 } from '@/lib/api/adapters/report.adapter';
+import { adaptFetchDuplicateCandidates } from '@/lib/api/adapters/duplicateCandidate.adapter';
+import { adaptFetchDuplicateCandidateDetail } from '@/lib/api/adapters/duplicateCandidateDetail.adapter';
 import { adaptFetchReportQueue } from '@/lib/api/adapters/reportQueue.adapter';
+import { adaptFetchViolationRecurrenceCandidates } from '@/lib/api/adapters/violationRecurrenceCandidate.adapter';
 import {
   adaptAssignReport,
   adaptConfirmDuplicate,
@@ -16,8 +19,25 @@ import {
   adaptDismissViolationRecurrence,
   adaptFetchViolationRecurrenceComparison,
 } from '@/lib/api/adapters/violationRecurrence.adapter';
+import {
+  adaptAssignInspectionTeam,
+  adaptCreateInspectionReport,
+  adaptFetchInspectionDetail,
+  adaptFetchInspectionOfficerQueue,
+  adaptFetchInspectionPayments,
+  adaptFetchReportInspections,
+} from '@/lib/api/adapters/inspectionReport.adapter';
+import type {
+  DuplicateCandidatesData,
+  DuplicateCandidatesParams,
+} from '@/lib/api/models/duplicateCandidate';
+import type { DuplicateCandidateDetail } from '@/lib/api/models/duplicateCandidateDetail';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
+import type {
+  ViolationRecurrenceCandidatesData,
+  ViolationRecurrenceCandidatesParams,
+} from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportProgress } from '@/lib/api/models/reportProgress';
 import type {
   AssignReportInput,
@@ -33,8 +53,38 @@ import type {
   DismissViolationRecurrenceResult,
   ViolationRecurrenceComparison,
 } from '@/lib/api/models/violationRecurrence';
+import type {
+  AssignInspectionTeamInput,
+  AssignInspectionTeamResult,
+  CreateInspectionReportInput,
+  CreateInspectionReportResult,
+  InspectionDetail,
+  InspectionOfficerQueueData,
+  InspectionOfficerQueueParams,
+  InspectionPaymentsHistory,
+  ReportInspectionsList,
+} from '@/lib/api/models/inspectionReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import type { IdempotencyRequestOptions } from '@/lib/api/idempotency';
 
+export type {
+  DuplicateCandidateItem,
+  DuplicateCandidateMedia,
+  DuplicateCandidatePrimary,
+  DuplicateCandidatesData,
+  DuplicateCandidatesParams,
+} from '@/lib/api/models/duplicateCandidate';
+export type {
+  DuplicateCandidateDetail,
+  DuplicateCandidateDetailMedia,
+  DuplicateCandidateDetailSide,
+} from '@/lib/api/models/duplicateCandidateDetail';
+export type {
+  ViolationRecurrenceCandidateItem,
+  ViolationRecurrenceCandidatePrior,
+  ViolationRecurrenceCandidatesData,
+  ViolationRecurrenceCandidatesParams,
+} from '@/lib/api/models/violationRecurrenceCandidate';
 export type {
   ReportAssignment,
   ReportDetail,
@@ -92,6 +142,26 @@ export type {
   ViolationRecurrenceMedia,
   ViolationRecurrenceReport,
 } from '@/lib/api/models/violationRecurrence';
+export type {
+  AssignInspectionTeamInput,
+  AssignInspectionTeamResult,
+  CreateInspectionReportInput,
+  CreateInspectionReportResult,
+  InspectionChecklistEvidence,
+  InspectionDetail,
+  InspectionOfficerQueueData,
+  InspectionOfficerQueueItem,
+  InspectionOfficerQueueParams,
+  InspectionOfficerQueueSortDir,
+  InspectionPayment,
+  InspectionPaymentsHistory,
+  InspectionStatus,
+  ReportInspectionSummary,
+  ReportInspectionsList,
+  ViolatingEntity,
+  ViolatingEntityType,
+  ViolationLevel,
+} from '@/lib/api/models/inspectionReport';
 
 /** GET /v1/reports/{id} — chi tiết một báo cáo */
 export async function fetchReportDetail(id: string): Promise<ReportDetail> {
@@ -105,6 +175,36 @@ export async function fetchReportQueue(
   return adaptFetchReportQueue(params);
 }
 
+/**
+ * GET /v1/reports/duplicate-candidates — [LEO/DEO] danh sách báo cáo nghi ngờ trùng lặp.
+ * BR-REP-031: kèm báo cáo gốc (`primary`) để LEO so sánh và quyết định gộp/bác bỏ.
+ */
+export async function fetchDuplicateCandidates(
+  params?: DuplicateCandidatesParams
+): Promise<ApiEnvelope<DuplicateCandidatesData>> {
+  return adaptFetchDuplicateCandidates(params);
+}
+
+/**
+ * GET /v1/reports/{id}/duplicate-candidate-detail — BR-REP-031/032.
+ * `reportId` = báo cáo nghi trùng; `primaryReport` trong kết quả = báo cáo gốc.
+ */
+export async function fetchDuplicateCandidateDetail(
+  reportId: string
+): Promise<DuplicateCandidateDetail> {
+  return adaptFetchDuplicateCandidateDetail(reportId);
+}
+
+/**
+ * GET /v1/reports/violation-recurrence-candidates — [LEO/DEO] danh sách báo cáo nghi tái phạm.
+ * BR-REP-034: kèm prior Closed (+ media 2 bên) để LEO so sánh và quyết định mở thanh tra / bác bỏ.
+ */
+export async function fetchViolationRecurrenceCandidates(
+  params?: ViolationRecurrenceCandidatesParams
+): Promise<ApiEnvelope<ViolationRecurrenceCandidatesData>> {
+  return adaptFetchViolationRecurrenceCandidates(params);
+}
+
 /** GET /v1/reports/{id}/progress — [LEO] tiến trình xử lý báo cáo. */
 export async function fetchReportProgress(id: string): Promise<ReportProgress> {
   return adaptFetchReportProgress(id);
@@ -114,16 +214,21 @@ export async function fetchReportProgress(id: string): Promise<ReportProgress> {
  * POST /v1/reports/{reportId}/assign — [LEO] gán community team.
  * Company Manager dùng `assignCompanyTeam` → POST .../assign-company-team.
  */
-export async function assignReport(reportId: string, body: AssignReportInput): Promise<void> {
-  return adaptAssignReport(reportId, body);
+export async function assignReport(
+  reportId: string,
+  body: AssignReportInput,
+  options?: IdempotencyRequestOptions
+): Promise<void> {
+  return adaptAssignReport(reportId, body, options);
 }
 
 /** POST /v1/reports/{id}/dispatch-to-company — LEO điều phối task đến công ty DVMT. */
 export async function dispatchReportToCompany(
   reportId: string,
-  body: DispatchToCompanyInput
+  body: DispatchToCompanyInput,
+  options?: IdempotencyRequestOptions
 ): Promise<void> {
-  return adaptDispatchToCompany(reportId, body);
+  return adaptDispatchToCompany(reportId, body, options);
 }
 
 /** PUT /v1/reports/{reportId}/reassign — chuyển giao đội (Assigned/Declined). */
@@ -134,9 +239,10 @@ export async function reassignReport(reportId: string, body: ReassignReportInput
 /** PUT /v1/reports/{id}/verify — LEO xác minh báo cáo (Submitted → Verified). */
 export async function verifyReport(
   reportId: string,
-  body: VerifyReportInput
+  body: VerifyReportInput,
+  options?: IdempotencyRequestOptions
 ): Promise<VerifyReportResult> {
-  return adaptVerifyReport(reportId, body);
+  return adaptVerifyReport(reportId, body, options);
 }
 
 /** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo (Submitted → Rejected). */
@@ -177,9 +283,64 @@ export async function dismissViolationRecurrence(
   return adaptDismissViolationRecurrence(reportId);
 }
 
+/**
+ * POST /v1/reports/{id}/inspections — [LEO] lập hồ sơ xử phạt nháp
+ * (BR-INS-001, BR-OFF-005).
+ */
+export async function createInspectionReport(
+  reportId: string,
+  body: CreateInspectionReportInput
+): Promise<CreateInspectionReportResult> {
+  return adaptCreateInspectionReport(reportId, body);
+}
+
+/**
+ * GET /v1/reports/{id}/inspections — [LEO/Inspector] hồ sơ xử phạt của báo cáo.
+ */
+export async function fetchReportInspections(reportId: string): Promise<ReportInspectionsList> {
+  return adaptFetchReportInspections(reportId);
+}
+
+/**
+ * GET /v1/inspections/{id} — [InspectionLEO] chi tiết hồ sơ xử phạt.
+ */
+export async function fetchInspectionDetail(id: string): Promise<InspectionDetail> {
+  return adaptFetchInspectionDetail(id);
+}
+
+/**
+ * GET /v1/inspections/{id}/payments — [Inspector/LEO] lịch sử nộp phạt (BR-INS-020).
+ */
+export async function fetchInspectionPayments(id: string): Promise<InspectionPaymentsHistory> {
+  return adaptFetchInspectionPayments(id);
+}
+
+/**
+ * PUT /v1/inspections/{id}/assign-team — gán / đổi đội kiểm tra.
+ */
+export async function assignInspectionTeam(
+  id: string,
+  body: AssignInspectionTeamInput
+): Promise<AssignInspectionTeamResult> {
+  return adaptAssignInspectionTeam(id, body);
+}
+
+/**
+ * GET /v1/inspections/officer-queue — [LEO/DEO] hàng đợi hồ sơ xử phạt.
+ * FE nên truyền `pageSize: 8` khi gọi (BE có thể mặc định 20).
+ */
+export async function fetchInspectionOfficerQueue(
+  params?: InspectionOfficerQueueParams
+): Promise<ApiEnvelope<InspectionOfficerQueueData>> {
+  return adaptFetchInspectionOfficerQueue(params);
+}
+
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
+  fetchDuplicateCandidates,
+  fetchDuplicateCandidateDetail,
+  fetchViolationRecurrenceCandidates,
   fetchReportProgress,
   assignReport,
   dispatchReportToCompany,
@@ -190,5 +351,11 @@ const reportService = {
   dismissDuplicateReport,
   fetchViolationRecurrenceComparison,
   dismissViolationRecurrence,
+  createInspectionReport,
+  fetchReportInspections,
+  fetchInspectionDetail,
+  fetchInspectionPayments,
+  assignInspectionTeam,
+  fetchInspectionOfficerQueue,
 };
 export default reportService;

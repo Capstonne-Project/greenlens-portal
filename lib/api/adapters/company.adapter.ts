@@ -1,4 +1,9 @@
 import apiService from '@/lib/api/core';
+import {
+  mergeIdempotencyConfig,
+  withOptionalIdempotency,
+  type IdempotencyRequestOptions,
+} from '@/lib/api/idempotency';
 import type {
   AddCompanyTeamMemberInput,
   AssignCompanyTeamInput,
@@ -154,6 +159,14 @@ export async function adaptArchiveCompanyTeam(
   return res.data;
 }
 
+/** DELETE /v1/teams/company-teams/{id} — xóa team công ty [CompanyManager]. */
+export async function adaptDeleteCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
+  const res = await apiService.delete<ApiEnvelope<string | null>>(
+    `/v1/teams/company-teams/${encodeURIComponent(id)}`
+  );
+  return res.data;
+}
+
 /** GET /v1/companies/my/contract-history — lịch sử kỳ hợp đồng công ty CM. */
 export async function adaptMyCompanyContractHistory(): Promise<
   ApiEnvelope<MyCompanyContractHistory>
@@ -228,7 +241,8 @@ export async function adaptCompanyAssignmentDetail(
  */
 export async function adaptAssignCompanyTeam(
   reportId: string,
-  body: AssignCompanyTeamInput
+  body: AssignCompanyTeamInput,
+  options?: IdempotencyRequestOptions
 ): Promise<void> {
   const payload: AssignCompanyTeamInput = {
     teams: body.teams.map(t => ({
@@ -236,5 +250,11 @@ export async function adaptAssignCompanyTeam(
       ...(t.note?.trim() ? { note: t.note.trim() } : {}),
     })),
   };
-  await apiService.post(`/v1/reports/${reportId}/assign-company-team`, payload);
+  return withOptionalIdempotency(options?.idempotencyKey, async key => {
+    await apiService.post(
+      `/v1/reports/${reportId}/assign-company-team`,
+      payload,
+      mergeIdempotencyConfig(key, options?.config)
+    );
+  });
 }

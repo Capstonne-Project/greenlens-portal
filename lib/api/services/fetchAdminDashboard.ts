@@ -105,6 +105,13 @@ export interface AdminResolutionDistributionItem {
   count: number;
 }
 
+export interface AdminReportTrendPoint {
+  date: string;
+  count: number;
+  submitted?: number;
+  resolved?: number;
+}
+
 function buildDateRangeQuery(
   params?: AdminDashboardDateRangeParams
 ): Record<string, string> | undefined {
@@ -240,6 +247,33 @@ export async function fetchAdminDashboardResolutionDistribution(
   return res.data;
 }
 
+/** GET /v1/dashboard/admin/report-trend */
+export async function fetchAdminDashboardReportTrend(
+  params?: AdminDashboardDateRangeParams
+): Promise<ApiEnvelope<AdminReportTrendPoint[]>> {
+  const res = await apiService.get<
+    ApiEnvelope<
+      | AdminReportTrendPoint[]
+      | { points?: AdminReportTrendPoint[]; items?: AdminReportTrendPoint[] }
+    >
+  >('/v1/dashboard/admin/report-trend', buildDateRangeQuery(params));
+
+  const raw = res.data.data;
+  const points = Array.isArray(raw) ? raw : (raw?.points ?? raw?.items ?? []);
+
+  return {
+    code: res.data.code,
+    message: res.data.message,
+    status: res.data.status,
+    data: points.map(p => ({
+      date: p.date,
+      count: p.count ?? 0,
+      submitted: p.submitted,
+      resolved: p.resolved,
+    })),
+  };
+}
+
 const adminDashboardApi = {
   fetchAdminDashboardOverview,
   fetchAdminDashboardAlerts,
@@ -252,6 +286,7 @@ const adminDashboardApi = {
   fetchAdminDashboardReportStatus,
   fetchAdminDashboardPollutionAnalytics,
   fetchAdminDashboardResolutionDistribution,
+  fetchAdminDashboardReportTrend,
 };
 
 export default adminDashboardApi;
