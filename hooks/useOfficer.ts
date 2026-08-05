@@ -95,7 +95,10 @@ export const officerKeys = {
   violationRecurrenceCandidates: () =>
     [...officerKeys.all, 'violation-recurrence-candidates'] as const,
   violationRecurrenceCandidatesList: (params: ViolationRecurrenceCandidatesParams) =>
-    [...officerKeys.violationRecurrenceCandidates(), params] as const,
+    [
+      ...officerKeys.violationRecurrenceCandidates(),
+      ...violationRecurrenceCandidatesListKeyParts(params),
+    ] as const,
   /** So sánh tái phát — BR-REP-034 */
   violationRecurrenceComparison: (id: string) =>
     [...officerKeys.all, 'violation-recurrence-comparison', id] as const,
@@ -114,6 +117,12 @@ export const officerKeys = {
 
 /** Tách `search` khỏi key hàng đợi hồ sơ — tránh PII thô trên queryKey. */
 function inspectionQueueListKeyParts(params: InspectionOfficerQueueParams) {
+  const { search, ...safe } = params;
+  return [safe, stableSearchKey(search)] as const;
+}
+
+/** Tách `search` khỏi key nghi tái phạm — tránh PII thô trên queryKey. */
+function violationRecurrenceCandidatesListKeyParts(params: ViolationRecurrenceCandidatesParams) {
   const { search, ...safe } = params;
   return [safe, stableSearchKey(search)] as const;
 }

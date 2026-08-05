@@ -17,7 +17,7 @@ export interface ViolationRecurrenceCandidatePrior {
 
 /**
  * GET /v1/reports/violation-recurrence-candidates — một báo cáo nghi tái phạm
- * (cùng category, ≤50m, prior Closed trong 30 ngày) [LEO/DEO].
+ * (cùng category, ≤25m, prior Closed trong 30 ngày) [LEO/DEO].
  */
 export interface ViolationRecurrenceCandidateItem {
   id: string;
@@ -40,7 +40,32 @@ export interface ViolationRecurrenceCandidatesData {
   pagination: PaginationMeta;
 }
 
+/** Swagger: CreatedAt | Severity | PriorClosedAt | PriorityScore */
+export type ViolationRecurrenceCandidatesSortBy =
+  | 'CreatedAt'
+  | 'Severity'
+  | 'PriorClosedAt'
+  | 'PriorityScore';
+
+/** Swagger: Asc | Desc */
+export type ViolationRecurrenceCandidatesSortDir = 'Asc' | 'Desc';
+
+/**
+ * GET /v1/reports/violation-recurrence-candidates — query params (all optional; BE defaults page=1, pageSize=20).
+ */
 export interface ViolationRecurrenceCandidatesParams {
   page?: number;
   pageSize?: number;
+  /** Swagger: Submitted | Verified | InProgress | Resolved | Reopened | Closed | Rejected | Duplicate */
+  status?: ReportQueueStatus;
+  severity?: ReportSeverity;
+  categoryId?: string;
+  wardCode?: string;
+  fromDate?: string;
+  toDate?: string;
+  search?: string;
+  minDaysSincePriorClosed?: number;
+  maxDaysSincePriorClosed?: number;
+  sortBy?: ViolationRecurrenceCandidatesSortBy;
+  sortDir?: ViolationRecurrenceCandidatesSortDir;
 }
