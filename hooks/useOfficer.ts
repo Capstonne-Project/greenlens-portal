@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  approveReopenRequest,
   assignInspectionTeam,
   assignReport,
   confirmDuplicateReport,
@@ -15,10 +16,12 @@ import {
   fetchInspectionPayments,
   fetchReportDetail,
   fetchReportInspections,
+  fetchReopenRequests,
   fetchReportQueue,
   fetchViolationRecurrenceCandidates,
   fetchViolationRecurrenceComparison,
   rejectReport,
+  rejectReopenRequest,
   reassignReport,
   verifyReport,
 } from '@/lib/api/services/fetchReport';
@@ -29,7 +32,9 @@ import type {
   CreateInspectionReportInput,
   DispatchToCompanyInput,
   RejectReportInput,
+  RejectReopenRequestInput,
   ReassignReportInput,
+  ReopenRequestsParams,
   VerifyReportInput,
 } from '@/lib/api/services/fetchReport';
 import type { DuplicateCandidatesParams } from '@/lib/api/models/duplicateCandidate';
@@ -87,7 +92,7 @@ export const officerKeys = {
   /** Danh sách nghi trùng lặp — BR-REP-031 */
   duplicateCandidates: () => [...officerKeys.all, 'duplicate-candidates'] as const,
   duplicateCandidatesList: (params: DuplicateCandidatesParams) =>
-    [...officerKeys.duplicateCandidates(), params] as const,
+    [...officerKeys.duplicateCandidates(), ...duplicateCandidatesListKeyParts(params)] as const,
   /** Chi tiết so sánh nghi trùng vs gốc — BR-REP-031/032 */
   duplicateCandidateDetail: (id: string) =>
     [...officerKeys.all, 'duplicate-candidate-detail', id] as const,
@@ -95,7 +100,10 @@ export const officerKeys = {
   violationRecurrenceCandidates: () =>
     [...officerKeys.all, 'violation-recurrence-candidates'] as const,
   violationRecurrenceCandidatesList: (params: ViolationRecurrenceCandidatesParams) =>
-    [...officerKeys.violationRecurrenceCandidates(), params] as const,
+    [
+      ...officerKeys.violationRecurrenceCandidates(),
+      ...violationRecurrenceCandidatesListKeyParts(params),
+    ] as const,
   /** So sánh tái phát — BR-REP-034 */
   violationRecurrenceComparison: (id: string) =>
     [...officerKeys.all, 'violation-recurrence-comparison', id] as const,
@@ -110,10 +118,26 @@ export const officerKeys = {
   inspectionOfficerQueue: () => [...officerKeys.all, 'inspection-officer-queue'] as const,
   inspectionOfficerQueueList: (params: InspectionOfficerQueueParams) =>
     [...officerKeys.inspectionOfficerQueue(), ...inspectionQueueListKeyParts(params)] as const,
+  /** GET /v1/reports/reopen-requests — yêu cầu mở lại báo cáo [LEO/DEO] */
+  reopenRequests: () => [...officerKeys.all, 'reopen-requests'] as const,
+  reopenRequestsList: (params: ReopenRequestsParams) =>
+    [...officerKeys.reopenRequests(), params] as const,
 };
 
 /** Tách `search` khỏi key hàng đợi hồ sơ — tránh PII thô trên queryKey. */
 function inspectionQueueListKeyParts(params: InspectionOfficerQueueParams) {
+  const { search, ...safe } = params;
+  return [safe, stableSearchKey(search)] as const;
+}
+
+/** Tách `search` khỏi key nghi trùng lặp — tránh PII thô trên queryKey. */
+function duplicateCandidatesListKeyParts(params: DuplicateCandidatesParams) {
+  const { search, ...safe } = params;
+  return [safe, stableSearchKey(search)] as const;
+}
+
+/** Tách `search` khỏi key nghi tái phạm — tránh PII thô trên queryKey. */
+function violationRecurrenceCandidatesListKeyParts(params: ViolationRecurrenceCandidatesParams) {
   const { search, ...safe } = params;
   return [safe, stableSearchKey(search)] as const;
 }
@@ -143,6 +167,18 @@ export function useReportQueue(params: ReportQueueParams, options?: { enabled?: 
   return useQuery({
     queryKey: officerKeys.queueList(params),
     queryFn: () => fetchReportQueue(params),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/** GET /v1/reports/reopen-requests — [LEO/DEO] danh sách yêu cầu mở lại báo cáo. */
+export function useReopenRequests(params: ReopenRequestsParams, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: officerKeys.reopenRequestsList(params),
+    queryFn: () => fetchReopenRequests(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
@@ -380,6 +416,43 @@ export function useRejectReport() {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+    },
+  });
+}
+
+/** POST /v1/reports/{id}/reopen-requests/{requestId}/approve — duyệt yêu cầu mở lại. */
+export function useApproveReopenRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, requestId }: { reportId: string; requestId: string }) =>
+      approveReopenRequest(reportId, requestId),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.reopenRequests() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
+    },
+  });
+}
+
+/** POST /v1/reports/{id}/reopen-requests/{requestId}/reject — từ chối yêu cầu mở lại. */
+export function useRejectReopenRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      reportId,
+      requestId,
+      body,
+    }: {
+      reportId: string;
+      requestId: string;
+      body: RejectReopenRequestInput;
+    }) => rejectReopenRequest(reportId, requestId, body),
+    onSuccess: (_data, { reportId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.reopenRequests() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+      queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
     },
   });
 }

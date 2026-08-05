@@ -18,7 +18,6 @@ import { Card, CardDescription, CardTitle, HoverEffect } from '@/components/ui/c
 import { Input } from '@/components/ui/input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
-import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeoMyReports } from '@/hooks/useLeoOffices';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
@@ -42,12 +41,12 @@ import { faCalendar } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   ChevronDown,
-  CircleHelp,
   Clock,
   ImageIcon,
   LayoutGrid,
   List,
   Loader2,
+  Route,
   Search,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -67,8 +66,6 @@ const LEO_BOARD_GRID_CLASS = 'grid w-full grid-cols-2 gap-2 py-0 sm:grid-cols-3 
 const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES.filter(
   (status): status is Exclude<LeoMyReportsStatus, 'Submitted'> => status !== 'Submitted'
 );
-
-const LEO_TRACKING_STATUS_SET = new Set<string>(LEO_TRACKING_STATUSES);
 
 type LeoTrackingStatus = (typeof LEO_TRACKING_STATUSES)[number];
 type LeoStatusTab = 'All' | LeoTrackingStatus;
@@ -204,7 +201,7 @@ function LeoStatusTabBar({
   viewMode,
   onViewModeChange,
 }: {
-  tabs: Array<{ key: LeoStatusTab; label: string; count: number }>;
+  tabs: Array<{ key: LeoStatusTab; label: string }>;
   activeKey: LeoStatusTab;
   onChange: (key: LeoStatusTab) => void;
   viewMode: LeoViewMode;
@@ -272,14 +269,11 @@ function LeoStatusTabBar({
                 aria-selected={isActive}
                 onClick={() => onChange(tab.key)}
                 className={cn(
-                  'flex items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors first:pl-0',
+                  'whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors first:pl-0',
                   isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 {tab.label}
-                <span className="rounded-sm bg-white px-1.5 py-0.5 text-xs font-bold tabular-nums text-muted-foreground shadow-sm">
-                  {tab.count}
-                </span>
               </button>
             );
           })}
@@ -761,35 +755,15 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
 
   const items = useMemo(() => data?.items ?? EMPTY_LEO_ITEMS, [data?.items]);
 
-  const statusCounts = useMemo(() => {
-    const totals = data?.pagination.totalItems ?? items.length;
-    const counts = { All: totals } as Record<LeoStatusTab, number>;
-    for (const s of LEO_TRACKING_STATUSES) counts[s] = 0;
-
-    if (statusTab === 'All') {
-      counts.All = items.length;
-      for (const item of items) {
-        if (LEO_TRACKING_STATUS_SET.has(item.status)) {
-          counts[item.status as LeoTrackingStatus] += 1;
-        }
-      }
-      return counts;
-    }
-
-    counts[statusTab] = totals;
-    return counts;
-  }, [data?.pagination.totalItems, items, statusTab]);
-
-  const tabConfigs: Array<{ key: LeoStatusTab; label: string; count: number }> = useMemo(
+  const tabConfigs: Array<{ key: LeoStatusTab; label: string }> = useMemo(
     () => [
-      { key: 'All', label: 'Tất cả', count: statusCounts.All },
+      { key: 'All', label: 'Tất cả' },
       ...LEO_TRACKING_STATUSES.map(s => ({
         key: s,
         label: reportStatusLabelVi(s),
-        count: statusCounts[s],
       })),
     ],
-    [statusCounts]
+    []
   );
 
   /** Tổng trang từ BE (`pagination.totalPages`), tính theo `pageSize` server nhận. */
@@ -811,36 +785,17 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="mb-3 shrink-0">
         <div className="border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-[0.35rem]">
-            <h1 className="text-lg font-bold tracking-tight text-slate-900">Theo dõi xử lý</h1>
-            <button
-              type="button"
-              className="inline-flex cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-[0.15rem] text-slate-500 hover:bg-slate-400/15 hover:text-slate-700"
-              aria-label="Thông tin theo dõi xử lý"
-            >
-              <CircleHelp className="size-4" aria-hidden />
-            </button>
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
+              <Route className="size-7" aria-hidden />
+            </span>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900">Theo dõi xử lý</h1>
+              <p className="text-xs font-normal text-slate-500">
+                Theo dõi tiến độ xử lý các báo cáo tại văn phòng của bạn
+              </p>
+            </div>
           </div>
-          {data?.localOfficeName ? (
-            <TypewriterEffectSmooth
-              words={[
-                { text: 'Welcome', className: 'font-normal text-slate-500' },
-                { text: 'back,', className: 'font-normal text-slate-500' },
-                ...data.localOfficeName
-                  .trim()
-                  .split(/\s+/)
-                  .filter(Boolean)
-                  .map(text => ({
-                    text,
-                    className: 'font-medium text-slate-800 dark:text-slate-100',
-                  })),
-              ]}
-              className="mt-1 my-0"
-              textClassName="text-xs font-normal sm:text-xs md:text-xs lg:text-xs xl:text-xs"
-              cursorClassName="h-3 w-0.5 bg-slate-400 sm:h-3 xl:h-3"
-              hideCursorOnComplete
-            />
-          ) : null}
         </div>
       </header>
 

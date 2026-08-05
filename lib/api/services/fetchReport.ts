@@ -5,6 +5,11 @@ import {
 import { adaptFetchDuplicateCandidates } from '@/lib/api/adapters/duplicateCandidate.adapter';
 import { adaptFetchDuplicateCandidateDetail } from '@/lib/api/adapters/duplicateCandidateDetail.adapter';
 import { adaptFetchReportQueue } from '@/lib/api/adapters/reportQueue.adapter';
+import {
+  adaptApproveReopenRequest,
+  adaptFetchReopenRequests,
+  adaptRejectReopenRequest,
+} from '@/lib/api/adapters/reopenRequest.adapter';
 import { adaptFetchViolationRecurrenceCandidates } from '@/lib/api/adapters/violationRecurrenceCandidate.adapter';
 import {
   adaptAssignReport,
@@ -34,6 +39,12 @@ import type {
 import type { DuplicateCandidateDetail } from '@/lib/api/models/duplicateCandidateDetail';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
+import type {
+  RejectReopenRequestInput,
+  ReopenRequestActionResult,
+  ReopenRequestsData,
+  ReopenRequestsParams,
+} from '@/lib/api/models/reopenRequest';
 import type {
   ViolationRecurrenceCandidatesData,
   ViolationRecurrenceCandidatesParams,
@@ -137,6 +148,14 @@ export type {
   ReportQueueSortDir,
 } from '@/lib/api/models/reportQueue';
 export type {
+  RejectReopenRequestInput,
+  ReopenRequestActionResult,
+  ReopenRequestItem,
+  ReopenRequestStatus,
+  ReopenRequestsData,
+  ReopenRequestsParams,
+} from '@/lib/api/models/reopenRequest';
+export type {
   DismissViolationRecurrenceResult,
   ViolationRecurrenceComparison,
   ViolationRecurrenceMedia,
@@ -173,6 +192,30 @@ export async function fetchReportQueue(
   params?: ReportQueueParams
 ): Promise<ApiEnvelope<ReportQueueData>> {
   return adaptFetchReportQueue(params);
+}
+
+/** GET /v1/reports/reopen-requests — [LEO/DEO] danh sách yêu cầu mở lại báo cáo. */
+export async function fetchReopenRequests(
+  params?: ReopenRequestsParams
+): Promise<ApiEnvelope<ReopenRequestsData>> {
+  return adaptFetchReopenRequests(params);
+}
+
+/** POST /v1/reports/{id}/reopen-requests/{requestId}/approve — [LEO/DEO] duyệt mở lại. */
+export async function approveReopenRequest(
+  reportId: string,
+  requestId: string
+): Promise<ReopenRequestActionResult> {
+  return adaptApproveReopenRequest(reportId, requestId);
+}
+
+/** POST /v1/reports/{id}/reopen-requests/{requestId}/reject — [LEO/DEO] từ chối mở lại. */
+export async function rejectReopenRequest(
+  reportId: string,
+  requestId: string,
+  body: RejectReopenRequestInput
+): Promise<ReopenRequestActionResult> {
+  return adaptRejectReopenRequest(reportId, requestId, body);
 }
 
 /**
@@ -338,6 +381,9 @@ export async function fetchInspectionOfficerQueue(
 const reportService = {
   fetchReportDetail,
   fetchReportQueue,
+  fetchReopenRequests,
+  approveReopenRequest,
+  rejectReopenRequest,
   fetchDuplicateCandidates,
   fetchDuplicateCandidateDetail,
   fetchViolationRecurrenceCandidates,

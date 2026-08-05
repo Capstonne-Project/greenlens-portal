@@ -1309,6 +1309,11 @@ export function VerifyDetailClient({
 
   const handleAssigned = () => {
     setAssignDialogOpen(false);
+    // Embed Phân công (AssignReportsTab): quay về bảng thay vì ở lại detail.
+    if (onBack) {
+      onBack();
+      return;
+    }
     void refetch();
   };
 
