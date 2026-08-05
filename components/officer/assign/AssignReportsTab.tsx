@@ -964,7 +964,15 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   const handleAssigned = () => setSelected(new Set());
 
   if (detailReportId) {
-    return <VerifyDetailClient id={detailReportId} onBack={() => setDetailReportId(null)} />;
+    return (
+      <VerifyDetailClient
+        id={detailReportId}
+        onBack={() => {
+          setDetailReportId(null);
+          setSelected(new Set());
+        }}
+      />
+    );
   }
 
   return (
