@@ -87,7 +87,7 @@ export const officerKeys = {
   /** Danh sách nghi trùng lặp — BR-REP-031 */
   duplicateCandidates: () => [...officerKeys.all, 'duplicate-candidates'] as const,
   duplicateCandidatesList: (params: DuplicateCandidatesParams) =>
-    [...officerKeys.duplicateCandidates(), params] as const,
+    [...officerKeys.duplicateCandidates(), ...duplicateCandidatesListKeyParts(params)] as const,
   /** Chi tiết so sánh nghi trùng vs gốc — BR-REP-031/032 */
   duplicateCandidateDetail: (id: string) =>
     [...officerKeys.all, 'duplicate-candidate-detail', id] as const,
@@ -117,6 +117,12 @@ export const officerKeys = {
 
 /** Tách `search` khỏi key hàng đợi hồ sơ — tránh PII thô trên queryKey. */
 function inspectionQueueListKeyParts(params: InspectionOfficerQueueParams) {
+  const { search, ...safe } = params;
+  return [safe, stableSearchKey(search)] as const;
+}
+
+/** Tách `search` khỏi key nghi trùng lặp — tránh PII thô trên queryKey. */
+function duplicateCandidatesListKeyParts(params: DuplicateCandidatesParams) {
   const { search, ...safe } = params;
   return [safe, stableSearchKey(search)] as const;
 }

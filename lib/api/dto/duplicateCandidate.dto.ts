@@ -41,7 +41,33 @@ export interface DuplicateCandidatesDataDto {
   pagination: ReportQueuePaginationDto;
 }
 
+/** Swagger: CreatedAt | Severity | AiSimilarityScore | PriorityScore */
+export type DuplicateCandidatesSortByDto =
+  | 'CreatedAt'
+  | 'Severity'
+  | 'AiSimilarityScore'
+  | 'PriorityScore';
+
+/** Swagger: Asc | Desc */
+export type DuplicateCandidatesSortDirDto = 'Asc' | 'Desc';
+
+/**
+ * GET /v1/reports/duplicate-candidates — query params (all optional; BE defaults page=1, pageSize=20).
+ */
 export interface DuplicateCandidatesParamsDto {
   page?: number;
   pageSize?: number;
+  /** Swagger: Submitted | Verified | InProgress | Resolved | Reopened | Closed | Rejected | Duplicate */
+  status?: ReportQueueStatus;
+  severity?: ReportSeverityDto;
+  categoryId?: string;
+  wardCode?: string;
+  fromDate?: string;
+  toDate?: string;
+  search?: string;
+  duplicateDetectionSource?: string;
+  /** Swagger: `minAiSimilarityScore` (capital A in Ai). */
+  minAiSimilarityScore?: number;
+  sortBy?: DuplicateCandidatesSortByDto;
+  sortDir?: DuplicateCandidatesSortDirDto;
 }
