@@ -24,7 +24,7 @@ export function MapShellContent({ children, variant = 'map' }: MapShellContentPr
       <div
         className={cn(
           'flex h-full w-full min-w-0 flex-1 flex-col overflow-auto rounded-2xl bg-[#fffdfc] p-2 md:p-6',
-          'border border-[#e8e8e8]',
+          '',
           'border-l-2',
           // Left edge emphasis via shadow (not thicker stroke) — matches sample
           'shadow-[2px_0_10px_-2px_rgb(0_0_0/10%),0_1px_3px_rgb(0_0_0/4%)]'
