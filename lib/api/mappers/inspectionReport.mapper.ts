@@ -10,6 +10,7 @@ import type {
   InspectionPaymentDto,
   InspectionPaymentsHistoryDto,
   InspectionPaymentsHistoryResponseDto,
+  RecordInspectionPaymentResponseDto,
   ReportInspectionListItemDto,
   ReportInspectionsListResponseDto,
   ViolatingEntityDto,
@@ -23,6 +24,7 @@ import type {
   InspectionOfficerQueueItem,
   InspectionPayment,
   InspectionPaymentsHistory,
+  RecordInspectionPaymentResult,
   ReportInspectionSummary,
   ReportInspectionsList,
   ViolatingEntity,
@@ -209,6 +211,16 @@ export function mapAssignInspectionTeamResponse(
     message: dto.message ?? '',
     status: Number(dto.status) || 0,
     ...(typeof dto.data === 'string' ? { data: dto.data } : {}),
+  };
+}
+
+export function mapRecordInspectionPaymentResponse(
+  dto: RecordInspectionPaymentResponseDto
+): RecordInspectionPaymentResult {
+  return {
+    code: dto.code ?? '',
+    message: dto.message ?? '',
+    status: Number(dto.status) || 0,
   };
 }
 
