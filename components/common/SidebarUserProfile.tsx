@@ -197,8 +197,8 @@ export function MapSidebarUserProfile({
         ref={triggerRef}
         type="button"
         className={cn(
-          'group/sidebar flex w-full cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-transparent px-2 py-2 text-left text-neutral-700',
-          expanded && 'hover:bg-black/[0.03]'
+          'group/sidebar flex w-full cursor-pointer items-center gap-2 rounded-full border border-transparent bg-transparent px-2.5 py-2 text-left text-neutral-700 transition-colors',
+          expanded && 'hover:bg-white/60'
         )}
         onClick={() => {
           if (menuOpen) closeMenu();
