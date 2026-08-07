@@ -51,12 +51,12 @@ export function NotificationNavButton({ label, icon, active = false }: Notificat
       aria-expanded={isDrawerOpen}
       aria-label={badgeCount ? `${label}, ${badgeCount} chưa đọc` : label}
       className={cn(
-        'group/sidebar flex w-full cursor-pointer items-center justify-start gap-2 rounded-lg border px-2 py-2 text-left no-underline transition-colors',
+        'group/sidebar flex w-full cursor-pointer items-center justify-start gap-2 rounded-full border px-2.5 py-2 text-left no-underline transition-colors',
         'text-neutral-600',
-        !isActive && 'border-transparent hover:bg-black/[0.03] hover:text-neutral-800',
+        !isActive && 'border-transparent hover:bg-white/60 hover:text-neutral-800',
         isActive &&
           showLabel &&
-          'border-neutral-100 bg-white font-medium text-neutral-900 shadow-[0_1px_2px_rgb(15_23_42/5%)]',
+          'border-transparent bg-white font-medium text-neutral-900 shadow-[0_1px_2px_rgb(15_23_42/8%),0_1px_6px_rgb(15_23_42/6%)]',
         chipActive && 'border-transparent bg-transparent font-medium text-neutral-900 shadow-none'
       )}
     >
@@ -69,7 +69,7 @@ export function NotificationNavButton({ label, icon, active = false }: Notificat
         {chipActive ? (
           <span
             aria-hidden
-            className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-neutral-100 bg-white shadow-[0_1px_2px_rgb(15_23_42/5%)]"
+            className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border border-transparent bg-white shadow-[0_1px_2px_rgb(15_23_42/8%),0_1px_6px_rgb(15_23_42/6%)]"
           />
         ) : null}
         <span className="relative z-1">{icon}</span>

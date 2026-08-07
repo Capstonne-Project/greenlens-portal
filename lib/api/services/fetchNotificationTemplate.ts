@@ -7,6 +7,7 @@ import {
   adaptNotificationTemplateDetail,
   adaptNotificationTemplatesList,
   adaptPublishNotificationTemplate,
+  adaptTestNotificationTemplate,
   adaptUpdateNotificationTemplate,
 } from '@/lib/api/adapters/notificationTemplates.adapter';
 import type {
@@ -18,6 +19,10 @@ import type {
   PublishNotificationTemplateInput,
 } from '@/lib/api/models/notificationTemplate';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import type {
+  TestNotificationTemplateInput,
+  TestNotificationTemplateResult,
+} from '@/lib/api/models/gamification';
 
 export type {
   CreateNotificationTemplateResult,
@@ -65,6 +70,14 @@ export async function publishNotificationTemplate(
   return adaptPublishNotificationTemplate(id, body);
 }
 
+/** POST /v1/admin/notification-templates/{id}/test */
+export async function testNotificationTemplate(
+  id: string,
+  body: TestNotificationTemplateInput
+): Promise<ApiEnvelope<TestNotificationTemplateResult>> {
+  return adaptTestNotificationTemplate(id, body);
+}
+
 export default {
   fetchNotificationTemplates,
   fetchNotificationTemplateDetail,
@@ -72,4 +85,5 @@ export default {
   updateNotificationTemplate,
   deleteNotificationTemplate,
   publishNotificationTemplate,
+  testNotificationTemplate,
 };

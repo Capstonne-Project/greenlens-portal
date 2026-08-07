@@ -128,7 +128,7 @@ export function OverviewPollutionAnalytics({
       {data.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu loại ô nhiễm" />
       ) : (
-        <div className="flex h-[150px] gap-2">
+        <div className="flex h-[140px] gap-2 overflow-x-auto sm:h-[150px] sm:overflow-x-visible">
           <div className="flex w-6 shrink-0 flex-col justify-between py-0.5 text-[9px] tabular-nums text-muted-foreground">
             {gridSteps.map(step => (
               <span key={step} className="text-right">
@@ -457,6 +457,50 @@ export function OverviewPerformanceBars({
           )}
         </section>
       </div>
+    </CardShell>
+  );
+}
+
+/** Bar trend from GET /v1/dashboard/admin/report-trend */
+export function OverviewReportTrend({
+  points,
+}: {
+  points: import('@/lib/api/services/fetchAdminDashboard').AdminReportTrendPoint[] | undefined;
+}) {
+  const list = points ?? [];
+  const max = Math.max(1, ...list.map(p => p.count));
+
+  return (
+    <CardShell title="Xu hướng báo cáo" subtitle="Theo ngày · ADM-51">
+      {list.length === 0 ? (
+        <EmptyHint text="Chưa có dữ liệu xu hướng" />
+      ) : (
+        <div className="flex h-full min-h-[140px] items-end gap-1 px-1 pb-1">
+          {list.map(point => {
+            const h = Math.max(4, Math.round((point.count / max) * 100));
+            const label = point.date?.slice(5) ?? '';
+            return (
+              <div
+                key={point.date}
+                className="group flex min-w-0 flex-1 flex-col items-center gap-1"
+                title={`${point.date}: ${point.count}`}
+              >
+                <span className="hidden text-[9px] tabular-nums text-muted-foreground group-hover:inline">
+                  {point.count}
+                </span>
+                <div
+                  className="w-full max-w-[28px] rounded-t bg-indigo-500/90 transition-[height]"
+                  style={{ height: `${h}%` }}
+                  aria-hidden
+                />
+                <span className="truncate text-[8px] tabular-nums text-muted-foreground">
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </CardShell>
   );
 }

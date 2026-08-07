@@ -27,3 +27,23 @@ export interface ChangePasswordRequest {
 export interface ChangePasswordData {
   message: string;
 }
+
+/** POST /v1/auth/forgot-password */
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordData {
+  message: string;
+}
+
+/** POST /v1/auth/reset-password */
+export interface ResetPasswordRequest {
+  email: string;
+  otpCode: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordData {
+  message: string;
+}

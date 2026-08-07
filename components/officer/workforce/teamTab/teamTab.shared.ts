@@ -7,7 +7,7 @@ export const PAGE_SIZE = 10;
 
 export const TYPE_LABEL: Record<string, string> = {
   Cleanup: 'Dọn dẹp',
-  Inspection: 'Kiểm tra',
+  Inspection: 'Thanh tra',
   Survey: 'Khảo sát',
 };
 
@@ -38,7 +38,7 @@ export const STATUS_LABEL: Record<StatusFilter, string> = {
 export const TEAM_TYPE_LABEL: Record<TeamTypeFilter, string> = {
   all: 'Loại đội',
   Cleanup: 'Dọn dẹp (Cleanup)',
-  Inspection: 'Kiểm tra (Inspection)',
+  Inspection: 'Thanh tra (Inspection)',
 };
 
 export const AVAILABLE_LABEL: Record<AvailableFilter, string> = {

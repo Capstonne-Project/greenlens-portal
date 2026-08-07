@@ -19,6 +19,11 @@ import type {
   VerifyReportResult,
 } from '@/lib/api/models/reportAction';
 import apiService from '@/lib/api/core';
+import {
+  mergeIdempotencyConfig,
+  withOptionalIdempotency,
+  type IdempotencyRequestOptions,
+} from '@/lib/api/idempotency';
 
 function mapVerifyReportBody(body: VerifyReportInput): VerifyReportBodyDto {
   return {
@@ -37,26 +42,43 @@ function mapVerifyReportResponse(dto: VerifyReportResponseDto): VerifyReportResu
   };
 }
 
-export async function adaptAssignReport(reportId: string, body: AssignReportInput): Promise<void> {
+export async function adaptAssignReport(
+  reportId: string,
+  body: AssignReportInput,
+  options?: IdempotencyRequestOptions
+): Promise<void> {
   const payload: AssignReportBodyDto = {
     teams: body.teams.map(t => ({
       teamId: t.teamId,
       ...(t.note ? { note: t.note } : {}),
     })),
   };
-  await apiService.post(`/v1/reports/${reportId}/assign`, payload);
+  return withOptionalIdempotency(options?.idempotencyKey, async key => {
+    await apiService.post(
+      `/v1/reports/${reportId}/assign`,
+      payload,
+      mergeIdempotencyConfig(key, options?.config)
+    );
+  });
 }
 
 /** POST /v1/reports/{id}/dispatch-to-company — LEO điều phối task đến công ty (204). */
 export async function adaptDispatchToCompany(
   reportId: string,
-  body: DispatchToCompanyInput
+  body: DispatchToCompanyInput,
+  options?: IdempotencyRequestOptions
 ): Promise<void> {
   const payload: DispatchToCompanyBodyDto = {
     companyId: body.companyId,
     ...(body.note?.trim() ? { note: body.note.trim() } : {}),
   };
-  await apiService.post(`/v1/reports/${reportId}/dispatch-to-company`, payload);
+  return withOptionalIdempotency(options?.idempotencyKey, async key => {
+    await apiService.post(
+      `/v1/reports/${reportId}/dispatch-to-company`,
+      payload,
+      mergeIdempotencyConfig(key, options?.config)
+    );
+  });
 }
 
 /** PUT /v1/reports/{id}/reassign — chuyển giao đội cùng loại (LEO/DEO). */
@@ -75,14 +97,18 @@ export async function adaptReassignReport(
 /** PUT /v1/reports/{id}/verify — LEO xác minh báo cáo. */
 export async function adaptVerifyReport(
   reportId: string,
-  body: VerifyReportInput
+  body: VerifyReportInput,
+  options?: IdempotencyRequestOptions
 ): Promise<VerifyReportResult> {
   const payload = mapVerifyReportBody(body);
-  const res = await apiService.put<VerifyReportResponseDto>(
-    `/v1/reports/${reportId}/verify`,
-    payload
-  );
-  return mapVerifyReportResponse(res.data);
+  return withOptionalIdempotency(options?.idempotencyKey, async key => {
+    const res = await apiService.put<VerifyReportResponseDto>(
+      `/v1/reports/${reportId}/verify`,
+      payload,
+      mergeIdempotencyConfig(key, options?.config)
+    );
+    return mapVerifyReportResponse(res.data);
+  });
 }
 
 /** PUT /v1/reports/{id}/reject — LEO từ chối báo cáo. */

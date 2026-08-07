@@ -40,28 +40,30 @@ export function CompanyOverviewHeaderBar() {
   const initials = companyInitials(company.name);
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-      <div
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-[10px] font-bold text-white"
-        aria-hidden
-      >
-        {initials}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <p className="truncate text-sm font-semibold tracking-tight text-foreground">
-            {company.name}
-          </p>
-          <CompanyStatusBadge status={company.status} className="shrink-0 scale-90" />
+    <div className="flex min-w-0 flex-1 flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div className="flex min-w-0 items-center gap-2 md:gap-3">
+        <div
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-[10px] font-bold text-white"
+          aria-hidden
+        >
+          {initials}
         </div>
-        <p className="truncate text-[10px] text-muted-foreground">
-          {company.departmentName} · MST {company.taxCode} · Thành lập{' '}
-          {formatCompanyDate(company.createdAt)}
-        </p>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+              {company.name}
+            </p>
+            <CompanyStatusBadge status={company.status} className="shrink-0 scale-90" />
+          </div>
+          <p className="hidden truncate text-[10px] text-muted-foreground sm:block">
+            {company.departmentName} · MST {company.taxCode} · Thành lập{' '}
+            {formatCompanyDate(company.createdAt)}
+          </p>
+        </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-1.5 lg:shrink-0">
         <div
           className="flex shrink-0 rounded-lg border border-border bg-muted/30 p-0.5"
           role="radiogroup"

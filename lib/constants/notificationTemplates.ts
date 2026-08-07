@@ -32,6 +32,15 @@ export const NOTIFICATION_TEMPLATE_TYPES = [
   'ReportOverdue',
   'LevelUp',
   'DuplicateReviewNeeded',
+  'CommunityCleanupOpened',
+  'CommunityCleanupLeaderAssigned',
+  'CommunityCleanupStarted',
+  'CommunityCleanupProgressUpdated',
+  'CommunityCleanupVerificationSubmitted',
+  'CommunityCleanupVerificationRejected',
+  'CommunityCleanupVerified',
+  'CommunityCleanupCheckInReminder',
+  'BadgeProgressNear',
 ] as const;
 
 export type NotificationTemplateType = (typeof NOTIFICATION_TEMPLATE_TYPES)[number];
@@ -64,6 +73,15 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   StaffInvitationReceived: 'Lời mời vào ward team',
   StaffInvitationAccepted: 'Chấp nhận lời mời',
   StaffInvitationDeclined: 'Từ chối lời mời',
+  CommunityCleanupOpened: 'Chương trình dọn cộng đồng mở',
+  CommunityCleanupLeaderAssigned: 'Được chỉ định làm Leader',
+  CommunityCleanupStarted: 'Dọn cộng đồng bắt đầu',
+  CommunityCleanupProgressUpdated: 'Cập nhật tiến độ dọn cộng đồng',
+  CommunityCleanupVerificationSubmitted: 'Cần duyệt hoàn thành dọn cộng đồng',
+  CommunityCleanupVerificationRejected: 'Minh chứng dọn cộng đồng bị từ chối',
+  CommunityCleanupVerified: 'Dọn cộng đồng đã hoàn thành',
+  CommunityCleanupCheckInReminder: 'Nhắc check-in dọn cộng đồng',
+  BadgeProgressNear: 'Sắp đạt huy hiệu',
 };
 
 export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 10;

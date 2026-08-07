@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'motion/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
+import { ChevronDown } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
+import { isFontAwesomeNavIcon } from '@/lib/constants/mapShellNav';
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import { MapSidebarUserProfile } from '@/components/common/SidebarUserProfile';
@@ -68,10 +69,50 @@ function NavIcon({ item }: { item: MapShellNavItem }) {
   if (item.animatedIcon === 'filled-bell') {
     return <FilledBellIcon size={20} color="currentColor" className={ICON_CLASS} />;
   }
-  if (item.icon) {
+  if (!item.icon) return null;
+  if (isFontAwesomeNavIcon(item.icon)) {
     return <FontAwesomeIcon icon={item.icon} className={ICON_CLASS} />;
   }
-  return null;
+  const LineIcon = item.icon;
+  // stroke 1.6 — mảnh hơn default 2 của lucide, khớp tông line-art của sidebar kính mờ.
+  return <LineIcon className={ICON_CLASS} strokeWidth={1.6} />;
+}
+
+/**
+ * Section label tĩnh (kiểu PROLOGISTIC "LOGISTICS / FINANCE") — không bấm được.
+ * Collapse: opacity + height + margin co về 0 (overflow hidden) để icon sát nhau mượt;
+ * expanded: hiện lại khoảng cách trên (trừ mục đầu).
+ */
+function NavSectionLabel({
+  label,
+  withTopSpacing = true,
+}: {
+  label: string;
+  /** false cho label đầu tiên (tương đương first:mt-0). */
+  withTopSpacing?: boolean;
+}) {
+  const { open, animate } = useSidebar();
+  const showLabel = !animate || open;
+
+  return (
+    <motion.div
+      initial={false}
+      animate={{
+        opacity: showLabel ? 1 : 0,
+        height: showLabel ? 'auto' : 0,
+        marginTop: showLabel && withTopSpacing ? 8 : 0,
+      }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      aria-hidden={!showLabel}
+      className={cn(
+        'overflow-hidden px-2 text-[11px] font-semibold tracking-[0.08em] whitespace-pre',
+        'text-neutral-400 uppercase select-none',
+        !showLabel && 'pointer-events-none'
+      )}
+    >
+      {label}
+    </motion.div>
+  );
 }
 
 function isInSection(path: string, item: MapShellNavItem): boolean {
@@ -108,10 +149,10 @@ function NavDropdown({
     <div>
       <div
         className={cn(
-          'group/navrow flex items-center rounded-lg border transition-colors',
+          'group/navrow flex items-center rounded-full border transition-colors',
           rowActive && showLabel
-            ? 'border-neutral-100 bg-white text-neutral-900 shadow-[0_1px_2px_rgb(15_23_42/5%)]'
-            : 'border-transparent text-neutral-600 hover:bg-black/[0.03] hover:text-neutral-800',
+            ? 'border-transparent bg-white text-neutral-900 shadow-[0_1px_2px_rgb(15_23_42/8%),0_1px_6px_rgb(15_23_42/6%)]'
+            : 'border-transparent text-neutral-600 hover:bg-white/60 hover:text-neutral-800',
           collapsedActive && 'text-neutral-900 shadow-none'
         )}
       >
@@ -132,7 +173,7 @@ function NavDropdown({
             {collapsedActive ? (
               <span
                 aria-hidden
-                className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-neutral-100 bg-white shadow-[0_1px_2px_rgb(15_23_42/5%)]"
+                className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border border-transparent bg-white shadow-[0_1px_2px_rgb(15_23_42/8%),0_1px_6px_rgb(15_23_42/6%)]"
               />
             ) : null}
             <span className="relative z-1">
@@ -165,9 +206,9 @@ function NavDropdown({
           tabIndex={showLabel ? undefined : -1}
           aria-label={dropOpen ? `Thu gọn ${item.label}` : `Mở rộng ${item.label}`}
         >
-          <FontAwesomeIcon
-            icon={faChevronDown}
-            className={cn('size-3 transition-transform duration-200', dropOpen && 'rotate-180')}
+          <ChevronDown
+            strokeWidth={1.6}
+            className={cn('size-3.5 transition-transform duration-200', dropOpen && 'rotate-180')}
           />
         </button>
       </div>
@@ -187,10 +228,10 @@ function NavDropdown({
                   key={child.id}
                   href={child.href}
                   className={cn(
-                    'rounded-lg border px-2.5 py-1.5 text-[13px] font-medium no-underline transition-colors',
+                    'rounded-full border px-3 py-1.5 text-[13px] font-medium no-underline transition-colors',
                     childActive
-                      ? 'border-neutral-100 bg-white text-neutral-900 shadow-[0_1px_2px_rgb(15_23_42/5%)]'
-                      : 'border-transparent text-neutral-600 hover:bg-black/[0.03] hover:text-neutral-800'
+                      ? 'border-transparent bg-white text-neutral-900 shadow-[0_1px_2px_rgb(15_23_42/8%),0_1px_6px_rgb(15_23_42/6%)]'
+                      : 'border-transparent text-neutral-600 hover:bg-white/60 hover:text-neutral-800'
                   )}
                   aria-current={childActive ? 'page' : undefined}
                   tabIndex={sidebarOpen && dropOpen ? undefined : -1}
@@ -263,26 +304,31 @@ export function AppSidebar({
             className="mt-8 flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto scrollbar-hide"
             aria-label="Menu chính"
           >
-            {config.mainNav.map(item =>
-              item.children?.length ? (
-                <NavDropdown key={item.id} item={item} activeId={activeId} pathname={pathname} />
-              ) : (
-                <SidebarLink
-                  key={item.id}
-                  link={{
-                    label: item.label,
-                    href: item.href,
-                    icon: <NavIcon item={item} />,
-                    badge: item.badge,
-                  }}
-                  active={activeId === item.id}
-                />
-              )
-            )}
+            {config.mainNav.map((item, index) => (
+              <div key={item.id} className="flex flex-col">
+                {item.sectionLabel ? (
+                  <NavSectionLabel label={item.sectionLabel} withTopSpacing={index > 0} />
+                ) : null}
+                {item.children?.length ? (
+                  <NavDropdown item={item} activeId={activeId} pathname={pathname} />
+                ) : (
+                  <SidebarLink
+                    link={{
+                      label: item.label,
+                      href: item.href,
+                      icon: <NavIcon item={item} />,
+                      badge: item.badge,
+                    }}
+                    active={activeId === item.id}
+                  />
+                )}
+              </div>
+            ))}
           </nav>
         </div>
 
-        <div className="relative z-10 flex shrink-0 flex-col gap-2 overflow-visible bg-[#f7f7f7] pt-2">
+        {/* Nền mờ riêng để nav cuộn phía sau không "đè" lên footer, vẫn thấy lớp glass. */}
+        <div className="sidebar-footer-glass relative z-10 flex shrink-0 flex-col gap-2 overflow-visible border-t border-slate-900/6 pt-2">
           <NotificationNavButton
             label={notifications.label}
             icon={<NavIcon item={notifications} />}

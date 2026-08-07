@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faRightToBracket } from '@fortawesome/free-solid-svg-icons';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
-import { getActiveNavId } from '@/lib/constants/mapShellNav';
+import { getActiveNavId, isFontAwesomeNavIcon } from '@/lib/constants/mapShellNav';
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import {
@@ -58,11 +58,14 @@ function MapNavIcon({ item }: { item: MapShellNavItem }) {
     );
   }
 
-  if (item.icon) {
+  if (!item.icon) return null;
+
+  if (isFontAwesomeNavIcon(item.icon)) {
     return <FontAwesomeIcon icon={item.icon} className={mapNavItemIconClass()} />;
   }
 
-  return null;
+  const LineIcon = item.icon;
+  return <LineIcon className={mapNavItemIconClass()} strokeWidth={1.6} />;
 }
 
 function NavItem({

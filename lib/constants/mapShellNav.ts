@@ -1,16 +1,20 @@
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
-  faBuilding,
-  faClipboardCheck,
-  faClipboardList,
-  faEarthAmericas,
-  faFileLines,
-  faGaugeHigh,
-  faGear,
-  faHandHoldingHeart,
-  faRoute,
-  faUsers,
-} from '@fortawesome/free-solid-svg-icons';
+  Building2,
+  ClipboardCheck,
+  ClipboardList,
+  Copy,
+  FileText,
+  Gauge,
+  Globe2,
+  HandHeart,
+  History,
+  ReceiptText,
+  RotateCcw,
+  Route,
+  Settings,
+  Users,
+} from 'lucide-react';
 import { parseOfficerApiRole } from '@/lib/constants/officerRoles';
 import type { UserRole } from '@/lib/constants/systemRoles';
 
@@ -22,16 +26,37 @@ export type MapShellNavChildItem = {
 
 export type MapShellAnimatedIcon = 'filled-bell';
 
+/**
+ * Icon line-art (lucide) — stroke đồng nhất, hợp tông sidebar kính mờ.
+ * `IconDefinition` (FontAwesome solid) vẫn được nhận cho các shell chưa đổi.
+ */
+export type MapShellLineIcon = React.ComponentType<{
+  className?: string;
+  strokeWidth?: number | string;
+}>;
+
+/** FontAwesome `IconDefinition` là plain object có `iconName`; lucide là component. */
+export function isFontAwesomeNavIcon(
+  icon: IconDefinition | MapShellLineIcon
+): icon is IconDefinition {
+  return typeof icon === 'object' && icon !== null && 'iconName' in icon;
+}
+
 export type MapShellNavItem = {
   id: string;
   label: string;
   href: string;
-  icon?: IconDefinition;
+  icon?: IconDefinition | MapShellLineIcon;
   animatedIcon?: MapShellAnimatedIcon;
   /** Optional count badge (e.g. queue / unread). */
   badge?: number;
   /** Mục con trong sidebar (dropdown) — giữ type; hiện LEO không dùng. */
   children?: MapShellNavChildItem[];
+  /**
+   * Section label tĩnh (kiểu "LOGISTICS / FINANCE") render NGAY TRÊN item này.
+   * Không phải nav bấm được — chỉ là tiêu đề phân vùng. Dùng chung cho mọi role qua AppSidebar.
+   */
+  sectionLabel?: string;
 };
 
 export type MapShellBrand = {
@@ -63,7 +88,7 @@ const SYSTEM_NAV: MapShellSystemNav = {
     id: 'settings',
     label: 'Cài đặt',
     href: '/officer/settings',
-    icon: faGear,
+    icon: Settings,
   },
 };
 
@@ -72,55 +97,79 @@ const NAV_ITEMS = {
     id: 'map',
     label: 'Bản đồ',
     href: '/officer/map',
-    icon: faEarthAmericas,
+    icon: Globe2,
   },
   overview: {
     id: 'overview',
     label: 'Tổng quan',
     href: '/officer/dashboard',
-    icon: faGaugeHigh,
+    icon: Gauge,
   },
   verify: {
     id: 'verify',
     label: 'Xác minh',
     href: '/officer/verify',
-    icon: faClipboardCheck,
+    icon: ClipboardCheck,
   },
   assign: {
     id: 'assign',
     label: 'Phân công',
     href: '/officer/assign',
-    icon: faClipboardList,
+    icon: ClipboardList,
   },
   tracking: {
     id: 'tracking',
     label: 'Theo dõi xử lý',
     href: '/officer/tracking',
-    icon: faRoute,
+    icon: Route,
+  },
+  reopen: {
+    id: 'reopen',
+    label: 'Xử lý lại',
+    href: '/officer/reopen',
+    icon: RotateCcw,
   },
   community: {
     id: 'community',
     label: 'Dọn cộng đồng',
     href: '/officer/community',
-    icon: faHandHoldingHeart,
+    icon: HandHeart,
+  },
+  duplicates: {
+    id: 'duplicates',
+    label: 'Trùng lặp',
+    href: '/officer/duplicates',
+    icon: Copy,
+  },
+  recurrence: {
+    id: 'recurrence',
+    label: 'Tái diễn',
+    href: '/officer/recurrence',
+    icon: History,
+  },
+  inspections: {
+    id: 'inspections',
+    label: 'Hồ sơ xử phạt',
+    href: '/officer/inspections',
+    icon: ReceiptText,
   },
   workforce: {
     id: 'workforce',
     label: 'Đội ngũ',
     href: '/officer/workforce',
-    icon: faUsers,
+    icon: Users,
   },
   companies: {
     id: 'companies',
     label: 'Doanh nghiệp',
     href: '/officer/companies',
-    icon: faBuilding,
+    icon: Building2,
   },
   reports: {
     id: 'reports',
     label: 'Báo cáo',
     href: '/officer/reports',
-    icon: faFileLines,
+    icon: FileText,
   },
 } as const satisfies Record<string, MapShellNavItem>;
 
@@ -139,24 +188,45 @@ const BRAND_DEFAULT: MapShellBrand = {
   tagline: 'Hệ thống điều hành',
 };
 
+/** Gắn section label tĩnh lên item (label render phía trên item trong sidebar). */
+function withSection(item: MapShellNavItem, sectionLabel: string): MapShellNavItem {
+  return { ...item, sectionLabel };
+}
+
 /** Sidebar map shell — nav chính theo role (DEO / LEO). */
 export function getMapShellNavForRole(
   systemRole: UserRole | string | undefined
 ): MapShellNavConfig {
   const role = parseOfficerApiRole(systemRole);
 
-  const mainNav: MapShellNavItem[] = [NAV_ITEMS.map, NAV_ITEMS.overview];
+  const mainNav: MapShellNavItem[] = [];
 
   if (role === 'DEO') {
-    mainNav.push(NAV_ITEMS.reports, NAV_ITEMS.companies);
+    mainNav.push(
+      withSection(NAV_ITEMS.map, 'Tổng quan'),
+      NAV_ITEMS.overview,
+      withSection(NAV_ITEMS.reports, 'Báo cáo'),
+      NAV_ITEMS.duplicates,
+      NAV_ITEMS.recurrence,
+      NAV_ITEMS.inspections,
+      withSection(NAV_ITEMS.companies, 'Quản lý')
+    );
   } else if (role === 'LEO') {
     mainNav.push(
-      NAV_ITEMS.verify,
+      withSection(NAV_ITEMS.map, 'Tổng quan'),
+      NAV_ITEMS.overview,
+      withSection(NAV_ITEMS.verify, 'Báo cáo'),
       NAV_ITEMS.assign,
       NAV_ITEMS.tracking,
-      NAV_ITEMS.community,
-      NAV_ITEMS.workforce
+      NAV_ITEMS.reopen,
+      NAV_ITEMS.recurrence,
+      NAV_ITEMS.inspections,
+      NAV_ITEMS.duplicates,
+      withSection(NAV_ITEMS.community, 'Cộng đồng'),
+      withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
+  } else {
+    mainNav.push(NAV_ITEMS.map, NAV_ITEMS.overview);
   }
 
   const brand = role === 'LEO' ? BRAND_LEO : role === 'DEO' ? BRAND_DEO : BRAND_DEFAULT;

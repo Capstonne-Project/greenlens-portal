@@ -8,10 +8,12 @@ import type { NotificationPreference } from '@/lib/api/models/notification';
 import { cn } from '@/lib/utils';
 import { getNotificationMutationError, notificationTypeLabel } from '@/utils/notificationUi';
 import {
+  AlarmClock,
   AlertTriangle,
   BadgeCheck,
   Bell,
   BellRing,
+  CheckCircle2,
   ClipboardCheck,
   Clock3,
   ChevronDown,
@@ -20,11 +22,15 @@ import {
   Gavel,
   Loader2,
   Mail,
+  PlayCircle,
   RefreshCw,
   ShieldAlert,
+  Sparkles,
+  TrendingUp,
   Trophy,
   UserRoundPlus,
   Users,
+  XCircle,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -271,6 +277,18 @@ function resolveTypeDescription(type: string): string {
     StaffInvitationReceived: 'Thông báo khi bạn nhận được lời mời tham gia ward team.',
     StaffInvitationAccepted: 'Thông báo khi lời mời của bạn được chấp nhận.',
     StaffInvitationDeclined: 'Thông báo khi lời mời của bạn bị từ chối.',
+    CommunityCleanupOpened: 'Thông báo khi chương trình dọn cộng đồng mới được mở.',
+    CommunityCleanupLeaderAssigned:
+      'Thông báo khi bạn được chỉ định làm Leader chương trình dọn cộng đồng.',
+    CommunityCleanupStarted: 'Thông báo khi Leader check-in và chương trình dọn cộng đồng bắt đầu.',
+    CommunityCleanupProgressUpdated:
+      'Thông báo khi Leader cập nhật tiến độ chương trình dọn cộng đồng.',
+    CommunityCleanupVerificationSubmitted:
+      'Thông báo khi Leader nộp minh chứng hoàn thành cần bạn duyệt.',
+    CommunityCleanupVerificationRejected: 'Thông báo khi minh chứng hoàn thành bị từ chối.',
+    CommunityCleanupVerified: 'Thông báo khi chương trình dọn cộng đồng được xác nhận hoàn thành.',
+    CommunityCleanupCheckInReminder: 'Nhắc nhở check-in trước giờ dọn dẹp cộng đồng.',
+    BadgeProgressNear: 'Thông báo khi bạn sắp đạt một huy hiệu mới.',
   };
   return byType[type] ?? 'Thông báo liên quan đến hoạt động tài khoản và nghiệp vụ xử lý báo cáo.';
 }
@@ -293,6 +311,15 @@ function resolveTypeLabel(type: string): string {
     ReportUnassigned: 'Chưa phân công xử lý',
     ReportAutoClosed: 'Tự động đóng',
     DuplicateReviewNeeded: 'Cần xem xét trùng lặp',
+    CommunityCleanupOpened: 'Dọn cộng đồng mở',
+    CommunityCleanupLeaderAssigned: 'Được chỉ định làm Leader',
+    CommunityCleanupStarted: 'Dọn cộng đồng bắt đầu',
+    CommunityCleanupProgressUpdated: 'Cập nhật tiến độ dọn cộng đồng',
+    CommunityCleanupVerificationSubmitted: 'Cần duyệt hoàn thành',
+    CommunityCleanupVerificationRejected: 'Minh chứng bị từ chối',
+    CommunityCleanupVerified: 'Dọn cộng đồng hoàn thành',
+    CommunityCleanupCheckInReminder: 'Nhắc check-in',
+    BadgeProgressNear: 'Sắp đạt huy hiệu',
   };
   return byType[type] ?? notificationTypeLabel(type);
 }
@@ -332,6 +359,15 @@ function renderPreferenceIcon(type: string): React.ReactNode {
     StaffInvitationDeclined: UserRoundPlus,
     CleanupProgressStale: FileWarning,
     CleanupTaskAssigned: ClipboardCheck,
+    CommunityCleanupOpened: Users,
+    CommunityCleanupLeaderAssigned: UserRoundPlus,
+    CommunityCleanupStarted: PlayCircle,
+    CommunityCleanupProgressUpdated: TrendingUp,
+    CommunityCleanupVerificationSubmitted: ClipboardCheck,
+    CommunityCleanupVerificationRejected: XCircle,
+    CommunityCleanupVerified: CheckCircle2,
+    CommunityCleanupCheckInReminder: AlarmClock,
+    BadgeProgressNear: Sparkles,
   };
 
   const Icon = iconByType[type];

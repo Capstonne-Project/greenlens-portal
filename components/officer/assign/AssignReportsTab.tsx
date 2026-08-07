@@ -22,24 +22,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VerifyDetailClient } from '@/components/officer/verify/VerifyDetailClient';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useAssignReportQueue } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
-import type { ReportSeverity } from '@/lib/api/services/fetchReport';
-import {
-  REPORT_SEVERITY_BADGE_CLASSES,
-  REPORT_SEVERITY_LABEL_VI,
-} from '@/lib/constants/reportActions';
-import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
-import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
-import { ChevronDown, HeartHandshake, ImageIcon, Loader2, Search, UserPlus } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  HeartHandshake,
+  ImageIcon,
+  Loader2,
+  Search,
+  UserPlus,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
+import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
+import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
+import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import type { ReportSeverity } from '@/lib/api/models/report';
 
 const REPORT_PAGE_SIZE = 8;
 
@@ -48,70 +56,146 @@ const FILTER_WIDTH_OPEN = '14rem';
 const FILTER_MOTION = { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const };
 
 type DataColumnKey =
-  | 'image'
   | 'code'
-  | 'category'
-  | 'severity'
-  | 'status'
-  | 'priority'
   | 'address'
+  | 'severity'
   | 'created'
+  | 'status'
   | 'verifySla'
   | 'resolveSla';
 
 type ColumnKey = 'select' | DataColumnKey | 'actions';
 
+const FIRST_COL: ColumnKey = 'select';
+const LAST_COL: ColumnKey = 'actions';
+
 /**
  * Padding / chữ / badge co theo `@container/assign-table`
- * (sidebar mở + panel bộ lọc hẹp content — tránh wrap loạn).
- * Chiều cao hàng (py) khớp VerifyPageClient.
+ * — first/last cột lệch mép giống DuplicatesPageClient.
  */
 function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
   const y =
     layer === 'head' ? 'py-2.5 @[44rem]/assign-table:py-3.5' : 'py-2.5 @[44rem]/assign-table:py-4';
-  if (colKey === 'select') {
-    return cn(y, 'px-1 @[44rem]/assign-table:px-2');
+  if (colKey === FIRST_COL) {
+    // Checkbox ~16px — pad vừa đủ, tránh w% hẹp + overflow cắt ô tick dưới label kế.
+    return cn('px-0', y, 'ps-3 pe-2 @[44rem]/assign-table:ps-4 @[44rem]/assign-table:pe-2');
   }
-  if (colKey === 'actions') {
-    return cn(y, 'px-1 @[44rem]/assign-table:px-2.5');
+  if (colKey === LAST_COL) {
+    return cn('px-0', y, 'ps-1.5 pe-4 @[44rem]/assign-table:ps-3 @[44rem]/assign-table:pe-6');
   }
-  return cn(y, 'px-1 @[44rem]/assign-table:px-2.5 @[56rem]/assign-table:px-3');
+  return cn(y, 'px-1.5 @[44rem]/assign-table:px-3 @[56rem]/assign-table:px-4');
 }
 
-const BADGE_BASE =
-  'inline-flex max-w-full min-w-0 items-center truncate rounded-lg font-medium leading-none';
-const BADGE_SIZE =
-  'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/assign-table:px-2 @[44rem]/assign-table:py-0.5 @[44rem]/assign-table:text-[11px] @[56rem]/assign-table:text-xs';
+const ROW_BORDER = 'border-b border-slate-200';
 
-const CELL_TEXT =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-700 @[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm';
-const CELL_TEXT_MUTED =
-  'block min-w-0 truncate text-[11px] leading-snug text-slate-600 @[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm';
+/** Traffic-light text — parity DuplicatesPageClient. */
+const SEVERITY_TEXT_CLASSES: Record<ReportSeverity, string> = {
+  Critical: 'text-red-700',
+  High: 'text-red-600',
+  Medium: 'text-orange-600',
+  Low: 'text-green-600',
+};
+
+const BADGE_BASE =
+  'inline-flex max-w-full min-w-0 items-center truncate rounded-full font-medium leading-none';
+const BADGE_SIZE =
+  'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/assign-table:px-2 @[44rem]/assign-table:py-0.5 @[44rem]/assign-table:text-xs';
+
 const CELL_META =
   'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/assign-table:text-xs';
 const HEAD_LABEL =
   'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/assign-table:text-[0.6875rem]';
 
+/** Thumbnail vuông — parity DuplicatesPageClient. */
+const THUMB_SQUARE =
+  'relative size-9 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80 @[44rem]/assign-table:size-10';
+
 /**
- * Widths as % of table (sum ≈ 100%). Fluid — không min-width cứng.
+ * Text truncated → shadcn Tooltip.
+ * Đo overflow một lần khi mount/đổi text (không ResizeObserver — tránh ~N observers/table).
+ */
+function EllipsisTooltip({
+  text,
+  className,
+  lineClamp = false,
+  children,
+}: {
+  text: string;
+  className?: string;
+  /** true khi dùng line-clamp (so scrollHeight), false khi truncate 1 dòng (scrollWidth). */
+  lineClamp?: boolean;
+  children?: ReactNode;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const display = text.trim() || '—';
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || display === '—') {
+      setTruncated(false);
+      return;
+    }
+    setTruncated(
+      lineClamp ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1
+    );
+  }, [display, lineClamp, className, children]);
+
+  const canTip = truncated && display !== '—';
+
+  return (
+    <Tooltip
+      delayDuration={200}
+      open={canTip ? open : false}
+      onOpenChange={next => {
+        if (canTip) setOpen(next);
+      }}
+    >
+      <TooltipTrigger asChild>
+        <span ref={ref} className={className}>
+          {children ?? display}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="max-w-xs whitespace-pre-wrap break-words text-left font-normal sm:max-w-sm"
+      >
+        {display}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
+ * Widths as % of table. `code` = identity (thumb + id/code/category).
+ * Header identity = "Báo cáo" (không dùng "Mã báo cáo"). Không cột điểm ưu tiên.
+ * Thứ tự: địa chỉ → mức độ → ngày tạo → trạng thái → SLA.
  */
 const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
-  { key: 'select', label: REPORT_QUEUE_COLUMN_LABEL.select, className: 'w-[3%]' },
-  { key: 'image', label: REPORT_QUEUE_COLUMN_LABEL.image, className: 'w-[6%] min-w-0' },
-  { key: 'code', label: REPORT_QUEUE_COLUMN_LABEL.code, className: 'w-[9%] min-w-0' },
-  { key: 'category', label: REPORT_QUEUE_COLUMN_LABEL.category, className: 'w-[9%] min-w-0' },
-  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[8%] min-w-0' },
-  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[9%] min-w-0' },
-  { key: 'priority', label: REPORT_QUEUE_COLUMN_LABEL.priority, className: 'w-[7%] min-w-0' },
+  {
+    key: 'select',
+    label: REPORT_QUEUE_COLUMN_LABEL.select,
+    // Fixed width (không dùng %) — table-fixed + checkbox không bị cột «Báo cáo» đè.
+    className: 'w-11 @[44rem]/assign-table:w-12',
+  },
+  {
+    key: 'code',
+    label: 'Báo cáo',
+    className: 'w-[20%] min-w-0 @[44rem]/assign-table:w-[22%]',
+  },
   {
     key: 'address',
     label: REPORT_QUEUE_COLUMN_LABEL.address,
-    className: 'w-[13%] min-w-0 max-w-0',
+    className: 'w-[16%] min-w-0 max-w-0',
   },
-  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[9%] min-w-0' },
-  { key: 'verifySla', label: REPORT_QUEUE_COLUMN_LABEL.verifySla, className: 'w-[8%] min-w-0' },
-  { key: 'resolveSla', label: REPORT_QUEUE_COLUMN_LABEL.resolveSla, className: 'w-[7%] min-w-0' },
-  { key: 'actions', label: REPORT_QUEUE_COLUMN_LABEL.community, className: 'w-[12%] min-w-0' },
+  { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
+  { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
+  { key: 'verifySla', label: REPORT_QUEUE_COLUMN_LABEL.verifySla, className: 'w-[9%] min-w-0' },
+  { key: 'resolveSla', label: REPORT_QUEUE_COLUMN_LABEL.resolveSla, className: 'w-[8%] min-w-0' },
+  { key: 'actions', label: REPORT_QUEUE_COLUMN_LABEL.community, className: 'w-[13%] min-w-0' },
 ];
 
 const SEVERITY_OPTIONS: Array<{ label: string; value: ReportSeverity }> = [
@@ -432,110 +516,190 @@ function SlaCell({ dueAt }: { dueAt: string | null }) {
   }
   const sla = formatSla(dueAt);
   return (
-    <span
+    <EllipsisTooltip
+      text={sla.text}
       className={cn(CELL_META, 'font-medium', sla.overdue ? 'text-red-600' : 'text-slate-700')}
-      title={sla.text}
-    >
-      {sla.text}
-    </span>
+    />
   );
 }
 
 function CreatedCell({ iso }: { iso: string }) {
   const { date, time } = formatCreatedParts(iso);
   return (
-    <span className={cn(CELL_META, 'text-slate-800')} title={`${date} ${time}`}>
-      <span className="font-medium">{date}</span>
-      {/* Hẹp (sidebar / filter): ẩn giờ — tránh wrap 2 dòng. */}
-      <span className="hidden text-slate-400 @[48rem]/assign-table:inline"> {time}</span>
-    </span>
-  );
-}
-
-/** Landscape thumb — co theo container (đồng bộ chiều cao hàng với VerifyPageClient). */
-const THUMB_FRAME =
-  'relative h-8 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100 @[44rem]/assign-table:h-9 @[44rem]/assign-table:w-14 @[56rem]/assign-table:h-10 @[56rem]/assign-table:w-16';
-
-function ReportThumb({ url, alt }: { url: string | null; alt: string }) {
-  if (!url) {
-    return (
-      <div className={cn(THUMB_FRAME, 'flex items-center justify-center text-slate-400')}>
-        <ImageIcon
-          className="size-3 @[44rem]/assign-table:size-3.5 @[56rem]/assign-table:size-4"
-          aria-hidden
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className={THUMB_FRAME}>
-      <Image
-        src={url}
-        alt={alt}
-        fill
-        sizes="(max-width: 640px) 3rem, 4rem"
-        className="object-cover"
-        unoptimized
+    <div className="min-w-0 space-y-0.5">
+      <EllipsisTooltip
+        text={date}
+        className={cn(
+          'block truncate text-[10px] font-medium leading-snug text-slate-800',
+          '@[44rem]/assign-table:text-[11px] @[56rem]/assign-table:text-xs'
+        )}
+      />
+      <EllipsisTooltip
+        text={time}
+        className={cn(
+          'block truncate text-[10px] tabular-nums leading-snug text-slate-500',
+          '@[44rem]/assign-table:text-xs'
+        )}
       />
     </div>
   );
 }
 
-function SeverityBadge({ severity }: { severity: ReportSeverity }) {
+async function copyText(value: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(successMessage);
+  } catch {
+    toast.error('Không thể sao chép. Hãy chọn và copy thủ công.');
+  }
+}
+
+function CopyIconButton({
+  value,
+  label,
+  successMessage,
+}: {
+  value: string;
+  label: string;
+  successMessage: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
   return (
-    <span
-      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_SEVERITY_BADGE_CLASSES[severity])}
-      title={REPORT_SEVERITY_LABEL_VI[severity]}
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={e => {
+        e.stopPropagation();
+        void (async () => {
+          await copyText(value, successMessage);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        })();
+      }}
+      className={cn(
+        'inline-flex size-5 shrink-0 items-center justify-center rounded text-slate-400',
+        'opacity-0 transition-opacity group-hover/copyrow:opacity-100',
+        'hover:bg-slate-100 hover:text-slate-700',
+        'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+      )}
     >
-      {REPORT_SEVERITY_LABEL_VI[severity]}
-    </span>
+      {copied ? (
+        <Check className="size-3 text-emerald-600" aria-hidden />
+      ) : (
+        <Copy className="size-3" aria-hidden />
+      )}
+    </button>
+  );
+}
+
+/**
+ * Identity cột `code`: thumb vuông + stack id / code / categoryName
+ * — parity DuplicatesPageClient ReportIdentityCell.
+ */
+function ReportIdentityCell({ row }: { row: ReportQueueItem }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <div className={THUMB_SQUARE}>
+        {row.firstImageUrl ? (
+          <Image
+            src={row.firstImageUrl}
+            alt={row.code}
+            fill
+            sizes="40px"
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-slate-400">
+            <ImageIcon className="size-4" aria-hidden />
+          </div>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <EllipsisTooltip
+            text={row.id}
+            className={cn(
+              'min-w-0 truncate text-[11px] font-semibold tabular-nums text-sky-700',
+              '@[44rem]/assign-table:text-xs'
+            )}
+          />
+          <CopyIconButton
+            value={row.id}
+            label="Sao chép ID báo cáo"
+            successMessage="Đã sao chép ID báo cáo."
+          />
+        </div>
+
+        <div className="group/copyrow flex min-w-0 items-center gap-1">
+          <EllipsisTooltip
+            text={row.code}
+            className="min-w-0 truncate text-[11px] font-medium tabular-nums text-slate-800 @[44rem]/assign-table:text-xs"
+          />
+          <CopyIconButton
+            value={row.code}
+            label={`Sao chép mã ${row.code}`}
+            successMessage="Đã sao chép mã báo cáo."
+          />
+        </div>
+
+        <EllipsisTooltip
+          text={row.categoryName?.trim() || '—'}
+          className="block truncate text-[11px] leading-snug text-slate-500 @[44rem]/assign-table:text-xs"
+        />
+      </div>
+    </div>
+  );
+}
+
+function SeverityText({ severity }: { severity: ReportSeverity }) {
+  const label = REPORT_SEVERITY_LABEL_VI[severity];
+  return (
+    <EllipsisTooltip
+      text={label}
+      className={cn(
+        'block min-w-0 truncate text-[11px] font-medium leading-snug',
+        '@[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm',
+        SEVERITY_TEXT_CLASSES[severity] ?? 'text-slate-500'
+      )}
+    />
   );
 }
 
 function StatusBadge({ status }: { status: ReportQueueItem['status'] }) {
   const label = reportStatusLabelVi(status);
   return (
-    <span className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])} title={label}>
-      {label}
-    </span>
+    <EllipsisTooltip
+      text={label}
+      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])}
+    />
   );
 }
 
 function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
   switch (key) {
-    case 'image':
-      return <ReportThumb url={row.firstImageUrl} alt={row.code} />;
     case 'code':
-      return (
-        <span className={cn(CELL_TEXT, 'font-medium')} title={row.code}>
-          {row.code}
-        </span>
-      );
-    case 'category':
-      return (
-        <span className={CELL_TEXT} title={row.categoryName}>
-          {row.categoryName}
-        </span>
-      );
-    case 'severity':
-      return <SeverityBadge severity={row.severity} />;
-    case 'status':
-      return <StatusBadge status={row.status} />;
-    case 'priority':
-      return (
-        <span className={cn(CELL_META, 'font-medium text-slate-700')}>
-          {row.priorityScore.toFixed(2)}
-        </span>
-      );
+      return <ReportIdentityCell row={row} />;
     case 'address':
       return (
-        <span className={CELL_TEXT_MUTED} title={row.address}>
-          {row.address}
-        </span>
+        <EllipsisTooltip
+          text={row.address?.trim() || '—'}
+          lineClamp
+          className={cn(
+            'line-clamp-2 min-w-0 text-[11px] leading-snug wrap-break-word text-slate-600',
+            '@[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm'
+          )}
+        />
       );
+    case 'severity':
+      return <SeverityText severity={row.severity} />;
     case 'created':
       return <CreatedCell iso={row.createdAt} />;
+    case 'status':
+      return <StatusBadge status={row.status} />;
     case 'verifySla':
       return <SlaCell dueAt={row.slaVerifyDueAt} />;
     case 'resolveSla':
@@ -543,6 +707,51 @@ function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
     default:
       return null;
   }
+}
+
+function CommunityActionChip({ onClick }: { onClick: () => void }) {
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  const [open, setOpen] = useState(false);
+  const label = 'Tạo cộng đồng';
+
+  useLayoutEffect(() => {
+    const el = labelRef.current;
+    if (!el) return;
+    setTruncated(el.scrollWidth > el.clientWidth + 1);
+  }, []);
+
+  return (
+    <Tooltip
+      delayDuration={200}
+      open={truncated ? open : false}
+      onOpenChange={next => {
+        if (truncated) setOpen(next);
+      }}
+    >
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label="Mở chương trình dọn cộng đồng cho báo cáo này"
+          className={cn(
+            'inline-flex h-6 max-w-full items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50',
+            'px-1.5 text-[10px] font-medium text-emerald-700 transition',
+            'hover:border-emerald-300 hover:bg-emerald-100',
+            '@[44rem]/assign-table:h-7 @[44rem]/assign-table:gap-1.5 @[44rem]/assign-table:px-2.5 @[44rem]/assign-table:text-[11px]'
+          )}
+        >
+          <HeartHandshake className="size-3 shrink-0" aria-hidden />
+          <span ref={labelRef} className="min-w-0 truncate">
+            {label}
+          </span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs font-normal">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 function toggleInArray<T>(arr: T[], val: T): T[] {
@@ -755,353 +964,356 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   const handleAssigned = () => setSelected(new Set());
 
   if (detailReportId) {
-    return <VerifyDetailClient id={detailReportId} onBack={() => setDetailReportId(null)} />;
+    return (
+      <VerifyDetailClient
+        id={detailReportId}
+        onBack={() => {
+          setDetailReportId(null);
+          setSelected(new Set());
+        }}
+      />
+    );
   }
 
   return (
-    <>
-      <div className="relative flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:gap-4">
-        {/*
+    <TooltipProvider delayDuration={200}>
+      <>
+        <div className="relative flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:gap-4">
+          {/*
           Desktop: filter absolute inset-y-0 → height always = table column (height driver).
           Mobile: stacked with max-h; inner list scrolls.
         */}
-        <AnimatePresence initial={false}>
-          {filterOpen ? (
-            <motion.div
-              key="assign-filter"
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: FILTER_WIDTH_OPEN, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={FILTER_MOTION}
-              className="max-h-[45dvh] shrink-0 overflow-hidden lg:absolute lg:inset-y-0 lg:left-0 lg:z-10 lg:max-h-none"
-              style={{ willChange: 'width, opacity' }}
-            >
-              <aside className="flex h-full min-h-0 w-56 min-w-56 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]">
-                <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-3">
-                  <span className="text-sm font-semibold text-slate-800">Bộ lọc</span>
-                  {totalActiveFilters > 0 ? (
-                    <button
-                      type="button"
-                      onClick={handleClearAllFilters}
-                      className="text-xs font-medium text-slate-500 transition hover:text-slate-800"
-                    >
-                      Xoá tất cả
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className="shrink-0 px-4 pb-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      placeholder="Tìm kiếm báo cáo..."
-                      className={cn(
-                        'h-8 border-slate-200 bg-white pl-9 text-sm shadow-none',
-                        isFetching && !isPending && 'pr-8'
-                      )}
-                      aria-label="Tìm báo cáo phân công"
-                    />
-                    {isFetching && !isPending ? (
-                      <Loader2
-                        className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
-                        aria-hidden
-                      />
+          <AnimatePresence initial={false}>
+            {filterOpen ? (
+              <motion.div
+                key="assign-filter"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: FILTER_WIDTH_OPEN, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={FILTER_MOTION}
+                className="max-h-[45dvh] shrink-0 overflow-hidden lg:absolute lg:inset-y-0 lg:left-0 lg:z-10 lg:max-h-none"
+                style={{ willChange: 'width, opacity' }}
+              >
+                <aside className="flex h-full min-h-0 w-56 min-w-56 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]">
+                  <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-3">
+                    <span className="text-sm font-semibold text-slate-800">Bộ lọc</span>
+                    {totalActiveFilters > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleClearAllFilters}
+                        className="text-xs font-medium text-slate-500 transition hover:text-slate-800"
+                      >
+                        Xoá tất cả
+                      </button>
                     ) : null}
                   </div>
-                </div>
 
-                <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
-                  <FilterSection title="Loại ô nhiễm" activeCount={categoryId ? 1 : 0}>
-                    {catalogCategories.map(cat => (
-                      <CheckItem
-                        key={cat.id}
-                        label={cat.nameVi}
-                        checked={categoryId === cat.id}
-                        onChange={() => handleCategoryToggle(cat.id)}
-                      />
-                    ))}
-                    {catalogCategories.length === 0 && (
-                      <p className="py-2 text-sm text-slate-500">Đang tải...</p>
-                    )}
-                  </FilterSection>
-
-                  <FilterSection title="Mức độ nghiêm trọng" activeCount={severityFilters.length}>
-                    {SEVERITY_OPTIONS.map(opt => (
-                      <CheckItem
-                        key={opt.value}
-                        label={opt.label}
-                        checked={severityFilters.includes(opt.value)}
-                        onChange={() => setSeverityFilters(prev => toggleInArray(prev, opt.value))}
-                      />
-                    ))}
-                  </FilterSection>
-
-                  <FilterSection title="Thời gian" activeCount={timeFilterActive ? 1 : 0}>
-                    <div className="space-y-3">
-                      <TimePresetPills value={datePreset} onChange={handleDatePresetChange} />
-                      <SidebarDatePartsRow
-                        label="Từ ngày"
-                        value={customFrom}
-                        onChange={handleCustomFromChange}
-                      />
-                      <SidebarDatePartsRow
-                        label="Đến ngày"
-                        value={customTo}
-                        onChange={handleCustomToChange}
-                      />
-                    </div>
-                  </FilterSection>
-                </div>
-              </aside>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
-        {/* Table drives row height; lg margin clears space for absolute filter */}
-        <div
-          className={cn(
-            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]',
-            'transition-[margin-left] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
-            filterOpen ? 'lg:ml-60' : 'lg:ml-0'
-          )}
-        >
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2 sm:px-4">
-            <Button
-              type="button"
-              size="sm"
-              disabled={selected.size === 0 || hasRejectedSelected}
-              onClick={() => setAssignOpen(true)}
-              className="h-8 gap-1.5 bg-emerald-600 px-3 text-[0.8125rem] text-white hover:bg-emerald-500"
-            >
-              <UserPlus className="size-3.5" />
-              Phân công
-              {selected.size > 0 ? (
-                <span className="rounded-full bg-white/20 px-1.5 text-[11px] font-semibold">
-                  {selected.size}
-                </span>
-              ) : null}
-            </Button>
-
-            <button
-              type="button"
-              onClick={() => setFilterOpen(open => !open)}
-              className={cn(
-                'relative inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800',
-                filterOpen && 'bg-slate-100 text-slate-800'
-              )}
-              aria-label={filterOpen ? 'Thu gọn bộ lọc' : 'Mở bộ lọc'}
-              aria-pressed={filterOpen}
-              title={filterOpen ? 'Thu gọn bộ lọc' : 'Mở bộ lọc'}
-            >
-              <LayoutSidebarRightIcon size={18} className="text-current" />
-              {!filterOpen && totalActiveFilters > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-emerald-600 text-[0.5625rem] font-semibold text-white">
-                  {totalActiveFilters}
-                </span>
-              ) : null}
-            </button>
-          </div>
-
-          <div className="@container/assign-table scrollbar-smooth min-h-0 flex-1 overflow-x-auto overflow-y-auto">
-            <Table className="w-full table-fixed">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  {TABLE_COLS.map(col => (
-                    <TableHead
-                      key={col.key}
-                      className={cn(
-                        tableCellPad(col.key, 'head'),
-                        'h-auto min-w-0 overflow-hidden border-b border-slate-200 bg-slate-100/80 text-left',
-                        col.className
-                      )}
-                    >
-                      {col.key === 'select' ? (
-                        <Checkbox
-                          checked={indeterminate ? 'indeterminate' : allChecked}
-                          onCheckedChange={() => {
-                            if (allChecked || indeterminate) setSelected(new Set());
-                            else setSelected(new Set(filtered.map(r => r.id)));
-                          }}
-                        />
-                      ) : (
-                        <span className={HEAD_LABEL} title={col.label}>
-                          {col.label}
-                        </span>
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isPending ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={TABLE_COLS.length}
-                      className={cn(tableCellPad('code'), 'h-40 text-center')}
-                    >
-                      <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
-                    </TableCell>
-                  </TableRow>
-                ) : isError ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={TABLE_COLS.length}
-                      className={cn(tableCellPad('code'), 'h-40 text-center')}
-                    >
-                      <p className="text-sm text-destructive">
-                        Không thể tải dữ liệu. Vui lòng thử lại.
-                      </p>
-                    </TableCell>
-                  </TableRow>
-                ) : filtered.length === 0 ? (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell
-                      colSpan={TABLE_COLS.length}
-                      className={cn(tableCellPad('code'), 'h-40 text-center')}
-                    >
-                      <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
-                        <SaveIcon size={44} className="opacity-30" />
-                        <span>Không có báo cáo nào</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map(report => {
-                    const isHighlighted = report.id === highlightReportId && !highlightFading;
-
-                    return (
-                      <TableRow
-                        key={report.id}
-                        ref={el => {
-                          if (el) {
-                            rowRefs.current.set(report.id, el);
-                            if (report.id === highlightReportId) triggerHighlight(el, report.id);
-                          } else {
-                            rowRefs.current.delete(report.id);
-                          }
-                        }}
-                        onClick={() => setDetailReportId(report.id)}
+                  <div className="shrink-0 px-4 pb-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Tìm kiếm báo cáo..."
                         className={cn(
-                          'cursor-pointer border-slate-100 transition-colors duration-700 hover:bg-sky-50/40',
-                          isHighlighted && 'bg-emerald-50',
-                          !isHighlighted && selected.has(report.id) && 'bg-sky-50/60'
+                          'h-8 border-slate-200 bg-white pl-9 text-sm shadow-none',
+                          isFetching && !isPending && 'pr-8'
+                        )}
+                        aria-label="Tìm báo cáo phân công"
+                      />
+                      {isFetching && !isPending ? (
+                        <Loader2
+                          className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+                    <FilterSection title="Loại ô nhiễm" activeCount={categoryId ? 1 : 0}>
+                      {catalogCategories.map(cat => (
+                        <CheckItem
+                          key={cat.id}
+                          label={cat.nameVi}
+                          checked={categoryId === cat.id}
+                          onChange={() => handleCategoryToggle(cat.id)}
+                        />
+                      ))}
+                      {catalogCategories.length === 0 && (
+                        <p className="py-2 text-sm text-slate-500">Đang tải...</p>
+                      )}
+                    </FilterSection>
+
+                    <FilterSection title="Mức độ nghiêm trọng" activeCount={severityFilters.length}>
+                      {SEVERITY_OPTIONS.map(opt => (
+                        <CheckItem
+                          key={opt.value}
+                          label={opt.label}
+                          checked={severityFilters.includes(opt.value)}
+                          onChange={() =>
+                            setSeverityFilters(prev => toggleInArray(prev, opt.value))
+                          }
+                        />
+                      ))}
+                    </FilterSection>
+
+                    <FilterSection title="Thời gian" activeCount={timeFilterActive ? 1 : 0}>
+                      <div className="space-y-3">
+                        <TimePresetPills value={datePreset} onChange={handleDatePresetChange} />
+                        <SidebarDatePartsRow
+                          label="Từ ngày"
+                          value={customFrom}
+                          onChange={handleCustomFromChange}
+                        />
+                        <SidebarDatePartsRow
+                          label="Đến ngày"
+                          value={customTo}
+                          onChange={handleCustomToChange}
+                        />
+                      </div>
+                    </FilterSection>
+                  </div>
+                </aside>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Table drives row height; lg margin clears space for absolute filter */}
+          <div
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]',
+              'transition-[margin-left] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+              filterOpen ? 'lg:ml-60' : 'lg:ml-0'
+            )}
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2 sm:px-4">
+              <Button
+                type="button"
+                size="sm"
+                disabled={selected.size === 0 || hasRejectedSelected}
+                onClick={() => setAssignOpen(true)}
+                className="h-8 gap-1.5 bg-emerald-600 px-3 text-[0.8125rem] text-white hover:bg-emerald-500"
+              >
+                <UserPlus className="size-3.5" />
+                Phân công
+                {selected.size > 0 ? (
+                  <span className="rounded-full bg-white/20 px-1.5 text-[11px] font-semibold">
+                    {selected.size}
+                  </span>
+                ) : null}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setFilterOpen(open => !open)}
+                className={cn(
+                  'relative inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800',
+                  filterOpen && 'bg-slate-100 text-slate-800'
+                )}
+                aria-label={filterOpen ? 'Thu gọn bộ lọc' : 'Mở bộ lọc'}
+                aria-pressed={filterOpen}
+                title={filterOpen ? 'Thu gọn bộ lọc' : 'Mở bộ lọc'}
+              >
+                <LayoutSidebarRightIcon size={18} className="text-current" />
+                {!filterOpen && totalActiveFilters > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-emerald-600 text-[0.5625rem] font-semibold text-white">
+                    {totalActiveFilters}
+                  </span>
+                ) : null}
+              </button>
+            </div>
+
+            <div className="@container/assign-table min-h-0 flex-1 overflow-auto [scrollbar-gutter:stable]">
+              <Table className="w-full table-fixed">
+                <TableHeader className="sticky top-0 z-10 bg-slate-100">
+                  <TableRow className={cn(ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                    {TABLE_COLS.map(col => (
+                      <TableHead
+                        key={col.key}
+                        className={cn(
+                          tableCellPad(col.key, 'head'),
+                          'h-auto border-0 bg-slate-100 text-left',
+                          col.key === 'select' ? 'overflow-visible' : 'min-w-0 overflow-hidden',
+                          col.className
                         )}
                       >
-                        {TABLE_COLS.map(col => {
-                          if (col.key === 'select') {
-                            return (
-                              <TableCell
-                                key={col.key}
-                                className={cn(
-                                  tableCellPad(col.key),
-                                  'min-w-0 align-middle',
-                                  col.className
-                                )}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <Checkbox
-                                  checked={selected.has(report.id)}
-                                  onCheckedChange={() =>
-                                    setSelected(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(report.id)) next.delete(report.id);
-                                      else next.add(report.id);
-                                      return next;
-                                    })
-                                  }
-                                />
-                              </TableCell>
-                            );
-                          }
+                        {col.key === 'select' ? (
+                          <Checkbox
+                            checked={indeterminate ? 'indeterminate' : allChecked}
+                            onCheckedChange={() => {
+                              if (allChecked || indeterminate) setSelected(new Set());
+                              else setSelected(new Set(filtered.map(r => r.id)));
+                            }}
+                            className="shrink-0"
+                          />
+                        ) : (
+                          <EllipsisTooltip text={col.label} className={HEAD_LABEL} />
+                        )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isPending ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={TABLE_COLS.length}
+                        className={cn(tableCellPad('code'), 'h-40 text-center')}
+                      >
+                        <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
+                      </TableCell>
+                    </TableRow>
+                  ) : isError ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={TABLE_COLS.length}
+                        className={cn(tableCellPad('code'), 'h-40 text-center')}
+                      >
+                        <p className="text-sm text-destructive">
+                          Không thể tải dữ liệu. Vui lòng thử lại.
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  ) : filtered.length === 0 ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell
+                        colSpan={TABLE_COLS.length}
+                        className={cn(tableCellPad('code'), 'h-40 text-center')}
+                      >
+                        <div className="flex flex-col items-center justify-center gap-2 text-lg font-medium text-slate-500">
+                          <SaveIcon size={44} className="opacity-30" />
+                          <span>Không có báo cáo nào</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filtered.map(report => {
+                      const isHighlighted = report.id === highlightReportId && !highlightFading;
 
-                          if (col.key === 'actions') {
+                      return (
+                        <TableRow
+                          key={report.id}
+                          ref={el => {
+                            if (el) {
+                              rowRefs.current.set(report.id, el);
+                              if (report.id === highlightReportId) triggerHighlight(el, report.id);
+                            } else {
+                              rowRefs.current.delete(report.id);
+                            }
+                          }}
+                          onClick={() => setDetailReportId(report.id)}
+                          className={cn(
+                            ROW_BORDER,
+                            'cursor-pointer transition-colors duration-700 hover:bg-sky-50/40',
+                            isHighlighted && 'bg-emerald-50',
+                            !isHighlighted && selected.has(report.id) && 'bg-sky-50/60'
+                          )}
+                        >
+                          {TABLE_COLS.map(col => {
+                            if (col.key === 'select') {
+                              return (
+                                <TableCell
+                                  key={col.key}
+                                  className={cn(
+                                    tableCellPad(col.key),
+                                    'align-middle',
+                                    col.className
+                                  )}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <Checkbox
+                                    checked={selected.has(report.id)}
+                                    onCheckedChange={() =>
+                                      setSelected(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(report.id)) next.delete(report.id);
+                                        else next.add(report.id);
+                                        return next;
+                                      })
+                                    }
+                                    className="shrink-0"
+                                  />
+                                </TableCell>
+                              );
+                            }
+
+                            if (col.key === 'actions') {
+                              return (
+                                <TableCell
+                                  key={col.key}
+                                  className={cn(
+                                    tableCellPad(col.key),
+                                    'min-w-0 overflow-hidden align-middle',
+                                    col.className
+                                  )}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  {report.status === 'Verified' ? (
+                                    <CommunityActionChip
+                                      onClick={() => setCommunityReport(report)}
+                                    />
+                                  ) : (
+                                    <span className={cn(CELL_META, 'text-slate-300')}>—</span>
+                                  )}
+                                </TableCell>
+                              );
+                            }
+
                             return (
                               <TableCell
                                 key={col.key}
                                 className={cn(
                                   tableCellPad(col.key),
                                   'min-w-0 overflow-hidden align-middle',
+                                  col.key !== 'code' && 'max-w-0',
                                   col.className
                                 )}
-                                onClick={e => e.stopPropagation()}
                               >
-                                {report.status === 'Verified' ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => setCommunityReport(report)}
-                                    title="Mở chương trình dọn cộng đồng cho báo cáo này"
-                                    className={cn(
-                                      'inline-flex h-6 max-w-full items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50',
-                                      'px-1.5 text-[10px] font-medium text-emerald-700 transition',
-                                      'hover:border-emerald-300 hover:bg-emerald-100',
-                                      '@[44rem]/assign-table:h-7 @[44rem]/assign-table:gap-1.5 @[44rem]/assign-table:px-2.5 @[44rem]/assign-table:text-[11px]'
-                                    )}
-                                  >
-                                    <HeartHandshake className="size-3 shrink-0" aria-hidden />
-                                    <span className="min-w-0 truncate">Tạo cộng đồng</span>
-                                  </button>
-                                ) : (
-                                  <span className={cn(CELL_META, 'text-slate-300')}>—</span>
-                                )}
+                                {renderDataCell(col.key, report)}
                               </TableCell>
                             );
-                          }
-
-                          return (
-                            <TableCell
-                              key={col.key}
-                              className={cn(
-                                tableCellPad(col.key),
-                                'min-w-0 overflow-hidden align-middle',
-                                col.key !== 'image' && 'max-w-0',
-                                col.className
-                              )}
-                            >
-                              {renderDataCell(col.key, report)}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {pagination ? (
-            <div className="relative flex shrink-0 items-center justify-center px-3 py-2 sm:px-4">
-              {pagination.totalPages > 1 ? (
-                <PaginationSimple
-                  page={page}
-                  totalPages={pagination.totalPages}
-                  onPageChange={setPage}
-                  className="mx-auto w-auto justify-center"
-                />
-              ) : null}
+                          })}
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          ) : null}
+
+            {pagination ? (
+              <div className="relative flex shrink-0 items-center justify-center px-3 py-2 sm:px-4">
+                {pagination.totalPages > 1 ? (
+                  <PaginationSimple
+                    page={page}
+                    totalPages={pagination.totalPages}
+                    onPageChange={setPage}
+                    className="mx-auto w-auto justify-center"
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      <Dialog
-        open={assignOpen}
-        onClose={() => setAssignOpen(false)}
-        reportIds={[...selected]}
-        onAssigned={handleAssigned}
-      />
+        <Dialog
+          open={assignOpen}
+          onClose={() => setAssignOpen(false)}
+          reportIds={[...selected]}
+          onAssigned={handleAssigned}
+        />
 
-      <CreateCommunityCleanupDialog
-        open={communityReport != null}
-        onClose={() => setCommunityReport(null)}
-        reportId={communityReport?.id ?? ''}
-        reportCode={communityReport?.code ?? ''}
-        reportLatitude={communityReport?.latitude ?? 0}
-        reportLongitude={communityReport?.longitude ?? 0}
-        onCreated={() => setCommunityReport(null)}
-      />
-    </>
+        <CreateCommunityCleanupDialog
+          open={communityReport != null}
+          onClose={() => setCommunityReport(null)}
+          reportId={communityReport?.id ?? ''}
+          reportCode={communityReport?.code ?? ''}
+          reportLatitude={communityReport?.latitude ?? 0}
+          reportLongitude={communityReport?.longitude ?? 0}
+          onCreated={() => setCommunityReport(null)}
+        />
+      </>
+    </TooltipProvider>
   );
 }

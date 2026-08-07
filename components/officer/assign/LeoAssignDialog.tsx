@@ -19,12 +19,13 @@ import { TEAMS_ASSIGN_PAGE_SIZE, useTeamsInfiniteList } from '@/hooks/useTeams';
 import type { MyWardCompanyItem } from '@/lib/api/models/company';
 import type { TeamListItem } from '@/lib/api/services/fetchTeam';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import { cn } from '@/lib/utils';
 import { faBuilding, faClipboardList, faUserPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Loader2 } from 'lucide-react';
 import type { ReactNode, UIEvent } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 interface LeoAssignDialogProps {
   open: boolean;
@@ -155,6 +156,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
   const [note, setNote] = useState('');
   const [formKey, setFormKey] = useState(0);
+  const assignIdempotencyKeysRef = useRef(createIdempotencyKeyStore());
 
   const resetForm = useCallback(() => {
     setActiveTab('company');
@@ -162,6 +164,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
     setSelectedTeamIds(new Set());
     setNote('');
     setFormKey(k => k + 1);
+    assignIdempotencyKeysRef.current.reset();
   }, []);
 
   const handleClose = useCallback(() => {
@@ -247,7 +250,13 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
           ...(trimmedNote ? { note: trimmedNote } : {}),
         };
         await Promise.all(
-          reportIds.map(reportId => dispatchMutation.mutateAsync({ reportId, body }))
+          reportIds.map(reportId =>
+            dispatchMutation.mutateAsync({
+              reportId,
+              body,
+              idempotencyKey: assignIdempotencyKeysRef.current.get(reportId),
+            })
+          )
         );
         toastApiSuccess(
           null,
@@ -263,7 +272,13 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
           })),
         };
         await Promise.all(
-          reportIds.map(reportId => assignMutation.mutateAsync({ reportId, body }))
+          reportIds.map(reportId =>
+            assignMutation.mutateAsync({
+              reportId,
+              body,
+              idempotencyKey: assignIdempotencyKeysRef.current.get(reportId),
+            })
+          )
         );
         toastApiSuccess(
           null,
