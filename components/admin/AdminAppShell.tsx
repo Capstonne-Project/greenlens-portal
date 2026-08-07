@@ -14,7 +14,7 @@ const adminNavConfig = getAdminShellNavConfig();
  */
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-dvh w-screen overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
+    <div className="app-canvas flex h-dvh w-screen overflow-hidden font-sans md:flex-row">
       <AppSidebar
         config={adminNavConfig}
         profileHref={PROFILE_ROUTES.admin}

@@ -244,6 +244,17 @@ export interface InspectionOfficerQueueResponseDto {
   data: InspectionOfficerQueueDataDto;
 }
 
+/**
+ * PUT /v1/inspections/{id}/record-payment — envelope.
+ * Không trả payload cụ thể — chỉ `code`/`message`/`status`.
+ */
+export interface RecordInspectionPaymentResponseDto {
+  code: string;
+  message: string;
+  status: number;
+  data?: unknown;
+}
+
 /** GET /v1/inspections/officer-queue — query params (all optional). */
 export interface InspectionOfficerQueueParamsDto {
   page?: number;

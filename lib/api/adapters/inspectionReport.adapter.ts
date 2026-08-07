@@ -6,6 +6,7 @@ import type {
   InspectionDetailResponseDto,
   InspectionOfficerQueueDataDto,
   InspectionPaymentsHistoryResponseDto,
+  RecordInspectionPaymentResponseDto,
   ReportInspectionsListResponseDto,
 } from '@/lib/api/dto/inspectionReport.dto';
 import {
@@ -14,6 +15,7 @@ import {
   mapInspectionDetailResponse,
   mapInspectionOfficerQueueDataDto,
   mapInspectionPaymentsHistoryResponse,
+  mapRecordInspectionPaymentResponse,
   mapReportInspectionsListResponse,
 } from '@/lib/api/mappers/inspectionReport.mapper';
 import type {
@@ -25,6 +27,8 @@ import type {
   InspectionOfficerQueueData,
   InspectionOfficerQueueParams,
   InspectionPaymentsHistory,
+  RecordInspectionPaymentInput,
+  RecordInspectionPaymentResult,
   ReportInspectionsList,
 } from '@/lib/api/models/inspectionReport';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
@@ -106,6 +110,30 @@ export async function adaptAssignInspectionTeam(
     body
   );
   return mapAssignInspectionTeamResponse(res.data);
+}
+
+/**
+ * PUT /v1/inspections/{id}/record-payment — [LEO] ghi nhận nộp phạt (BR-INS-020, BR-ORG-012).
+ * multipart/form-data — `receipt` (ảnh biên lai) bắt buộc.
+ */
+export async function adaptRecordInspectionPayment(
+  inspectionId: string,
+  input: RecordInspectionPaymentInput
+): Promise<RecordInspectionPaymentResult> {
+  const formData = new FormData();
+  formData.append('paidAmount', String(input.paidAmount));
+  formData.append('paidAt', input.paidAt);
+  formData.append('receipt', input.receipt);
+  if (input.note?.trim()) formData.append('note', input.note.trim());
+
+  // BE là PUT multipart — apiService.upload() chỉ hỗ trợ POST, nên gọi put() trực tiếp
+  // với header multipart tự set.
+  const res = await apiService.put<RecordInspectionPaymentResponseDto>(
+    `/v1/inspections/${inspectionId}/record-payment`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return mapRecordInspectionPaymentResponse(res.data);
 }
 
 function buildInspectionOfficerQueueQuery(

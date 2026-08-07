@@ -33,6 +33,25 @@ export interface AssignInspectionTeamResult {
 }
 
 /**
+ * PUT /v1/inspections/{id}/record-payment — body ghi nhận nộp phạt [LEO] (BR-INS-020, BR-ORG-012).
+ * multipart/form-data — `receipt` (ảnh biên lai) bắt buộc.
+ */
+export interface RecordInspectionPaymentInput {
+  paidAmount: number;
+  /** ISO string. */
+  paidAt: string;
+  receipt: File;
+  note?: string;
+}
+
+/** PUT /v1/inspections/{id}/record-payment — kết quả. Không có payload cụ thể. */
+export interface RecordInspectionPaymentResult {
+  code: string;
+  message: string;
+  status: number;
+}
+
+/**
  * GET /v1/reports/{id}/inspections — hồ sơ xử phạt gắn báo cáo.
  * BE trả mảng; nghiệp vụ hiện tại: tối đa 1 hồ sơ / báo cáo.
  * Amounts / level thường null khi Draft — không tin mock Swagger `0`.

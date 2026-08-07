@@ -20,6 +20,7 @@ import {
   fetchReportQueue,
   fetchViolationRecurrenceCandidates,
   fetchViolationRecurrenceComparison,
+  recordInspectionPayment,
   rejectReport,
   rejectReopenRequest,
   reassignReport,
@@ -31,6 +32,7 @@ import type {
   ConfirmDuplicateInput,
   CreateInspectionReportInput,
   DispatchToCompanyInput,
+  RecordInspectionPaymentInput,
   RejectReportInput,
   RejectReopenRequestInput,
   ReassignReportInput,
@@ -602,6 +604,27 @@ export function useAssignInspectionTeam() {
       queryClient.invalidateQueries({ queryKey: officerKeys.inspectionDetail(inspectionId) });
       queryClient.invalidateQueries({ queryKey: [...officerKeys.all, 'report-inspections'] });
       queryClient.invalidateQueries({ queryKey: officerKeys.violationRecurrenceCandidates() });
+      queryClient.invalidateQueries({ queryKey: officerKeys.inspectionOfficerQueue() });
+    },
+  });
+}
+
+/**
+ * PUT /v1/inspections/{id}/record-payment — [LEO] ghi nhận nộp phạt (BR-INS-020, BR-ORG-012).
+ */
+export function useRecordInspectionPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      inspectionId,
+      body,
+    }: {
+      inspectionId: string;
+      body: RecordInspectionPaymentInput;
+    }) => recordInspectionPayment(inspectionId, body),
+    onSuccess: (_data, { inspectionId }) => {
+      queryClient.invalidateQueries({ queryKey: officerKeys.inspectionDetail(inspectionId) });
+      queryClient.invalidateQueries({ queryKey: officerKeys.inspectionPayments(inspectionId) });
       queryClient.invalidateQueries({ queryKey: officerKeys.inspectionOfficerQueue() });
     },
   });
