@@ -605,7 +605,7 @@ export function DuplicateCandidateDetailClient() {
   const { openPreview, previewDialog } = useReportImagePreview(allPreviewImages);
 
   return (
-    <div className="flex flex-1 flex-col pb-8">
+    <div className="flex flex-1 flex-col px-4 pb-8 sm:px-6 lg:px-8">
       <header className="mb-4 space-y-3 border-b border-slate-200 pb-3">
         <div className="flex flex-wrap items-center gap-3">
           <Button
