@@ -31,6 +31,7 @@ import {
   adaptFetchInspectionOfficerQueue,
   adaptFetchInspectionPayments,
   adaptFetchReportInspections,
+  adaptRecordInspectionPayment,
 } from '@/lib/api/adapters/inspectionReport.adapter';
 import type {
   DuplicateCandidatesData,
@@ -73,6 +74,8 @@ import type {
   InspectionOfficerQueueData,
   InspectionOfficerQueueParams,
   InspectionPaymentsHistory,
+  RecordInspectionPaymentInput,
+  RecordInspectionPaymentResult,
   ReportInspectionsList,
 } from '@/lib/api/models/inspectionReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -175,6 +178,8 @@ export type {
   InspectionPayment,
   InspectionPaymentsHistory,
   InspectionStatus,
+  RecordInspectionPaymentInput,
+  RecordInspectionPaymentResult,
   ReportInspectionSummary,
   ReportInspectionsList,
   ViolatingEntity,
@@ -369,6 +374,16 @@ export async function assignInspectionTeam(
 }
 
 /**
+ * PUT /v1/inspections/{id}/record-payment — [LEO] ghi nhận nộp phạt (BR-INS-020, BR-ORG-012).
+ */
+export async function recordInspectionPayment(
+  id: string,
+  body: RecordInspectionPaymentInput
+): Promise<RecordInspectionPaymentResult> {
+  return adaptRecordInspectionPayment(id, body);
+}
+
+/**
  * GET /v1/inspections/officer-queue — [LEO/DEO] hàng đợi hồ sơ xử phạt.
  * FE nên truyền `pageSize: 8` khi gọi (BE có thể mặc định 20).
  */
@@ -402,6 +417,7 @@ const reportService = {
   fetchInspectionDetail,
   fetchInspectionPayments,
   assignInspectionTeam,
+  recordInspectionPayment,
   fetchInspectionOfficerQueue,
 };
 export default reportService;
