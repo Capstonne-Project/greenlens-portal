@@ -1,10 +1,12 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { UserPrivacySection } from '@/components/settings/UserPrivacySection';
 import { useProfile, useUpdateProfile, useUploadAvatar } from '@/hooks/useUser';
 import { userProfileToAuthUser } from '@/lib/auth/profileMappers';
 import { PROFILE_PORTAL_CONFIG, type ProfilePortalVariant } from '@/lib/constants/profilePortal';
 import { useAuthStore } from '@/lib/store/authStore';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import {
   PROFILE_AVATAR_ACCEPT,
   PROFILE_AVATAR_MAX_BYTES,
@@ -55,8 +57,10 @@ export function UserProfileView({ variant }: UserProfileViewProps) {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isDirty },
   } = useForm<ProfileFormValues>({
+    ...REALTIME_FORM_OPTIONS,
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       fullName: '',
@@ -328,16 +332,17 @@ export function UserProfileView({ variant }: UserProfileViewProps) {
                   <UserRound className="size-4 text-muted-foreground" aria-hidden />
                   Họ và tên
                 </label>
-                <input
+                <ValidatedInput
                   id={`${formId}-fullName`}
                   autoComplete="name"
                   placeholder="Nhập họ và tên"
-                  className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+                  className="rounded-xl px-3.5 placeholder:text-muted-foreground/70 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
                   {...register('fullName')}
+                  value={watch('fullName')}
+                  minLength={1}
+                  maxLength={160}
+                  error={errors.fullName?.message}
                 />
-                {errors.fullName && (
-                  <p className="text-xs font-medium text-destructive">{errors.fullName.message}</p>
-                )}
               </div>
 
               <div className="space-y-1.5">
@@ -366,19 +371,18 @@ export function UserProfileView({ variant }: UserProfileViewProps) {
                   <Phone className="size-4 text-muted-foreground" aria-hidden />
                   Số điện thoại
                 </label>
-                <input
+                <ValidatedInput
                   id={`${formId}-phoneNumber`}
                   type="tel"
                   autoComplete="tel"
                   placeholder="0955633245"
-                  className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+                  className="rounded-xl px-3.5 placeholder:text-muted-foreground/70 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
                   {...register('phoneNumber')}
+                  value={watch('phoneNumber')}
+                  minLength={0}
+                  maxLength={11}
+                  error={errors.phoneNumber?.message}
                 />
-                {errors.phoneNumber && (
-                  <p className="text-xs font-medium text-destructive">
-                    {errors.phoneNumber.message}
-                  </p>
-                )}
               </div>
             </div>
 

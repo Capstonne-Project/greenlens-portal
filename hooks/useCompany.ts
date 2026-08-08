@@ -36,6 +36,7 @@ import type {
   AssignCompanyTeamInput,
   CompaniesListParams,
   CompanyAssignmentDetail,
+  CompanyAssignmentListItem,
   CompanyAssignmentsList,
   CompanyAssignmentsParams,
   CompanyQueueList,
@@ -57,8 +58,18 @@ import type {
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
 } from '@/lib/api/models/company';
+import { assignmentListMissingThumbnailIds } from '@/lib/api/mappers/companyAssignment.mapper';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { pickAssignmentDetailMediaUrl } from '@/utils/reportThumbnail';
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 // ── Officer (LEO) — quản lý doanh nghiệp ────────────────────────────────────
 // Tách key factory khỏi `companyKeys` của company portal (dev) để tránh trùng export.
@@ -227,6 +238,8 @@ export const companyKeys = {
   assignmentsDashboard: () => [...companyKeys.all, 'assignments', 'dashboard'] as const,
   assignmentDetail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'detail', reportId] as const,
+  assignmentThumbnail: (reportId: string) =>
+    [...companyKeys.all, 'assignments', 'thumbnail', reportId] as const,
   contractHistory: () => [...companyKeys.all, 'contract-history'] as const,
   kpi: (params: MyCompanyKpiParams) => [...companyKeys.all, 'kpi', params] as const,
 };
@@ -368,13 +381,76 @@ export function useCompanyDashboardAssignments() {
 }
 
 export function useCompanyAssignmentDetail(reportId: string | null) {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: companyKeys.assignmentDetail(reportId ?? ''),
-    queryFn: () => fetchCompanyAssignmentDetail(reportId!),
-    select: (envelope: ApiEnvelope<CompanyAssignmentDetail>) => envelope.data,
+    queryFn: async () => {
+      const envelope = await fetchCompanyAssignmentDetail(reportId!);
+      return mergeAssignmentDetailWithListImages(envelope.data, queryClient, reportId ?? '');
+    },
     enabled: Boolean(reportId),
     staleTime: 60 * 1000,
   });
+}
+
+function mergeAssignmentDetailWithListImages(
+  detail: CompanyAssignmentDetail | null | undefined,
+  queryClient: QueryClient,
+  reportId: string
+): CompanyAssignmentDetail | null | undefined {
+  if (!detail || !reportId) return detail;
+
+  const existingImages = detail.reportImages ?? [];
+  if (existingImages.length > 0) {
+    return { ...detail, reportImages: existingImages };
+  }
+
+  const entries = queryClient.getQueriesData<CompanyAssignmentsList>({
+    queryKey: [...companyKeys.all, 'assignments'],
+  });
+
+  for (const [, list] of entries) {
+    const item = list?.items.find(row => row.report.reportId === reportId);
+    const cachedImages = item?.report.reportImages ?? [];
+    if (cachedImages.length > 0) {
+      return { ...detail, reportImages: cachedImages };
+    }
+  }
+
+  return { ...detail, reportImages: existingImages };
+}
+
+async function resolveAssignmentRowThumbnail(reportId: string): Promise<string | null> {
+  try {
+    const envelope = await fetchCompanyAssignmentDetail(reportId);
+    return pickAssignmentDetailMediaUrl(envelope.data);
+  } catch {
+    return null;
+  }
+}
+
+/** Bổ sung ảnh hàng khi list API chưa trả thumbnailUrl. */
+export function useCompanyAssignmentThumbnails(items: CompanyAssignmentListItem[] | undefined) {
+  const reportIds = useMemo(() => assignmentListMissingThumbnailIds(items ?? []), [items]);
+
+  const queries = useQueries({
+    queries: reportIds.map(reportId => ({
+      queryKey: companyKeys.assignmentThumbnail(reportId),
+      queryFn: () => resolveAssignmentRowThumbnail(reportId),
+      staleTime: 10 * 60 * 1000,
+      enabled: Boolean(reportId),
+    })),
+  });
+
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    reportIds.forEach((reportId, index) => {
+      const url = queries[index]?.data;
+      if (url) map.set(reportId, url);
+    });
+    return map;
+  }, [reportIds, queries]);
 }
 
 export function useCreateCompanyStaff() {

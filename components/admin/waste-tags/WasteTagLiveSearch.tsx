@@ -1,5 +1,7 @@
 'use client';
 
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { Search, X } from 'lucide-react';
 import { useId, useState } from 'react';
 
@@ -29,20 +31,13 @@ export function WasteTagLiveSearch({
       <label htmlFor={inputId} className="text-sm font-medium">
         Tìm thẻ rác thải
       </label>
-      <div
-        className={`flex h-10 items-center gap-2 rounded-lg border bg-background px-3 transition-colors ${
-          focused
-            ? 'border-emerald-600/40 ring-2 ring-emerald-500/15'
-            : 'border-border hover:border-emerald-600/25'
-        }`}
-      >
+      <div className="relative">
         <Search
-          className={`size-4 shrink-0 ${focused ? 'text-emerald-700' : 'text-muted-foreground'}`}
+          className={`pointer-events-none absolute left-3 top-[13px] z-10 size-4 shrink-0 ${focused ? 'text-emerald-700' : 'text-muted-foreground'}`}
           aria-hidden
         />
-        <input
+        <ValidatedSearchInput
           id={inputId}
-          type="search"
           value={local}
           onChange={e => {
             const next = e.target.value;
@@ -51,9 +46,10 @@ export function WasteTagLiveSearch({
           }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
+          maxLength={SEARCH_INPUT_MAX_LENGTH}
           placeholder="Tự tìm liền — tên, mã, mô tả…"
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/75"
+          className="pl-9 pr-9"
         />
         {hasQuery ? (
           <button
@@ -62,7 +58,7 @@ export function WasteTagLiveSearch({
               setLocal('');
               onChange('');
             }}
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+            className="absolute right-2 top-[9px] z-10 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
             aria-label="Xóa từ khóa"
           >
             <X className="size-3.5" />

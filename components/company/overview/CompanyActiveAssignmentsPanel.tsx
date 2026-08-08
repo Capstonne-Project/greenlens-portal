@@ -13,7 +13,7 @@ import { ArrowRight, ClipboardList, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
-const PREVIEW_LIMIT = 3;
+const PREVIEW_LIMIT = 4;
 
 function ProgressMini({ value }: { value: number }) {
   const pct = Math.min(100, Math.max(0, value));
@@ -96,7 +96,7 @@ export function CompanyActiveAssignmentsPanel({
           <p className="text-xs text-muted-foreground">Chưa có task phân công nào.</p>
         </div>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {rows.map(row => {
             const dueMs = row.report.slaResolveDueAt
               ? new Date(row.report.slaResolveDueAt).getTime()
