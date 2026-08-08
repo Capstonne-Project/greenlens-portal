@@ -1,8 +1,10 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useUpdateDepartment } from '@/hooks/useDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getDepartmentMutationError } from '@/utils/departmentErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -16,9 +18,6 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-
-const fieldClass =
-  'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 interface DepartmentEditDialogProps {
   open: boolean;
@@ -39,9 +38,11 @@ export function DepartmentEditDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: { name: '' },
   });
 
@@ -83,13 +84,15 @@ export function DepartmentEditDialog({
             <label className="text-sm font-medium" htmlFor="dept-edit-name">
               Tên ủy ban
             </label>
-            <input
+            <ValidatedInput
               id="dept-edit-name"
               {...register('name')}
-              className={fieldClass}
+              value={watch('name') ?? ''}
+              minLength={1}
+              maxLength={200}
+              error={errors.name?.message}
               disabled={updateMutation.isPending}
             />
-            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
           <div className="flex justify-end gap-3 border-t border-border pt-4">
             <button

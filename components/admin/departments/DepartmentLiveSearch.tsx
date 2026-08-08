@@ -1,5 +1,7 @@
 'use client';
 
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { Search, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 
@@ -49,27 +51,21 @@ export function DepartmentLiveSearch({
         Tìm ủy ban, tỉnh hoặc mã tỉnh
       </label>
 
-      <div
-        className={`flex h-10 items-center gap-2 rounded-xl border bg-white px-3 transition-colors dark:bg-zinc-950 ${
-          focused
-            ? 'border-zinc-400 ring-2 ring-zinc-200/80 dark:border-zinc-500 dark:ring-zinc-700/50'
-            : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
-        }`}
-      >
+      <div className="relative">
         <Search
-          className={`size-4 shrink-0 ${focused ? 'text-zinc-700 dark:text-zinc-200' : 'text-zinc-400'}`}
+          className={`pointer-events-none absolute left-3 top-[13px] z-10 size-4 shrink-0 ${focused ? 'text-zinc-700 dark:text-zinc-200' : 'text-zinc-400'}`}
           aria-hidden
         />
-        <input
+        <ValidatedSearchInput
           id={inputId}
-          type="text"
           value={local}
           onChange={e => setLocal(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
+          maxLength={SEARCH_INPUT_MAX_LENGTH}
           placeholder="Tìm Sở, tỉnh…"
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
+          className="bg-white pl-9 pr-9 dark:bg-zinc-950"
         />
         {hasQuery ? (
           <button
@@ -78,13 +74,13 @@ export function DepartmentLiveSearch({
               setLocal('');
               onChange('');
             }}
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+            className="absolute right-2 top-[9px] z-10 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
             aria-label="Xóa từ khóa"
           >
             <X className="size-3.5" />
           </button>
         ) : (
-          <kbd className="hidden shrink-0 rounded border border-border bg-muted/50 px-1 font-mono text-[10px] text-muted-foreground sm:inline">
+          <kbd className="pointer-events-none absolute right-2 top-[11px] z-10 hidden shrink-0 rounded border border-border bg-muted/50 px-1 font-mono text-[10px] text-muted-foreground sm:inline">
             /
           </kbd>
         )}

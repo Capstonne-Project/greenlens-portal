@@ -12,6 +12,7 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { TeamDetailDialog } from '@/components/admin/teams/TeamDetailDialog';
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -40,6 +41,7 @@ import {
 } from '@/lib/constants/adminTeams';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import {
   Activity,
   ChevronLeft,
@@ -160,15 +162,15 @@ function TeamSearchControls({
   return (
     <div className="flex gap-2">
       <div className="relative min-w-0 flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
+        <Search className="pointer-events-none absolute left-3 top-[13px] z-10 size-4 text-muted-foreground" />
+        <ValidatedSearchInput
           id="team-search"
-          type="text"
           value={localSearch}
           onChange={e => setLocalSearch(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && onApply(localSearch.trim())}
+          maxLength={SEARCH_INPUT_MAX_LENGTH}
           placeholder="Cleanup HCM, văn phòng, loại team…"
-          className="h-10 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40"
+          className="pl-10"
         />
       </div>
       <button

@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedInput, ValidatedSearchInput } from '@/components/common/ValidatedField';
 import {
   useAssignOfficeOfficer,
   useChangeUserRole,
@@ -14,6 +15,7 @@ import type { Department } from '@/lib/api/models/department';
 import type { Office } from '@/lib/api/models/office';
 import type { AdminUser } from '@/lib/api/models/adminUser';
 import { normalizeApiRole } from '@/lib/constants/systemRoles';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { roleDisplayVi } from '@/utils/adminUserUi';
 import { Check, ChevronRight, Loader2 } from 'lucide-react';
@@ -25,9 +27,6 @@ const STEPS = [
   { id: 2, title: 'Tạo phòng (Office)', desc: 'Văn phòng cấp phường/xã' },
   { id: 3, title: 'Gán cán bộ LEO', desc: 'Nâng role & phụ trách phòng' },
 ] as const;
-
-const fieldClass =
-  'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 export function OrganizationOnboardingView() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -223,12 +222,13 @@ export function OrganizationOnboardingView() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-sm font-medium">Tên ủy ban / Sở</label>
-              <input
+              <ValidatedInput
                 type="text"
                 value={deptName}
                 onChange={e => setDeptName(e.target.value)}
+                minLength={1}
+                maxLength={200}
                 placeholder="Ủy ban nhân dân TP HCM"
-                className={fieldClass}
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -236,7 +236,7 @@ export function OrganizationOnboardingView() {
               <select
                 value={provinceCode}
                 onChange={e => setProvinceCode(e.target.value)}
-                className={fieldClass}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
                 disabled={provincesPending}
               >
                 <option value="">— Chọn tỉnh/thành —</option>
@@ -273,12 +273,13 @@ export function OrganizationOnboardingView() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-sm font-medium">Tên phòng / Văn phòng MT</label>
-              <input
+              <ValidatedInput
                 type="text"
                 value={officeName}
                 onChange={e => setOfficeName(e.target.value)}
+                minLength={1}
+                maxLength={200}
                 placeholder="UBND phường Bến Thành"
-                className={fieldClass}
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -286,7 +287,7 @@ export function OrganizationOnboardingView() {
               <select
                 value={wardCode}
                 onChange={e => setWardCode(e.target.value)}
-                className={fieldClass}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
                 disabled={wardsPending || !effectiveProvince}
               >
                 <option value="">— Chọn phường/xã —</option>
@@ -332,12 +333,11 @@ export function OrganizationOnboardingView() {
           <div className="mt-6 space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Tìm người dùng (email, họ tên)</label>
-              <input
-                type="search"
+              <ValidatedSearchInput
                 value={userSearch}
                 onChange={e => setUserSearch(e.target.value)}
+                maxLength={SEARCH_INPUT_MAX_LENGTH}
                 placeholder="Nhập để tìm..."
-                className={fieldClass}
               />
             </div>
 

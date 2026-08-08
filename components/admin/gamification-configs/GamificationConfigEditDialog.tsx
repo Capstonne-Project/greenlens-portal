@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedNumberInput, ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import type { GamificationConfig } from '@/lib/api/models/gamificationConfig';
 import { gamificationActionLabel } from '@/lib/constants/gamificationConfigs';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,9 +31,6 @@ interface Props {
   onSubmit: (values: GamificationConfigEditFormValues) => void;
 }
 
-const fieldClass =
-  'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
 export function GamificationConfigEditDialog({ open, config, busy, onClose, onSubmit }: Props) {
   const {
     register,
@@ -42,6 +41,7 @@ export function GamificationConfigEditDialog({ open, config, busy, onClose, onSu
     formState: { errors },
   } = useForm<GamificationConfigEditFormValues>({
     resolver: zodResolver(formSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: {
       points: 0,
       description: '',
@@ -85,35 +85,32 @@ export function GamificationConfigEditDialog({ open, config, busy, onClose, onSu
             <label htmlFor="gam-points" className="mb-1.5 block text-sm font-medium">
               Số điểm <span className="text-destructive">*</span>
             </label>
-            <input
+            <ValidatedNumberInput
               id="gam-points"
-              type="number"
               step={1}
-              className={fieldClass}
               {...register('points', { valueAsNumber: true })}
+              value={watch('points')}
+              min={-1000}
+              max={1000}
+              error={errors.points?.message}
+              hint="Âm = trừ điểm (vd. từ chối, gian lận)."
             />
-            {errors.points ? (
-              <p className="mt-1 text-xs text-destructive">{errors.points.message}</p>
-            ) : (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Âm = trừ điểm (vd. từ chối, gian lận).
-              </p>
-            )}
           </div>
 
           <div>
             <label htmlFor="gam-desc" className="mb-1.5 block text-sm font-medium">
               Mô tả <span className="text-destructive">*</span>
             </label>
-            <textarea
+            <ValidatedTextarea
               id="gam-desc"
               rows={3}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
               {...register('description')}
+              value={watch('description') ?? ''}
+              minLength={1}
+              maxLength={500}
+              showWordCount
+              error={errors.description?.message}
             />
-            {errors.description ? (
-              <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>
-            ) : null}
           </div>
 
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border px-3 py-3 text-sm">

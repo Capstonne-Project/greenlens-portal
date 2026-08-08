@@ -6,6 +6,7 @@ import {
   type PollutionCategoryFormValues,
 } from '@/components/admin/pollution-categories/PollutionCategoryFormDialog';
 import { PollutionCategoryCard } from '@/components/admin/pollution-categories/PollutionCategoryCard';
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
 import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import {
   useAdminPollutionCategoriesList,
@@ -15,6 +16,7 @@ import {
 } from '@/hooks/usePollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import { ADMIN_POLLUTION_CATEGORIES_PAGE_SIZE } from '@/lib/constants/pollutionCategories';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { getPollutionCategoryMutationError } from '@/utils/pollutionCategoryErrors';
 import { ChevronLeft, ChevronRight, Loader2, Plus, Search } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -168,15 +170,15 @@ export function AdminPollutionCategoriesView() {
             </label>
             <div className="flex gap-2">
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input
+                <Search className="pointer-events-none absolute left-3 top-[13px] z-10 size-4 text-muted-foreground" />
+                <ValidatedSearchInput
                   id="pc-search"
-                  type="search"
                   value={localSearch}
                   onChange={e => setLocalSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && applySearch()}
+                  maxLength={SEARCH_INPUT_MAX_LENGTH}
                   placeholder="code, tên VN, tên EN…"
-                  className="h-10 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                  className="pl-10"
                 />
               </div>
               <button

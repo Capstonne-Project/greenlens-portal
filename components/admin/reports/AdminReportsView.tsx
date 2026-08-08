@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedInput, ValidatedSearchInput } from '@/components/common/ValidatedField';
 import { AdminReportDetailPanel } from '@/components/admin/reports/AdminReportDetailPanel';
 import { AdminReportHideDialog } from '@/components/admin/reports/AdminReportHideDialog';
 import { AdminReportSummaryStrip } from '@/components/admin/reports/AdminReportSummaryStrip';
@@ -39,6 +40,7 @@ import {
 } from '@/hooks/useAdminReports';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { ADMIN_REPORT_PAGE_SIZE, ADMIN_REPORT_STATUS_TABS } from '@/lib/constants/adminReports';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import type { AdminReportListItem } from '@/lib/api/models/adminReport';
 import {
   isAdminReportMarkedHidden,
@@ -108,16 +110,66 @@ function AdminReportsSearchField({
 
   return (
     <div className="relative min-w-[12rem] flex-1">
-      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-      <input
-        type="search"
+      <Search className="pointer-events-none absolute left-3 top-[13px] z-10 size-4 text-muted-foreground" />
+      <ValidatedSearchInput
         value={searchInput}
         onChange={e => setSearchInput(e.target.value)}
+        maxLength={SEARCH_INPUT_MAX_LENGTH}
         placeholder="Mã, tiêu đề, khu vực, người gửi..."
-        className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+        className="pl-9"
         aria-label="Tìm báo cáo"
       />
     </div>
+  );
+}
+
+function AdminReportsLocationFields({
+  provinceCode,
+  wardCode,
+  onCommit,
+}: {
+  provinceCode: string;
+  wardCode: string;
+  onCommit: (next: { provinceCode: string | null; wardCode: string | null }) => void;
+}) {
+  const [province, setProvince] = useState(provinceCode);
+  const [ward, setWard] = useState(wardCode);
+
+  return (
+    <>
+      <ValidatedInput
+        type="text"
+        value={province}
+        onChange={e => setProvince(e.target.value)}
+        onBlur={() =>
+          onCommit({
+            provinceCode: province.trim() || null,
+            wardCode: ward.trim() || null,
+          })
+        }
+        minLength={0}
+        maxLength={10}
+        placeholder="Mã tỉnh"
+        className="h-10 w-24 shrink-0"
+        aria-label="Mã tỉnh"
+      />
+      <ValidatedInput
+        type="text"
+        value={ward}
+        onChange={e => setWard(e.target.value)}
+        onBlur={() =>
+          onCommit({
+            provinceCode: province.trim() || null,
+            wardCode: ward.trim() || null,
+          })
+        }
+        minLength={0}
+        maxLength={12}
+        placeholder="Mã phường"
+        className="h-10 w-28 shrink-0"
+        aria-label="Mã phường"
+      />
+    </>
   );
 }
 
@@ -249,21 +301,13 @@ export function AdminReportsView() {
             </SelectContent>
           </Select>
 
-          <input
-            type="text"
-            defaultValue={provinceCode}
-            placeholder="Mã tỉnh"
-            onBlur={e => setQuery({ provinceCode: e.target.value.trim() || null, page: '1' })}
-            className="h-10 w-24 shrink-0 rounded-lg border border-input bg-background px-3 text-sm"
-            aria-label="Mã tỉnh"
-          />
-          <input
-            type="text"
-            defaultValue={wardCode}
-            placeholder="Mã phường"
-            onBlur={e => setQuery({ wardCode: e.target.value.trim() || null, page: '1' })}
-            className="h-10 w-28 shrink-0 rounded-lg border border-input bg-background px-3 text-sm"
-            aria-label="Mã phường"
+          <AdminReportsLocationFields
+            key={`${provinceCode}|${wardCode}`}
+            provinceCode={provinceCode}
+            wardCode={wardCode}
+            onCommit={({ provinceCode: p, wardCode: w }) =>
+              setQuery({ provinceCode: p, wardCode: w, page: '1' })
+            }
           />
 
           <button

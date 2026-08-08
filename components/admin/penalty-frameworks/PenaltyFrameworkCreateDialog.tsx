@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedNumberInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import {
   PENALTY_VIOLATION_LEVEL_LABEL_VI,
   PENALTY_VIOLATION_LEVELS,
@@ -40,7 +42,7 @@ interface Props {
   onSubmit: (values: PenaltyFrameworkFormValues) => void;
 }
 
-const fieldClass =
+const selectClass =
   'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 const defaultValues = {
@@ -70,9 +72,11 @@ export function PenaltyFrameworkCreateDialog({
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<PenaltyFrameworkFormValues>({
     resolver: zodResolver(formSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: defaultValues as unknown as PenaltyFrameworkFormValues,
   });
 
@@ -115,7 +119,7 @@ export function PenaltyFrameworkCreateDialog({
               id="penalty-category"
               {...register('categoryId')}
               disabled={busy || categoriesLoading}
-              className={`${fieldClass} disabled:opacity-60`}
+              className={`${selectClass} disabled:opacity-60`}
             >
               <option value="">
                 {categoriesLoading ? 'Đang tải loại ô nhiễm…' : 'Chọn danh mục'}
@@ -139,7 +143,7 @@ export function PenaltyFrameworkCreateDialog({
               id="penalty-level"
               {...register('violationLevel')}
               disabled={busy}
-              className={`${fieldClass} disabled:opacity-60`}
+              className={`${selectClass} disabled:opacity-60`}
             >
               <option value="">Chọn cấp</option>
               {PENALTY_VIOLATION_LEVELS.map(level => (
@@ -157,40 +161,42 @@ export function PenaltyFrameworkCreateDialog({
             <label htmlFor="penalty-min" className="text-sm font-medium">
               Mức tối thiểu
             </label>
-            <input
+            <ValidatedNumberInput
               id="penalty-min"
-              type="number"
-              min={0}
               step={1000}
-              {...minAmountField}
+              ref={minAmountField.ref}
+              name={minAmountField.name}
+              onChange={minAmountField.onChange}
+              onBlur={minAmountField.onBlur}
+              value={watch('minAmount')}
+              min={0}
               onFocus={clearZeroOnFocus('minAmount')}
               disabled={busy}
               placeholder="500000"
-              className={`${fieldClass} disabled:opacity-60`}
+              error={errors.minAmount?.message}
+              className="disabled:opacity-60"
             />
-            {errors.minAmount ? (
-              <p className="text-xs text-destructive">{errors.minAmount.message}</p>
-            ) : null}
           </div>
 
           <div className="space-y-2">
             <label htmlFor="penalty-max" className="text-sm font-medium">
               Mức tối đa
             </label>
-            <input
+            <ValidatedNumberInput
               id="penalty-max"
-              type="number"
-              min={0}
               step={1000}
-              {...maxAmountField}
+              ref={maxAmountField.ref}
+              name={maxAmountField.name}
+              onChange={maxAmountField.onChange}
+              onBlur={maxAmountField.onBlur}
+              value={watch('maxAmount')}
+              min={0}
               onFocus={clearZeroOnFocus('maxAmount')}
               disabled={busy}
               placeholder="1000000"
-              className={`${fieldClass} disabled:opacity-60`}
+              error={errors.maxAmount?.message}
+              className="disabled:opacity-60"
             />
-            {errors.maxAmount ? (
-              <p className="text-xs text-destructive">{errors.maxAmount.message}</p>
-            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -202,7 +208,7 @@ export function PenaltyFrameworkCreateDialog({
               type="date"
               {...register('effectiveFrom')}
               disabled={busy}
-              className={`${fieldClass} disabled:opacity-60`}
+              className={`${selectClass} disabled:opacity-60`}
             />
             {errors.effectiveFrom ? (
               <p className="text-xs text-destructive">{errors.effectiveFrom.message}</p>
@@ -218,7 +224,7 @@ export function PenaltyFrameworkCreateDialog({
               type="date"
               {...register('effectiveTo')}
               disabled={busy}
-              className={`${fieldClass} disabled:opacity-60`}
+              className={`${selectClass} disabled:opacity-60`}
             />
             {errors.effectiveTo ? (
               <p className="text-xs text-destructive">{errors.effectiveTo.message}</p>
