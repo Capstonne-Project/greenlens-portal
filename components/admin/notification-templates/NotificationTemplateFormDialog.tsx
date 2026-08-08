@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedInput, ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import type { NotificationTemplateWriteInput } from '@/lib/api/models/notificationTemplate';
 import {
   NOTIFICATION_TEMPLATE_CHANNELS,
@@ -55,11 +57,8 @@ interface Props {
   onRetryDetail?: () => void;
 }
 
-const fieldClass =
+const selectClass =
   'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
-const textareaClass =
-  'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 const emptyDefaults: NotificationTemplateFormValues = {
   templateKey: '',
@@ -86,9 +85,11 @@ export function NotificationTemplateFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<NotificationTemplateFormValues>({
     resolver: zodResolver(formSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: emptyDefaults,
   });
 
@@ -177,27 +178,24 @@ export function NotificationTemplateFormDialog({
               <label htmlFor="nt-key" className="mb-1.5 block text-sm font-medium">
                 Template key <span className="text-destructive">*</span>
               </label>
-              <input
+              <ValidatedInput
                 id="nt-key"
-                className={fieldClass}
                 placeholder="badge_earned_test"
                 disabled={mode === 'edit'}
                 {...register('templateKey')}
+                value={watch('templateKey') ?? ''}
+                minLength={2}
+                maxLength={100}
+                error={errors.templateKey?.message}
+                hint="snake_case, duy nhất trong hệ thống."
               />
-              {errors.templateKey ? (
-                <p className="mt-1 text-xs text-destructive">{errors.templateKey.message}</p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  snake_case, duy nhất trong hệ thống.
-                </p>
-              )}
             </div>
 
             <div>
               <label htmlFor="nt-channel" className="mb-1.5 block text-sm font-medium">
                 Kênh <span className="text-destructive">*</span>
               </label>
-              <select id="nt-channel" className={fieldClass} {...register('channel')}>
+              <select id="nt-channel" className={selectClass} {...register('channel')}>
                 {NOTIFICATION_TEMPLATE_CHANNELS.map(ch => (
                   <option key={ch} value={ch}>
                     {notificationChannelLabel(ch)}
@@ -213,7 +211,7 @@ export function NotificationTemplateFormDialog({
               <label htmlFor="nt-type" className="mb-1.5 block text-sm font-medium">
                 Loại <span className="text-destructive">*</span>
               </label>
-              <select id="nt-type" className={fieldClass} {...register('type')}>
+              <select id="nt-type" className={selectClass} {...register('type')}>
                 {NOTIFICATION_TEMPLATE_TYPES.map(t => (
                   <option key={t} value={t}>
                     {notificationTypeLabel(t)}
@@ -230,44 +228,61 @@ export function NotificationTemplateFormDialog({
             <label htmlFor="nt-title-vi" className="mb-1.5 block text-sm font-medium">
               Tiêu đề (VI) <span className="text-destructive">*</span>
             </label>
-            <input id="nt-title-vi" className={fieldClass} {...register('titleVi')} />
-            {errors.titleVi ? (
-              <p className="mt-1 text-xs text-destructive">{errors.titleVi.message}</p>
-            ) : null}
+            <ValidatedInput
+              id="nt-title-vi"
+              {...register('titleVi')}
+              value={watch('titleVi') ?? ''}
+              minLength={1}
+              maxLength={200}
+              error={errors.titleVi?.message}
+            />
           </div>
 
           <div>
             <label htmlFor="nt-body-vi" className="mb-1.5 block text-sm font-medium">
               Nội dung (VI) <span className="text-destructive">*</span>
             </label>
-            <textarea id="nt-body-vi" rows={3} className={textareaClass} {...register('bodyVi')} />
-            {errors.bodyVi ? (
-              <p className="mt-1 text-xs text-destructive">{errors.bodyVi.message}</p>
-            ) : (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Hỗ trợ placeholder dạng {'{{BadgeName}}'}.
-              </p>
-            )}
+            <ValidatedTextarea
+              id="nt-body-vi"
+              rows={3}
+              {...register('bodyVi')}
+              value={watch('bodyVi') ?? ''}
+              minLength={1}
+              maxLength={2000}
+              showWordCount
+              error={errors.bodyVi?.message}
+              hint="Hỗ trợ placeholder dạng {{BadgeName}}."
+            />
           </div>
 
           <div>
             <label htmlFor="nt-title-en" className="mb-1.5 block text-sm font-medium">
               Tiêu đề (EN) <span className="text-destructive">*</span>
             </label>
-            <input id="nt-title-en" className={fieldClass} {...register('titleEn')} />
-            {errors.titleEn ? (
-              <p className="mt-1 text-xs text-destructive">{errors.titleEn.message}</p>
-            ) : null}
+            <ValidatedInput
+              id="nt-title-en"
+              {...register('titleEn')}
+              value={watch('titleEn') ?? ''}
+              minLength={1}
+              maxLength={200}
+              error={errors.titleEn?.message}
+            />
           </div>
 
           <div>
             <label htmlFor="nt-body-en" className="mb-1.5 block text-sm font-medium">
               Nội dung (EN) <span className="text-destructive">*</span>
             </label>
-            <textarea id="nt-body-en" rows={3} className={textareaClass} {...register('bodyEn')} />
-            {errors.bodyEn ? (
-              <p className="mt-1 text-xs text-destructive">{errors.bodyEn.message}</p>
-            ) : null}
+            <ValidatedTextarea
+              id="nt-body-en"
+              rows={3}
+              {...register('bodyEn')}
+              value={watch('bodyEn') ?? ''}
+              minLength={1}
+              maxLength={2000}
+              showWordCount
+              error={errors.bodyEn?.message}
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-1">

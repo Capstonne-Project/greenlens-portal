@@ -10,6 +10,7 @@ import {
   ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
+import { ValidatedNumberInput } from '@/components/common/ValidatedField';
 import { useSpamSuspectsList } from '@/hooks/useSpamSuspects';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
@@ -119,48 +120,42 @@ export function AdminSpamSuspectsView() {
             <label htmlFor="spam-min-hour" className="text-sm font-medium">
               Báo cáo / giờ (tối thiểu)
             </label>
-            <input
+            <ValidatedNumberInput
               id="spam-min-hour"
-              type="number"
               min={0}
               value={minReportsPerHour}
               onChange={e => {
                 setMinReportsPerHour(e.target.value);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             />
           </div>
           <div className="space-y-2">
             <label htmlFor="spam-min-reject" className="text-sm font-medium">
               Từ chối / 7 ngày (tối thiểu)
             </label>
-            <input
+            <ValidatedNumberInput
               id="spam-min-reject"
-              type="number"
               min={0}
               value={minRejected7Days}
               onChange={e => {
                 setMinRejected7Days(e.target.value);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             />
           </div>
           <div className="space-y-2">
             <label htmlFor="spam-min-ai" className="text-sm font-medium">
               AI gắn cờ (tối thiểu)
             </label>
-            <input
+            <ValidatedNumberInput
               id="spam-min-ai"
-              type="number"
               min={0}
               value={minAiFlagged}
               onChange={e => {
                 setMinAiFlagged(e.target.value);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             />
           </div>
           <button

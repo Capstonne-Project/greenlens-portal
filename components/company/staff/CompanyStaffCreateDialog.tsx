@@ -1,8 +1,10 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { useCompanyTeamOptions, useCreateCompanyStaff } from '@/hooks/useCompany';
-import { COMPANY_STAFF_POSITIONS, getCompanyMutationError } from '@/utils/companyUi';
 import type { CreateCompanyStaffResult } from '@/lib/api/models/company';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
+import { COMPANY_STAFF_POSITIONS, getCompanyMutationError } from '@/utils/companyUi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, X } from 'lucide-react';
 import { useEffect } from 'react';
@@ -11,7 +13,11 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 const schema = z.object({
-  email: z.string().min(1, 'Vui lòng nhập email').email('Email không hợp lệ'),
+  email: z
+    .string()
+    .min(1, 'Vui lòng nhập email')
+    .max(254, 'Tối đa 254 ký tự')
+    .email('Email không hợp lệ'),
   fullName: z.string().min(1, 'Vui lòng nhập họ tên').max(160, 'Tối đa 160 ký tự'),
   position: z.string().min(1, 'Vui lòng chọn chức vụ'),
   teamId: z.string().optional(),
@@ -37,8 +43,10 @@ export function CompanyStaffCreateDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
+    ...REALTIME_FORM_OPTIONS,
     resolver: zodResolver(schema),
     defaultValues: {
       email: '',
@@ -124,31 +132,31 @@ export function CompanyStaffCreateDialog({
             <label htmlFor="staff-email" className="mb-1.5 block text-sm font-medium">
               Email
             </label>
-            <input
+            <ValidatedInput
               id="staff-email"
               type="email"
               autoComplete="off"
-              className={fieldClass}
               {...register('email')}
+              value={watch('email')}
+              minLength={1}
+              maxLength={254}
+              error={errors.email?.message}
             />
-            {errors.email && (
-              <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>
-            )}
           </div>
 
           <div>
             <label htmlFor="staff-fullName" className="mb-1.5 block text-sm font-medium">
               Họ và tên
             </label>
-            <input
+            <ValidatedInput
               id="staff-fullName"
               type="text"
-              className={fieldClass}
               {...register('fullName')}
+              value={watch('fullName')}
+              minLength={1}
+              maxLength={160}
+              error={errors.fullName?.message}
             />
-            {errors.fullName && (
-              <p className="mt-1 text-xs text-destructive">{errors.fullName.message}</p>
-            )}
           </div>
 
           <div>

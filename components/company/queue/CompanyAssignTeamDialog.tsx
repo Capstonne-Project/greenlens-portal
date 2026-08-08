@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedTextarea } from '@/components/common/ValidatedField';
 import {
   Select,
   SelectContent,
@@ -143,13 +144,16 @@ export function CompanyAssignTeamDialog({
             <label htmlFor="assign-note" className="mb-1.5 block text-sm font-medium">
               Ghi chú <span className="font-normal text-muted-foreground">(tuỳ chọn)</span>
             </label>
-            <textarea
+            <ValidatedTextarea
               id="assign-note"
               rows={2}
               value={note}
               onChange={e => setNote(e.target.value)}
               placeholder="Hướng dẫn cho đội xử lý…"
-              className="w-full rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-border dark:bg-background"
+              minLength={0}
+              maxLength={500}
+              showWordCount={false}
+              className="border-emerald-100 bg-white dark:border-border dark:bg-background"
             />
           </div>
         </div>

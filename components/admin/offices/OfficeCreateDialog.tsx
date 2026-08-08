@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { SearchableSelect } from '@/components/common/SearchableSelect';
 import { LeoUserPicker } from '@/components/admin/offices/LeoUserPicker';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
@@ -25,9 +26,6 @@ const STEPS: readonly OfficeOnboardingStep[] = [
   { id: 2, title: 'Tạo văn phòng', desc: 'Phường / xã' },
   { id: 3, title: 'Gán LEO', desc: 'Phụ trách' },
 ];
-
-const fieldClass =
-  'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 interface OfficeCreateDialogProps {
   open: boolean;
@@ -168,12 +166,13 @@ export function OfficeCreateDialog({ open, onClose, onCompleted }: OfficeCreateD
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Tên ủy ban / Sở</label>
-              <input
+              <ValidatedInput
                 type="text"
                 value={deptName}
                 onChange={e => setDeptName(e.target.value)}
+                minLength={1}
+                maxLength={200}
                 placeholder="Ủy ban nhân dân TP HCM"
-                className={fieldClass}
               />
             </div>
             <div className="space-y-2">
@@ -212,12 +211,13 @@ export function OfficeCreateDialog({ open, onClose, onCompleted }: OfficeCreateD
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Tên văn phòng MT</label>
-              <input
+              <ValidatedInput
                 type="text"
                 value={officeName}
                 onChange={e => setOfficeName(e.target.value)}
+                minLength={1}
+                maxLength={200}
                 placeholder="UBND phường Bến Thành"
-                className={fieldClass}
               />
             </div>
             <div className="space-y-2">

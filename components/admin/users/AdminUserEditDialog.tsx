@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
 import { useUpdateAdminUser } from '@/hooks/useAdminUsers';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@/lib/constants/adminUsersNav';
 import { normalizeApiRole } from '@/lib/constants/systemRoles';
 import type { AdminUser } from '@/lib/api/models/adminUser';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -56,9 +58,11 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: {
       fullName: '',
       phoneNumber: '',
@@ -100,7 +104,7 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
     );
   });
 
-  const fieldClass =
+  const selectClass =
     'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
   return (
@@ -115,20 +119,37 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
           <p className="text-sm text-muted-foreground">
             Email: <span className="font-medium text-foreground">{user.email}</span>
           </p>
-          <Field label="Họ tên" error={errors.fullName?.message}>
-            <input type="text" className={fieldClass} {...register('fullName')} />
+          <Field label="Họ tên">
+            <ValidatedInput
+              type="text"
+              {...register('fullName')}
+              value={watch('fullName') ?? ''}
+              minLength={1}
+              maxLength={160}
+              error={errors.fullName?.message}
+            />
           </Field>
-          <Field label="Số điện thoại" error={errors.phoneNumber?.message}>
-            <input type="tel" className={fieldClass} {...register('phoneNumber')} />
+          <Field label="Số điện thoại">
+            <ValidatedInput
+              type="tel"
+              {...register('phoneNumber')}
+              value={watch('phoneNumber') ?? ''}
+              minLength={0}
+              maxLength={15}
+              error={errors.phoneNumber?.message}
+            />
           </Field>
-          <Field label="Vai trò" error={errors.role?.message}>
-            <select className={fieldClass} {...register('role')}>
+          <Field label="Vai trò">
+            <select className={selectClass} {...register('role')}>
               {ADMIN_USER_ASSIGNABLE_ROLES.map(r => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>
               ))}
             </select>
+            {errors.role ? (
+              <p className="text-xs font-medium text-destructive">{errors.role.message}</p>
+            ) : null}
           </Field>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -149,20 +170,11 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
   );
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-foreground">{label}</label>
       {children}
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </div>
   );
 }

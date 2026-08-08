@@ -3,6 +3,8 @@
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
+import { formatTextLimitCounter } from '@/utils/textFieldLimits';
 
 export interface SearchableSelectOption {
   value: string;
@@ -123,11 +125,15 @@ export function SearchableSelect({
           <input
             type="text"
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => setQuery(e.target.value.slice(0, SEARCH_INPUT_MAX_LENGTH))}
+            maxLength={SEARCH_INPUT_MAX_LENGTH}
             placeholder={searchPlaceholder}
             className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40"
             autoFocus
           />
+          <p className="mt-1 text-right text-[10px] tabular-nums text-muted-foreground">
+            {formatTextLimitCounter(query, { max: SEARCH_INPUT_MAX_LENGTH })}
+          </p>
         </div>
         <ul className="max-h-52 overflow-y-auto py-1">
           {filtered.length === 0 && (

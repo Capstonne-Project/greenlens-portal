@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useUpdateOffice } from '@/hooks/useOffices';
 import type { OfficeListItem } from '@/lib/api/models/office';
@@ -7,9 +8,6 @@ import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-const fieldClass =
-  'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 interface OfficeEditDialogProps {
   open: boolean;
@@ -59,12 +57,13 @@ function OfficeEditFormBody({
         <label htmlFor="office-edit-name" className="text-sm font-medium">
           Tên văn phòng
         </label>
-        <input
+        <ValidatedInput
           id="office-edit-name"
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
-          className={fieldClass}
+          minLength={1}
+          maxLength={200}
         />
       </div>
       <div className="flex justify-end gap-2">
