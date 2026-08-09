@@ -42,6 +42,11 @@ export interface RecordInspectionPaymentInput {
   paidAt: string;
   receipt: File;
   note?: string;
+  /**
+   * UUID sinh 1 lần khi mở dialog và giữ nguyên qua các lần retry —
+   * chặn ghi phạt trùng khi 401-refresh replay request hoặc user thử lại sau timeout.
+   */
+  idempotencyKey?: string;
 }
 
 /** PUT /v1/inspections/{id}/record-payment — kết quả. Không có payload cụ thể. */

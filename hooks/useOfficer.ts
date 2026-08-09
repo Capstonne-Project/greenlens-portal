@@ -622,7 +622,11 @@ export function useRecordInspectionPayment() {
       inspectionId: string;
       body: RecordInspectionPaymentInput;
     }) => recordInspectionPayment(inspectionId, body),
-    onSuccess: (_data, { inspectionId }) => {
+    // onSettled (không phải onSuccess): endpoint không idempotent và BE có thể đã commit
+    // xong rồi mới lỗi ở bước side-effect (409 CONCURRENCY_CONFLICT) hoặc client timeout.
+    // Lỗi vẫn phải refetch để `canRecordPayment` / `paidAmount` phản ánh trạng thái thật,
+    // tránh LEO ghi nhận lần 2 dựa trên cache cũ.
+    onSettled: (_data, _error, { inspectionId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.inspectionDetail(inspectionId) });
       queryClient.invalidateQueries({ queryKey: officerKeys.inspectionPayments(inspectionId) });
       queryClient.invalidateQueries({ queryKey: officerKeys.inspectionOfficerQueue() });

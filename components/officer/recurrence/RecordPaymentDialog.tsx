@@ -13,6 +13,7 @@ import { Field, FieldError, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRecordInspectionPayment } from '@/hooks/useOfficer';
+import { createIdempotencyKey, extractApiErrorCode, isAxiosError } from '@/lib/api/core';
 import { toastApiError } from '@/lib/api/toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Banknote, Loader2, Receipt } from 'lucide-react';
@@ -45,6 +46,25 @@ function formatVnd(amount: number): string {
   return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
 }
 
+/**
+ * `<input type="date">` trả 'YYYY-MM-DD'. `new Date('YYYY-MM-DD')` parse theo UTC,
+ * nên user VN (+07) chọn 09/08 sẽ gửi lên 08/08T17:00Z — lệch 1 ngày.
+ * Dựng Date theo giờ địa phương để ngày nộp phạt đúng với ngày LEO chọn.
+ */
+function toPaidAtIso(dateInputValue: string): string {
+  const [year, month, day] = dateInputValue.split('-').map(Number);
+  if (!year || !month || !day) return new Date(dateInputValue).toISOString();
+  const now = new Date();
+  return new Date(
+    year,
+    month - 1,
+    day,
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds()
+  ).toISOString();
+}
+
 export function RecordPaymentDialog({
   open,
   onOpenChange,
@@ -60,6 +80,12 @@ export function RecordPaymentDialog({
   const recordMutation = useRecordInspectionPayment();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasValidAmount = typeof remainingAmount === 'number' && remainingAmount > 0;
+  /**
+   * Giữ nguyên qua các lần retry trong cùng một lần mở dialog — nếu request đầu đã tới BE
+   * (timeout phía client, hoặc 401-refresh replay), lần gửi lại cùng key sẽ không ghi phạt 2 lần.
+   * Reset khi đóng/mở lại dialog vì đó là một lần nộp phạt mới.
+   */
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const {
     control,
@@ -79,7 +105,11 @@ export function RecordPaymentDialog({
   const receiptFile = watch('receipt');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      idempotencyKeyRef.current = null;
+      return;
+    }
+    idempotencyKeyRef.current = createIdempotencyKey();
     reset({
       paidAt: todayDateInputValue(),
       note: '',
@@ -98,9 +128,10 @@ export function RecordPaymentDialog({
         inspectionId,
         body: {
           paidAmount: remainingAmount,
-          paidAt: new Date(values.paidAt).toISOString(),
+          paidAt: toPaidAtIso(values.paidAt),
           receipt: values.receipt,
           note: values.note?.trim() || undefined,
+          idempotencyKey: idempotencyKeyRef.current ?? undefined,
         },
       },
       {
@@ -109,6 +140,23 @@ export function RecordPaymentDialog({
           onOpenChange(false);
         },
         onError: err => {
+          // 409 CONCURRENCY_CONFLICT / timeout: thao tác CÓ THỂ đã được BE ghi nhận.
+          // Đóng dialog + refetch để LEO thấy trạng thái thật, thay vì mời bấm lại
+          // (endpoint tạo PenaltyPayment mới mỗi lần → retry mù dễ ghi trùng).
+          const isConflict =
+            extractApiErrorCode(err) === 'CONCURRENCY_CONFLICT' ||
+            (isAxiosError(err) && err.response?.status === 409);
+          const isTimeout = isAxiosError(err) && err.code === 'ECONNABORTED';
+
+          // useRecordInspectionPayment invalidate ở onSettled → hồ sơ tự refetch sau khi lỗi.
+          if (isConflict || isTimeout) {
+            onOpenChange(false);
+            toast.warning(
+              'Không xác nhận được kết quả. Hồ sơ đang được tải lại — vui lòng kiểm tra trạng thái trước khi ghi nhận lại.'
+            );
+            return;
+          }
+
           toastApiError(err, 'Không thể ghi nhận nộp phạt. Vui lòng thử lại.');
         },
       }
