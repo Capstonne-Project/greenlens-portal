@@ -13,6 +13,7 @@ import {
   resolveNotificationHref,
   type NotificationPortal,
 } from '@/utils/notificationUi';
+import { navigateFromNotification } from '@/utils/notificationNavigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,9 +22,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import FilledBellIcon from '@/components/ui/filled-bell-icon';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCheck, MoreHorizontal, Settings2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { NotificationListItem } from './NotificationListItem';
@@ -79,6 +81,9 @@ function NotificationDrawerSkeleton() {
  */
 export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const isDrawerOpen = useNotificationUiStore(s => s.isDrawerOpen);
   const closeDrawer = useNotificationUiStore(s => s.closeDrawer);
   const highlightedNotificationId = useNotificationUiStore(s => s.highlightedNotificationId);
@@ -123,11 +128,17 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
     return () => window.clearTimeout(timer);
   }, [isDrawerOpen, highlightedNotificationId, isPending, items.length, clearHighlight]);
 
-  /** Click row → mở đích; mark-read theo id nằm ở ListItem (menu). */
+  /** Click row → mở đích; cùng trang đang đứng → soft reload RQ (không F5 browser). */
   const handleSelect = (item: NotificationItem) => {
     clearHighlight();
     closeDrawer();
-    router.push(resolveNotificationHref(portal, item));
+    navigateFromNotification({
+      router,
+      queryClient,
+      href: resolveNotificationHref(portal, item),
+      pathname,
+      search: searchParams.toString(),
+    });
   };
 
   /** PUT /v1/notifications/read-all — L4 `useMarkAllNotificationsRead`. */
