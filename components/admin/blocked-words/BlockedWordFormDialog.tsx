@@ -1,9 +1,10 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import type { BlockedWord } from '@/lib/api/models/blockedWord';
 import { cn } from '@/lib/utils';
 import { Loader2, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export type BlockedWordFormValues = {
   word: string;
@@ -18,31 +19,32 @@ interface BlockedWordFormDialogProps {
   onSubmit: (values: BlockedWordFormValues) => void;
 }
 
-export function BlockedWordFormDialog({
-  open,
+type BlockedWordFormDialogContentProps = Omit<BlockedWordFormDialogProps, 'open' | 'initial'> & {
+  initialWord: string;
+};
+
+function BlockedWordFormDialogContent({
   mode,
-  initial,
+  initialWord,
   busy,
   onClose,
   onSubmit,
-}: BlockedWordFormDialogProps) {
+}: BlockedWordFormDialogContentProps) {
+  const [word, setWord] = useState(initialWord);
+
   useEffect(() => {
-    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !busy) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, busy, onClose]);
-
-  if (!open) return null;
+  }, [busy, onClose]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const word = String(fd.get('word') ?? '').trim();
-    if (!word) return;
-    onSubmit({ word });
+    const trimmed = word.trim();
+    if (!trimmed) return;
+    onSubmit({ word: trimmed });
   };
 
   return (
@@ -79,14 +81,13 @@ export function BlockedWordFormDialog({
             <label htmlFor="blocked-word" className="mb-1.5 block text-sm font-medium">
               Từ / cụm từ
             </label>
-            <input
+            <ValidatedInput
               id="blocked-word"
-              name="word"
-              defaultValue={initial?.word ?? ''}
-              required
+              value={word}
+              onChange={e => setWord(e.target.value)}
               minLength={1}
               maxLength={120}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+              required
               placeholder="vd: spam, tục tĩu…"
             />
           </div>
@@ -114,5 +115,29 @@ export function BlockedWordFormDialog({
         </form>
       </div>
     </div>
+  );
+}
+
+export function BlockedWordFormDialog({
+  open,
+  mode,
+  initial,
+  busy,
+  onClose,
+  onSubmit,
+}: BlockedWordFormDialogProps) {
+  if (!open) return null;
+
+  const formKey = mode === 'edit' ? (initial?.id ?? 'edit') : 'create';
+
+  return (
+    <BlockedWordFormDialogContent
+      key={formKey}
+      mode={mode}
+      initialWord={initial?.word ?? ''}
+      busy={busy}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
   );
 }

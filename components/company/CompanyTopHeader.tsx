@@ -26,17 +26,12 @@ export function CompanyTopHeader() {
   const iconSize = isOverview ? 'size-4 md:size-[18px]' : 'size-[18px]';
 
   return (
-    <header
-      className={cn(
-        'shrink-0 border-b border-[#e8e8e8] bg-[#fffdfc]',
-        isOverview ? 'pb-2' : 'pb-3'
-      )}
-    >
+    <header className={cn('shrink-0 border-b border-[#e8e8e8] bg-[#fffdfc] pb-3')}>
       <div
         className={cn(
           'flex w-full min-w-0',
           isOverview
-            ? 'flex-col gap-2 sm:flex-row sm:items-start sm:justify-between md:items-center'
+            ? 'flex-col gap-3 px-1 py-1 lg:flex-row lg:items-center lg:gap-3'
             : 'h-14 items-center justify-between gap-4 md:h-16'
         )}
       >
@@ -52,7 +47,7 @@ export function CompanyTopHeader() {
           className={cn(
             'flex shrink-0 items-center border-l border-[#e8e8e8]',
             isOverview
-              ? 'gap-1.5 self-end pl-2 sm:self-center md:gap-2 md:pl-3'
+              ? 'gap-1.5 self-end lg:self-center md:gap-2 md:pl-3'
               : 'gap-2 pl-3 md:gap-2.5 md:pl-4'
           )}
         >
@@ -62,8 +57,8 @@ export function CompanyTopHeader() {
             onClick={toggleLocale}
             className={cn(
               iconButtonClass,
-              'text-xs font-semibold tracking-wide',
-              isOverview ? 'gap-1 px-2' : 'gap-1.5 px-2.5'
+              'text-sm font-semibold tracking-wide',
+              isOverview ? 'gap-1.5 px-2.5' : 'gap-1.5 px-2.5'
             )}
             aria-label={`Đổi ngôn ngữ, hiện tại ${locale === 'vi' ? 'Tiếng Việt' : 'English'}`}
           >

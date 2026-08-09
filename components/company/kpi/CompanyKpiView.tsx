@@ -9,6 +9,10 @@ import {
 } from '@/components/ui/select';
 import { useMyCompanyKpi } from '@/hooks/useCompany';
 import type { MyCompanyKpiParams } from '@/lib/api/models/company';
+import {
+  companyOverviewDateParamsToKpiParams,
+  useCompanyOverviewUiStore,
+} from '@/lib/store/companyOverviewUiStore';
 import { cn } from '@/lib/utils';
 import {
   formatAvgResolutionHours,
@@ -55,12 +59,27 @@ function fromDateInputToIsoEnd(dateStr: string): string {
   return `${dateStr}T23:59:59.999Z`;
 }
 
-export function CompanyKpiView() {
+export function CompanyKpiView({
+  embedded = false,
+  kpiParams: kpiParamsProp,
+}: {
+  embedded?: boolean;
+  /** Khi embed trong tổng quan — đồng bộ với header, không hiện Select riêng. */
+  kpiParams?: MyCompanyKpiParams;
+}) {
   const [preset, setPreset] = useState<PeriodPreset>('month');
   const [customFrom, setCustomFrom] = useState(() => toDateInputValue(startOfMonthUtc()));
   const [customTo, setCustomTo] = useState(() => toDateInputValue(new Date().toISOString()));
 
-  const params: MyCompanyKpiParams = useMemo(() => {
+  const datePreset = useCompanyOverviewUiStore(s => s.datePreset);
+  const dateParams = useCompanyOverviewUiStore(s => s.dateParams);
+
+  const embeddedKpiParams = useMemo(
+    () => companyOverviewDateParamsToKpiParams(datePreset, dateParams),
+    [datePreset, dateParams]
+  );
+
+  const localParams: MyCompanyKpiParams = useMemo(() => {
     if (preset === 'month') return {};
     if (preset === '7d') return { from: daysAgoUtc(7), to: new Date().toISOString() };
     if (preset === '30d') return { from: daysAgoUtc(30), to: new Date().toISOString() };
@@ -72,6 +91,8 @@ export function CompanyKpiView() {
     }
     return {};
   }, [preset, customFrom, customTo]);
+
+  const params = embedded ? (kpiParamsProp ?? embeddedKpiParams) : localParams;
 
   const { data: kpi, isPending, isError, refetch, isFetching } = useMyCompanyKpi(params);
 
@@ -86,76 +107,80 @@ export function CompanyKpiView() {
       : null;
 
   return (
-    <div className="relative space-y-6">
-      <div className="flex flex-col gap-4 border-b border-[#e8e8e8] pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">
-            Hiệu suất xử lý task LEO điều phối về công ty trong kỳ đã chọn.
-          </p>
-        </div>
+    <div className={cn('relative', embedded ? 'space-y-4' : 'space-y-6')}>
+      {!embedded ? (
+        <>
+          <div className="flex flex-col gap-4 border-b border-[#e8e8e8] pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground">
+                Hiệu suất xử lý task LEO điều phối về công ty trong kỳ đã chọn.
+              </p>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={preset} onValueChange={v => setPreset(v as PeriodPreset)}>
-            <SelectTrigger
-              id="kpi-period-filter"
-              className="h-10 w-[12rem] rounded-lg"
-              aria-label="Kỳ báo cáo"
-            >
-              <SelectValue placeholder="Kỳ báo cáo" />
-            </SelectTrigger>
-            <SelectContent position="popper" sideOffset={4}>
-              <SelectItem value="month">Tháng này</SelectItem>
-              <SelectItem value="7d">7 ngày</SelectItem>
-              <SelectItem value="30d">30 ngày</SelectItem>
-              <SelectItem value="custom">Tuỳ chọn</SelectItem>
-            </SelectContent>
-          </Select>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-50"
-            aria-label="Làm mới"
-          >
-            <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} aria-hidden />
-          </button>
-        </div>
-      </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={preset} onValueChange={v => setPreset(v as PeriodPreset)}>
+                <SelectTrigger
+                  id="kpi-period-filter"
+                  className="h-10 w-[12rem] rounded-lg"
+                  aria-label="Kỳ báo cáo"
+                >
+                  <SelectValue placeholder="Kỳ báo cáo" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  <SelectItem value="month">Tháng này</SelectItem>
+                  <SelectItem value="7d">7 ngày</SelectItem>
+                  <SelectItem value="30d">30 ngày</SelectItem>
+                  <SelectItem value="custom">Tuỳ chọn</SelectItem>
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-50"
+                aria-label="Làm mới"
+              >
+                <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} aria-hidden />
+              </button>
+            </div>
+          </div>
 
-      {preset === 'custom' && (
-        <div className="flex flex-wrap items-end gap-3 border-b border-[#e8e8e8] pb-5">
-          <div>
-            <label
-              htmlFor="kpi-from"
-              className="mb-1 block text-xs font-medium text-muted-foreground"
-            >
-              Từ ngày
-            </label>
-            <input
-              id="kpi-from"
-              type="date"
-              value={customFrom}
-              onChange={e => setCustomFrom(e.target.value)}
-              className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="kpi-to"
-              className="mb-1 block text-xs font-medium text-muted-foreground"
-            >
-              Đến ngày
-            </label>
-            <input
-              id="kpi-to"
-              type="date"
-              value={customTo}
-              onChange={e => setCustomTo(e.target.value)}
-              className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-            />
-          </div>
-        </div>
-      )}
+          {preset === 'custom' && (
+            <div className="flex flex-wrap items-end gap-3 border-b border-[#e8e8e8] pb-5">
+              <div>
+                <label
+                  htmlFor="kpi-from"
+                  className="mb-1 block text-xs font-medium text-muted-foreground"
+                >
+                  Từ ngày
+                </label>
+                <input
+                  id="kpi-from"
+                  type="date"
+                  value={customFrom}
+                  onChange={e => setCustomFrom(e.target.value)}
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="kpi-to"
+                  className="mb-1 block text-xs font-medium text-muted-foreground"
+                >
+                  Đến ngày
+                </label>
+                <input
+                  id="kpi-to"
+                  type="date"
+                  value={customTo}
+                  onChange={e => setCustomTo(e.target.value)}
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      ) : null}
 
       {isPending ? (
         <div className="flex items-center justify-center gap-2 py-24 text-sm text-muted-foreground">
@@ -178,11 +203,7 @@ export function CompanyKpiView() {
           </div>
         </div>
       ) : kpi.totalAssigned === 0 ? (
-        <EmptyKpiPeriod
-          companyName={kpi.companyName}
-          periodFrom={kpi.periodFrom}
-          periodTo={kpi.periodTo}
-        />
+        <EmptyKpiPeriod />
       ) : (
         <>
           {/* One composition: outcome hero + volume funnel */}
@@ -263,30 +284,15 @@ export function CompanyKpiView() {
   );
 }
 
-function EmptyKpiPeriod({
-  companyName,
-  periodFrom,
-  periodTo,
-}: {
-  companyName: string;
-  periodFrom: string;
-  periodTo: string;
-}) {
+function EmptyKpiPeriod() {
   return (
-    <section className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafaf9] px-6 py-16 text-center dark:border-border dark:bg-muted/20">
-      <div className="flex size-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-        <Inbox className="size-8" aria-hidden />
+    <section className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafaf9] px-6 py-12 text-center dark:border-border dark:bg-muted/20">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <Inbox className="size-7" aria-hidden />
       </div>
-      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {companyName}
-      </p>
-      <h2 className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+      <h2 className="mt-4 text-base font-semibold tracking-tight text-foreground sm:text-lg">
         Chưa có task trong kỳ này
       </h2>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">
-        {formatCompanyDate(periodFrom)} → {formatCompanyDate(periodTo)}. Khi LEO điều phối báo cáo,
-        tỷ lệ hoàn thành và SLA sẽ hiện tại đây.
-      </p>
     </section>
   );
 }

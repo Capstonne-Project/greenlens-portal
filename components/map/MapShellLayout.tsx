@@ -33,7 +33,7 @@ export function MapShellLayout({ config, children }: MapShellLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
+    <div className="app-canvas flex h-screen w-screen flex-col overflow-hidden font-sans md:flex-row">
       <AppSidebar config={config} />
       <MapShellContent variant="panel">{children}</MapShellContent>
     </div>

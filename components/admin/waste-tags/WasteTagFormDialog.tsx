@@ -1,6 +1,12 @@
 'use client';
 
+import {
+  ValidatedInput,
+  ValidatedNumberInput,
+  ValidatedTextarea,
+} from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -35,9 +41,6 @@ const formSchema = z.object({
 
 export type WasteTagFormValues = z.infer<typeof formSchema>;
 
-const fieldClass =
-  'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
 interface WasteTagFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
@@ -61,9 +64,11 @@ export function WasteTagFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<WasteTagFormValues>({
     resolver: zodResolver(formSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: {
       code: '',
       nameVi: '',
@@ -113,18 +118,21 @@ export function WasteTagFormDialog({
             <label className="text-sm font-medium" htmlFor="wt-code">
               Mã (code)
             </label>
-            <input
+            <ValidatedInput
               id="wt-code"
               {...register('code', {
                 onChange: e => {
                   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
                 },
               })}
+              value={watch('code') ?? ''}
+              minLength={2}
+              maxLength={64}
+              error={errors.code?.message}
               disabled={mode === 'edit' || busy}
               placeholder="ILLEGAL_DUMPING"
-              className={`${fieldClass} font-mono uppercase disabled:opacity-60`}
+              className="font-mono uppercase disabled:opacity-60"
             />
-            {errors.code ? <p className="text-xs text-destructive">{errors.code.message}</p> : null}
             <p className="text-xs text-muted-foreground">
               UPPER_SNAKE_CASE, duy nhất, không đổi sau khi tạo.
             </p>
@@ -134,82 +142,81 @@ export function WasteTagFormDialog({
             <label className="text-sm font-medium" htmlFor="wt-order">
               Thứ tự hiển thị
             </label>
-            <input
+            <ValidatedNumberInput
               id="wt-order"
-              type="number"
-              min={1}
               {...register('displayOrder', { valueAsNumber: true })}
+              value={watch('displayOrder')}
+              min={1}
+              max={9999}
+              error={errors.displayOrder?.message}
               disabled={busy}
-              className={fieldClass}
             />
-            {errors.displayOrder ? (
-              <p className="text-xs text-destructive">{errors.displayOrder.message}</p>
-            ) : null}
           </div>
 
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium" htmlFor="wt-icon">
               Icon URL (tuỳ chọn)
             </label>
-            <input
+            <ValidatedInput
               id="wt-icon"
               {...register('iconUrl')}
+              value={watch('iconUrl') ?? ''}
+              minLength={0}
+              maxLength={500}
+              error={errors.iconUrl?.message}
               disabled={busy}
               placeholder="https://cdn.greenlens.com/icons/illegal-dumping.png"
-              className={fieldClass}
             />
-            {errors.iconUrl ? (
-              <p className="text-xs text-destructive">{errors.iconUrl.message}</p>
-            ) : null}
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="wt-name-vi">
               Tên tiếng Việt
             </label>
-            <input
+            <ValidatedInput
               id="wt-name-vi"
               {...register('nameVi')}
+              value={watch('nameVi') ?? ''}
+              minLength={1}
+              maxLength={120}
+              error={errors.nameVi?.message}
               disabled={busy}
               placeholder="Đổ rác trái phép"
-              className={fieldClass}
             />
-            {errors.nameVi ? (
-              <p className="text-xs text-destructive">{errors.nameVi.message}</p>
-            ) : null}
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="wt-name-en">
               Tên tiếng Anh
             </label>
-            <input
+            <ValidatedInput
               id="wt-name-en"
               {...register('nameEn')}
+              value={watch('nameEn') ?? ''}
+              minLength={1}
+              maxLength={120}
+              error={errors.nameEn?.message}
               disabled={busy}
               placeholder="Illegal Dumping"
-              className={fieldClass}
             />
-            {errors.nameEn ? (
-              <p className="text-xs text-destructive">{errors.nameEn.message}</p>
-            ) : null}
           </div>
 
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium" htmlFor="wt-description">
               Mô tả
             </label>
-            <textarea
+            <ValidatedTextarea
               id="wt-description"
               {...register('description')}
+              value={watch('description') ?? ''}
+              minLength={0}
+              maxLength={500}
+              showWordCount
+              error={errors.description?.message}
               disabled={busy}
               rows={3}
               placeholder="Mô tả ngắn về loại rác thải này…"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             />
-            {errors.description ? (
-              <p className="text-xs text-destructive">{errors.description.message}</p>
-            ) : null}
           </div>
         </div>
 

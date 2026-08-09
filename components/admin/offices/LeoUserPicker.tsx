@@ -1,11 +1,10 @@
 'use client';
 
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { useUnassignedLeoUsers } from '@/hooks/useOffices';
 import type { AdminUser } from '@/lib/api/models/adminUser';
 import { roleDisplayVi } from '@/utils/adminUserUi';
-
-const fieldClass =
-  'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 interface LeoUserPickerProps {
   enabled: boolean;
@@ -35,13 +34,12 @@ export function LeoUserPicker({
         <p className="text-xs text-muted-foreground">
           Chỉ hiển thị cán bộ có role LEO chưa được gán văn phòng.
         </p>
-        <input
+        <ValidatedSearchInput
           id={inputId}
-          type="search"
           value={search}
           onChange={e => onSearchChange(e.target.value)}
+          maxLength={SEARCH_INPUT_MAX_LENGTH}
           placeholder="Email, họ tên..."
-          className={fieldClass}
           disabled={!enabled}
         />
       </div>

@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { useRenameCompanyTeam } from '@/hooks/useCompany';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getCompanyMutationError } from '@/utils/companyUi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, X } from 'lucide-react';
@@ -28,8 +30,10 @@ export function CompanyTeamRenameDialog({ open, team, onClose }: CompanyTeamRena
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
+    ...REALTIME_FORM_OPTIONS,
     resolver: zodResolver(schema),
     defaultValues: { name: '' },
   });
@@ -40,9 +44,6 @@ export function CompanyTeamRenameDialog({ open, team, onClose }: CompanyTeamRena
   }, [open, team, reset]);
 
   if (!open || !team) return null;
-
-  const fieldClass =
-    'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
   const onSubmit = handleSubmit(values => {
     renameTeam.mutate(
@@ -90,8 +91,15 @@ export function CompanyTeamRenameDialog({ open, team, onClose }: CompanyTeamRena
             <label htmlFor="team-rename" className="mb-1.5 block text-sm font-medium">
               Tên mới
             </label>
-            <input id="team-rename" type="text" className={fieldClass} {...register('name')} />
-            {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
+            <ValidatedInput
+              id="team-rename"
+              type="text"
+              {...register('name')}
+              value={watch('name')}
+              minLength={1}
+              maxLength={120}
+              error={errors.name?.message}
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

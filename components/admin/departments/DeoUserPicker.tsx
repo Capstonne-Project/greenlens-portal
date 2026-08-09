@@ -1,11 +1,10 @@
 'use client';
 
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { useDeoUsers } from '@/hooks/useDepartments';
 import type { AdminUser } from '@/lib/api/models/adminUser';
 import { roleDisplayVi } from '@/utils/adminUserUi';
-
-const fieldClass =
-  'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 interface DeoUserPickerProps {
   enabled: boolean;
@@ -35,13 +34,12 @@ export function DeoUserPicker({
         <p className="text-xs text-muted-foreground">
           Chỉ hiển thị người dùng có role DEO (Cán bộ sở).
         </p>
-        <input
+        <ValidatedSearchInput
           id={inputId}
-          type="search"
           value={search}
           onChange={e => onSearchChange(e.target.value)}
+          maxLength={SEARCH_INPUT_MAX_LENGTH}
           placeholder="Email, họ tên..."
-          className={fieldClass}
           disabled={!enabled}
         />
       </div>

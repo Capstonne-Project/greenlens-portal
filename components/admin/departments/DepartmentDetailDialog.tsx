@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { useDepartmentDetail } from '@/hooks/useDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
 import { Loader2, Mail, Search, UserRound } from 'lucide-react';
@@ -165,15 +167,15 @@ export function DepartmentDetailDialog({
               {data.offices.length > 8 ? (
                 <label className="relative block w-full sm:max-w-xs">
                   <Search
-                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                    className="pointer-events-none absolute left-3 top-[11px] z-10 size-4 text-muted-foreground"
                     aria-hidden
                   />
-                  <input
-                    type="search"
+                  <ValidatedSearchInput
                     value={officeQ}
                     onChange={e => setOfficeQ(e.target.value)}
+                    maxLength={SEARCH_INPUT_MAX_LENGTH}
                     placeholder="Lọc văn phòng, phường/xã, LEO…"
-                    className="h-9 w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-600/40 focus:ring-2 focus:ring-emerald-500/15"
+                    className="h-9 py-2 pl-9"
                   />
                 </label>
               ) : null}

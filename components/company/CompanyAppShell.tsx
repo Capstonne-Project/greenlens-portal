@@ -43,7 +43,7 @@ export function CompanyAppShell({ children }: { children: React.ReactNode }) {
   }, [queueCount, assignmentsNewCount]);
 
   return (
-    <div className="flex h-dvh w-screen overflow-hidden bg-[#f7f7f7] font-sans md:flex-row">
+    <div className="app-canvas flex h-dvh w-screen overflow-hidden font-sans md:flex-row">
       <AppSidebar
         config={companyNavConfig}
         profileHref={PROFILE_ROUTES.company}

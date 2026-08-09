@@ -5,30 +5,22 @@ import dynamic from 'next/dynamic';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Building2,
-  Camera,
+  Banknote,
   Check,
-  CheckCircle2,
   CircleAlert,
   Clock,
   Copy,
   ExternalLink,
   FileText,
   History,
-  IdCard,
-  ImageIcon,
   LayoutDashboard,
   MapPin,
-  Phone,
-  Scale,
-  UserRound,
-  Users,
-  XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import { AssignInspectionTeamDialog } from '@/components/officer/recurrence/AssignInspectionTeamDialog';
+import { RecordPaymentDialog } from '@/components/officer/recurrence/RecordPaymentDialog';
 import {
   ClickableReportImage,
   ReportImagePreviewDialog,
@@ -129,11 +121,12 @@ function formatVnd(amount: number | null | undefined): string {
   return `${amount.toLocaleString('vi-VN')} ₫`;
 }
 
-function formatBytes(size: number | null | undefined): string {
-  if (size == null || !Number.isFinite(size) || size < 0) return '';
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+/** Tên gọi để ký — từ cuối trong họ tên VN (VD "Xử Phạt Trưởng" → "Trưởng"). */
+function resolveGivenName(fullName: string | null | undefined): string | null {
+  const trimmed = fullName?.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(/\s+/);
+  return parts[parts.length - 1] ?? null;
 }
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -143,40 +136,12 @@ function formatDuration(seconds: number | null | undefined): string {
   return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
 }
 
-function entityTypeLabel(type: string | null | undefined): string {
-  if (!type?.trim()) return '—';
-  if (type === 'Individual') return 'Cá nhân';
-  if (type === 'Organization' || type === 'Business') return 'Doanh nghiệp';
-  return type;
-}
-
-function isBusinessEntity(type: string | null | undefined): boolean {
-  return type === 'Organization' || type === 'Business';
-}
-
-function isIndividualEntity(type: string | null | undefined): boolean {
-  return type === 'Individual';
-}
-
 function canManageInspectionTeam(status: string): boolean {
   return status === 'Draft' || status === 'InProgress';
 }
 
 function hasAssignedTeam(assignedTeamId: string | null | undefined): boolean {
   return Boolean(assignedTeamId?.trim());
-}
-
-function showsPenaltyBlock(status: string): boolean {
-  return inspectionShowsPenaltyFields(status) || status === 'ClosedNoViolation';
-}
-
-function showsPaymentBlock(status: string): boolean {
-  return inspectionShowsPenaltyFields(status);
-}
-
-function showsChecklistBlock(status: string, hasEvidence: boolean): boolean {
-  if (status === 'Draft') return hasEvidence;
-  return true;
 }
 
 function isImageMime(mime: string | null | undefined, url: string | null | undefined): boolean {
@@ -232,13 +197,28 @@ function CopyIconButton({ value, label }: { value: string; label: string }) {
   );
 }
 
+/** Eyebrow label — sắc thái hồ sơ hành chính: số thứ tự + nhãn viết hoa, letter-spacing rộng. */
+function SectionEyebrow({ index, label }: { index: number; label: string }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="font-mono text-[11px] font-semibold tabular-nums text-brand">
+        {String(index).padStart(2, '0')}
+      </span>
+      <span className="text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function Section({
+  index,
   title,
-  icon,
   children,
   action,
   description,
 }: {
+  index: number;
   title: string;
   icon?: ReactNode;
   children: ReactNode;
@@ -247,13 +227,10 @@ function Section({
 }) {
   return (
     <section className="w-full min-w-0">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 pb-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 sm:text-base">
-            {icon}
-            {title}
-          </h2>
-          {description ? <div className="mt-0.5 text-xs text-slate-500">{description}</div> : null}
+          <SectionEyebrow index={index} label={title} />
+          {description ? <p className="mt-1.5 text-xs text-slate-500">{description}</p> : null}
         </div>
         {action}
       </div>
@@ -272,83 +249,485 @@ function Panel({ children, className }: { children: ReactNode; className?: strin
   );
 }
 
-function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * Một "chỗ điền" trong biên bản giấy: nhãn nhỏ phía trên (như tiêu đề in sẵn
+ * trên form), giá trị viết vào gạch chân — filled = đã có dữ liệu thật,
+ * unfilled = gạch chân trống (chưa điền, chờ Đội thanh tra/Thanh tra cập nhật).
+ */
+function MinuteField({
+  label,
+  value,
+  span = 1,
+  placeholder = '.......................................',
+}: {
+  label: string;
+  value: ReactNode | null | undefined;
+  span?: 1 | 2;
+  placeholder?: string;
+}) {
+  const isEmpty = value == null || value === '';
   return (
-    <div className="grid gap-1 border-b border-slate-100 py-2.5 last:border-0 sm:grid-cols-[9rem_1fr] sm:gap-3">
-      <dt className="text-xs font-medium text-slate-500">{label}</dt>
-      <dd className="min-w-0 text-sm text-slate-800">{children}</dd>
+    <div className={cn('min-w-0', span === 2 && 'sm:col-span-2')}>
+      <p className="text-[10.5px] font-medium tracking-wide text-slate-400 uppercase">{label}</p>
+      <p
+        className={cn(
+          'mt-1.5 border-b border-dotted border-slate-300 pb-2 text-sm leading-relaxed wrap-break-word',
+          isEmpty ? 'text-slate-300 italic' : 'font-medium text-slate-900'
+        )}
+      >
+        {isEmpty ? placeholder : value}
+      </p>
     </div>
   );
 }
 
-/** Hàng label / value ngang — kiểu Inspection Details trong ảnh mẫu. */
-function DetailFieldRow({
-  label,
-  icon,
+/** Điều mục đánh số trong biên bản — kiểu "Điều 1.", "Điều 2." của văn bản hành chính. */
+function MinuteArticle({
+  number,
+  title,
   children,
 }: {
-  label: string;
-  icon?: ReactNode;
+  number: number;
+  title: string;
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 py-3 last:border-0">
-      <dt className="shrink-0 text-sm text-slate-500">{label}</dt>
-      <dd className="flex min-w-0 max-w-[65%] items-start justify-end gap-1.5 text-right text-sm font-medium text-slate-900">
-        {icon ? <span className="mt-0.5 shrink-0 text-slate-400">{icon}</span> : null}
-        <span className="min-w-0 wrap-break-word">{children}</span>
-      </dd>
+    <div className="border-t border-slate-100 pt-6 first:border-t-0 first:pt-0">
+      <h4 className="mb-4 text-sm font-semibold text-slate-800">
+        <span className="text-brand">Điều {number}.</span> {title}
+      </h4>
+      <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">{children}</div>
     </div>
   );
 }
 
-type MinuteTone = 'ok' | 'warn' | 'muted' | 'danger';
+const EXHIBIT_LETTERS = ['a', 'b', 'c', 'd', 'e'] as const;
 
-/** Hàng biên bản kiểu Inspection Items — trái nhãn, phải giá trị + icon trạng thái. */
-function MinuteItemRow({
-  label,
-  value,
-  tone = 'muted',
-  hint,
-}: {
-  label: string;
-  value: ReactNode;
-  tone?: MinuteTone;
-  hint?: string | null;
-}) {
-  const Icon =
-    tone === 'ok'
-      ? CheckCircle2
-      : tone === 'warn'
-        ? CircleAlert
-        : tone === 'danger'
-          ? XCircle
-          : Clock;
-  const toneClass =
-    tone === 'ok'
-      ? 'text-emerald-600'
-      : tone === 'warn'
-        ? 'text-amber-600'
-        : tone === 'danger'
-          ? 'text-red-600'
-          : 'text-slate-400';
+/**
+ * Bằng chứng checklist trình bày như mục con của Điều (a., b., c. …) —
+ * chữ + media nằm ngay trong luồng văn bản, không dùng card/border kiểu
+ * app-widget để giữ cảm giác một tờ biên bản liền mạch.
+ */
+function MinuteExhibits({ items }: { items: InspectionChecklistEvidence[] }) {
+  const buckets = useMemo(() => partitionEvidence(items), [items]);
+
+  const photoPreview = useMemo(() => {
+    return buckets.ScenePhoto.filter(i => i.mediaUrl && isImageMime(i.mimeType, i.mediaUrl)).map(
+      (i): ReportPreviewImage => ({
+        url: i.mediaUrl!,
+        label: i.description || 'Ảnh hiện trường',
+        uploadedAt: i.uploadedAt ?? undefined,
+      })
+    );
+  }, [buckets.ScenePhoto]);
+
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-slate-100 py-3 last:border-0">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-slate-800">{label}</p>
-        {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
-      </div>
-      <div
-        className={cn(
-          'flex max-w-[55%] shrink-0 items-start gap-1.5 text-right text-sm',
-          toneClass
-        )}
-      >
-        <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <span className="min-w-0 font-medium wrap-break-word text-slate-900">{value}</span>
-      </div>
+    <div className="space-y-5">
+      <ReportImagePreviewDialog
+        images={photoPreview}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+        onChangeIndex={setPreviewIndex}
+      />
+
+      {CHECKLIST_SECTIONS.map((section, i) => {
+        const list = buckets[section.key];
+        return (
+          <div key={section.key} className="grid grid-cols-[1.25rem_1fr] gap-x-1">
+            <span className="text-[13px] font-medium text-slate-400">{EXHIBIT_LETTERS[i]}.</span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-slate-700">{section.label}</p>
+
+              {list.length === 0 ? (
+                <p className="mt-1 border-b border-dotted border-slate-300 pb-2 text-sm text-slate-300 italic">
+                  {EMPTY.categoryEmpty}
+                </p>
+              ) : section.kind === 'text' ? (
+                <div className="mt-1 space-y-2">
+                  {list.map(item => (
+                    <p key={item.id} className="text-sm leading-relaxed text-slate-800">
+                      {item.description?.trim() || '—'}
+                      <span className="ml-1.5 font-mono text-[11px] tabular-nums text-slate-400">
+                        ({formatViDateTime(item.uploadedAt)})
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              ) : section.kind === 'photo' ? (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {list.map(item => {
+                    const url = item.mediaUrl;
+                    if (!url || !isImageMime(item.mimeType, url)) {
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex size-16 items-center justify-center rounded bg-slate-100 text-[10px] text-slate-400"
+                        >
+                          Lỗi
+                        </div>
+                      );
+                    }
+                    const idx = photoPreview.findIndex(p => p.url === url);
+                    return (
+                      <ClickableReportImage
+                        key={item.id}
+                        url={url}
+                        label={item.description || 'Ảnh hiện trường'}
+                        uploadedAt={item.uploadedAt ?? undefined}
+                        onPreview={() => setPreviewIndex(idx >= 0 ? idx : 0)}
+                        className="size-16 rounded ring-1 ring-slate-200 transition hover:ring-brand/50"
+                      />
+                    );
+                  })}
+                </div>
+              ) : section.kind === 'video' ? (
+                <div className="mt-1.5 space-y-2">
+                  {list.map(item => (
+                    <div key={item.id} className="max-w-xs">
+                      {item.mediaUrl && isVideoMime(item.mimeType, item.mediaUrl) ? (
+                        <video
+                          controls
+                          preload="metadata"
+                          className="aspect-video w-full rounded bg-slate-900 object-contain"
+                        >
+                          <source src={item.mediaUrl} type={item.mimeType ?? undefined} />
+                        </video>
+                      ) : (
+                        <p className="text-sm text-slate-500">Không phát được video</p>
+                      )}
+                      <p className="mt-0.5 font-mono text-[11px] tabular-nums text-slate-400">
+                        {[formatViDateTime(item.uploadedAt), formatDuration(item.durationSeconds)]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : section.kind === 'audio' ? (
+                <div className="mt-1.5 space-y-2">
+                  {list.map(item => (
+                    <div key={item.id} className="max-w-xs">
+                      {item.mediaUrl && isAudioMime(item.mimeType, item.mediaUrl) ? (
+                        <audio controls preload="metadata" className="w-full">
+                          <source src={item.mediaUrl} type={item.mimeType ?? undefined} />
+                        </audio>
+                      ) : (
+                        <p className="text-sm text-slate-500">Không phát được ghi âm</p>
+                      )}
+                      <p className="mt-0.5 font-mono text-[11px] tabular-nums text-slate-400">
+                        {[formatViDateTime(item.uploadedAt), formatDuration(item.durationSeconds)]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-1 space-y-1.5">
+                  {list.map(item => (
+                    <p key={item.id} className="text-sm text-slate-800">
+                      {item.description?.trim() ? item.description : null}
+                      {item.mediaUrl ? (
+                        <a
+                          href={item.mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-1 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
+                        >
+                          <FileText className="size-3" aria-hidden />
+                          Tệp đính kèm
+                        </a>
+                      ) : null}
+                      <span className="ml-1.5 font-mono text-[11px] tabular-nums text-slate-400">
+                        ({formatViDateTime(item.uploadedAt)})
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/**
+ * Biên bản vi phạm hành chính — tờ văn bản thật thay cho danh sách key-value:
+ * tiêu đề quốc hiệu, các Điều đánh số, chỗ trắng được điền trực tiếp từ dữ liệu
+ * hồ sơ (InspectionDetail). Không cần bấm — mọi mục luôn hiển thị đầy đủ.
+ */
+type StampTone = 'unpaid' | 'partial' | 'paid';
+
+const PAYMENT_STAMP: Record<string, { text: string; tone: StampTone } | undefined> = {
+  PenaltyIssued: { text: 'CHƯA THANH TOÁN', tone: 'unpaid' },
+  Overdue: { text: 'QUÁ HẠN NỘP PHẠT', tone: 'unpaid' },
+  PartiallyPaid: { text: 'NỘP MỘT PHẦN', tone: 'partial' },
+  Paid: { text: 'ĐÃ THANH TOÁN', tone: 'paid' },
+};
+
+/**
+ * Con dấu trạng thái nộp phạt — đóng dán lên góc biên bản như dấu mộc thật,
+ * thay cho ô thống kê Đã nộp/Còn lại/Tiến độ tách riêng. Chỉ hiện khi hồ sơ
+ * đã ban hành QĐ xử phạt (trạng thái nộp phạt mới có ý nghĩa). Kèm địa danh
+ * LEO lập hồ sơ + ngày ban hành QĐ — giống dấu mộc cơ quan có ghi ngày/nơi đóng.
+ */
+function PaymentStamp({
+  status,
+  issuerLabel,
+  stampedAt,
+}: {
+  status: string;
+  issuerLabel: string | null;
+  stampedAt: string | null | undefined;
+}) {
+  const stamp = PAYMENT_STAMP[status];
+  if (!stamp) return null;
+
+  const toneClass =
+    stamp.tone === 'unpaid'
+      ? 'border-red-600 text-red-600'
+      : stamp.tone === 'partial'
+        ? 'border-amber-600 text-amber-600'
+        : 'border-brand text-brand';
+
+  return (
+    <div
+      className={cn(
+        'pointer-events-none absolute top-6 right-4 z-10 -rotate-12 select-none sm:top-8 sm:right-8',
+        'rounded-md border-[3px] px-3 py-1.5 text-center font-mono uppercase sm:px-4 sm:py-2',
+        'opacity-80 mix-blend-multiply',
+        toneClass
+      )}
+      aria-hidden
+    >
+      <p className="text-[11px] font-black tracking-[0.08em] sm:text-sm">{stamp.text}</p>
+      {issuerLabel ? (
+        <p className="mt-0.5 text-[8px] font-semibold tracking-wide normal-case sm:text-[9px]">
+          {issuerLabel}
+        </p>
+      ) : null}
+      {stampedAt ? (
+        <p className="text-[8px] font-semibold tabular-nums normal-case sm:text-[9px]">
+          {formatViDateTime(stampedAt)}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function MinutesDocument({ data }: { data: InspectionDetail }) {
+  const entity = data.violatingEntity;
+  const subjectName = resolveInspectionSubjectName(entity?.name, data.violatorName);
+  const displayName = entity?.name?.trim() || subjectName;
+  const displayAddress =
+    entity?.address?.trim() || data.violatorAddress?.trim() || data.arrivalNote?.trim() || null;
+  const identity = entity?.identityNumber?.trim() || data.violatorIdentity?.trim() || null;
+
+  const showPenaltyFields = inspectionShowsPenaltyFields(data.status);
+  const showClosed = inspectionShowsClosedAt(data.status);
+  const slaOverdue = inspectionSlaIsOverdue(data.status, data.slaInspectionDueAt);
+  const inspectorFullName =
+    data.issuedByInspectorName?.trim() || data.createdByOfficerName?.trim() || null;
+  const inspectorSignature = resolveGivenName(inspectorFullName);
+
+  const fieldCoords = resolveFieldMapCoords(data);
+  const mapsHref = fieldCoords
+    ? `https://www.google.com/maps?q=${fieldCoords.latitude},${fieldCoords.longitude}`
+    : null;
+
+  return (
+    <Panel className="relative overflow-hidden !px-0 !py-0 sm:!px-0">
+      <PaymentStamp
+        status={data.status}
+        issuerLabel={data.createdByOfficerName?.trim() || null}
+        stampedAt={data.penaltyIssuedAt}
+      />
+
+      {/* Tiêu đầu — quốc hiệu rút gọn kiểu văn bản hành chính */}
+      <div className=" border-slate-200 px-6 py-6 text-center sm:px-10">
+        <p className="text-[11px] font-semibold tracking-[0.12em] text-slate-500 uppercase">
+          Cộng hòa xã hội chủ nghĩa việt nam
+        </p>
+        <p className="text-[11px] font-semibold text-slate-400">Độc lập – Tự do – Hạnh phúc</p>
+        <h3 className="mt-4 text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+          Biên bản kiểm tra, xử lý vi phạm môi trường
+        </h3>
+        <p className="mt-1.5 font-mono text-xs tabular-nums text-slate-400">
+          Số hồ sơ: {data.reportCode?.trim() || data.id}
+        </p>
+      </div>
+
+      <div className="space-y-7 px-10 py-7 sm:px-20 sm:py-9">
+        <MinuteArticle number={1} title="Nội dung vi phạm">
+          <MinuteField
+            label="Mô tả hành vi vi phạm"
+            value={data.violationDescription?.trim()}
+            span={2}
+          />
+          <MinuteField label="Trạng thái hồ sơ" value={inspectionStatusLabelVi(data.status)} />
+          <MinuteField
+            label="Hạn xử lý (SLA)"
+            value={
+              data.slaInspectionDueAt ? (
+                <span className={slaOverdue ? 'text-red-700' : undefined}>
+                  {formatViDateTime(data.slaInspectionDueAt)}
+                  {slaOverdue ? ' · Quá hạn' : ''}
+                </span>
+              ) : null
+            }
+          />
+        </MinuteArticle>
+
+        <div className="border-t border-slate-100 pt-6">
+          <h4 className="mb-4 text-sm font-semibold text-slate-800">
+            <span className="text-brand">Điều 2.</span> Đối tượng vi phạm &amp; vị trí hiện trường
+          </h4>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+              <MinuteField label="Tên / đơn vị" value={displayName} span={2} />
+              <MinuteField label="Địa chỉ" value={displayAddress} span={2} />
+              <MinuteField label="CCCD / MST" value={identity || entity?.taxCode?.trim()} />
+              <MinuteField
+                label="Tái phạm"
+                value={data.isRepeatOffender ? 'Có tái phạm' : 'Không tái phạm'}
+              />
+            </div>
+
+            <div className="min-w-0">
+              <p className="mb-1.5 text-[10.5px] font-medium tracking-wide text-slate-400 uppercase">
+                Vị trí hiện trường
+              </p>
+              {fieldCoords ? (
+                <div className="overflow-hidden rounded-lg ring-1 ring-slate-200/90">
+                  <ReportLocationMap
+                    latitude={fieldCoords.latitude}
+                    longitude={fieldCoords.longitude}
+                    className="h-32 w-full"
+                  />
+                  <div className="space-y-1 bg-slate-50 px-2.5 py-2">
+                    <p className="font-mono text-[10px] leading-tight tabular-nums text-slate-500">
+                      {fieldCoords.latitude.toFixed(5)}, {fieldCoords.longitude.toFixed(5)}
+                    </p>
+                    {mapsHref ? (
+                      <a
+                        href={mapsHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-sky-700 hover:underline"
+                      >
+                        Mở Maps
+                        <ExternalLink className="size-3" aria-hidden />
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <p className="border-b border-dotted border-slate-300 pb-2 text-sm text-slate-300 italic">
+                  Chưa có tọa độ.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 pt-6">
+          <h4 className="mb-4 text-sm font-semibold text-slate-800">
+            <span className="text-brand">Điều 3.</span> Quá trình điều tra &amp; bằng chứng hiện
+            trường
+          </h4>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+            <MinuteField
+              label="Tiếp nhận nhiệm vụ"
+              value={data.acceptedAt ? formatViDateTime(data.acceptedAt) : null}
+            />
+            <MinuteField
+              label="Xác nhận hiện trường"
+              value={data.arrivalConfirmedAt ? formatViDateTime(data.arrivalConfirmedAt) : null}
+            />
+            <MinuteField
+              label="Nộp báo cáo hiện trường"
+              value={
+                data.fieldInvestigationSubmittedAt
+                  ? formatViDateTime(data.fieldInvestigationSubmittedAt)
+                  : null
+              }
+              span={2}
+            />
+          </div>
+
+          <div className="mt-4">
+            {data.checklistEvidence.length > 0 ? (
+              <MinuteExhibits items={data.checklistEvidence} />
+            ) : (
+              <p className="border-b border-dotted border-slate-300 pb-2 text-sm text-slate-300 italic">
+                {EMPTY.evidence}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {showPenaltyFields ? (
+          <MinuteArticle number={4} title="Quyết định xử phạt">
+            <MinuteField label="Mức vi phạm" value={violationLevelLabelVi(data.violationLevel)} />
+            <MinuteField label="Số tiền phạt" value={formatVnd(data.penaltyAmount)} />
+            <MinuteField label="Số quyết định" value={data.penaltyDecisionNumber?.trim()} />
+            <MinuteField
+              label="Ngày ban hành"
+              value={data.penaltyIssuedAt ? formatViDateTime(data.penaltyIssuedAt) : null}
+            />
+            <MinuteField
+              label="Hạn nộp phạt"
+              value={data.penaltyDueDate ? formatViDateTime(data.penaltyDueDate) : null}
+            />
+            <MinuteField label="Người ban hành" value={data.issuedByInspectorName?.trim()} />
+            {data.additionalPenaltyMeasures?.trim() ? (
+              <MinuteField
+                label="Biện pháp kèm theo"
+                value={data.additionalPenaltyMeasures}
+                span={2}
+              />
+            ) : null}
+          </MinuteArticle>
+        ) : (
+          <MinuteArticle number={4} title="Quyết định xử phạt">
+            <MinuteField label="Số quyết định" value={null} span={2} />
+          </MinuteArticle>
+        )}
+
+        {showClosed ? (
+          <MinuteArticle number={5} title="Đóng hồ sơ">
+            <MinuteField
+              label="Ngày đóng"
+              value={data.closedAt ? formatViDateTime(data.closedAt) : null}
+            />
+            <MinuteField label="Lý do đóng" value={data.closedReason?.trim()} />
+          </MinuteArticle>
+        ) : null}
+      </div>
+
+      {/* Chỗ ký — chỉ người được giao xử phạt, nằm bên phải như văn bản giấy thật */}
+      <div className="border-t border-slate-200 px-6 py-7 sm:px-10">
+        <div className="ml-auto w-56 text-center">
+          <p className="text-xs font-semibold text-slate-600">Người được giao xử phạt</p>
+          <p className="mt-0.5 text-[11px] text-slate-400 italic">(Ký, ghi rõ họ tên)</p>
+          <p
+            className={cn(
+              'mt-8 font-mono text-base',
+              inspectorSignature ? 'font-semibold text-slate-800' : 'text-slate-300 italic'
+            )}
+          >
+            {inspectorSignature || '..............'}
+          </p>
+          <p className="mt-1 border-t border-dotted border-slate-300 pt-1.5 text-xs text-slate-600">
+            {inspectorFullName || '.......................'}
+          </p>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -506,159 +885,131 @@ function buildProgressSteps(d: InspectionDetail): ProgressStep[] {
   return steps;
 }
 
-/** Timeline ngang giống Minh chứng tracking — chỉ text meta, không nhúng media. */
-function InvestigationProgressTimeline({
+/**
+ * Timeline dọc — toàn bộ 7 mốc hiển thị cùng lúc như một hồ sơ pháp lý,
+ * không ẩn sau click. Mốc hiện tại (chưa done, đầu tiên chưa xong) được
+ * nhấn bằng viền + pulse; các mốc done nối bằng rail xanh brand đặc.
+ */
+function InvestigationTimeline({
   steps,
-  activeKey,
-  onSelect,
+  currentKey,
+  mapsHref,
 }: {
   steps: ProgressStep[];
-  activeKey: string;
-  onSelect: (key: string) => void;
+  currentKey: string;
+  mapsHref: string | null;
 }) {
-  const activeIndex = Math.max(
-    0,
-    steps.findIndex(s => s.key === activeKey)
-  );
-
   return (
-    <ol className="relative mt-2 flex w-full items-start">
-      {steps.map((stage, index) => {
-        const isActive = index === activeIndex;
-        const passedVisual = stage.done && index < activeIndex;
-        const connectorFilled = index > 0 && steps[index - 1]?.done;
+    <ol className="relative">
+      {steps.map((step, index) => {
+        const isCurrent = step.key === currentKey;
+        const isLast = index === steps.length - 1;
+        const railFilled = step.done;
 
         return (
-          <li key={stage.key} className="relative flex flex-1 flex-col items-center">
-            {index > 0 ? (
+          <li key={step.key} className="relative flex gap-4 pb-7 last:pb-0">
+            {!isLast ? (
               <span
                 className={cn(
-                  'pointer-events-none absolute top-4 right-1/2 left-[-50%] z-0 h-0.5 -translate-y-1/2',
-                  connectorFilled ? 'bg-emerald-500' : 'bg-border'
+                  'absolute top-7 left-3.75 z-0 w-px translate-x-[-0.5px]',
+                  'h-[calc(100%-1.75rem)]',
+                  railFilled ? 'bg-brand' : 'bg-slate-200'
                 )}
                 aria-hidden
               />
             ) : null}
 
-            <button
-              type="button"
-              onClick={() => onSelect(stage.key)}
-              className={cn(
-                'relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums transition-colors sm:size-9 sm:text-sm',
-                passedVisual && 'bg-emerald-500 text-white',
-                isActive &&
-                  'border-2 border-emerald-500 bg-background text-emerald-800 shadow-sm ring-4 ring-emerald-500/25',
-                !passedVisual &&
-                  !isActive &&
-                  'border-2 border-border bg-background text-muted-foreground'
-              )}
-              aria-pressed={isActive}
-              aria-current={isActive ? 'step' : undefined}
-              aria-label={`Bước ${stage.step}: ${stage.shortLabel}`}
-            >
-              {isActive ? (
-                <>
-                  <span
-                    className="pointer-events-none absolute -inset-1 rounded-full bg-emerald-500/45 media-step-pulse-ring"
-                    aria-hidden
-                  />
-                  <span
-                    className="pointer-events-none absolute -inset-1 rounded-full bg-emerald-500/35 media-step-pulse-ring [animation-delay:0.35s]"
-                    aria-hidden
-                  />
-                  <span
-                    className="pointer-events-none absolute -inset-1 rounded-full bg-emerald-400/30 media-step-pulse-ring [animation-delay:0.7s]"
-                    aria-hidden
-                  />
-                </>
+            <div className="relative z-10 flex size-8 shrink-0 items-center justify-center">
+              {isCurrent ? (
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-full bg-brand/30 media-step-pulse-ring"
+                  aria-hidden
+                />
               ) : null}
-              <span className="relative z-10">{stage.step}</span>
-            </button>
+              <span
+                className={cn(
+                  'flex size-8 items-center justify-center rounded-full font-mono text-xs font-semibold tabular-nums',
+                  step.done && 'bg-brand text-brand-foreground',
+                  isCurrent &&
+                    !step.done &&
+                    'border-2 border-brand bg-white text-brand shadow-sm ring-4 ring-brand/15',
+                  !step.done && !isCurrent && 'border border-slate-200 bg-white text-slate-400'
+                )}
+                aria-hidden
+              >
+                {step.done ? <Check className="size-4" /> : step.step}
+              </span>
+            </div>
 
-            <p
-              className={cn(
-                'mt-2 max-w-20 text-center text-[11px] font-medium leading-tight sm:max-w-none sm:text-xs',
-                isActive ? 'font-semibold text-emerald-800' : 'text-muted-foreground'
-              )}
-            >
-              {stage.shortLabel}
-            </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
-              {stage.done ? 'Xong' : 'Chờ'}
-            </p>
+            <div className="min-w-0 flex-1 pt-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3
+                  className={cn(
+                    'text-sm font-semibold',
+                    step.done || isCurrent ? 'text-slate-900' : 'text-slate-400'
+                  )}
+                >
+                  {step.title}
+                </h3>
+                {isCurrent ? (
+                  <span className="inline-flex rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                    Đang chờ
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-400">
+                {step.at ? (
+                  formatViDateTime(step.at)
+                ) : step.done ? (
+                  '—'
+                ) : (
+                  <span className="text-slate-400 italic">Chưa thực hiện</span>
+                )}
+                {step.tooltip ? (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="ml-1.5 not-italic text-slate-300 underline decoration-dotted"
+                        >
+                          id
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="font-mono text-xs">{step.tooltip}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
+              </p>
+
+              {step.detail ? (
+                <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-slate-600">
+                  {step.detail}
+                </p>
+              ) : !step.done &&
+                (step.key === 'accepted' || step.key === 'arrival' || step.key === 'field') ? (
+                <p className="mt-1.5 text-sm text-slate-400">
+                  Chờ Đội thanh tra cập nhật trên Mobile.
+                </p>
+              ) : null}
+
+              {step.key === 'arrival' && mapsHref ? (
+                <a
+                  href={mapsHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline"
+                >
+                  <MapPin className="size-3.5" aria-hidden />
+                  Xem vị trí hiện trường
+                </a>
+              ) : null}
+            </div>
           </li>
         );
       })}
     </ol>
-  );
-}
-
-function InvestigationStepPanel({
-  step,
-  mapsHref,
-}: {
-  step: ProgressStep;
-  mapsHref: string | null;
-}) {
-  return (
-    <div className="mt-5 flex min-h-32 flex-col items-center justify-center px-4 py-5 text-center">
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <h3 className="text-sm font-semibold text-slate-900">{step.title}</h3>
-        <span
-          className={cn(
-            'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold',
-            step.done
-              ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
-              : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/80'
-          )}
-        >
-          {step.done ? 'Đã thực hiện' : 'Chưa thực hiện'}
-        </span>
-      </div>
-
-      <div className="mt-2.5 space-y-1.5">
-        <p className="text-sm tabular-nums text-slate-700">
-          <span className="text-slate-500">Thời điểm </span>
-          {step.at ? formatViDateTime(step.at) : '—'}
-          {step.tooltip ? (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="ml-1.5 text-[10px] text-slate-400 underline decoration-dotted"
-                  >
-                    id
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="font-mono text-xs">{step.tooltip}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : null}
-        </p>
-        {step.detail ? (
-          <p className="max-w-lg text-sm leading-relaxed text-slate-600">{step.detail}</p>
-        ) : !step.done ? (
-          <p className="max-w-md text-sm text-slate-500">
-            {step.key === 'created' || step.key === 'team'
-              ? 'Bước điều phối — không kèm ảnh/media.'
-              : 'Chờ Đội thanh tra cập nhật trên Mobile.'}
-          </p>
-        ) : null}
-      </div>
-
-      {step.key === 'arrival' && mapsHref ? (
-        <a
-          href={mapsHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline"
-        >
-          <MapPin className="size-3.5" aria-hidden />
-          Xem vị trí hiện trường
-        </a>
-      ) : null}
-    </div>
   );
 }
 
@@ -681,206 +1032,6 @@ function partitionEvidence(items: InspectionChecklistEvidence[]) {
   }
 
   return buckets;
-}
-
-function ChecklistEvidenceSection({ items }: { items: InspectionChecklistEvidence[] }) {
-  const buckets = useMemo(() => partitionEvidence(items), [items]);
-  const allEmpty = items.length === 0;
-
-  const photoPreview = useMemo(() => {
-    return buckets.ScenePhoto.filter(i => i.mediaUrl && isImageMime(i.mimeType, i.mediaUrl)).map(
-      (i): ReportPreviewImage => ({
-        url: i.mediaUrl!,
-        label: i.description || 'Ảnh hiện trường',
-        uploadedAt: i.uploadedAt ?? undefined,
-      })
-    );
-  }, [buckets.ScenePhoto]);
-
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-
-  if (allEmpty) {
-    return (
-      <Panel>
-        <p className="text-sm text-slate-500">{EMPTY.evidence}</p>
-      </Panel>
-    );
-  }
-
-  return (
-    <>
-      <ReportImagePreviewDialog
-        images={photoPreview}
-        index={previewIndex}
-        onClose={() => setPreviewIndex(null)}
-        onChangeIndex={setPreviewIndex}
-      />
-
-      <div className="space-y-6">
-        {CHECKLIST_SECTIONS.map(section => {
-          const list = buckets[section.key];
-          return (
-            <div key={section.key} className="rounded-xl border border-slate-200/90 bg-white">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">{section.label}</h3>
-                  <p className="mt-0.5 text-[11px] text-slate-500">{section.description}</p>
-                </div>
-                <span className="text-[11px] tabular-nums text-slate-400">{list.length}</span>
-              </div>
-
-              <div className="px-4 py-4 sm:px-5">
-                {list.length === 0 ? (
-                  <p className="text-sm text-slate-500">{EMPTY.categoryEmpty}</p>
-                ) : section.kind === 'text' ? (
-                  <ul className="space-y-2">
-                    {list.map(item => (
-                      <li
-                        key={item.id}
-                        className="rounded-lg bg-slate-50 px-3.5 py-3 text-sm leading-relaxed text-slate-800 ring-1 ring-slate-200/70"
-                      >
-                        <p className="whitespace-pre-wrap">{item.description?.trim() || '—'}</p>
-                        <p className="mt-1.5 text-[11px] tabular-nums text-slate-400">
-                          {formatViDateTime(item.uploadedAt)}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                ) : section.kind === 'photo' ? (
-                  <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {list.map(item => {
-                      const url = item.mediaUrl;
-                      if (!url || !isImageMime(item.mimeType, url)) {
-                        return (
-                          <li
-                            key={item.id}
-                            className="flex aspect-4/3 items-center justify-center rounded-xl bg-slate-100 text-xs text-slate-400 ring-1 ring-border/50"
-                          >
-                            Không phải ảnh
-                          </li>
-                        );
-                      }
-                      const idx = photoPreview.findIndex(p => p.url === url);
-                      return (
-                        <li key={item.id}>
-                          <ClickableReportImage
-                            url={url}
-                            label={item.description || 'Ảnh hiện trường'}
-                            uploadedAt={item.uploadedAt ?? undefined}
-                            onPreview={() => setPreviewIndex(idx >= 0 ? idx : 0)}
-                            className="aspect-4/3 w-full rounded-xl ring-1 ring-border/50 transition hover:ring-emerald-400/50"
-                          />
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : section.kind === 'video' ? (
-                  <ul className="grid gap-3 sm:grid-cols-2">
-                    {list.map(item => (
-                      <li
-                        key={item.id}
-                        className="overflow-hidden rounded-xl ring-1 ring-border/60"
-                      >
-                        {item.mediaUrl && isVideoMime(item.mimeType, item.mediaUrl) ? (
-                          <video
-                            controls
-                            preload="metadata"
-                            className="aspect-video w-full bg-slate-900 object-contain"
-                          >
-                            <source src={item.mediaUrl} type={item.mimeType ?? undefined} />
-                          </video>
-                        ) : (
-                          <div className="flex aspect-video items-center justify-center bg-slate-100 text-sm text-slate-500">
-                            Không phát được video
-                          </div>
-                        )}
-                        <div className="space-y-0.5 px-3 py-2">
-                          {item.description ? (
-                            <p className="text-xs text-slate-700">{item.description}</p>
-                          ) : null}
-                          <p className="text-[11px] text-slate-400">
-                            {[
-                              formatViDateTime(item.uploadedAt),
-                              formatBytes(item.sizeBytes),
-                              formatDuration(item.durationSeconds),
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : section.kind === 'audio' ? (
-                  <ul className="space-y-3">
-                    {list.map(item => (
-                      <li
-                        key={item.id}
-                        className="rounded-xl bg-slate-50 px-3.5 py-3 ring-1 ring-slate-200/70"
-                      >
-                        {item.mediaUrl && isAudioMime(item.mimeType, item.mediaUrl) ? (
-                          <audio controls preload="metadata" className="w-full">
-                            <source src={item.mediaUrl} type={item.mimeType ?? undefined} />
-                          </audio>
-                        ) : (
-                          <p className="text-sm text-slate-500">Không phát được ghi âm</p>
-                        )}
-                        <p className="mt-2 text-[11px] text-slate-400">
-                          {[
-                            item.description,
-                            formatViDateTime(item.uploadedAt),
-                            formatBytes(item.sizeBytes),
-                            formatDuration(item.durationSeconds),
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <ul className="space-y-3">
-                    {list.map(item => (
-                      <li
-                        key={item.id}
-                        className="rounded-xl bg-slate-50 px-3.5 py-3 ring-1 ring-slate-200/70"
-                      >
-                        {item.description?.trim() ? (
-                          <p className="text-sm whitespace-pre-wrap text-slate-800">
-                            {item.description}
-                          </p>
-                        ) : null}
-                        {item.mediaUrl ? (
-                          <a
-                            href={item.mediaUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
-                          >
-                            <FileText className="size-3.5" aria-hidden />
-                            Mở tệp đính kèm
-                            <ExternalLink className="size-3" aria-hidden />
-                          </a>
-                        ) : null}
-                        {!item.description?.trim() && !item.mediaUrl ? (
-                          <p className="text-sm text-slate-500">—</p>
-                        ) : null}
-                        <p className="mt-1.5 text-[11px] text-slate-400">
-                          {[formatViDateTime(item.uploadedAt), formatBytes(item.sizeBytes)]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
 }
 
 function PaymentTable({ payments }: { payments: InspectionPayment[] }) {
@@ -934,7 +1085,7 @@ function PaymentTable({ payments }: { payments: InspectionPayment[] }) {
   );
 }
 
-/** Tab lịch sử nộp phạt — GET /v1/inspections/{id}/payments. */
+/** Tab lịch sử nộp phạt — GET /v1/inspections/{id}/payments. Chỉ xem, hành động ghi nhận nộp phạt nằm ở tab Tổng quan. */
 function PaymentHistoryPanel({ inspectionId }: { inspectionId: string }) {
   const { data, isPending, isError, refetch, isFetching } = useInspectionPayments(inspectionId);
 
@@ -1010,10 +1161,10 @@ const DETAIL_TAB_TRIGGER = cn(
   'relative h-auto gap-1.5 rounded-none border-0 bg-transparent px-0.5 pb-2.5 pt-0',
   'text-sm font-medium text-slate-500 shadow-none',
   'hover:text-slate-800',
-  'focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:ring-offset-0',
+  'focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-0',
   'data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-slate-900 data-[state=active]:shadow-none',
   'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-transparent',
-  'data-[state=active]:after:bg-slate-900'
+  'data-[state=active]:after:bg-brand'
 );
 
 function InspectionDetailHeader({
@@ -1034,38 +1185,23 @@ function InspectionDetailHeader({
     : null;
 
   return (
-    <header className="border-b border-slate-200 pb-4">
-      <div className="min-w-0 space-y-1.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-            Hồ sơ xử phạt
-          </h1>
-          <span
-            className={cn(
-              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
-              inspectionStatusBadgeClass(data.status)
-            )}
-          >
-            {inspectionStatusLabelVi(data.status)}
-          </span>
-          {data.isRepeatOffender ? (
-            <span className="inline-flex rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
-              Tái phạm
-            </span>
-          ) : null}
-        </div>
+    <header className="border-b border-slate-200 pb-5">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+          Hồ sơ xử phạt
+        </p>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <div className="flex min-w-0 max-w-full items-center gap-1.5">
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <div className="flex min-w-0 max-w-full items-center gap-1">
             {reportHref ? (
               <Link
                 href={reportHref}
-                className="truncate text-sm font-semibold tabular-nums text-sky-700 hover:underline"
+                className="truncate font-mono text-lg font-bold tracking-tight tabular-nums text-slate-900 hover:text-brand hover:underline sm:text-xl"
               >
                 {data.reportCode?.trim() || 'Báo cáo gốc'}
               </Link>
             ) : (
-              <span className="truncate text-sm font-semibold tabular-nums text-slate-800">
+              <span className="truncate font-mono text-lg font-bold tracking-tight tabular-nums text-slate-900 sm:text-xl">
                 {data.reportCode?.trim() || '—'}
               </span>
             )}
@@ -1074,42 +1210,70 @@ function InspectionDetailHeader({
             ) : null}
           </div>
 
-          <div className="flex min-w-0 max-w-full items-center gap-1.5">
-            <span className="min-w-0 truncate text-sm font-semibold tabular-nums text-slate-600">
-              {data.id}
+          <span
+            className={cn(
+              'inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+              inspectionStatusBadgeClass(data.status)
+            )}
+          >
+            {inspectionStatusLabelVi(data.status)}
+          </span>
+          {data.isRepeatOffender ? (
+            <span className="inline-flex shrink-0 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
+              Tái phạm
             </span>
-            <CopyIconButton value={data.id} label="Id hồ sơ" />
-          </div>
+          ) : null}
         </div>
 
-        <p className="text-sm text-slate-500">
-          Người lập {data.createdByOfficerName?.trim() || '—'}
-          <span aria-hidden className="mx-1.5 text-slate-300">
+        <dl className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-slate-500">
+          <div className="flex min-w-0 max-w-full items-center gap-1">
+            <dt className="sr-only">Id hồ sơ</dt>
+            <dd className="min-w-0 truncate font-mono text-xs tabular-nums text-slate-400">
+              {data.id}
+            </dd>
+            <CopyIconButton value={data.id} label="Id hồ sơ" />
+          </div>
+
+          <span aria-hidden className="hidden text-slate-300 sm:inline">
             ·
           </span>
-          Tạo {formatViDateTime(data.createdAt)}
-        </p>
 
-        <p className="text-sm text-slate-500">
-          Đội thanh tra: {teamLabel}
-          {canTeamAction ? (
-            <>
-              <span aria-hidden className="mx-1.5 text-slate-300">
-                ·
-              </span>
+          <div className="flex items-baseline gap-1">
+            <dt className="sr-only">Người lập</dt>
+            <dd>{data.createdByOfficerName?.trim() || '—'}</dd>
+          </div>
+
+          <span aria-hidden className="hidden text-slate-300 sm:inline">
+            ·
+          </span>
+
+          <div className="flex items-baseline gap-1 font-mono tabular-nums">
+            <dt className="not-sr-only text-slate-400">Tạo</dt>
+            <dd>{formatViDateTime(data.createdAt)}</dd>
+          </div>
+
+          <span aria-hidden className="hidden text-slate-300 sm:inline">
+            ·
+          </span>
+
+          <div className="flex items-baseline gap-1">
+            <dt className="sr-only">Đội thanh tra</dt>
+            <dd>{teamLabel}</dd>
+            {canTeamAction ? (
               <button
                 type="button"
-                className="font-medium text-sky-700 hover:underline"
+                className="font-medium text-brand hover:underline"
                 onClick={() => onAssignClick(teamAssigned ? 'change' : 'assign')}
               >
                 {teamAssigned ? 'Đổi đội' : 'Gán đội'}
               </button>
-            </>
-          ) : null}
-        </p>
+            ) : null}
+          </div>
+        </dl>
 
         {slaOverdue ? (
-          <p className="inline-flex rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200/80">
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200/80">
+            <CircleAlert className="size-3.5 shrink-0" aria-hidden />
             Hạn xử lý đã quá hạn — {formatViDateTime(data.slaInspectionDueAt)}
           </p>
         ) : null}
@@ -1118,313 +1282,20 @@ function InspectionDetailHeader({
   );
 }
 
-function SubjectLocationMinutesSection({ data }: { data: InspectionDetail }) {
-  const entity = data.violatingEntity;
-  const subjectName = resolveInspectionSubjectName(entity?.name, data.violatorName);
-  const hasSubject = Boolean(subjectName);
-  const showClosed = inspectionShowsClosedAt(data.status);
-  const showPenaltyFields = inspectionShowsPenaltyFields(data.status);
-  const slaOverdue = inspectionSlaIsOverdue(data.status, data.slaInspectionDueAt);
-  const fieldCoords = resolveFieldMapCoords(data);
-  const mapsHref = fieldCoords
-    ? `https://www.google.com/maps?q=${fieldCoords.latitude},${fieldCoords.longitude}`
-    : null;
-
-  const displayName = entity?.name?.trim() || subjectName;
-  const displayAddress =
-    entity?.address?.trim() || data.violatorAddress?.trim() || data.arrivalNote?.trim() || null;
-
-  return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-      {/* Cột trái — Thông tin đối tượng + Vị trí */}
-      <div className="flex min-w-0 flex-col gap-8">
-        <section className="min-w-0">
-          <h2 className="mb-3 text-base font-semibold tracking-tight text-slate-900">
-            Thông tin đối tượng
-          </h2>
-          <Panel className="!px-0 !py-0 sm:!px-0">
-            <dl className="px-4 sm:px-5">
-              {!hasSubject && !entity ? (
-                <p className="py-4 text-sm text-slate-500">{EMPTY.subject}</p>
-              ) : null}
-
-              <DetailFieldRow label="Tên đối tượng" icon={<UserRound className="size-3.5" />}>
-                {displayName || 'Chưa cập nhật'}
-              </DetailFieldRow>
-
-              <DetailFieldRow label="Loại" icon={<Building2 className="size-3.5" />}>
-                {entityTypeLabel(entity?.type) !== '—'
-                  ? entityTypeLabel(entity?.type)
-                  : hasSubject
-                    ? 'Cá nhân / chưa phân loại'
-                    : '—'}
-              </DetailFieldRow>
-
-              {displayAddress ? (
-                <DetailFieldRow label="Địa chỉ" icon={<MapPin className="size-3.5" />}>
-                  {displayAddress}
-                </DetailFieldRow>
-              ) : null}
-
-              {isBusinessEntity(entity?.type) && entity?.taxCode ? (
-                <DetailFieldRow label="Mã số thuế" icon={<IdCard className="size-3.5" />}>
-                  {entity.taxCode}
-                </DetailFieldRow>
-              ) : null}
-
-              {(isIndividualEntity(entity?.type) && entity?.identityNumber) ||
-              data.violatorIdentity ? (
-                <DetailFieldRow label="CCCD / Định danh" icon={<IdCard className="size-3.5" />}>
-                  {entity?.identityNumber?.trim() || data.violatorIdentity || '—'}
-                </DetailFieldRow>
-              ) : null}
-
-              {entity?.phoneNumber ? (
-                <DetailFieldRow label="Số điện thoại" icon={<Phone className="size-3.5" />}>
-                  <a
-                    href={`tel:${entity.phoneNumber}`}
-                    className="text-sky-700 hover:underline"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {entity.phoneNumber}
-                  </a>
-                </DetailFieldRow>
-              ) : null}
-
-              <DetailFieldRow label="Tái phạm">
-                {data.isRepeatOffender ? (
-                  <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-800">
-                    Có
-                  </span>
-                ) : (
-                  'Không'
-                )}
-              </DetailFieldRow>
-
-              <DetailFieldRow label="Người lập hồ sơ" icon={<Users className="size-3.5" />}>
-                {data.createdByOfficerName?.trim() || '—'}
-              </DetailFieldRow>
-
-              <DetailFieldRow label="Ngày tạo" icon={<Clock className="size-3.5" />}>
-                {formatViDateTime(data.createdAt)}
-              </DetailFieldRow>
-            </dl>
-          </Panel>
-        </section>
-
-        <section className="min-w-0">
-          <h2 className="mb-3 text-base font-semibold tracking-tight text-slate-900">
-            Vị trí hiện trường
-          </h2>
-          <Panel className="overflow-hidden !p-0">
-            {fieldCoords ? (
-              <>
-                <ReportLocationMap
-                  latitude={fieldCoords.latitude}
-                  longitude={fieldCoords.longitude}
-                  className="h-56 w-full sm:h-64"
-                />
-                <div className="flex flex-wrap items-start justify-between gap-2 border-t border-slate-100 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-slate-700">
-                      {fieldCoords.source === 'arrival'
-                        ? data.arrivalNote?.trim() ||
-                          displayAddress ||
-                          'Vị trí xác nhận hiện trường'
-                        : displayAddress || 'Vị trí GPS báo cáo'}
-                    </p>
-                    <p className="mt-0.5 text-[11px] tabular-nums text-slate-500">
-                      {fieldCoords.latitude.toFixed(5)}, {fieldCoords.longitude.toFixed(5)}
-                      {fieldCoords.source === 'report'
-                        ? ' · GPS báo cáo'
-                        : ' · Xác nhận hiện trường'}
-                    </p>
-                  </div>
-                  {mapsHref ? (
-                    <a
-                      href={mapsHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
-                    >
-                      Mở Maps
-                      <ExternalLink className="size-3" aria-hidden />
-                    </a>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <div className="flex h-56 flex-col items-center justify-center gap-2 px-4 text-center">
-                <MapPin className="size-6 text-slate-300" aria-hidden />
-                <p className="text-sm text-slate-500">Chưa có tọa độ vị trí.</p>
-                <p className="text-xs text-slate-400">
-                  Hiển thị GPS báo cáo (`latitude` / `longitude`) hoặc tọa độ xác nhận hiện trường
-                  khi Đội thanh tra check-in.
-                </p>
-              </div>
-            )}
-          </Panel>
-        </section>
-      </div>
-
-      {/* Cột phải — Biên bản (Inspection Items) */}
-      <section className="min-w-0">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">Biên bản</h2>
-          <span
-            className={cn(
-              'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-              inspectionStatusBadgeClass(data.status)
-            )}
-          >
-            {inspectionStatusLabelVi(data.status)}
-          </span>
-        </div>
-        <Panel className="!px-0 !py-1 sm:!px-0">
-          <div className="px-4 sm:px-5">
-            <MinuteItemRow
-              label="Nội dung vi phạm"
-              value={data.violationDescription?.trim() || 'Chưa có mô tả'}
-              tone={data.violationDescription?.trim() ? 'ok' : 'warn'}
-              hint="Mô tả trong biên bản hiện trường"
-            />
-            <MinuteItemRow
-              label="Trạng thái hồ sơ"
-              value={inspectionStatusLabelVi(data.status)}
-              tone={slaOverdue ? 'danger' : 'ok'}
-            />
-            <MinuteItemRow
-              label="Tiếp nhận nhiệm vụ"
-              value={data.acceptedAt ? formatViDateTime(data.acceptedAt) : 'Chưa tiếp nhận'}
-              tone={data.acceptedAt ? 'ok' : 'muted'}
-            />
-            <MinuteItemRow
-              label="Xác nhận hiện trường"
-              value={
-                data.arrivalConfirmedAt
-                  ? formatViDateTime(data.arrivalConfirmedAt)
-                  : 'Chưa xác nhận'
-              }
-              tone={data.arrivalConfirmedAt ? 'ok' : 'muted'}
-            />
-            <MinuteItemRow
-              label="Nộp báo cáo hiện trường"
-              value={
-                data.fieldInvestigationSubmittedAt
-                  ? formatViDateTime(data.fieldInvestigationSubmittedAt)
-                  : 'Chưa nộp'
-              }
-              tone={data.fieldInvestigationSubmittedAt ? 'ok' : 'muted'}
-            />
-            <MinuteItemRow
-              label="Hạn xử lý (SLA)"
-              value={
-                <>
-                  {formatViDateTime(data.slaInspectionDueAt)}
-                  {slaOverdue ? ' · Quá hạn' : ''}
-                </>
-              }
-              tone={slaOverdue ? 'danger' : data.slaInspectionDueAt ? 'ok' : 'muted'}
-            />
-            {showPenaltyFields ? (
-              <>
-                <MinuteItemRow
-                  label="Mức vi phạm"
-                  value={violationLevelLabelVi(data.violationLevel)}
-                  tone="ok"
-                />
-                <MinuteItemRow
-                  label="Số tiền phạt"
-                  value={formatVnd(data.penaltyAmount)}
-                  tone="ok"
-                />
-                <MinuteItemRow
-                  label="Số quyết định"
-                  value={data.penaltyDecisionNumber?.trim() || '—'}
-                  tone={data.penaltyDecisionNumber ? 'ok' : 'muted'}
-                />
-                <MinuteItemRow
-                  label="Ngày ban hành"
-                  value={formatViDateTime(data.penaltyIssuedAt)}
-                  tone={data.penaltyIssuedAt ? 'ok' : 'muted'}
-                />
-                <MinuteItemRow
-                  label="Hạn nộp phạt"
-                  value={formatViDateTime(data.penaltyDueDate)}
-                  tone={data.penaltyDueDate ? 'warn' : 'muted'}
-                />
-                <MinuteItemRow
-                  label="Người ban hành"
-                  value={data.issuedByInspectorName?.trim() || '—'}
-                  tone={data.issuedByInspectorName ? 'ok' : 'muted'}
-                />
-              </>
-            ) : (
-              <MinuteItemRow
-                label="Quyết định xử phạt"
-                value="Chưa ban hành"
-                tone="muted"
-                hint="Sẽ có sau khi xử phạt"
-              />
-            )}
-            {showClosed ? (
-              <>
-                <MinuteItemRow
-                  label="Ngày đóng"
-                  value={formatViDateTime(data.closedAt)}
-                  tone="ok"
-                />
-                {data.closedReason?.trim() ? (
-                  <MinuteItemRow label="Lý do đóng" value={data.closedReason} tone="ok" />
-                ) : null}
-              </>
-            ) : null}
-            {data.additionalPenaltyMeasures?.trim() ? (
-              <MinuteItemRow
-                label="Biện pháp kèm theo"
-                value={data.additionalPenaltyMeasures}
-                tone="ok"
-              />
-            ) : null}
-            <MinuteItemRow
-              label="Bằng chứng checklist"
-              value={
-                data.checklistEvidence.length > 0
-                  ? `${data.checklistEvidence.length} mục`
-                  : 'Chưa có'
-              }
-              tone={data.checklistEvidence.length > 0 ? 'ok' : 'muted'}
-            />
-          </div>
-        </Panel>
-      </section>
-    </div>
-  );
-}
-
-function InspectionDetailBody({ data }: { data: InspectionDetail }) {
-  const showPenaltyFields = inspectionShowsPenaltyFields(data.status);
+function InspectionDetailBody({
+  data,
+  onRecordPaymentClick,
+}: {
+  data: InspectionDetail;
+  onRecordPaymentClick: () => void;
+}) {
   const slaOverdue = inspectionSlaIsOverdue(data.status, data.slaInspectionDueAt);
   const steps = useMemo(() => buildProgressSteps(data), [data]);
 
-  const defaultActiveKey = useMemo(() => {
-    const lastDone = [...steps].reverse().find(s => s.done);
-    return lastDone?.key ?? steps[0]?.key ?? 'created';
+  const currentKey = useMemo(() => {
+    const firstPending = steps.find(s => !s.done);
+    return firstPending?.key ?? steps[steps.length - 1]?.key ?? 'created';
   }, [steps]);
-
-  /** User pick; null = theo bước hoàn thành mới nhất (không sync qua effect). */
-  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
-  const activeKey =
-    pinnedKey != null && steps.some(s => s.key === pinnedKey) ? pinnedKey : defaultActiveKey;
-  const activeStep = steps.find(s => s.key === activeKey) ?? steps[0];
-
-  const hasEvidence = data.checklistEvidence.length > 0;
-  const penalty = data.penaltyAmount;
-  const paid = data.paidAmount ?? 0;
-  const remaining =
-    penalty != null && Number.isFinite(penalty) ? Math.max(penalty - paid, 0) : null;
-  const paidRatio =
-    penalty != null && penalty > 0 ? Math.min(100, Math.round((paid / penalty) * 100)) : null;
 
   const fieldCoords = resolveFieldMapCoords(data);
   const mapsHref = fieldCoords
@@ -1435,120 +1306,59 @@ function InspectionDetailBody({ data }: { data: InspectionDetail }) {
 
   return (
     <div className="flex flex-col gap-8 sm:gap-10">
-      {/* 1) Tiến độ điều tra — đầu tiên, UI giống Minh chứng tracking */}
-      <Section
-        title="Tiến độ điều tra"
-        icon={<Camera className="size-4 text-slate-900" />}
-        description="Theo dõi các bước xử lý hồ sơ — media checklist tách riêng phía dưới"
-        action={
-          <div className="flex flex-col items-end gap-1">
-            {waitingAccept ? (
-              <span
-                title={waitingAccept}
-                className="inline-flex max-w-full items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200/70"
-              >
-                <Clock className="size-3 shrink-0" aria-hidden />
-                <span className="truncate">Chờ đội nhận việc</span>
-              </span>
-            ) : null}
-            <span
+      {/* 1) Tiến độ điều tra (trái, sticky) + Biên bản (phải, hẹp như trang giấy) */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,4fr)_minmax(0,6fr)] lg:gap-10">
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <Section
+            index={1}
+            title="Tiến độ điều tra"
+            description="Toàn bộ mốc xử lý hồ sơ"
+            action={
+              waitingAccept ? (
+                <span
+                  title={waitingAccept}
+                  className="inline-flex max-w-full items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200/70"
+                >
+                  <Clock className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">Chờ đội nhận việc</span>
+                </span>
+              ) : undefined
+            }
+          >
+            <p
               className={cn(
-                'text-[11px] tabular-nums',
-                slaOverdue ? 'font-medium text-red-600' : 'text-slate-500'
+                'mb-4 font-mono text-[11px] tabular-nums',
+                slaOverdue ? 'font-semibold text-red-600' : 'text-slate-500'
               )}
             >
               Hạn xử lý {formatViDateTime(data.slaInspectionDueAt)}
               {slaOverdue ? ' · Quá hạn' : ''}
-            </span>
-          </div>
-        }
-      >
-        <InvestigationProgressTimeline
-          steps={steps}
-          activeKey={activeKey}
-          onSelect={setPinnedKey}
-        />
-        {activeStep ? <InvestigationStepPanel step={activeStep} mapsHref={mapsHref} /> : null}
-      </Section>
+            </p>
+            <InvestigationTimeline steps={steps} currentKey={currentKey} mapsHref={mapsHref} />
+          </Section>
+        </div>
 
-      {/* 2) Đối tượng (trái) + Vị trí + Biên bản (phải) — layout kiểu inspection detail mẫu */}
-      <SubjectLocationMinutesSection data={data} />
-
-      {/* 3) Checklist — 5 mục tách category */}
-      {showsChecklistBlock(data.status, hasEvidence) ? (
         <Section
-          title="Checklist & bằng chứng"
-          icon={<ImageIcon className="size-4 text-slate-900" />}
-          description="5 mục theo category — chỉ xem (Inspector Mobile upload)"
+          index={2}
+          title="Biên bản"
+          description="Điền trực tiếp từ dữ liệu hồ sơ"
+          action={
+            data.canRecordPayment ? (
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5 bg-brand text-brand-foreground hover:bg-brand-dark"
+                onClick={onRecordPaymentClick}
+              >
+                <Banknote className="size-3.5" aria-hidden />
+                Ghi nhận nộp phạt
+              </Button>
+            ) : undefined
+          }
         >
-          <ChecklistEvidenceSection items={data.checklistEvidence} />
+          <MinutesDocument data={data} />
         </Section>
-      ) : null}
-
-      {/* 4) QĐ xử phạt */}
-      {showsPenaltyBlock(data.status) ? (
-        <Section title="Quyết định xử phạt" icon={<Scale className="size-4 text-slate-900" />}>
-          <Panel>
-            {!showPenaltyFields ? (
-              <p className="text-sm text-slate-500">{EMPTY.penalty}</p>
-            ) : (
-              <dl>
-                <InfoRow label="Mức vi phạm">{violationLevelLabelVi(data.violationLevel)}</InfoRow>
-                <InfoRow label="Số tiền phạt">{formatVnd(data.penaltyAmount)}</InfoRow>
-                <InfoRow label="Số QĐ">{data.penaltyDecisionNumber || '—'}</InfoRow>
-                <InfoRow label="Ngày ban hành">{formatViDateTime(data.penaltyIssuedAt)}</InfoRow>
-                <InfoRow label="Hạn nộp">{formatViDateTime(data.penaltyDueDate)}</InfoRow>
-                <InfoRow label="Người ban hành">{data.issuedByInspectorName || '—'}</InfoRow>
-                {data.additionalPenaltyMeasures?.trim() ? (
-                  <InfoRow label="Biện pháp kèm theo">
-                    <span className="whitespace-pre-wrap">{data.additionalPenaltyMeasures}</span>
-                  </InfoRow>
-                ) : null}
-              </dl>
-            )}
-          </Panel>
-        </Section>
-      ) : null}
-
-      {/* 5) Thanh toán */}
-      {showsPaymentBlock(data.status) ? (
-        <Section title="Thanh toán" icon={<Scale className="size-4 text-slate-900" />}>
-          <Panel>
-            <div className="mb-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/70">
-                <p className="text-[11px] text-slate-500">Đã nộp</p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-800">
-                  {formatVnd(data.paidAmount)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/70">
-                <p className="text-[11px] text-slate-500">Còn lại</p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">
-                  {formatVnd(remaining)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/70">
-                <p className="text-[11px] text-slate-500">Tiến độ</p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums text-sky-800">
-                  {paidRatio != null ? `${paidRatio}%` : '—'}
-                </p>
-              </div>
-            </div>
-            {paidRatio != null ? (
-              <div className="mb-4 h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={cn(
-                    'h-full rounded-full',
-                    paidRatio >= 100 ? 'bg-emerald-500' : 'bg-sky-600'
-                  )}
-                  style={{ width: `${paidRatio}%` }}
-                />
-              </div>
-            ) : null}
-            <PaymentTable payments={data.payments} />
-          </Panel>
-        </Section>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -1568,6 +1378,7 @@ export function InspectionDetailClient() {
   const { data, isPending, isError, isFetching, refetch } = useInspectionDetail(inspectionId);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [teamDialogMode, setTeamDialogMode] = useState<'assign' | 'change'>('assign');
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
   const openTeamDialog = (mode: 'assign' | 'change') => {
     setTeamDialogMode(mode);
@@ -1634,7 +1445,11 @@ export function InspectionDetailClient() {
 
             <TabsContent value="overview" className="mt-0 space-y-6 focus-visible:ring-0">
               <InspectionDetailHeader data={data} onAssignClick={openTeamDialog} />
-              <InspectionDetailBody key={data.id} data={data} />
+              <InspectionDetailBody
+                key={data.id}
+                data={data}
+                onRecordPaymentClick={() => setPaymentDialogOpen(true)}
+              />
             </TabsContent>
 
             <TabsContent value="payment-history" className="mt-0 focus-visible:ring-0">
@@ -1647,6 +1462,16 @@ export function InspectionDetailClient() {
               inspectionId={data.id}
               mode={teamDialogMode}
               currentTeamId={data.assignedTeamId}
+            />
+            <RecordPaymentDialog
+              open={paymentDialogOpen}
+              onOpenChange={setPaymentDialogOpen}
+              inspectionId={data.id}
+              remainingAmount={
+                data.penaltyAmount != null && data.paidAmount != null
+                  ? data.penaltyAmount - data.paidAmount
+                  : data.penaltyAmount
+              }
             />
           </Tabs>
         )}

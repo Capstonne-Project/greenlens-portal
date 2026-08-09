@@ -28,6 +28,15 @@ export type NotificationType =
   | 'StaffInvitationReceived'
   | 'StaffInvitationAccepted'
   | 'StaffInvitationDeclined'
+  | 'CommunityCleanupOpened'
+  | 'CommunityCleanupLeaderAssigned'
+  | 'CommunityCleanupStarted'
+  | 'CommunityCleanupProgressUpdated'
+  | 'CommunityCleanupVerificationSubmitted'
+  | 'CommunityCleanupVerificationRejected'
+  | 'CommunityCleanupVerified'
+  | 'CommunityCleanupCheckInReminder'
+  | 'BadgeProgressNear'
   | string;
 
 export interface NotificationItem {

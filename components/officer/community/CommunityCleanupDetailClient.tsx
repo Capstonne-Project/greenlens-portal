@@ -23,7 +23,10 @@ import {
   useRejectCommunityVerification,
   useVerifyCommunityCleanup,
 } from '@/hooks/useCommunityCleanup';
-import type { CommunityCleanupParticipant } from '@/lib/api/models/communityCleanup';
+import type {
+  CommunityCleanupParticipant,
+  CommunityCleanupStatus,
+} from '@/lib/api/models/communityCleanup';
 import {
   COMMUNITY_CLEANUP_STATUS_BADGE_CLASSES,
   COMMUNITY_CLEANUP_STATUS_DOT_CLASSES,
@@ -32,19 +35,15 @@ import {
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft,
-  Calendar,
   CheckCircle2,
-  Camera,
-  ClipboardList,
   ExternalLink,
   ImageIcon,
   Loader2,
-  MapPin,
   RefreshCw,
-  Users,
   XCircle,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -94,150 +93,162 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
-// ── Progress ring (đồng bộ style LeoTrackingReportDetail) ─────────────────
-
-function ProgressCircle({ percent }: { percent: number }) {
+/** Thanh tiến độ mảnh — đọc nhanh hơn ring, đặt cạnh nhãn % trong hero. */
+function ProgressBar({ percent }: { percent: number }) {
   const clamped = Math.max(0, Math.min(100, Math.round(percent)));
   return (
-    <div
-      className="relative flex size-28 shrink-0 items-center justify-center rounded-full sm:size-32"
-      style={{
-        background: `conic-gradient(hsl(142 71% 45%) ${clamped * 3.6}deg, hsl(var(--muted)) 0deg)`,
-      }}
-      role="img"
-      aria-label={`Tiến độ dọn dẹp: ${clamped}%`}
-    >
-      <div className="flex size-21 flex-col items-center justify-center rounded-full bg-background px-2 text-center sm:size-24">
-        <span className="text-xl font-bold leading-none tabular-nums text-foreground sm:text-2xl">
-          {clamped}%
-        </span>
-        <span className="mt-1 max-w-19 text-[10px] leading-tight text-muted-foreground sm:text-[11px]">
+    <div className="w-full">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           Tiến độ dọn dẹp
         </span>
+        <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+          {clamped}%
+        </span>
+      </div>
+      <div
+        className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        role="img"
+        aria-label={`Tiến độ dọn dẹp: ${clamped}%`}
+      >
+        <div
+          className="h-full rounded-full bg-brand transition-[width] duration-500"
+          style={{ width: `${clamped}%` }}
+        />
       </div>
     </div>
   );
 }
-
-type MediaStageKey = 'before' | 'progress' | 'after';
 
 interface MediaStageImage {
   url: string;
   uploadedAt?: string;
 }
 
-interface MediaStage {
-  key: MediaStageKey;
-  step: number;
-  title: string;
-  shortLabel: string;
-  emptyHint: string;
-  images: MediaStageImage[];
+/**
+ * Một mốc trong vòng đời chương trình. `state` quyết định hình thức node:
+ * done = đã xảy ra (có mốc thời gian thật), current = mốc đang diễn ra,
+ * pending = chưa tới. `media` gắn trực tiếp vào mốc sinh ra nó.
+ */
+type LifecycleState = 'done' | 'current' | 'pending';
+
+interface LifecycleStage {
+  key: string;
+  label: string;
+  at: string | null;
+  /** Dòng phụ: số người đăng ký, ghi chú tiến độ, lý do… */
+  meta?: string | null;
+  mediaLabel?: string;
+  mediaEmptyHint?: string;
+  images?: MediaStageImage[];
+  state: LifecycleState;
 }
 
-function MediaProgressTimeline({
+/**
+ * Xương sống vòng đời — hợp nhất "mốc thời gian" + "minh chứng theo giai đoạn"
+ * thành một trục dọc duy nhất: mỗi mốc mang thời điểm thật và ảnh phát sinh ở
+ * chính mốc đó, thay vì tách thành 3 khối rời (ring, danh sách ngày, stepper ảnh).
+ */
+function LifecycleSpine({
   stages,
-  activeKey,
-  onSelect,
+  onPreview,
 }: {
-  stages: MediaStage[];
-  activeKey: MediaStageKey;
-  onSelect: (key: MediaStageKey) => void;
+  stages: LifecycleStage[];
+  onPreview: ReportPreviewHandler;
 }) {
-  const activeIndex = Math.max(
-    0,
-    stages.findIndex(s => s.key === activeKey)
-  );
   return (
-    <ol className="relative mt-2 flex w-full items-start">
+    <ol className="relative">
       {stages.map((stage, index) => {
-        const isActive = index === activeIndex;
-        const isPassed = index < activeIndex;
-        const connectorFilled = index > 0 && index - 1 < activeIndex;
+        const isLast = index === stages.length - 1;
+        const hasMedia = stage.mediaLabel != null;
+        const images = stage.images ?? [];
+
         return (
-          <li key={stage.key} className="relative flex flex-1 flex-col items-center">
-            {index > 0 ? (
+          <li key={stage.key} className="relative flex gap-4 pb-6 last:pb-0">
+            {!isLast ? (
               <span
                 className={cn(
-                  'pointer-events-none absolute top-4 right-1/2 left-[-50%] z-0 h-0.5 -translate-y-1/2',
-                  connectorFilled ? 'bg-emerald-500' : 'bg-border'
+                  'absolute top-6 left-2.5 z-0 w-px -translate-x-1/2',
+                  'h-[calc(100%-1.5rem)]',
+                  stage.state === 'done' ? 'bg-brand/35' : 'bg-border'
                 )}
                 aria-hidden
               />
             ) : null}
-            <button
-              type="button"
-              onClick={() => onSelect(stage.key)}
+
+            <span
               className={cn(
-                'relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums transition-colors sm:size-9 sm:text-sm',
-                isPassed && 'bg-emerald-500 text-white',
-                isActive &&
-                  'border-2 border-emerald-500 bg-background text-emerald-800 shadow-sm ring-4 ring-emerald-500/25 dark:text-emerald-300',
-                !isPassed &&
-                  !isActive &&
-                  'border-2 border-border bg-background text-muted-foreground'
+                'relative z-10 mt-1 flex size-5 shrink-0 items-center justify-center rounded-full',
+                stage.state === 'done' && 'bg-brand text-white',
+                stage.state === 'current' && 'bg-background ring-2 ring-brand',
+                stage.state === 'pending' && 'bg-background ring-1 ring-border'
               )}
-              aria-pressed={isActive}
-              aria-current={isActive ? 'step' : undefined}
-              aria-label={`Bước ${stage.step}: ${stage.shortLabel}`}
+              aria-hidden
             >
-              <span className="relative z-10">{stage.step}</span>
-            </button>
-            <p
-              className={cn(
-                'mt-2 max-w-26 text-center text-[11px] font-medium leading-tight sm:max-w-none sm:text-xs',
-                isActive
-                  ? 'font-semibold text-emerald-800 dark:text-emerald-300'
-                  : 'text-muted-foreground'
-              )}
-            >
-              {stage.shortLabel}
-            </p>
-            <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
-              {stage.images.length} ảnh
-            </p>
+              {stage.state === 'done' ? (
+                <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+              ) : stage.state === 'current' ? (
+                <span className="size-1.5 rounded-full bg-brand" />
+              ) : null}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                <h3
+                  className={cn(
+                    'text-sm font-semibold',
+                    stage.state === 'pending' ? 'text-muted-foreground' : 'text-foreground'
+                  )}
+                >
+                  {stage.label}
+                </h3>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                  {stage.at ? formatDateTime(stage.at) : '—'}
+                </span>
+                {stage.state === 'current' ? (
+                  <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                    Hiện tại
+                  </span>
+                ) : null}
+              </div>
+
+              {stage.meta ? (
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{stage.meta}</p>
+              ) : null}
+
+              {hasMedia ? (
+                <div className="mt-2.5">
+                  <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    {stage.mediaLabel}
+                    <span className="ml-1.5 font-mono tabular-nums">({images.length})</span>
+                  </p>
+                  {images.length === 0 ? (
+                    <p className="mt-1 text-sm text-muted-foreground/70 italic">
+                      {stage.mediaEmptyHint}
+                    </p>
+                  ) : (
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {images.map(img => (
+                        <li key={`${img.url}-${img.uploadedAt}`}>
+                          <ClickableReportImage
+                            url={img.url}
+                            label={stage.mediaLabel ?? stage.label}
+                            uploadedAt={img.uploadedAt}
+                            onPreview={onPreview}
+                            showTimestamp={false}
+                            className="size-20 rounded-lg sm:size-24"
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </li>
         );
       })}
     </ol>
-  );
-}
-
-function MediaStageGallery({
-  stage,
-  onPreview,
-}: {
-  stage: MediaStage;
-  onPreview: ReportPreviewHandler;
-}) {
-  if (stage.images.length === 0) {
-    return (
-      <div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-2 py-10 text-center">
-        <ImageIcon className="size-8 text-muted-foreground/45" aria-hidden />
-        <p className="max-w-sm text-sm text-muted-foreground">{stage.emptyHint}</p>
-      </div>
-    );
-  }
-  return (
-    <div className="mt-5">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">
-        {stage.title}{' '}
-        <span className="font-normal text-muted-foreground">({stage.images.length})</span>
-      </h3>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {stage.images.map(img => (
-          <li key={`${img.url}-${img.uploadedAt}`}>
-            <ClickableReportImage
-              url={img.url}
-              label={stage.title}
-              uploadedAt={img.uploadedAt}
-              onPreview={onPreview}
-              className="aspect-4/3 w-full rounded-xl ring-1 ring-border/50 transition hover:ring-emerald-400/50"
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -257,33 +268,31 @@ const PARTICIPANT_STATUS_DOT: Record<CommunityCleanupParticipant['status'], stri
   NoShow: 'bg-red-500',
 };
 
-function ParticipantRow({ participant }: { participant: CommunityCleanupParticipant }) {
+/** Dòng người tham gia gọn cho thẻ sticky hẹp — bỏ mốc check-in, chỉ giữ trạng thái. */
+function CompactParticipantRow({ participant }: { participant: CommunityCleanupParticipant }) {
   return (
-    <li className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-      <Avatar className="size-9 shrink-0">
+    <li className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0">
+      <Avatar className="size-7 shrink-0">
         {participant.avatarUrl ? <AvatarImage src={participant.avatarUrl} alt="" /> : null}
-        <AvatarFallback className={cn('text-xs font-semibold', hashColor(participant.userId))}>
+        <AvatarFallback className={cn('text-[10px] font-semibold', hashColor(participant.userId))}>
           {getInitials(participant.fullName)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="truncate text-sm font-medium text-foreground">{participant.fullName}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-[13px] font-medium text-foreground">{participant.fullName}</p>
           {participant.role === 'Leader' ? (
-            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
+            <span className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
               Leader
             </span>
           ) : null}
         </div>
-        <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
-          Tham gia {formatDateTime(participant.joinedAt)}
-          {participant.checkedInAt ? ` · Check-in ${formatDateTime(participant.checkedInAt)}` : ''}
-        </p>
       </div>
-      <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span className={cn('size-2 rounded-full', PARTICIPANT_STATUS_DOT[participant.status])} />
-        {PARTICIPANT_STATUS_LABEL[participant.status]}
-      </span>
+      <span
+        className={cn('size-1.5 shrink-0 rounded-full', PARTICIPANT_STATUS_DOT[participant.status])}
+        title={PARTICIPANT_STATUS_LABEL[participant.status]}
+        aria-label={PARTICIPANT_STATUS_LABEL[participant.status]}
+      />
     </li>
   );
 }
@@ -421,30 +430,208 @@ function SectionBlock({
   children,
   className,
   title,
-  icon: Icon,
   description,
+  action,
 }: {
   children: React.ReactNode;
   className?: string;
   title?: string;
-  icon?: typeof Users;
   description?: React.ReactNode;
+  action?: React.ReactNode;
 }) {
   return (
     <section className={cn('w-full min-w-0', className)}>
       {title ? (
-        <div className="mb-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-base">
-            {Icon ? <Icon className="size-4 shrink-0 text-foreground" aria-hidden /> : null}
-            {title}
-          </h2>
-          {description ? (
-            <div className="mt-0.5 text-xs text-muted-foreground">{description}</div>
-          ) : null}
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+              {title}
+            </h2>
+            {description ? (
+              <div className="mt-1.5 text-xs text-muted-foreground">{description}</div>
+            ) : null}
+          </div>
+          {action}
         </div>
       ) : null}
       {children}
     </section>
+  );
+}
+
+/**
+ * Thẻ thông tin chương trình — ảnh, danh tính, tiến độ, điểm tập trung gộp
+ * một khối duy nhất để làm cột phải sticky (đứng yên khi cuộn timeline bên trái).
+ */
+/** Dải avatar chồng mép — xem nhanh vài người tham gia đầu, không cần cuộn. */
+function ParticipantAvatarStack({
+  participants,
+  max = 5,
+}: {
+  participants: CommunityCleanupParticipant[];
+  max?: number;
+}) {
+  const shown = participants.slice(0, max);
+  const rest = participants.length - shown.length;
+  return (
+    <div className="flex items-center">
+      {shown.map(p => (
+        <Avatar key={p.userId} className="-ml-2 size-7 shrink-0 border-2 border-card first:ml-0">
+          {p.avatarUrl ? <AvatarImage src={p.avatarUrl} alt="" /> : null}
+          <AvatarFallback className={cn('text-[10px] font-semibold', hashColor(p.userId))}>
+            {getInitials(p.fullName)}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+      {rest > 0 ? (
+        <span className="-ml-2 flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold text-muted-foreground">
+          +{rest}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function EventInfoCard({
+  detail,
+  progressPercent,
+  mapLat,
+  mapLng,
+  googleMapsUrl,
+  participants,
+  isParticipantsPending,
+}: {
+  detail: NonNullable<ReturnType<typeof useCommunityCleanupDetail>['data']>;
+  progressPercent: number;
+  mapLat: number;
+  mapLng: number;
+  googleMapsUrl: string;
+  participants: CommunityCleanupParticipant[];
+  isParticipantsPending: boolean;
+}) {
+  return (
+    <div className="flex flex-col">
+      {/* Ảnh + tiêu đề + mô tả — giới hạn chiều cao để không tràn ra ngoài cột */}
+      <div className="relative aspect-video max-h-52 w-full overflow-hidden rounded-xl bg-muted">
+        {detail.thumbnailUrl ? (
+          <Image
+            src={detail.thumbnailUrl}
+            alt={detail.title}
+            fill
+            sizes="(max-width: 1024px) 100vw, 40rem"
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-muted-foreground">
+            <ImageIcon className="size-8 opacity-40" aria-hidden />
+          </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/45 via-black/0 to-transparent" />
+        <span
+          className={cn(
+            'absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold shadow-sm backdrop-blur-sm',
+            COMMUNITY_CLEANUP_STATUS_BADGE_CLASSES[detail.status]
+          )}
+        >
+          <span
+            className={cn(
+              'size-1.5 rounded-full',
+              COMMUNITY_CLEANUP_STATUS_DOT_CLASSES[detail.status]
+            )}
+          />
+          {communityCleanupStatusLabelVi(detail.status)}
+        </span>
+        <p className="absolute inset-x-4 bottom-3 font-mono text-[11px] font-medium tracking-wide text-white tabular-nums">
+          #{detail.reportCode}
+          <span className="mx-1.5 text-white/60">·</span>
+          {detail.categoryName}
+        </p>
+      </div>
+
+      <div className="pt-5">
+        <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground">
+          {detail.title}
+        </h1>
+        {detail.description ? (
+          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+            {detail.description}
+          </p>
+        ) : null}
+      </div>
+
+      {/* Leader + tiến độ */}
+      <div className="mt-6 flex items-center gap-3 border-t border-border/60 pt-6">
+        <Avatar className="size-9 shrink-0">
+          <AvatarFallback className={cn('text-xs font-semibold', hashColor(detail.leader.userId))}>
+            {getInitials(detail.leader.fullName)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{detail.leader.fullName}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            Leader · {detail.leader.teamName}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <ProgressBar percent={progressPercent} />
+      </div>
+
+      {/* Người tham gia (trái) + Điểm tập trung (phải) — cạnh nhau */}
+      <div className="mt-6 grid grid-cols-1 gap-6 border-t border-border/60 pt-6 sm:grid-cols-2">
+        <div className="min-w-0">
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              Người tham gia
+            </p>
+            <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              {detail.participantCount}/{detail.maxParticipants} · còn {detail.spotsLeft} chỗ
+            </span>
+          </div>
+
+          {isParticipantsPending ? (
+            <div className="flex h-16 items-center justify-center">
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : participants.length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground">Chưa có ai tham gia.</p>
+          ) : (
+            <>
+              <ParticipantAvatarStack participants={participants} />
+              <ul className="mt-3 max-h-48 divide-y divide-border/50 overflow-y-auto">
+                {participants.map(p => (
+                  <CompactParticipantRow key={p.userId} participant={p} />
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+
+        <div className="min-w-0 border-t border-border/60 pt-6 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+          <p className="mb-2.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Điểm tập trung
+          </p>
+          <div className="overflow-hidden rounded-xl bg-muted/40">
+            <ReportLocationMap latitude={mapLat} longitude={mapLng} className="h-32 w-full" />
+          </div>
+          <p className="mt-2 line-clamp-2 text-xs leading-snug text-foreground/80">
+            {detail.meetingNote ? `${detail.meetingNote} · ` : ''}
+            {detail.reportAddress ?? 'Vị trí báo cáo'}
+          </p>
+          <a
+            href={googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] font-medium text-brand tabular-nums hover:underline"
+          >
+            <ExternalLink className="size-3" aria-hidden />
+            {mapLat.toFixed(5)}, {mapLng.toFixed(5)}
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -506,7 +693,6 @@ function DetailShell({
   onBack: () => void;
 }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  const [activeStage, setActiveStage] = useState<MediaStageKey>('before');
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -519,48 +705,93 @@ function DetailShell({
   const verifyMutation = useVerifyCommunityCleanup();
   const rejectMutation = useRejectCommunityVerification();
 
-  const stages: MediaStage[] = useMemo(() => {
+  /**
+   * Mốc vòng đời + minh chứng gộp một trục. `state` suy ra từ status thật của BE
+   * (OpenForJoin → JoinClosed → InProgress → PendingVerification → Completed),
+   * không phải từ việc user bấm chọn giai đoạn nào.
+   */
+  const lifecycleStages: LifecycleStage[] = useMemo(() => {
     const media = detail.media;
     const toImages = (urls: string[]): MediaStageImage[] => urls.map(url => ({ url }));
+    const status = detail.status;
+
+    /** Vị trí hiện tại trên vòng đời — Cancelled coi như dừng tại chỗ. */
+    const order: CommunityCleanupStatus[] = [
+      'OpenForJoin',
+      'JoinClosed',
+      'InProgress',
+      'PendingVerification',
+      'Completed',
+    ];
+    const activeIdx = order.indexOf(status);
+    const stateFor = (stageIdx: number): LifecycleState => {
+      if (status === 'Cancelled') return stageIdx === 0 ? 'done' : 'pending';
+      if (activeIdx < 0) return 'pending';
+      if (stageIdx < activeIdx) return 'done';
+      if (stageIdx === activeIdx) return 'current';
+      return 'pending';
+    };
+
     return [
       {
-        key: 'before',
-        step: 1,
-        title: 'Ảnh trước dọn dẹp',
-        shortLabel: 'Trước dọn dẹp',
-        emptyHint: 'Chưa có ảnh hiện trạng ban đầu.',
+        key: 'open',
+        label: 'Mở đăng ký',
+        at: detail.joinOpensAt,
+        meta: `${detail.participantCount}/${detail.maxParticipants} người đã đăng ký · còn ${detail.spotsLeft} chỗ`,
+        state: stateFor(0),
+      },
+      {
+        key: 'joinClosed',
+        label: 'Đóng đăng ký',
+        at: detail.joinClosesAt,
+        meta: detail.joinClosesAt ? null : 'Chưa đặt thời điểm đóng đăng ký.',
+        state: stateFor(1),
+      },
+      {
+        key: 'inProgress',
+        label: 'Bắt đầu dọn dẹp',
+        at: detail.startsAt,
+        meta: detail.progressNote,
+        mediaLabel: 'Ảnh trước dọn dẹp',
+        mediaEmptyHint: 'Chưa có ảnh hiện trạng ban đầu.',
         images: toImages(media.beforeImageUrls),
+        state: stateFor(2),
       },
       {
-        key: 'progress',
-        step: 2,
-        title: 'Ảnh tiến độ',
-        shortLabel: 'Đang dọn dẹp',
-        emptyHint: 'Chưa có ảnh cập nhật tiến độ.',
+        key: 'progressMedia',
+        label: 'Cập nhật tiến độ',
+        at: null,
+        mediaLabel: 'Ảnh tiến độ',
+        mediaEmptyHint: 'Chưa có ảnh cập nhật tiến độ.',
         images: toImages(media.progressImageUrls),
+        state: media.progressImageUrls.length > 0 ? 'done' : stateFor(2),
       },
       {
-        key: 'after',
-        step: 3,
-        title: 'Ảnh sau dọn dẹp',
-        shortLabel: 'Sau dọn dẹp',
-        emptyHint: 'Chưa có ảnh nghiệm thu.',
+        key: 'pendingVerification',
+        label: 'Chờ duyệt xác thực',
+        at: detail.endsAt,
+        mediaLabel: 'Ảnh sau dọn dẹp',
+        mediaEmptyHint: 'Chưa có ảnh nghiệm thu.',
         images: toImages(media.afterImageUrls),
+        state: stateFor(3),
+      },
+      {
+        key: 'completed',
+        label: status === 'Cancelled' ? 'Đã hủy' : 'Hoàn thành',
+        at: null,
+        state: status === 'Cancelled' ? 'current' : stateFor(4),
       },
     ];
-  }, [detail.media]);
-
-  const active = stages.find(s => s.key === activeStage) ?? stages[0]!;
+  }, [detail]);
 
   const allImages = useMemo((): ReportPreviewImage[] => {
-    const map = (items: MediaStageImage[], label: string) =>
-      items.map(img => ({ url: img.url, label, uploadedAt: img.uploadedAt }));
+    const map = (urls: string[], label: string) => urls.map(url => ({ url, label }));
     return [
-      ...map(stages[0]!.images, 'Ảnh trước dọn dẹp'),
-      ...map(stages[1]!.images, 'Ảnh tiến độ'),
-      ...map(stages[2]!.images, 'Ảnh sau dọn dẹp'),
+      ...map(detail.media.beforeImageUrls, 'Ảnh trước dọn dẹp'),
+      ...map(detail.media.progressImageUrls, 'Ảnh tiến độ'),
+      ...map(detail.media.afterImageUrls, 'Ảnh sau dọn dẹp'),
     ];
-  }, [stages]);
+  }, [detail.media]);
 
   const handlePreview = (image: ReportPreviewImage) => {
     const idx = allImages.findIndex(
@@ -635,7 +866,8 @@ function DetailShell({
         isSubmitting={rejectMutation.isPending}
       />
 
-      <div className="mb-3 flex shrink-0 items-center justify-between">
+      {/* Thanh hành động — dính trên khi cuộn để nút duyệt luôn trong tầm tay */}
+      <div className="sticky top-0 z-20 -mx-4 mb-6 flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-background/85 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <Button type="button" variant="ghost" size="sm" className="-ml-2 h-8 px-2" onClick={onBack}>
           <ArrowLeft className="mr-1 size-4" />
           Quay lại
@@ -656,7 +888,7 @@ function DetailShell({
             <Button
               type="button"
               size="sm"
-              className="h-8 bg-emerald-600 hover:bg-emerald-500"
+              className="h-8 bg-brand text-brand-foreground hover:bg-brand-dark"
               onClick={() => setVerifyOpen(true)}
             >
               <CheckCircle2 className="mr-1.5 size-4" />
@@ -666,207 +898,39 @@ function DetailShell({
         ) : null}
       </div>
 
-      <div className="flex w-full min-w-0 flex-col gap-8 sm:gap-10">
-        {/* ── Header + progress ring ── */}
-        <SectionBlock>
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:grid-rows-[auto_auto_auto] lg:items-center lg:gap-x-10">
-            <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
-              <p className="text-xl font-bold leading-snug tracking-tight text-foreground sm:text-2xl">
-                {detail.title}
-                <span className="ml-2 align-middle text-[11px] font-normal tabular-nums text-muted-foreground/80">
-                  #{detail.reportCode}
-                </span>
-              </p>
-            </div>
-
-            <div className="order-5 min-w-0 lg:order-none lg:col-start-3 lg:row-start-1 lg:justify-self-end lg:text-right">
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold',
-                  COMMUNITY_CLEANUP_STATUS_BADGE_CLASSES[detail.status]
-                )}
-              >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    COMMUNITY_CLEANUP_STATUS_DOT_CLASSES[detail.status]
-                  )}
-                />
-                {communityCleanupStatusLabelVi(detail.status)}
-              </span>
-            </div>
-
-            <div className="order-2 min-w-0 lg:col-start-1 lg:row-start-2">
-              <p className="text-sm leading-snug text-muted-foreground">
-                Leader:{' '}
-                <span className="font-medium text-foreground/90">{detail.leader.fullName}</span>
-                {' · '}
-                {detail.leader.teamName}
-              </p>
-            </div>
-
-            <div className="order-6 min-w-0 lg:order-none lg:col-start-3 lg:row-start-2 lg:justify-self-end lg:text-right">
-              <p className="text-xs tabular-nums text-muted-foreground">
-                Bắt đầu {formatDateTime(detail.startsAt)}
-              </p>
-            </div>
-
-            <div className="order-3 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 lg:col-start-1 lg:row-start-3">
-              <Users className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              <p className="text-sm leading-snug text-muted-foreground">
-                {detail.participantCount}/{detail.maxParticipants} người tham gia · còn{' '}
-                {detail.spotsLeft} chỗ
-              </p>
-            </div>
-
-            <div className="order-7 min-w-0 text-sm text-muted-foreground lg:order-none lg:col-start-3 lg:row-start-3 lg:justify-self-end lg:text-right">
-              {detail.categoryName}
-            </div>
-
-            <div className="order-4 flex justify-center py-2 lg:order-none lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-center lg:py-0">
-              <ProgressCircle percent={progressPercent} />
-            </div>
-          </div>
-
-          {detail.description ? (
-            <p className="mt-6 rounded-lg bg-muted/40 px-4 py-3 text-sm text-foreground/80">
-              {detail.description}
-            </p>
-          ) : null}
-
-          {detail.progressNote ? (
-            <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200/70">
-              <span className="font-medium">Ghi chú tiến độ mới nhất: </span>
-              {detail.progressNote}
-            </p>
-          ) : null}
-
-          <div className="mt-11">
-            <div className="mb-6">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-base">
-                <Camera className="size-4 shrink-0 text-foreground" aria-hidden />
-                Minh chứng hiện trường
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Ảnh trước — đang dọn dẹp — sau dọn dẹp do Leader nộp
-              </p>
-            </div>
-            <MediaProgressTimeline
-              stages={stages}
-              activeKey={activeStage}
-              onSelect={setActiveStage}
-            />
-            <MediaStageGallery stage={active} onPreview={handlePreview} />
-          </div>
-        </SectionBlock>
-
-        {/* ── Participants 6 / Meeting point 4 ── */}
-        <div className="grid w-full gap-8 lg:grid-cols-10 lg:gap-0">
+      {/* ── Bố cục 4/6: cả 2 cột sticky dưới thanh hành động, mỗi cột tự cuộn riêng ── */}
+      {/* Cột kẻ dọc ở giữa (w-px) làm đường phân tách thật — không lệch theo % ước lượng */}
+      <div className="grid w-full min-w-0 grid-cols-1 gap-8 lg:grid-cols-[4fr_1px_6fr] lg:items-start lg:gap-8">
+        <div className="min-w-0 lg:sticky lg:top-13 lg:max-h-[calc(100vh-4.25rem)] lg:overflow-y-auto lg:pr-2">
           <SectionBlock
-            className="lg:col-span-6 lg:pr-8"
-            icon={Users}
-            title="Người tham gia"
-            description={`${detail.participantCount}/${detail.maxParticipants} người · còn ${detail.spotsLeft} chỗ`}
+            title="Vòng đời chương trình"
+            description="Mốc thời gian và minh chứng Leader nộp ở từng giai đoạn"
           >
-            {isParticipantsPending ? (
-              <div className="flex h-24 items-center justify-center">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : !participants || participants.items.length === 0 ? (
-              <p className="py-6 text-sm text-muted-foreground">Chưa có ai tham gia.</p>
-            ) : (
-              <ul className="max-h-96 divide-y divide-border/60 overflow-y-auto pr-1">
-                {participants.items.map(p => (
-                  <ParticipantRow key={p.userId} participant={p} />
-                ))}
-              </ul>
-            )}
-          </SectionBlock>
-
-          <SectionBlock
-            className="lg:col-span-4 lg:border-l lg:border-border/60 lg:pl-8"
-            icon={ClipboardList}
-            title="Mốc thời gian"
-          >
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-2.5">
-                <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                <div>
-                  <p className="text-foreground">Mở đăng ký</p>
-                  <p className="text-xs tabular-nums text-muted-foreground">
-                    {formatDateTime(detail.joinOpensAt)}
-                  </p>
-                </div>
-              </li>
-              {detail.joinClosesAt ? (
-                <li className="flex items-start gap-2.5">
-                  <Calendar
-                    className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <div>
-                    <p className="text-foreground">Đóng đăng ký</p>
-                    <p className="text-xs tabular-nums text-muted-foreground">
-                      {formatDateTime(detail.joinClosesAt)}
-                    </p>
-                  </div>
-                </li>
-              ) : null}
-              <li className="flex items-start gap-2.5">
-                <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                <div>
-                  <p className="text-foreground">Bắt đầu dọn dẹp</p>
-                  <p className="text-xs tabular-nums text-muted-foreground">
-                    {formatDateTime(detail.startsAt)}
-                  </p>
-                </div>
-              </li>
-              {detail.endsAt ? (
-                <li className="flex items-start gap-2.5">
-                  <Calendar
-                    className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <div>
-                    <p className="text-foreground">Dự kiến kết thúc</p>
-                    <p className="text-xs tabular-nums text-muted-foreground">
-                      {formatDateTime(detail.endsAt)}
-                    </p>
-                  </div>
-                </li>
-              ) : null}
-            </ul>
+            {detail.progressNote ? (
+              <p className="mb-5 rounded-lg border-l-2 border-brand bg-brand/5 px-4 py-3 text-sm text-foreground/80">
+                <span className="font-medium">Ghi chú tiến độ mới nhất: </span>
+                {detail.progressNote}
+              </p>
+            ) : null}
+            <LifecycleSpine stages={lifecycleStages} onPreview={handlePreview} />
           </SectionBlock>
         </div>
 
-        {/* ── Meeting point / map ── */}
-        <SectionBlock
-          title="Điểm tập trung"
-          icon={MapPin}
-          description={
-            <>
-              {detail.meetingNote ? `${detail.meetingNote} · ` : ''}
-              {detail.reportAddress ?? 'Vị trí báo cáo'}
-            </>
-          }
-        >
-          <div className="overflow-hidden rounded-xl ring-1 ring-border/60">
-            <ReportLocationMap
-              latitude={mapLat}
-              longitude={mapLng}
-              className="h-56 w-full sm:h-72"
-            />
-          </div>
-          <a
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
-          >
-            <ExternalLink className="size-3" aria-hidden />
-            Mở trên Google Maps · {mapLat.toFixed(5)}, {mapLng.toFixed(5)}
-          </a>
-        </SectionBlock>
+        {/* Đường kẻ dọc xám — cột riêng trong grid, self-stretch để kéo hết chiều cao hàng */}
+        <div className="hidden bg-border lg:block lg:self-stretch" aria-hidden />
+
+        {/* Sticky dưới thanh hành động (h-13 ≈ chiều cao thanh) — đứng yên khi cuộn timeline */}
+        <aside className="lg:sticky lg:top-13 lg:self-start lg:pl-2">
+          <EventInfoCard
+            detail={detail}
+            progressPercent={progressPercent}
+            mapLat={mapLat}
+            mapLng={mapLng}
+            googleMapsUrl={googleMapsUrl}
+            participants={participants?.items ?? []}
+            isParticipantsPending={isParticipantsPending}
+          />
+        </aside>
       </div>
     </div>
   );

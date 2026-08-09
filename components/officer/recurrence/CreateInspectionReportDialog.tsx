@@ -38,7 +38,6 @@ const INSPECTION_TEAM_PARAMS = {
   pageSize: 50,
   teamType: 'Inspection',
   isActive: true,
-  isAvailable: true,
 } as const;
 
 const FORM_HINT =
