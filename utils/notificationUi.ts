@@ -115,13 +115,7 @@ export function officerNotificationHref(
 
   switch (item.type) {
     case 'ReportVerificationNeeded':
-      // List + highlight row — không mở detail thẳng.
-      if (ref) return `/officer/verify?highlight=${encodeURIComponent(ref)}`;
-      return '/officer/verify';
     case 'SlaBreachWarning':
-      // SLA warning mở thẳng detail trong tracking.
-      if (ref) return `/officer/tracking?reportId=${encodeURIComponent(ref)}`;
-      return '/officer/tracking';
     case 'ReportStatusChanged':
     case 'ReportOverdue':
     case 'ReportAutoClosed':
@@ -131,6 +125,8 @@ export function officerNotificationHref(
     case 'ReopenRequestDecided':
     case 'NewComment':
     case 'NearbyReport':
+    case 'PenaltyIssued':
+      // Luôn mở chi tiết báo cáo khi có referenceId (VerifyDetailClient).
       if (ref) return `/officer/verify/${encodeURIComponent(ref)}`;
       return '/officer/verify';
     case 'BadgeEarned':
@@ -139,7 +135,7 @@ export function officerNotificationHref(
     case 'StaffInvitationAccepted':
       return '/officer/workforce?tab=members';
     default:
-      if (ref) return `/officer/tracking`;
+      if (ref) return `/officer/verify/${encodeURIComponent(ref)}`;
       return '/officer/dashboard';
   }
 }
@@ -253,29 +249,21 @@ export function formatNotificationShortTime(iso: string): string {
 }
 
 /**
- * Bucket section kiểu Meta (Facebook / Instagram Activity) — ưu tiên hybrid:
+ * Bucket section theo thời gian tạo (local day):
  *
- * | Key        | Label VI   | Rule                                              |
- * |------------|------------|---------------------------------------------------|
- * | new        | Mới        | `!isRead` (xấp xỉ "unseen/new" khi chưa có seenAt) |
- * | today      | Hôm nay    | đã đọc + `createdAt` trong hôm nay (local)         |
- * | yesterday  | Hôm qua    | đã đọc + hôm qua                                   |
- * | thisWeek   | Tuần này   | đã đọc + trong 7 ngày gần nhất (trừ hôm nay/qua)   |
- * | earlier    | Trước đó   | còn lại                                            |
+ * | Key        | Label VI   | Rule                                    |
+ * |------------|------------|-----------------------------------------|
+ * | today      | Hôm nay    | `createdAt` trong hôm nay               |
+ * | yesterday  | Hôm qua    | hôm qua                                 |
+ * | thisWeek   | Tuần này   | trong 7 ngày gần nhất (trừ hôm nay/qua) |
+ * | earlier    | Trước đó   | còn lại                                 |
  *
- * Industry notes:
- * - Facebook Web (vi): "Mới" + "Hôm nay" (+ older) — New ≈ unread/unseen.
- * - Instagram: Today / Yesterday / This week / Earlier (thiếu New).
- * - X/Twitter: Today / Yesterday / Older.
- *
- * Field API đủ: `createdAt` + `isRead`. Optional sau:
- * - `seenAt` / `isSeen` — New = unseen (mở drawer ≠ đọc hết).
- * - BE sort `createdAt desc` — FE giữ thứ tự trong từng bucket.
+ * Không tách bucket "Mới" theo `isRead` — unread nằm đúng bucket thời gian.
+ * Mỗi bucket sort `createdAt` desc (mới nhất trước).
  */
-export type NotificationTimeGroup = 'new' | 'today' | 'yesterday' | 'thisWeek' | 'earlier';
+export type NotificationTimeGroup = 'today' | 'yesterday' | 'thisWeek' | 'earlier';
 
 export const NOTIFICATION_TIME_GROUP_LABEL: Record<NotificationTimeGroup, string> = {
-  new: 'Mới',
   today: 'Hôm nay',
   yesterday: 'Hôm qua',
   thisWeek: 'Tuần này',
@@ -283,7 +271,6 @@ export const NOTIFICATION_TIME_GROUP_LABEL: Record<NotificationTimeGroup, string
 };
 
 const TIME_GROUP_ORDER: readonly NotificationTimeGroup[] = [
-  'new',
   'today',
   'yesterday',
   'thisWeek',
@@ -298,13 +285,16 @@ function addLocalDays(dayStart: Date, days: number): Date {
   return new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + days);
 }
 
-/** Gán 1 item → đúng 1 bucket (first-match). Invalid `createdAt` → earlier. */
+function createdAtMs(item: Pick<NotificationItem, 'createdAt'>): number {
+  const t = new Date(item.createdAt).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
+/** Gán 1 item → đúng 1 bucket theo `createdAt` (first-match). Invalid → earlier. */
 export function resolveNotificationTimeGroup(
-  item: Pick<NotificationItem, 'isRead' | 'createdAt'>,
+  item: Pick<NotificationItem, 'createdAt'>,
   now: Date = new Date()
 ): NotificationTimeGroup {
-  if (!item.isRead) return 'new';
-
   const created = new Date(item.createdAt);
   if (Number.isNaN(created.getTime())) return 'earlier';
 
@@ -321,15 +311,13 @@ export function resolveNotificationTimeGroup(
 }
 
 /**
- * Nhóm list theo móc thời gian Meta-style.
- * O(n) — một pass; giữ nguyên order API trong mỗi bucket.
+ * Nhóm list theo móc thời gian. O(n log n) — sort desc trong mỗi bucket.
  */
 export function groupNotificationsByTime(
   items: NotificationItem[],
   now: Date = new Date()
 ): { group: NotificationTimeGroup; items: NotificationItem[] }[] {
   const buckets: Record<NotificationTimeGroup, NotificationItem[]> = {
-    new: [],
     today: [],
     yesterday: [],
     thisWeek: [],
@@ -338,6 +326,10 @@ export function groupNotificationsByTime(
 
   for (const item of items) {
     buckets[resolveNotificationTimeGroup(item, now)].push(item);
+  }
+
+  for (const group of TIME_GROUP_ORDER) {
+    buckets[group].sort((a, b) => createdAtMs(b) - createdAtMs(a));
   }
 
   return TIME_GROUP_ORDER.filter(g => buckets[g].length > 0).map(group => ({
