@@ -460,8 +460,8 @@ function SectionBlock({
 }
 
 /**
- * Thẻ thông tin chương trình — ảnh, danh tính, tiến độ, điểm tập trung gộp
- * một khối duy nhất để làm cột phải sticky (đứng yên khi cuộn timeline bên trái).
+ * Thẻ thông tin chương trình — ảnh, danh tính, tiến độ, điểm tập trung.
+ * Cột trái (7/10) sticky dưới thanh hành động khi cuộn timeline cột phải.
  */
 /** Dải avatar chồng mép — xem nhanh vài người tham gia đầu, không cần cuộn. */
 function ParticipantAvatarStack({
@@ -518,7 +518,7 @@ function EventInfoCard({
             src={detail.thumbnailUrl}
             alt={detail.title}
             fill
-            sizes="(max-width: 1024px) 100vw, 40rem"
+            sizes="(max-width: 1024px) 100vw, 58rem"
             className="object-cover"
             unoptimized
           />
@@ -898,10 +898,25 @@ function DetailShell({
         ) : null}
       </div>
 
-      {/* ── Bố cục 4/6: cả 2 cột sticky dưới thanh hành động, mỗi cột tự cuộn riêng ── */}
-      {/* Cột kẻ dọc ở giữa (w-px) làm đường phân tách thật — không lệch theo % ước lượng */}
-      <div className="grid w-full min-w-0 grid-cols-1 gap-8 lg:grid-cols-[4fr_1px_6fr] lg:items-start lg:gap-8">
-        <div className="min-w-0 lg:sticky lg:top-13 lg:max-h-[calc(100vh-4.25rem)] lg:overflow-y-auto lg:pr-2">
+      {/* ── Bố cục 7/3: thông tin trái · timeline phải; divider 1px giữa hai cột ── */}
+      <div className="grid w-full min-w-0 grid-cols-1 gap-8 lg:grid-cols-[7fr_1px_3fr] lg:items-start lg:gap-8">
+        {/* Sticky dưới thanh hành động — đứng yên khi cuộn timeline cột phải */}
+        <aside className="min-w-0 lg:sticky lg:top-13 lg:self-start lg:pr-2">
+          <EventInfoCard
+            detail={detail}
+            progressPercent={progressPercent}
+            mapLat={mapLat}
+            mapLng={mapLng}
+            googleMapsUrl={googleMapsUrl}
+            participants={participants?.items ?? []}
+            isParticipantsPending={isParticipantsPending}
+          />
+        </aside>
+
+        {/* Đường kẻ dọc xám — cột riêng trong grid, self-stretch để kéo hết chiều cao hàng */}
+        <div className="hidden bg-border lg:block lg:self-stretch" aria-hidden />
+
+        <div className="min-w-0 lg:sticky lg:top-13 lg:max-h-[calc(100vh-4.25rem)] lg:overflow-y-auto lg:pl-2">
           <SectionBlock
             title="Vòng đời chương trình"
             description="Mốc thời gian và minh chứng Leader nộp ở từng giai đoạn"
@@ -915,22 +930,6 @@ function DetailShell({
             <LifecycleSpine stages={lifecycleStages} onPreview={handlePreview} />
           </SectionBlock>
         </div>
-
-        {/* Đường kẻ dọc xám — cột riêng trong grid, self-stretch để kéo hết chiều cao hàng */}
-        <div className="hidden bg-border lg:block lg:self-stretch" aria-hidden />
-
-        {/* Sticky dưới thanh hành động (h-13 ≈ chiều cao thanh) — đứng yên khi cuộn timeline */}
-        <aside className="lg:sticky lg:top-13 lg:self-start lg:pl-2">
-          <EventInfoCard
-            detail={detail}
-            progressPercent={progressPercent}
-            mapLat={mapLat}
-            mapLng={mapLng}
-            googleMapsUrl={googleMapsUrl}
-            participants={participants?.items ?? []}
-            isParticipantsPending={isParticipantsPending}
-          />
-        </aside>
       </div>
     </div>
   );

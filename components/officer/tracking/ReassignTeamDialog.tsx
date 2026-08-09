@@ -1,26 +1,44 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useTeamsList } from '@/hooks/useTeams';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useReassignReport } from '@/hooks/useOfficer';
-import type { TeamListItem } from '@/lib/api/services/fetchTeam';
-import { isReassignReasonValid, REASSIGN_REASON_MIN_LENGTH } from '@/utils/reportAssignments';
-import type { ReportAssignment } from '@/lib/api/models/report';
-import { AlertCircle, ArrowRightLeft, Loader2, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useTeamsList } from '@/hooks/useTeams';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
+import type { TeamListItem } from '@/lib/api/models/team';
+import { cn } from '@/lib/utils';
+import { isReassignReasonValid, REASSIGN_REASON_MIN_LENGTH } from '@/utils/reportAssignments';
+import { TYPE_LABEL } from '@/components/officer/workforce/teamTab/teamTab.shared';
+import { ArrowRightLeft, Loader2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-const TEAM_TYPE_LABEL: Record<string, string> = {
-  Cleanup: 'Dọn dẹp',
-  Inspection: 'Kiểm tra',
-  Response: 'Ứng phó',
-  Monitoring: 'Giám sát',
-};
+function getTeamInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase();
+}
 
 export interface ReassignTarget {
   teamId: string;
   teamName: string;
+  teamType?: string;
 }
 
 interface ReassignTeamDialogProps {
@@ -29,54 +47,60 @@ interface ReassignTeamDialogProps {
   reportId: string;
   reportCode: string;
   oldTeam: ReassignTarget;
-  assignments: ReportAssignment[];
-  /** Lọc đội cùng loại — lấy từ đội cũ khi có. */
-  teamType?: string;
   onSuccess?: () => void;
 }
 
+/**
+ * Dialog chuyển giao đội — PUT /v1/reports/{id}/reassign.
+ * UI Select giống TeamTabDialogs (AddMember).
+ */
 export function ReassignTeamDialog({
   open,
   onClose,
   reportId,
   reportCode,
   oldTeam,
-  teamType,
   onSuccess,
 }: ReassignTeamDialogProps) {
   const [newTeamId, setNewTeamId] = useState('');
   const [reason, setReason] = useState('');
+  const [teamSelectOpen, setTeamSelectOpen] = useState(false);
 
   const reassignMutation = useReassignReport();
+  const teamType = oldTeam.teamType?.trim() || undefined;
 
-  const { data, isLoading } = useTeamsList({
-    page: 1,
-    pageSize: 50,
-    isActive: true,
-    isAvailable: true,
-    ...(teamType ? { teamType } : {}),
-  });
+  const {
+    data,
+    isPending: teamsLoading,
+    isError: teamsError,
+  } = useTeamsList(
+    {
+      page: 1,
+      pageSize: 50,
+      isActive: true,
+      isAvailable: true,
+      ...(teamType ? { teamType } : {}),
+    },
+    { enabled: open }
+  );
 
-  const teams: TeamListItem[] = useMemo(() => {
-    return (data?.items ?? []).filter(t => t.id !== oldTeam.teamId);
-  }, [data?.items, oldTeam.teamId]);
+  const teams: TeamListItem[] = useMemo(
+    () => (data?.items ?? []).filter(t => t.id !== oldTeam.teamId),
+    [data?.items, oldTeam.teamId]
+  );
 
-  // Reset form khi dialog chuyển từ open → close.
-  // Dùng cleanup để setState chạy trước khi unmount/effect re-run, tránh
-  // rule `react-hooks/set-state-in-effect` (gọi setState ngay trong effect body).
-  useEffect(() => {
-    if (!open) return;
-    return () => {
-      setNewTeamId('');
-      setReason('');
-    };
-  }, [open]);
-
-  if (!open) return null;
-
+  const selectedTeam = teams.find(t => t.id === newTeamId) ?? null;
   const reasonLen = reason.trim().length;
-  const canSubmit =
-    Boolean(newTeamId) && isReassignReasonValid(reason) && !reassignMutation.isPending;
+  const reasonOk = isReassignReasonValid(reason);
+  const isBusy = reassignMutation.isPending;
+  const canSubmit = Boolean(newTeamId) && reasonOk && !isBusy && !teamsError;
+
+  const resetAndClose = () => {
+    setNewTeamId('');
+    setReason('');
+    setTeamSelectOpen(false);
+    onClose();
+  };
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -91,153 +115,188 @@ export function ReassignTeamDialog({
       },
       {
         onSuccess: () => {
-          toastApiSuccess(null, `Đã chuyển giao báo cáo ${reportCode} sang đội mới.`);
-          onClose();
+          toastApiSuccess(null, `Đã phân công lại báo cáo ${reportCode}.`);
+          resetAndClose();
           onSuccess?.();
         },
         onError: err => {
-          toastApiError(err, 'Không thể chuyển giao. Vui lòng kiểm tra trạng thái đội và thử lại.');
+          toastApiError(
+            err,
+            'Không thể phân công lại. Kiểm tra loại đội / tải công việc và thử lại.'
+          );
         },
       }
     );
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-      onClick={e => {
-        if (e.target === e.currentTarget && !reassignMutation.isPending) onClose();
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && !isBusy) resetAndClose();
       }}
     >
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-        <div className="flex items-start justify-between border-b border-border px-5 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">Chuyển giao đội</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Báo cáo <span className="font-semibold text-foreground">{reportCode}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={reassignMutation.isPending}
-            className="inline-flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        onInteractOutside={e => {
+          if (isBusy) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isBusy) e.preventDefault();
+        }}
+      >
+        <div className="flex flex-col">
+          <div className="space-y-4 p-6 md:p-8">
+            <DialogHeader className="pr-8 text-left">
+              <DialogTitle className="flex items-center gap-2.5">
+                <ArrowRightLeft className="size-4 shrink-0 text-foreground" aria-hidden />
+                Phân công lại đội
+              </DialogTitle>
+              <DialogDescription>
+                Chuyển giao từ{' '}
+                <span className="font-medium text-foreground">{oldTeam.teamName}</span>
+                {teamType ? <> · loại {TYPE_LABEL[teamType] ?? teamType}</> : null}. Báo cáo{' '}
+                <span className="font-medium text-foreground">{reportCode}</span>.
+              </DialogDescription>
+            </DialogHeader>
 
-        <div className="space-y-4 px-5 py-4">
-          <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-xs text-amber-900">
-            <p className="flex items-start gap-2">
-              <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-              Lý do chuyển giao được lưu vào nhật ký xử lý. Chọn đội cùng loại với đội hiện tại.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-            <span className="text-xs text-muted-foreground">Từ</span>
-            <span className="flex-1 truncate text-sm font-semibold text-foreground">
-              {oldTeam.teamName}
-            </span>
-            <ArrowRightLeft className="size-4 shrink-0 text-amber-600" />
-            <span className="text-xs text-muted-foreground">Đội mới</span>
-          </div>
-
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Chọn đội nhận chuyển giao
-            </p>
-            <div className="mt-2 max-h-56 min-h-0 overflow-y-auto rounded-lg border border-border">
-              {isLoading && (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Đang tải danh sách đội...
-                </div>
-              )}
-              {!isLoading && teams.length === 0 && (
-                <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                  Không có đội phù hợp để chuyển giao.
-                </p>
-              )}
-              {!isLoading &&
-                teams.map(team => {
-                  const selected = newTeamId === team.id;
-                  return (
-                    <button
-                      key={team.id}
-                      type="button"
-                      onClick={() => setNewTeamId(team.id)}
-                      className={`flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-left transition last:border-b-0 ${
-                        selected ? 'bg-amber-50/80' : 'hover:bg-muted/40'
-                      }`}
-                    >
-                      <span
-                        className={`size-4 shrink-0 rounded-full border-2 ${
-                          selected ? 'border-amber-600 bg-amber-600' : 'border-muted-foreground/40'
-                        }`}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-foreground">
-                          {team.name}
+            <FieldGroup>
+              <Field>
+                <Label htmlFor="reassign-new-team">Đội nhận chuyển giao</Label>
+                <FieldDescription>
+                  Chỉ hiện đội cùng loại, đang rảnh (Available), khác đội đã từ chối.
+                </FieldDescription>
+                <Select
+                  value={newTeamId}
+                  onValueChange={setNewTeamId}
+                  open={teamSelectOpen}
+                  onOpenChange={setTeamSelectOpen}
+                  disabled={isBusy || teamsError}
+                >
+                  <SelectTrigger id="reassign-new-team" className="h-auto min-h-10 py-2">
+                    {selectedTeam ? (
+                      <span className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700"
+                          aria-hidden
+                        >
+                          {getTeamInitials(selectedTeam.name)}
                         </span>
-                        <span className="block truncate text-[11px] text-muted-foreground">
-                          {team.officeName}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium leading-snug text-foreground">
+                            {selectedTeam.name}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                            {selectedTeam.officeName ?? '—'}
+                            {selectedTeam.memberCount != null
+                              ? ` · ${selectedTeam.memberCount} thành viên`
+                              : ''}
+                          </span>
                         </span>
                       </span>
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 rounded-full border-amber-200 bg-amber-50 px-2 py-0 text-[10px] font-medium text-amber-800"
-                      >
-                        {TEAM_TYPE_LABEL[team.teamType] ?? team.teamType}
-                      </Badge>
-                    </button>
-                  );
-                })}
-            </div>
+                    ) : (
+                      <SelectValue placeholder={teamsLoading ? 'Đang tải đội…' : 'Chọn đội mới'} />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamsLoading ? (
+                      <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted-foreground">
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                        Đang tải…
+                      </div>
+                    ) : teams.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                        Không có đội phù hợp để phân công lại.
+                      </div>
+                    ) : (
+                      teams.map(team => (
+                        <SelectItem key={team.id} value={team.id} className="py-2">
+                          <span className="flex min-w-0 items-center gap-3">
+                            <span
+                              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700"
+                              aria-hidden
+                            >
+                              {getTeamInitials(team.name)}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-medium">
+                                {team.name}
+                              </span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {TYPE_LABEL[team.teamType] ?? team.teamType}
+                                {team.officeName ? ` · ${team.officeName}` : ''}
+                              </span>
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {teamsError ? (
+                  <FieldError>Không tải được danh sách đội. Thử đóng/mở lại dialog.</FieldError>
+                ) : null}
+              </Field>
+
+              <Field>
+                <Label htmlFor="reassign-reason">
+                  Lý do phân công lại <span className="text-destructive">*</span>
+                </Label>
+                <FieldDescription>
+                  Tối thiểu {REASSIGN_REASON_MIN_LENGTH} ký tự — lưu vào nhật ký xử lý.
+                </FieldDescription>
+                <textarea
+                  id="reassign-reason"
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  rows={4}
+                  disabled={isBusy}
+                  placeholder="Mô tả lý do phân công lại…"
+                  className="min-h-24 w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <p
+                  className={cn(
+                    'text-right text-[11px]',
+                    reasonOk ? 'text-emerald-600' : 'text-muted-foreground'
+                  )}
+                >
+                  {reasonLen}/{REASSIGN_REASON_MIN_LENGTH} ký tự
+                </p>
+              </Field>
+            </FieldGroup>
           </div>
 
-          <div>
-            <label
-              htmlFor="reassign-reason"
-              className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+          <DialogFooter className="border-t border-border bg-muted/20 px-6 py-4 md:px-8">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetAndClose}
+              disabled={isBusy}
+              className="cursor-pointer"
             >
-              Lý do chuyển giao <span className="text-destructive">*</span>
-            </label>
-            <textarea
-              id="reassign-reason"
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              rows={4}
-              placeholder="Mô tả lý do chuyển giao (tối thiểu 20 ký tự)..."
-              className="mt-1.5 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-            />
-            <p
-              className={`mt-1 text-right text-[11px] ${
-                reasonLen >= REASSIGN_REASON_MIN_LENGTH
-                  ? 'text-emerald-600'
-                  : 'text-muted-foreground'
-              }`}
+              Huỷ
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="cursor-pointer bg-emerald-600 text-white hover:bg-emerald-500"
             >
-              {reasonLen}/{REASSIGN_REASON_MIN_LENGTH} ký tự
-            </p>
-          </div>
+              {isBusy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Đang phân công…
+                </>
+              ) : (
+                <>
+                  <ArrowRightLeft className="size-4" aria-hidden />
+                  Xác nhận phân công lại
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </div>
-
-        <div className="flex justify-end gap-2 border-t border-border bg-muted/30 px-5 py-3">
-          <Button variant="outline" onClick={onClose} disabled={reassignMutation.isPending}>
-            Huỷ
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="bg-amber-600 text-white hover:bg-amber-500"
-          >
-            <ArrowRightLeft className="mr-1.5 size-4" />
-            {reassignMutation.isPending ? 'Đang chuyển giao...' : 'Xác nhận chuyển giao'}
-          </Button>
-        </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

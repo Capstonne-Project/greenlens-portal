@@ -45,6 +45,7 @@ import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/report
 import type { ViolationRecurrenceCandidatesParams } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
+import { reportKeys } from '@/hooks/useReport';
 import {
   keepPreviousData,
   useMutation,
@@ -152,7 +153,20 @@ const ASSIGN_QUEUE_STATUSES = [
   'Rejected',
 ] as const satisfies readonly ReportQueueStatus[];
 
+/** Tra cứu `/officer/reports` — chỉ trạng thái kết thúc. */
+export const LOOKUP_QUEUE_STATUSES = [
+  'Resolved',
+  'Closed',
+  'Rejected',
+] as const satisfies readonly ReportQueueStatus[];
+
+export type LookupQueueStatus = (typeof LOOKUP_QUEUE_STATUSES)[number];
+
 type AssignReportQueueParams = Omit<ReportQueueParams, 'status'>;
+type LookupReportQueueParams = Omit<ReportQueueParams, 'status'> & {
+  /** `all` = gọi 3 status song song rồi gộp. */
+  status?: LookupQueueStatus | 'all';
+};
 
 /** Chi tiết một báo cáo — không fetch khi id rỗng. */
 export function useReportDetail(id: string) {
@@ -350,6 +364,81 @@ export function useAssignReportQueue(
   };
 }
 
+/**
+ * Tra cứu báo cáo kết thúc — `Resolved` | `Closed` | `Rejected` từ GET /v1/reports/queue.
+ * `status: 'all'` (mặc định): 3 request song song, merge `createdAt` Desc.
+ * Một status cụ thể: một request (reuse cache `officerKeys.queueList`).
+ */
+export function useLookupReportQueue(
+  params: LookupReportQueueParams,
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled ?? true;
+  const { status = 'all', ...rest } = params;
+  const singleStatus = status !== 'all' ? status : null;
+
+  const singleQuery = useReportQueue(
+    { ...rest, status: singleStatus ?? 'Resolved' },
+    { enabled: enabled && Boolean(singleStatus) }
+  );
+
+  const multiQueries = useQueries({
+    queries: LOOKUP_QUEUE_STATUSES.map(queueStatus => ({
+      queryKey: officerKeys.queueList({ ...rest, status: queueStatus }),
+      queryFn: () => fetchReportQueue({ ...rest, status: queueStatus }),
+      staleTime: LIST_STALE_MS,
+      placeholderData: keepPreviousData,
+      enabled: enabled && !singleStatus,
+    })),
+  });
+
+  const multiData = useMemo((): ReportQueueData | undefined => {
+    if (singleStatus) return undefined;
+    const payloads = multiQueries.map(q => q.data?.data).filter(Boolean) as ReportQueueData[];
+    if (payloads.length === 0) return undefined;
+
+    const items = payloads
+      .flatMap(p => p.items)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    const totalItems = payloads.reduce((sum, p) => sum + p.pagination.totalItems, 0);
+    const totalPages = Math.max(1, ...payloads.map(p => p.pagination.totalPages));
+    const page = rest.page ?? 1;
+
+    return {
+      items,
+      pagination: {
+        page,
+        pageSize: rest.pageSize ?? 10,
+        totalItems,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
+  }, [multiQueries, rest.page, rest.pageSize, singleStatus]);
+
+  if (singleStatus) {
+    return {
+      data: singleQuery.data,
+      isPending: singleQuery.isPending,
+      isFetching: singleQuery.isFetching,
+      isError: singleQuery.isError,
+      refetch: () => void singleQuery.refetch(),
+    };
+  }
+
+  return {
+    data: multiData,
+    isPending: multiQueries.some(q => q.isPending),
+    isFetching: multiQueries.some(q => q.isFetching),
+    isError: multiQueries.some(q => q.isError),
+    refetch: () => {
+      for (const q of multiQueries) void q.refetch();
+    },
+  };
+}
+
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 /** POST /v1/reports/{id}/dispatch-to-company — LEO điều phối task đến công ty DVMT. */
@@ -388,6 +477,8 @@ export function useReassignReport() {
       reassignReport(reportId, body),
     onSuccess: (_data, { reportId }) => {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: reportKeys.detail(reportId) });
+      queryClient.invalidateQueries({ queryKey: reportKeys.progress(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
     },

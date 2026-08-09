@@ -1,35 +1,66 @@
 import type { ReportSeverityDto, ReportStatusDto } from '@/lib/api/dto/report.dto';
+import type { MediaType } from '@/lib/constants/mediaType';
 
-/** GET /v1/reports/{id}/progress — ảnh theo giai đoạn. */
+/**
+ * GET /v1/reports/{id}/progress
+ * Khớp Swagger (2026-08-10): assignment singular, assignedCompany, members;
+ * bỏ summary / progressImages / images flat.
+ */
+
 export interface ReportProgressImageDto {
+  id: string;
+  /** BE MediaType: Image | Video | Before | Progress | After | Inspection | ReopenEvidence */
+  mediaType: MediaType | string;
   url: string;
+  thumbnailUrl: string | null;
+  mimeType: string;
+  sizeBytes: number;
   uploadedAt: string;
 }
 
 export interface ReportProgressSlaDto {
-  /** Null khi report đã Duplicate (gộp vào gốc — không còn SLA riêng). */
   resolveDueAt: string | null;
   hoursRemaining: number;
   isBreached: boolean;
   severityLabel: string;
 }
 
-export interface ReportProgressSummaryDto {
-  totalTeams: number;
-  acceptedTeams: number;
-  completedTeams: number;
-  declinedTeams: number;
-  pendingTeams: number;
-  overallProgressPercent: number;
-  startedAt: string;
+export interface ReportProgressAssignedCompanyDto {
+  companyId: string;
+  companyName: string;
+  dispatchedAt: string;
 }
 
-/** Assignment trong tiến trình — khớp Swagger GET /v1/reports/{id}/progress. */
+export interface ReportProgressMemberDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+  isLeader: boolean;
+  joinedAt: string;
+}
+
+export interface ReportProgressUpdateDto {
+  id: string;
+  progressPercent: number;
+  progressNote: string | null;
+  updatedAt: string;
+  updatedByUserId: string;
+  updatedByName: string;
+  images: ReportProgressImageDto[];
+}
+
 export interface ReportProgressAssignmentDto {
   assignmentId: string;
   teamId: string;
   teamName: string;
   teamType: string;
+  isCompanyTeam: boolean;
+  companyId: string | null;
+  companyName: string | null;
+  localOfficeId: string | null;
+  localOfficeName: string | null;
   teamLeaderName: string;
   assignedById: string;
   assignedByName: string;
@@ -41,12 +72,16 @@ export interface ReportProgressAssignmentDto {
   progressPercent: number;
   progressNote: string | null;
   progressUpdatedAt: string | null;
+  members: ReportProgressMemberDto[];
+  progressUpdates: ReportProgressUpdateDto[];
 }
 
 export interface ReportProgressMediaDto {
+  submissionImages: ReportProgressImageDto[];
   beforeImages: ReportProgressImageDto[];
-  progressImages: ReportProgressImageDto[];
   afterImages: ReportProgressImageDto[];
+  inspectionImages: ReportProgressImageDto[];
+  reopenEvidenceImages: ReportProgressImageDto[];
 }
 
 export interface ReportProgressStatusHistoryDto {
@@ -57,7 +92,6 @@ export interface ReportProgressStatusHistoryDto {
   note: string | null;
 }
 
-/** GET /v1/reports/{id}/progress — data envelope. */
 export interface ReportProgressDataDto {
   reportId: string;
   code: string;
@@ -68,8 +102,8 @@ export interface ReportProgressDataDto {
   wardCode: string;
   description: string;
   sla: ReportProgressSlaDto;
-  summary: ReportProgressSummaryDto;
-  assignments: ReportProgressAssignmentDto[];
+  assignedCompany: ReportProgressAssignedCompanyDto | null;
+  assignment: ReportProgressAssignmentDto | null;
   media: ReportProgressMediaDto;
   statusHistory: ReportProgressStatusHistoryDto[];
 }

@@ -205,9 +205,9 @@ export function getMapShellNavForRole(
     mainNav.push(
       withSection(NAV_ITEMS.map, 'Tổng quan'),
       NAV_ITEMS.overview,
-      withSection(NAV_ITEMS.reports, 'Báo cáo'),
-      NAV_ITEMS.duplicates,
+      withSection(NAV_ITEMS.duplicates, 'Rà soát'),
       NAV_ITEMS.recurrence,
+      withSection(NAV_ITEMS.reports, 'Tra cứu'),
       NAV_ITEMS.inspections,
       withSection(NAV_ITEMS.companies, 'Quản lý')
     );
@@ -215,13 +215,14 @@ export function getMapShellNavForRole(
     mainNav.push(
       withSection(NAV_ITEMS.map, 'Tổng quan'),
       NAV_ITEMS.overview,
-      withSection(NAV_ITEMS.verify, 'Báo cáo'),
+      withSection(NAV_ITEMS.verify, 'Xử lý'),
       NAV_ITEMS.assign,
       NAV_ITEMS.tracking,
       NAV_ITEMS.reopen,
+      withSection(NAV_ITEMS.duplicates, 'Rà soát'),
       NAV_ITEMS.recurrence,
+      withSection(NAV_ITEMS.reports, 'Tra cứu'),
       NAV_ITEMS.inspections,
-      NAV_ITEMS.duplicates,
       withSection(NAV_ITEMS.community, 'Cộng đồng'),
       withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
