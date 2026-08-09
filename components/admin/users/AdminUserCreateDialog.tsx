@@ -1,11 +1,13 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
 import { useCreateAdminUser } from '@/hooks/useAdminUsers';
 import {
   ADMIN_USER_ASSIGNABLE_ROLES,
   type AdminUserAssignableRole,
 } from '@/lib/constants/adminUsersNav';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -47,9 +49,11 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: {
       email: '',
       password: '',
@@ -89,7 +93,7 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
     );
   });
 
-  const fieldClass =
+  const selectClass =
     'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
   return (
@@ -100,28 +104,49 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
       onClose={onClose}
     >
       <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Email" error={errors.email?.message}>
-          <input type="email" autoComplete="off" className={fieldClass} {...register('email')} />
-        </Field>
-        <Field label="Mật khẩu" error={errors.password?.message}>
-          <input
-            type="password"
-            autoComplete="new-password"
-            className={fieldClass}
-            {...register('password')}
+        <Field label="Email">
+          <ValidatedInput
+            type="email"
+            autoComplete="off"
+            {...register('email')}
+            value={watch('email') ?? ''}
+            minLength={1}
+            maxLength={254}
+            error={errors.email?.message}
           />
         </Field>
-        <Field label="Họ tên" error={errors.fullName?.message}>
-          <input type="text" className={fieldClass} {...register('fullName')} />
+        <Field label="Mật khẩu">
+          <ValidatedInput
+            type="password"
+            autoComplete="new-password"
+            {...register('password')}
+            value={watch('password') ?? ''}
+            minLength={8}
+            maxLength={128}
+            error={errors.password?.message}
+          />
         </Field>
-        <Field label="Vai trò" error={errors.role?.message}>
-          <select className={fieldClass} {...register('role')}>
+        <Field label="Họ tên">
+          <ValidatedInput
+            type="text"
+            {...register('fullName')}
+            value={watch('fullName') ?? ''}
+            minLength={1}
+            maxLength={160}
+            error={errors.fullName?.message}
+          />
+        </Field>
+        <Field label="Vai trò">
+          <select className={selectClass} {...register('role')}>
             {ADMIN_USER_ASSIGNABLE_ROLES.map(r => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
             ))}
           </select>
+          {errors.role ? (
+            <p className="text-xs font-medium text-destructive">{errors.role.message}</p>
+          ) : null}
         </Field>
         <div className="flex justify-end gap-2 pt-2">
           <button
@@ -145,20 +170,11 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
   );
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-foreground">{label}</label>
       {children}
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </div>
   );
 }

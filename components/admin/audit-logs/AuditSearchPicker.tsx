@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedInput, ValidatedSearchInput } from '@/components/common/ValidatedField';
 import { useOutsideClick } from '@/hooks/useOutsideClick';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { cn } from '@/lib/utils';
 import { Loader2, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -141,21 +143,21 @@ export function AuditSearchPicker({
       </label>
       <div className="relative">
         <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute left-3 top-[13px] z-10 size-4 text-muted-foreground"
           aria-hidden
         />
-        <input
+        <ValidatedSearchInput
           id={inputId}
-          type="search"
           value={search}
           onChange={e => {
             setSearch(e.target.value);
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
+          maxLength={SEARCH_INPUT_MAX_LENGTH}
           placeholder={placeholder}
           autoComplete="off"
-          className={cn(fieldClass, 'pl-9 pr-9')}
+          className="pl-9 pr-9"
         />
         {search ? (
           <button
@@ -236,7 +238,7 @@ export function AuditGuidInput({
       <label htmlFor={inputId} className="text-sm font-medium">
         {label}
       </label>
-      <input
+      <ValidatedInput
         id={inputId}
         type="text"
         value={value}
@@ -244,10 +246,12 @@ export function AuditGuidInput({
           onChange(e.target.value.trim() || null);
           onPageReset?.();
         }}
+        minLength={0}
+        maxLength={36}
         placeholder="Dán GUID từ trang chi tiết"
-        className={cn(fieldClass, 'font-mono text-xs')}
+        className="font-mono text-xs"
+        hint={hint}
       />
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

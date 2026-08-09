@@ -1,7 +1,9 @@
 'use client';
 
+import { ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useHideAdminReport } from '@/hooks/useAdminReports';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { EyeOff, Loader2 } from 'lucide-react';
@@ -35,9 +37,11 @@ export function AdminReportHideDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<HideFormValues>({
     resolver: zodResolver(hideSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: { reason: '' },
   });
 
@@ -82,16 +86,18 @@ export function AdminReportHideDialog({
           <label htmlFor="hide-reason" className="mb-1.5 block text-sm font-medium">
             Lý do ẩn <span className="text-destructive">*</span>
           </label>
-          <textarea
+          <ValidatedTextarea
             id="hide-reason"
             rows={4}
             placeholder="Ví dụ: Nội dung vi phạm quy định cộng đồng."
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             {...register('reason')}
+            value={watch('reason') ?? ''}
+            minLength={10}
+            maxLength={500}
+            showWordCount
+            error={errors.reason?.message}
+            disabled={hideReport.isPending}
           />
-          {errors.reason ? (
-            <p className="mt-1 text-xs text-destructive">{errors.reason.message}</p>
-          ) : null}
         </div>
 
         <div className="flex justify-end gap-2 pt-1">

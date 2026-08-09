@@ -1,10 +1,10 @@
 'use client';
 
-import { CompanyReportProgressSection } from '@/components/company/assignments/CompanyReportProgressSection';
 import { useCompanyAssignmentDetail } from '@/hooks/useCompany';
 import type {
   CompanyAssignmentDetail,
   CompanyAssignmentMediaItem,
+  CompanyAssignmentProgressSummary,
   CompanyAssignmentTimelineEntry,
 } from '@/lib/api/models/company';
 import { reportStatusLabelVi, normalizeReportStatus } from '@/lib/constants/reportStatus';
@@ -17,6 +17,7 @@ import {
   queueSeverityClasses,
   queueSeverityLabel,
 } from '@/utils/companyUi';
+import { resolveDisplayReportImageUrl } from '@/utils/reportThumbnail';
 import {
   ArrowLeft,
   Check,
@@ -25,7 +26,6 @@ import {
   Loader2,
   MapPin,
   Tag,
-  TrendingUp,
   UsersRound,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -69,6 +69,25 @@ const MEDIA_PHASE_GROUPS = [
   { id: 'after', title: 'Sau xử lý', imagesKey: 'afterImages' as const },
 ];
 
+function CompactMediaThumbImage({ displayUrl, title }: { displayUrl: string; title: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) return null;
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={displayUrl}
+      alt={title}
+      className="absolute inset-0 size-full object-cover transition group-hover:scale-105"
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 function CompactMediaThumb({
   image,
   title,
@@ -78,7 +97,7 @@ function CompactMediaThumb({
   title: string;
   index: number;
 }) {
-  const [hasError, setHasError] = useState(false);
+  const displayUrl = resolveDisplayReportImageUrl(image.url);
 
   return (
     <figure className="w-[4.5rem] shrink-0 sm:w-20">
@@ -91,20 +110,12 @@ function CompactMediaThumb({
         aria-label={`Mở ${title.toLowerCase()} ${index + 1}`}
       >
         <div className="relative aspect-square overflow-hidden rounded-md border border-emerald-100 bg-emerald-50 dark:border-border dark:bg-muted">
-          {hasError ? (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-              <ImageIcon className="size-4" aria-hidden />
-            </div>
-          ) : (
-            <Image
-              src={image.url}
-              alt={title}
-              fill
-              className="object-cover transition group-hover:scale-105"
-              sizes="80px"
-              onError={() => setHasError(true)}
-            />
-          )}
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+            <ImageIcon className="size-4" aria-hidden />
+          </div>
+          {displayUrl ? (
+            <CompactMediaThumbImage key={displayUrl} displayUrl={displayUrl} title={title} />
+          ) : null}
         </div>
       </a>
       <figcaption className="mt-1 space-y-0.5">
@@ -122,14 +133,45 @@ function CompactMediaThumb({
   );
 }
 
-function CompactMediaStrip({ media }: { media: CompanyAssignmentDetail['media'] }) {
+function CompactMediaStrip({
+  title,
+  media,
+}: {
+  title: string;
+  media: CompanyAssignmentMediaItem[];
+}) {
+  if (media.length === 0) return null;
+
+  return (
+    <div className="mt-4 border-t border-emerald-100 pt-4 dark:border-border">
+      <div className="mb-3 flex items-center gap-1.5">
+        <ImageIcon className="size-3.5 text-emerald-700" aria-hidden />
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+          {title}
+        </p>
+        <span className="text-[10px] tabular-nums text-muted-foreground">({media.length})</span>
+      </div>
+      <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-smooth">
+        {media.map((image, index) => (
+          <CompactMediaThumb
+            key={`${title}-${image.url}-${index}`}
+            image={image}
+            title={media.length > 1 ? `${title} · ${index + 1}` : title}
+            index={index}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CleanupMediaStrip({ media }: { media: CompanyAssignmentDetail['media'] }) {
   const groups = MEDIA_PHASE_GROUPS.map(phase => ({
     ...phase,
     images: media[phase.imagesKey],
   })).filter(group => group.images.length > 0);
 
   const totalCount = groups.reduce((sum, g) => sum + g.images.length, 0);
-  if (totalCount === 0) return null;
 
   return (
     <div className="mt-4 border-t border-emerald-100 pt-4 dark:border-border">
@@ -138,26 +180,32 @@ function CompactMediaStrip({ media }: { media: CompanyAssignmentDetail['media'] 
         <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
           Hình ảnh minh chứng
         </p>
-        <span className="text-[10px] tabular-nums text-muted-foreground">({totalCount})</span>
+        {totalCount > 0 ? (
+          <span className="text-[10px] tabular-nums text-muted-foreground">({totalCount})</span>
+        ) : null}
       </div>
 
-      <div className="space-y-3">
-        {groups.map(group => (
-          <div key={group.id}>
-            <h4 className="mb-1.5 text-[11px] font-semibold text-foreground">{group.title}</h4>
-            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-smooth">
-              {group.images.map((image, index) => (
-                <CompactMediaThumb
-                  key={`${group.id}-${image.url}-${index}`}
-                  image={image}
-                  title={group.images.length > 1 ? `${group.title} · ${index + 1}` : group.title}
-                  index={index}
-                />
-              ))}
+      {totalCount === 0 ? (
+        <p className="py-3 text-center text-sm text-muted-foreground">Chưa có ảnh minh chứng.</p>
+      ) : (
+        <div className="space-y-3">
+          {groups.map(group => (
+            <div key={group.id}>
+              <h4 className="mb-1.5 text-[11px] font-semibold text-foreground">{group.title}</h4>
+              <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-smooth">
+                {group.images.map((image, index) => (
+                  <CompactMediaThumb
+                    key={`${group.id}-${image.url}-${index}`}
+                    image={image}
+                    title={group.images.length > 1 ? `${group.title} · ${index + 1}` : group.title}
+                    index={index}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -166,6 +214,40 @@ function usefulReason(reason?: string | null): string | null {
   const value = reason?.trim();
   if (!value || value === 'string' || value === '[ADMIN] string') return null;
   return value;
+}
+
+const SUMMARY_STATS: {
+  key: keyof Pick<
+    CompanyAssignmentProgressSummary,
+    'totalTeams' | 'acceptedTeams' | 'completedTeams' | 'declinedTeams' | 'pendingTeams'
+  >;
+  label: string;
+}[] = [
+  { key: 'totalTeams', label: 'Tổng đội' },
+  { key: 'acceptedTeams', label: 'Đã nhận' },
+  { key: 'pendingTeams', label: 'Chờ phản hồi' },
+  { key: 'completedTeams', label: 'Hoàn thành' },
+  { key: 'declinedTeams', label: 'Từ chối' },
+];
+
+function TeamSummaryGrid({ summary }: { summary: CompanyAssignmentProgressSummary }) {
+  return (
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      {SUMMARY_STATS.map(stat => (
+        <div
+          key={stat.key}
+          className="rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2 dark:border-border dark:bg-muted/20"
+        >
+          <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {stat.label}
+          </dt>
+          <dd className="mt-0.5 text-lg font-bold tabular-nums text-emerald-900 dark:text-emerald-300">
+            {summary[stat.key]}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 function Timeline({ entries }: { entries: CompanyAssignmentTimelineEntry[] }) {
@@ -202,7 +284,9 @@ function Timeline({ entries }: { entries: CompanyAssignmentTimelineEntry[] }) {
             <div className={cn('min-w-0 flex-1 pb-5', isLast && 'pb-0')}>
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                 <p className="text-sm font-semibold text-foreground">
-                  {reportStatusLabelVi(entry.toStatus)}
+                  {entry.fromStatus
+                    ? `${reportStatusLabelVi(entry.fromStatus)} → ${reportStatusLabelVi(entry.toStatus)}`
+                    : reportStatusLabelVi(entry.toStatus)}
                 </p>
                 <time
                   dateTime={entry.timestamp}
@@ -399,7 +483,7 @@ function ProgressStepper({ steps }: { steps: ProgressStep[] }) {
 }
 
 export function CompanyAssignmentDetailTab({ reportId, onBack }: CompanyAssignmentDetailTabProps) {
-  const { data, isPending, isError, refetch } = useCompanyAssignmentDetail(reportId);
+  const { data, isPending, isError, error, refetch } = useCompanyAssignmentDetail(reportId);
 
   if (isPending) {
     return (
@@ -411,9 +495,13 @@ export function CompanyAssignmentDetailTab({ reportId, onBack }: CompanyAssignme
   }
 
   if (isError || !data) {
+    const message = error instanceof Error ? error.message : 'Không tải được chi tiết báo cáo.';
     return (
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm">
         <p className="text-destructive">Không tải được chi tiết báo cáo.</p>
+        {process.env.NODE_ENV === 'development' ? (
+          <p className="mt-1 text-xs text-muted-foreground">{message}</p>
+        ) : null}
         <button type="button" onClick={() => refetch()} className="mt-2 underline">
           Thử lại
         </button>
@@ -453,7 +541,8 @@ export function CompanyAssignmentDetailTab({ reportId, onBack }: CompanyAssignme
 
         <ProgressStepper steps={progressSteps} />
 
-        <CompactMediaStrip media={data.media} />
+        <CompactMediaStrip title="Ảnh báo cáo gốc" media={data.reportImages} />
+        <CleanupMediaStrip media={data.media} />
 
         <div className="mt-4 grid gap-4 border-t border-emerald-100 pt-4 sm:grid-cols-2 dark:border-border">
           <div>
@@ -535,15 +624,39 @@ export function CompanyAssignmentDetailTab({ reportId, onBack }: CompanyAssignme
               Mở lại {data.reopenedCount} lần
             </span>
           ) : null}
-          {data.wasteTags.map(tag => (
-            <span
-              key={tag.tagId}
-              className="rounded-md bg-muted px-2 py-1 text-[10px] font-medium text-foreground"
-            >
-              {tag.nameVi}
+          {data.wasteTags.length === 0 ? (
+            <span className="rounded-md bg-muted/60 px-2 py-1 text-[10px] text-muted-foreground">
+              Chưa gắn loại chất thải
             </span>
-          ))}
+          ) : (
+            data.wasteTags.map(tag => (
+              <span
+                key={tag.tagId}
+                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-[10px] font-medium text-foreground"
+              >
+                {tag.iconUrl ? (
+                  <Image
+                    src={tag.iconUrl}
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 shrink-0 object-contain"
+                  />
+                ) : null}
+                {tag.nameVi}
+              </span>
+            ))
+          )}
         </div>
+      </Section>
+
+      <Section title="Tổng quan đội" icon={<UsersRound className="size-4" aria-hidden />}>
+        <TeamSummaryGrid summary={data.summary} />
+        {data.summary.startedAt ? (
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Bắt đầu xử lý: {formatCompanyDateTime(data.summary.startedAt)}
+          </p>
+        ) : null}
       </Section>
 
       <Section title="Đội được phân công" icon={<UsersRound className="size-4" aria-hidden />}>
@@ -628,9 +741,19 @@ export function CompanyAssignmentDetailTab({ reportId, onBack }: CompanyAssignme
                     </p>
                   ) : null}
 
+                  {team.note ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Ghi chú phân công:</span>{' '}
+                      {team.note}
+                    </p>
+                  ) : null}
+
                   {team.progressNote ? (
                     <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
                       {team.progressNote}
+                      {team.progressUpdatedByName ? (
+                        <span className="block text-[10px]">— {team.progressUpdatedByName}</span>
+                      ) : null}
                     </p>
                   ) : null}
                   {team.declineReason ? (
@@ -641,13 +764,6 @@ export function CompanyAssignmentDetailTab({ reportId, onBack }: CompanyAssignme
             })}
           </div>
         )}
-      </Section>
-
-      <Section
-        title="Tiến trình API (progress)"
-        icon={<TrendingUp className="size-4" aria-hidden />}
-      >
-        <CompanyReportProgressSection reportId={reportId} />
       </Section>
 
       <Section title="Lịch sử trạng thái" icon={<Clock3 className="size-4" aria-hidden />}>

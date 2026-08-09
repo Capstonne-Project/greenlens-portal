@@ -379,6 +379,10 @@ export interface CompanyAssignmentReportSummary {
   severity: CompanyQueueSeverity;
   status: string;
   slaResolveDueAt: string;
+  /** Ảnh đại diện — thumbnailUrl hoặc reportImages[0]. */
+  thumbnailUrl?: string | null;
+  /** Ảnh báo cáo gốc từ report.media[]. */
+  reportImages: CompanyAssignmentMediaItem[];
 }
 
 export interface CompanyAssignmentTeamSummary {
@@ -501,6 +505,8 @@ export interface CompanyAssignmentDetail {
   sla: CompanyAssignmentSla;
   summary: CompanyAssignmentProgressSummary;
   media: CompanyAssignmentMedia;
+  /** Ảnh báo cáo gốc (citizen upload). */
+  reportImages: CompanyAssignmentMediaItem[];
   teamAssignments: CompanyAssignmentTeamDetail[];
   timeline: CompanyAssignmentTimelineEntry[];
   wasteTags: CompanyAssignmentWasteTag[];

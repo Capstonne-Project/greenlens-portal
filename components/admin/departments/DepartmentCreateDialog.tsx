@@ -1,8 +1,10 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { SearchableSelect } from '@/components/common/SearchableSelect';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useCatalogProvinces, useCreateDepartment } from '@/hooks/useDepartments';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getDepartmentMutationError } from '@/utils/departmentErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -17,9 +19,6 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-
-const fieldClass =
-  'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 interface DepartmentCreateDialogProps {
   open: boolean;
@@ -46,6 +45,7 @@ export function DepartmentCreateDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: { name: '', provinceCode: '' },
   });
 
@@ -98,14 +98,16 @@ export function DepartmentCreateDialog({
             <label className="text-sm font-medium" htmlFor="dept-name">
               Tên ủy ban / Sở
             </label>
-            <input
+            <ValidatedInput
               id="dept-name"
               {...register('name')}
+              value={watch('name') ?? ''}
+              minLength={1}
+              maxLength={200}
+              error={errors.name?.message}
               placeholder="Ủy ban nhân dân TP HCM"
-              className={fieldClass}
               disabled={createMutation.isPending}
             />
-            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
           </div>
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium">Tỉnh / Thành phố</label>

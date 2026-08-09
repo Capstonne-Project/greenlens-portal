@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { useCreateCompanyTeam } from '@/hooks/useCompany';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getCompanyMutationError } from '@/utils/companyUi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, X } from 'lucide-react';
@@ -27,8 +29,10 @@ export function CompanyTeamCreateDialog({ open, onClose }: CompanyTeamCreateDial
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
+    ...REALTIME_FORM_OPTIONS,
     resolver: zodResolver(schema),
     defaultValues: { name: '' },
   });
@@ -39,9 +43,6 @@ export function CompanyTeamCreateDialog({ open, onClose }: CompanyTeamCreateDial
   }, [open, reset]);
 
   if (!open) return null;
-
-  const fieldClass =
-    'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
   const onSubmit = handleSubmit(values => {
     createTeam.mutate(
@@ -89,14 +90,16 @@ export function CompanyTeamCreateDialog({ open, onClose }: CompanyTeamCreateDial
             <label htmlFor="team-name" className="mb-1.5 block text-sm font-medium">
               Tên đội
             </label>
-            <input
+            <ValidatedInput
               id="team-name"
               type="text"
               placeholder="VD: Green Warriors Team"
-              className={fieldClass}
               {...register('name')}
+              value={watch('name')}
+              minLength={1}
+              maxLength={120}
+              error={errors.name?.message}
             />
-            {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

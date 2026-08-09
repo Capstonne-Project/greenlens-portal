@@ -1,6 +1,7 @@
 'use client';
 
 import type { CompanyDashboardDateRangeParams } from '@/lib/api/services/fetchCompanyDashboard';
+import type { MyCompanyKpiParams } from '@/lib/api/models/company';
 import { create } from 'zustand';
 
 export type CompanyOverviewDatePreset = 'all' | '7d' | '30d' | '90d';
@@ -23,6 +24,20 @@ export function buildCompanyOverviewDateParams(
   const to = new Date();
   const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
   return { from: from.toISOString(), to: to.toISOString() };
+}
+
+/** Nhãn preset — dùng chung header + KPI. */
+export function getCompanyOverviewDatePresetLabel(preset: CompanyOverviewDatePreset): string {
+  return COMPANY_OVERVIEW_DATE_PRESETS.find(p => p.value === preset)?.label ?? preset;
+}
+
+/** Map bộ lọc header → query GET /v1/companies/my/kpi. */
+export function companyOverviewDateParamsToKpiParams(
+  preset: CompanyOverviewDatePreset,
+  dateParams: CompanyDashboardDateRangeParams | undefined
+): MyCompanyKpiParams {
+  if (preset === 'all' || !dateParams?.from || !dateParams?.to) return {};
+  return { from: dateParams.from, to: dateParams.to };
 }
 
 interface CompanyOverviewUiState {

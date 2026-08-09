@@ -22,12 +22,12 @@ export interface ReportAssignment {
   teamName: string;
   teamType: string;
   status: string;
-  note: string;
+  note: string | null;
   assignedAt: string;
   startedAt: string | null;
   completedAt: string | null;
   progressPercent: number;
-  progressNote: string;
+  progressNote: string | null;
   progressUpdatedAt: string | null;
 }
 
@@ -36,8 +36,8 @@ export interface ReportWasteTag {
   tagId: string;
   code: string;
   nameVi: string;
-  nameEn: string;
-  iconUrl: string;
+  nameEn: string | null;
+  iconUrl: string | null;
 }
 
 /** GET /v1/reports/{id} — `data.satisfaction` */
@@ -79,6 +79,8 @@ export interface ReportDetail {
   id: string;
   code: string;
   reporterId: string;
+  reporterName: string | null;
+  reporterAvatarUrl: string | null;
   categoryId: string;
   categoryCode: string;
   categoryName: string;
@@ -120,4 +122,6 @@ export interface ReportDetail {
   isSuspectedViolationRecurrence: boolean;
   suspectedRecurrenceOfReportId: string | null;
   priorClosedReport: ReportPriorClosedReport | null;
+  isSuspicious: boolean;
+  suspiciousReasons: string[];
 }

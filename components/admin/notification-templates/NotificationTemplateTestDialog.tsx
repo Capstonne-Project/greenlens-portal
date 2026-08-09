@@ -1,7 +1,9 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { cn } from '@/lib/utils';
 import { Loader2, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface NotificationTemplateTestDialogProps {
   open: boolean;
@@ -11,20 +13,21 @@ interface NotificationTemplateTestDialogProps {
   onSubmit: (recipientEmail: string) => void;
 }
 
-export function NotificationTemplateTestDialog({
-  open,
+type NotificationTemplateTestDialogContentProps = Omit<NotificationTemplateTestDialogProps, 'open'>;
+
+function NotificationTemplateTestDialogContent({
   templateTitle,
   busy,
   onClose,
   onSubmit,
-}: NotificationTemplateTestDialogProps) {
-  if (!open) return null;
+}: NotificationTemplateTestDialogContentProps) {
+  const [email, setEmail] = useState('');
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const email = String(new FormData(e.currentTarget).get('email') ?? '').trim();
-    if (!email) return;
-    onSubmit(email);
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
   };
 
   return (
@@ -58,13 +61,15 @@ export function NotificationTemplateTestDialog({
             <label htmlFor="test-email" className="mb-1.5 block text-sm font-medium">
               Email nhận thử
             </label>
-            <input
+            <ValidatedInput
               id="test-email"
-              name="email"
               type="email"
               required
               autoComplete="email"
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              minLength={1}
+              maxLength={254}
               placeholder="admin@greenlens.com.vn"
             />
           </div>
@@ -91,5 +96,25 @@ export function NotificationTemplateTestDialog({
         </form>
       </div>
     </div>
+  );
+}
+
+export function NotificationTemplateTestDialog({
+  open,
+  templateTitle,
+  busy,
+  onClose,
+  onSubmit,
+}: NotificationTemplateTestDialogProps) {
+  if (!open) return null;
+
+  return (
+    <NotificationTemplateTestDialogContent
+      key={templateTitle}
+      templateTitle={templateTitle}
+      busy={busy}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
   );
 }
