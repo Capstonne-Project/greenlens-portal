@@ -1,8 +1,8 @@
 'use client';
 
-import { getWasteTagDisplay } from '@/lib/constants/adminWasteTags';
+import { getWasteTagDisplay, getWasteTagFaIcon } from '@/lib/constants/adminWasteTags';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
-import { Tag } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Image from 'next/image';
 
 interface WasteTagIconProps {
@@ -16,9 +16,10 @@ export function WasteTagIcon({ tag, dimmed, size = 'md' }: WasteTagIconProps) {
   const isRemoteIcon =
     url && (url.startsWith('http://') || url.startsWith('https://')) && url !== 'string';
   const { iconBg, iconFg } = getWasteTagDisplay(tag.code);
+  const faIcon = getWasteTagFaIcon(tag.code, tag.nameVi);
 
   const boxClass = size === 'sm' ? 'size-9 rounded-full' : 'size-10 rounded-full';
-  const iconClass = size === 'sm' ? 'size-4' : 'size-5';
+  const iconClass = size === 'sm' ? 'size-3.5' : 'size-4';
 
   return (
     <span
@@ -36,7 +37,7 @@ export function WasteTagIcon({ tag, dimmed, size = 'md' }: WasteTagIconProps) {
           unoptimized
         />
       ) : (
-        <Tag className={`${iconFg} ${iconClass}`} aria-hidden />
+        <FontAwesomeIcon icon={faIcon} className={`${iconFg} ${iconClass}`} aria-hidden />
       )}
     </span>
   );
