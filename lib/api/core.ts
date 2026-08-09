@@ -159,6 +159,7 @@ export {
   createIdempotencyKey,
   createIdempotencyKeyStore,
   executeIdempotentRequest,
+  extractApiErrorCode,
   IDEMPOTENCY_ERROR_CODES,
   IDEMPOTENCY_HEADER,
   mergeIdempotencyConfig,

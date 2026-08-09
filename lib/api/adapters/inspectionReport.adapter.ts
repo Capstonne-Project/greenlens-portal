@@ -32,7 +32,7 @@ import type {
   ReportInspectionsList,
 } from '@/lib/api/models/inspectionReport';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
-import apiService from '@/lib/api/core';
+import apiService, { mergeIdempotencyConfig, withOptionalIdempotency } from '@/lib/api/core';
 
 function toBodyDto(input: CreateInspectionReportInput): CreateInspectionReportBodyDto {
   const trimOrNull = (value?: string) => {
@@ -113,25 +113,45 @@ export async function adaptAssignInspectionTeam(
 }
 
 /**
+ * Upload ảnh biên lai tối đa 10MB — timeout mặc định 15s của L1 quá ngắn,
+ * mạng chậm sẽ ECONNABORTED trong khi BE đã commit → user bấm lại → ghi trùng.
+ */
+const RECORD_PAYMENT_TIMEOUT_MS = 120_000;
+
+/**
  * PUT /v1/inspections/{id}/record-payment — [LEO] ghi nhận nộp phạt (BR-INS-020, BR-ORG-012).
  * multipart/form-data — `receipt` (ảnh biên lai) bắt buộc.
+ *
+ * Endpoint KHÔNG idempotent (mỗi lần gọi tạo 1 PenaltyPayment). Truyền `idempotencyKey`
+ * để interceptor 401-refresh-replay hoặc user retry sau timeout không ghi phạt 2 lần.
  */
 export async function adaptRecordInspectionPayment(
   inspectionId: string,
   input: RecordInspectionPaymentInput
 ): Promise<RecordInspectionPaymentResult> {
-  const formData = new FormData();
-  formData.append('paidAmount', String(input.paidAmount));
-  formData.append('paidAt', input.paidAt);
-  formData.append('receipt', input.receipt);
-  if (input.note?.trim()) formData.append('note', input.note.trim());
+  const buildFormData = () => {
+    // Tạo mới mỗi lần retry — FormData chứa File stream có thể đã bị consume.
+    const formData = new FormData();
+    formData.append('paidAmount', String(input.paidAmount));
+    formData.append('paidAt', input.paidAt);
+    formData.append('receipt', input.receipt);
+    if (input.note?.trim()) formData.append('note', input.note.trim());
+    return formData;
+  };
 
-  // BE là PUT multipart — apiService.upload() chỉ hỗ trợ POST, nên gọi put() trực tiếp
-  // với header multipart tự set.
-  const res = await apiService.put<RecordInspectionPaymentResponseDto>(
-    `/v1/inspections/${inspectionId}/record-payment`,
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+  const res = await withOptionalIdempotency(input.idempotencyKey, key =>
+    // BE là PUT multipart — apiService.upload() chỉ hỗ trợ POST, nên gọi put() trực tiếp.
+    // Content-Type phải set null: axios instance có default 'application/json' (core.ts),
+    // mà axios chỉ tự sinh boundary cho FormData khi header này TRỐNG. Để nguyên default
+    // → gửi application/json kèm body FormData → BE trả 415 UNSUPPORTED_MEDIA_TYPE.
+    apiService.put<RecordInspectionPaymentResponseDto>(
+      `/v1/inspections/${inspectionId}/record-payment`,
+      buildFormData(),
+      mergeIdempotencyConfig(key, {
+        timeout: RECORD_PAYMENT_TIMEOUT_MS,
+        headers: { 'Content-Type': null },
+      })
+    )
   );
   return mapRecordInspectionPaymentResponse(res.data);
 }
