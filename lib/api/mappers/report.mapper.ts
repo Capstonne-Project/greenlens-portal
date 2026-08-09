@@ -6,6 +6,7 @@ import type {
   ReportPendingReopenRequestDto,
   ReportPriorClosedReportDto,
   ReportSatisfactionDto,
+  ReportWasteTagDto,
 } from '@/lib/api/dto/report.dto';
 import type {
   ReportAssignment,
@@ -15,6 +16,7 @@ import type {
   ReportPendingReopenRequest,
   ReportPriorClosedReport,
   ReportSatisfaction,
+  ReportWasteTag,
   SeveritySetBy,
 } from '@/lib/api/models/report';
 
@@ -35,13 +37,23 @@ function mapAssignmentDto(dto: ReportAssignmentDto): ReportAssignment {
     teamName: dto.teamName,
     teamType: dto.teamType,
     status: dto.status,
-    note: dto.note ?? '',
+    note: dto.note?.trim() || null,
     assignedAt: dto.assignedAt,
     startedAt: dto.startedAt || null,
     completedAt: dto.completedAt || null,
     progressPercent: dto.progressPercent ?? 0,
-    progressNote: dto.progressNote ?? '',
+    progressNote: dto.progressNote?.trim() || null,
     progressUpdatedAt: dto.progressUpdatedAt || null,
+  };
+}
+
+function mapWasteTagDto(dto: ReportWasteTagDto): ReportWasteTag {
+  return {
+    tagId: dto.tagId,
+    code: dto.code,
+    nameVi: dto.nameVi,
+    nameEn: dto.nameEn?.trim() || null,
+    iconUrl: dto.iconUrl?.trim() || null,
   };
 }
 
@@ -108,6 +120,8 @@ export function mapReportDetailDto(dto: ReportDetailDto): Omit<ReportDetail, 'st
     id: dto.id,
     code: dto.code,
     reporterId: dto.reporterId,
+    reporterName: dto.reporterName?.trim() || null,
+    reporterAvatarUrl: dto.reporterAvatarUrl?.trim() || null,
     categoryId: dto.categoryId,
     categoryCode: dto.categoryCode,
     categoryName: dto.categoryName,
@@ -130,7 +144,7 @@ export function mapReportDetailDto(dto: ReportDetailDto): Omit<ReportDetail, 'st
     assignedOfficeId: dto.assignedOfficeId ?? null,
     media: (dto.media ?? []).map(mapReportMediaDto),
     assignments: (dto.assignments ?? []).map(mapAssignmentDto),
-    wasteTags: dto.wasteTags ?? [],
+    wasteTags: (dto.wasteTags ?? []).map(mapWasteTagDto),
     aiSuggestedWasteTagCodes: dto.aiSuggestedWasteTagCodes ?? null,
     createdAt: dto.createdAt,
     verifiedAt: dto.verifiedAt ?? null,
@@ -149,5 +163,9 @@ export function mapReportDetailDto(dto: ReportDetailDto): Omit<ReportDetail, 'st
     isSuspectedViolationRecurrence: Boolean(dto.isSuspectedViolationRecurrence),
     suspectedRecurrenceOfReportId: dto.suspectedRecurrenceOfReportId || null,
     priorClosedReport: mapPriorClosedReportDto(dto.priorClosedReport),
+    isSuspicious: Boolean(dto.isSuspicious),
+    suspiciousReasons: (dto.suspiciousReasons ?? []).filter(
+      (r): r is string => typeof r === 'string' && Boolean(r.trim())
+    ),
   };
 }

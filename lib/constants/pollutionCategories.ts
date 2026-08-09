@@ -56,6 +56,25 @@ const DEFAULT_DISPLAY = {
   accent: 'bg-zinc-500',
 };
 
+/** Nhãn tiếng Việt chuẩn platform theo mã loại ô nhiễm (AI / catalog code). */
+export const POLLUTION_CATEGORY_LABEL_VI: Record<string, string> = {
+  TRASH: 'Ô nhiễm rác thải',
+  WASTEWATER: 'Ô nhiễm nước',
+  CHEMICAL: 'Ô nhiễm hóa chất',
+  SMOKE: 'Ô nhiễm không khí',
+  NOISE: 'Ô nhiễm tiếng ồn',
+  SOIL: 'Ô nhiễm đất',
+};
+
+/** Map code AI/BE → tên tiếng Việt; giữ nguyên nếu đã là nhãn hoặc không khớp. */
+export function pollutionCategoryLabelVi(codeOrName: string | null | undefined): string {
+  const raw = codeOrName?.trim();
+  if (!raw) return '—';
+  const byCode = POLLUTION_CATEGORY_LABEL_VI[raw.toUpperCase()];
+  if (byCode) return byCode;
+  return raw;
+}
+
 export function getPollutionCategoryDisplay(category: PollutionCategory) {
   const byCode = POLLUTION_CATEGORY_DISPLAY[category.code.toUpperCase()];
   return {

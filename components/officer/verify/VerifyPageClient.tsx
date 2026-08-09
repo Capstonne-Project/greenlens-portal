@@ -73,6 +73,7 @@ import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { withOfficerFromQuery } from '@/utils/officerNavigation';
 import { useQueryClient } from '@tanstack/react-query';
 
 const VERIFY_PAGE_SIZE = 10;
@@ -1322,7 +1323,13 @@ export function VerifyPageClient() {
     setDuplicateDialogRow(null);
     setPairFocus(null);
     setHighlightedId(null);
-    router.push(`/officer/verify/${parentId}`);
+    // Quay lại list → highlight row gốc (user biết vừa xem report nào).
+    router.push(
+      withOfficerFromQuery(
+        `/officer/verify/${parentId}`,
+        `/officer/verify?highlight=${encodeURIComponent(parentId)}`
+      )
+    );
   };
 
   return (
@@ -1578,6 +1585,7 @@ export function VerifyPageClient() {
         onOpenChange={next => {
           if (!next) setSuccessReportId(null);
         }}
+        accent="emerald"
         title="Thành công"
         description="Báo cáo đã được xác minh. Bước tiếp theo, bạn có thể phân công đội xử lý ngay trên trang Phân công."
         secondaryAction={{

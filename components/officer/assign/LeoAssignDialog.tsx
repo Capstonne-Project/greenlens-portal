@@ -184,7 +184,6 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
       pageSize: TEAMS_ASSIGN_PAGE_SIZE,
       teamType: 'Cleanup',
       isActive: true,
-      isAvailable: true,
     },
     { enabled: open && activeTab === 'cleanup-team' }
   );
@@ -331,7 +330,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
         content: (
           <SelectionListShell
             loading={teamsLoading}
-            emptyMessage="Không có đội dọn dẹp cộng đồng đang sẵn sàng."
+            emptyMessage="Không có đội dọn dẹp cộng đồng."
             onScroll={handleTeamsScroll}
             footer={
               teamsFetchingNext ? (
@@ -343,7 +342,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
             }
           >
             {teams.length > 0 ? (
-              <ul className="divide-y divide-border">
+              <ul>
                 {teams.map(team => (
                   <li key={team.id}>
                     <TeamRow
@@ -408,7 +407,7 @@ export function LeoAssignDialog({ open, onClose, reportIds, onAssigned }: LeoAss
             key={formKey}
             tabs={tabs}
             onActiveChange={handleTabChange}
-            containerClassName="shrink-0 rounded-full border border-border bg-muted/30 p-1"
+            containerClassName="shrink-0 rounded-full bg-muted/30 p-1"
             activeTabClassName="bg-muted"
             tabClassName="px-5 py-1.5"
             contentClassName="h-[200px] shrink-0"

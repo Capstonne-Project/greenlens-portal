@@ -105,10 +105,7 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
   const unreadCount = data?.unreadCount ?? 0;
   const links = getNotificationDrawerLinks(portal);
   const groupedItems = groupNotificationsByTime(items);
-  const hasNewGroup = groupedItems.some(g => g.group === 'new');
-  /** Facebook: "Xem tất cả" nằm cạnh header Mới; không có Mới → footer. */
-  const showSeeAllInNewHeader = Boolean(links.inboxHref && hasNewGroup);
-  const showSeeAllFooter = Boolean(links.inboxHref && !hasNewGroup);
+  const showSeeAllFooter = Boolean(links.inboxHref);
 
   /** Scroll tới hàng + bỏ highlight sau vài giây (chỉ khi tìm thấy row). */
   useEffect(() => {
@@ -288,15 +285,6 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
                   >
                     {NOTIFICATION_TIME_GROUP_LABEL[group]}
                   </h3>
-                  {group === 'new' && showSeeAllInNewHeader && links.inboxHref ? (
-                    <Link
-                      href={links.inboxHref}
-                      onClick={closeDrawer}
-                      className="shrink-0 text-xs font-semibold text-brand hover:underline"
-                    >
-                      Xem tất cả
-                    </Link>
-                  ) : null}
                 </div>
                 <ul>
                   {groupItems.map(item => (

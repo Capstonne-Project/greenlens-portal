@@ -23,7 +23,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { VerifyDetailClient } from '@/components/officer/verify/VerifyDetailClient';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useAssignReportQueue } from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
@@ -41,7 +40,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
@@ -102,17 +101,17 @@ const BADGE_SIZE =
   'px-1.5 py-0.5 text-[10px] tracking-tight @[44rem]/assign-table:px-2 @[44rem]/assign-table:py-0.5 @[44rem]/assign-table:text-xs';
 
 const CELL_META =
-  'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/assign-table:text-xs';
+  'block w-full min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/assign-table:text-xs';
 const HEAD_LABEL =
-  'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/assign-table:text-[0.6875rem]';
+  'block w-full min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/assign-table:text-[0.6875rem]';
 
 /** Thumbnail vuông — parity DuplicatesPageClient. */
 const THUMB_SQUARE =
   'relative size-9 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80 @[44rem]/assign-table:size-10';
 
 /**
- * Text truncated → shadcn Tooltip.
- * Đo overflow một lần khi mount/đổi text (không ResizeObserver — tránh ~N observers/table).
+ * Text truncated (ellipsis / line-clamp) → shadcn Tooltip khi hover.
+ * ResizeObserver: cột table-fixed đổi width / filter panel → đo lại overflow.
  */
 function EllipsisTooltip({
   text,
@@ -138,9 +137,24 @@ function EllipsisTooltip({
       setTruncated(false);
       return;
     }
-    setTruncated(
-      lineClamp ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1
-    );
+
+    const measure = () => {
+      // +1 tránh nhiễu subpixel; line-clamp so chiều cao, truncate so chiều rộng.
+      setTruncated(
+        lineClamp ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1
+      );
+    };
+
+    measure();
+    // Đo lại sau paint — table-fixed / filter width animation có thể chưa settle.
+    const raf = requestAnimationFrame(measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [display, lineClamp, className, children]);
 
   const canTip = truncated && display !== '—';
@@ -154,13 +168,13 @@ function EllipsisTooltip({
       }}
     >
       <TooltipTrigger asChild>
-        <span ref={ref} className={className}>
+        <span ref={ref} className={cn(className, canTip && 'cursor-help')}>
           {children ?? display}
         </span>
       </TooltipTrigger>
       <TooltipContent
         side="top"
-        className="max-w-xs whitespace-pre-wrap break-words text-left font-normal sm:max-w-sm"
+        className="max-w-xs whitespace-pre-wrap wrap-break-word text-left font-normal sm:max-w-sm"
       >
         {display}
       </TooltipContent>
@@ -530,14 +544,14 @@ function CreatedCell({ iso }: { iso: string }) {
       <EllipsisTooltip
         text={date}
         className={cn(
-          'block truncate text-[10px] font-medium leading-snug text-slate-800',
+          'block w-full truncate text-[10px] font-medium leading-snug text-slate-800',
           '@[44rem]/assign-table:text-[11px] @[56rem]/assign-table:text-xs'
         )}
       />
       <EllipsisTooltip
         text={time}
         className={cn(
-          'block truncate text-[10px] tabular-nums leading-snug text-slate-500',
+          'block w-full truncate text-[10px] tabular-nums leading-snug text-slate-500',
           '@[44rem]/assign-table:text-xs'
         )}
       />
@@ -623,7 +637,7 @@ function ReportIdentityCell({ row }: { row: ReportQueueItem }) {
           <EllipsisTooltip
             text={row.id}
             className={cn(
-              'min-w-0 truncate text-[11px] font-semibold tabular-nums text-sky-700',
+              'block min-w-0 flex-1 truncate text-[11px] font-semibold tabular-nums text-sky-700',
               '@[44rem]/assign-table:text-xs'
             )}
           />
@@ -637,7 +651,7 @@ function ReportIdentityCell({ row }: { row: ReportQueueItem }) {
         <div className="group/copyrow flex min-w-0 items-center gap-1">
           <EllipsisTooltip
             text={row.code}
-            className="min-w-0 truncate text-[11px] font-medium tabular-nums text-slate-800 @[44rem]/assign-table:text-xs"
+            className="block min-w-0 flex-1 truncate text-[11px] font-medium tabular-nums text-slate-800 @[44rem]/assign-table:text-xs"
           />
           <CopyIconButton
             value={row.code}
@@ -648,7 +662,7 @@ function ReportIdentityCell({ row }: { row: ReportQueueItem }) {
 
         <EllipsisTooltip
           text={row.categoryName?.trim() || '—'}
-          className="block truncate text-[11px] leading-snug text-slate-500 @[44rem]/assign-table:text-xs"
+          className="block min-w-0 max-w-full truncate text-[11px] leading-snug text-slate-500 @[44rem]/assign-table:text-xs"
         />
       </div>
     </div>
@@ -661,7 +675,7 @@ function SeverityText({ severity }: { severity: ReportSeverity }) {
     <EllipsisTooltip
       text={label}
       className={cn(
-        'block min-w-0 truncate text-[11px] font-medium leading-snug',
+        'block w-full min-w-0 truncate text-[11px] font-medium leading-snug',
         '@[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm',
         SEVERITY_TEXT_CLASSES[severity] ?? 'text-slate-500'
       )}
@@ -672,10 +686,12 @@ function SeverityText({ severity }: { severity: ReportSeverity }) {
 function StatusBadge({ status }: { status: ReportQueueItem['status'] }) {
   const label = reportStatusLabelVi(status);
   return (
-    <EllipsisTooltip
-      text={label}
-      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])}
-    />
+    <div className="min-w-0 max-w-full">
+      <EllipsisTooltip
+        text={label}
+        className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])}
+      />
+    </div>
   );
 }
 
@@ -689,7 +705,7 @@ function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
           text={row.address?.trim() || '—'}
           lineClamp
           className={cn(
-            'line-clamp-2 min-w-0 text-[11px] leading-snug wrap-break-word text-slate-600',
+            'line-clamp-2 w-full min-w-0 text-[11px] leading-snug wrap-break-word text-slate-600',
             '@[44rem]/assign-table:text-xs @[56rem]/assign-table:text-sm'
           )}
         />
@@ -718,7 +734,16 @@ function CommunityActionChip({ onClick }: { onClick: () => void }) {
   useLayoutEffect(() => {
     const el = labelRef.current;
     if (!el) return;
-    setTruncated(el.scrollWidth > el.clientWidth + 1);
+
+    const measure = () => {
+      setTruncated(el.scrollWidth > el.clientWidth + 1);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
   }, []);
 
   return (
@@ -735,14 +760,14 @@ function CommunityActionChip({ onClick }: { onClick: () => void }) {
           onClick={onClick}
           aria-label="Mở chương trình dọn cộng đồng cho báo cáo này"
           className={cn(
-            'inline-flex h-6 max-w-full items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50',
+            'inline-flex h-6 max-w-full min-w-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50',
             'px-1.5 text-[10px] font-medium text-emerald-700 transition',
             'hover:border-emerald-300 hover:bg-emerald-100',
             '@[44rem]/assign-table:h-7 @[44rem]/assign-table:gap-1.5 @[44rem]/assign-table:px-2.5 @[44rem]/assign-table:text-[11px]'
           )}
         >
           <HeartHandshake className="size-3 shrink-0" aria-hidden />
-          <span ref={labelRef} className="min-w-0 truncate">
+          <span ref={labelRef} className="min-w-0 flex-1 truncate">
             {label}
           </span>
         </button>
@@ -853,6 +878,7 @@ interface AssignReportsTabProps {
  * Tab phân công — báo cáo Verified + Rejected từ GET /v1/reports/queue.
  */
 export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignReportsTabProps) {
+  const router = useRouter();
   const yearOnlyDefaults = getPresetDateInputs('all');
 
   const [page, setPage] = useState(1);
@@ -861,7 +887,6 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     setPage(1);
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [detailReportId, setDetailReportId] = useState<string | null>(null);
   const [severityFilters, setSeverityFilters] = useState<ReportSeverity[]>([]);
   const [categoryId, setCategoryId] = useState('');
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
@@ -914,6 +939,8 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const [highlightFading, setHighlightFading] = useState(false);
   const consumedHighlightRef = useRef<string | null>(null);
+  /** Track highlight đã apply — state thay vì update ref lúc render (eslint react-hooks/refs). */
+  const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null);
 
   const listParams = useMemo(
     () => ({
@@ -953,6 +980,23 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     });
   }, [data?.items, severityFilters]);
 
+  /**
+   * Deep-link từ SuccessDialog «Phân công ngay»:
+   * highlight row + tick checkbox — adjust state khi prop/list đổi (React render-phase pattern).
+   * @see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+   */
+  if (!highlightReportId && appliedHighlightId !== null) {
+    setAppliedHighlightId(null);
+  } else if (
+    highlightReportId &&
+    appliedHighlightId !== highlightReportId &&
+    filtered.some(r => r.id === highlightReportId)
+  ) {
+    setAppliedHighlightId(highlightReportId);
+    setSelected(new Set([highlightReportId]));
+    setHighlightFading(false);
+  }
+
   const hasRejectedSelected = useMemo(
     () => [...selected].some(id => filtered.find(r => r.id === id)?.status === 'Rejected'),
     [selected, filtered]
@@ -962,18 +1006,6 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   const indeterminate = selected.size > 0 && selected.size < filtered.length;
 
   const handleAssigned = () => setSelected(new Set());
-
-  if (detailReportId) {
-    return (
-      <VerifyDetailClient
-        id={detailReportId}
-        onBack={() => {
-          setDetailReportId(null);
-          setSelected(new Set());
-        }}
-      />
-    );
-  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -1202,7 +1234,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                               rowRefs.current.delete(report.id);
                             }
                           }}
-                          onClick={() => setDetailReportId(report.id)}
+                          onClick={() => router.push(`/officer/assign/${report.id}`)}
                           className={cn(
                             ROW_BORDER,
                             'cursor-pointer transition-colors duration-700 hover:bg-sky-50/40',
