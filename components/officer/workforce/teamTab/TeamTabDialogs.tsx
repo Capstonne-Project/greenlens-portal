@@ -286,20 +286,28 @@ export function AddMemberDialog({
                         onOpenChange={setStaffSelectOpen}
                         disabled={staffSelectDisabled}
                       >
-                        <SelectTrigger id="add-member-user" className="h-auto min-h-10 py-2">
+                        <SelectTrigger
+                          id="add-member-user"
+                          className={cn(
+                            'h-auto min-h-10 items-center gap-2 py-1.5',
+                            // SelectTrigger mặc định [&>span]:line-clamp-1 làm vỡ block avatar+tên+email
+                            selectedMember &&
+                              '[&>span]:line-clamp-none [&>span]:flex [&>span]:min-w-0 [&>span]:flex-1 [&>span]:items-center'
+                          )}
+                        >
                           {selectedMember ? (
-                            <span className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                            <span className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
                               <span
-                                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700"
+                                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700"
                                 aria-hidden
                               >
                                 {getInitials(selectedMember.fullName)}
                               </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium leading-snug text-foreground">
+                              <span className="min-w-0 flex-1 overflow-hidden">
+                                <span className="block truncate text-sm font-medium leading-tight text-foreground">
                                   {selectedMember.fullName}
                                 </span>
-                                <span className="mt-0.5 block truncate text-xs leading-snug text-muted-foreground">
+                                <span className="mt-0.5 block truncate text-xs leading-tight text-muted-foreground">
                                   {selectedMember.email}
                                 </span>
                               </span>
