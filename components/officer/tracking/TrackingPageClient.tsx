@@ -42,7 +42,9 @@ export function TrackingPageClient() {
 
   if (activeDetailReportId) {
     return (
-      <LeoTrackingReportDetail reportId={activeDetailReportId} onBack={handleBackFromDetail} />
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        <LeoTrackingReportDetail reportId={activeDetailReportId} onBack={handleBackFromDetail} />
+      </div>
     );
   }
 
