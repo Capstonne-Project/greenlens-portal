@@ -6,6 +6,7 @@ import {
   type ReportPreviewHandler,
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
+import { COMPARE_MAP_FRAME_HEIGHT } from '@/components/officer/verify/compareMapFrame';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,15 +20,34 @@ import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
-import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import {
+  REPORT_STATUS_BADGE_CLASSES,
+  reportStatusLabelVi,
+  type ReportStatus,
+} from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, Check, Copy, ImageIcon } from 'lucide-react';
+import { withOfficerFromQuery } from '@/utils/officerNavigation';
+import { ArrowLeft, Check, Copy, ImageIcon, MapPinned } from 'lucide-react';
 import { motion } from 'motion/react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
+
+const CompareReportsMap = dynamic(
+  () => import('@/components/officer/verify/CompareReportsMap').then(m => m.CompareReportsMap),
+  {
+    ssr: false,
+    loading: () => (
+      <Skeleton
+        className={cn('w-full rounded-xl', COMPARE_MAP_FRAME_HEIGHT)}
+        aria-label="Đang tải bản đồ"
+      />
+    ),
+  }
+);
 
 const DUPLICATES_LIST_PATH = '/officer/duplicates';
 
@@ -53,23 +73,25 @@ function formatMeters(meters: number): string {
   return `${Math.round(rounded / 1000)} km`;
 }
 
-function formatHoursSince(hours: number): string {
-  if (hours < 24) return `${Math.round(hours)} giờ trước`;
-  const days = Math.floor(hours / 24);
-  const rem = Math.round(hours % 24);
-  if (days === 1 && rem === 0) return '1 ngày trước';
-  return rem > 0 ? `${days} ngày ${rem} giờ trước` : `${days} ngày trước`;
-}
-
 function googleMapsUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
 
-function trackingDetailHref(reportId: string, fromPath: string): string {
-  return `/officer/tracking?${new URLSearchParams({
-    reportId,
-    from: fromPath,
-  }).toString()}`;
+/**
+ * Deep-link chi tiết theo vòng đời báo cáo — luôn kèm `from` để Quay lại đúng trang so sánh.
+ * Closed → reports · Verified → assign · InProgress → tracking · còn lại → reports.
+ */
+function resolveReportDetailHref(reportId: string, status: ReportStatus, fromPath: string): string {
+  if (status === 'InProgress') {
+    return `/officer/tracking?${new URLSearchParams({
+      reportId,
+      from: fromPath,
+    }).toString()}`;
+  }
+  if (status === 'Verified') {
+    return withOfficerFromQuery(`/officer/assign/${reportId}`, fromPath);
+  }
+  return withOfficerFromQuery(`/officer/reports/${reportId}`, fromPath);
 }
 
 function toPreviewImages(
@@ -143,7 +165,7 @@ function CoordsLink({
 }) {
   const label = formatCoords(lat, lng);
   if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
-    return label;
+    return <span className="tabular-nums text-slate-500">{label}</span>;
   }
   return (
     <a
@@ -152,12 +174,48 @@ function CoordsLink({
       rel="noopener noreferrer"
       title="Mở vị trí trên Google Maps"
       className={cn(
-        'underline-offset-2 transition-colors hover:underline',
+        'font-mono text-xs tabular-nums text-slate-700 underline-offset-2 transition-colors hover:text-brand hover:underline sm:text-sm',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
       )}
     >
       {label}
     </a>
+  );
+}
+
+/** Thẻ tọa độ dưới map — 1 role / 1 code / 1 lat-lng. */
+function CoordCard({
+  tone,
+  roleLabel,
+  code,
+  lat,
+  lng,
+}: {
+  tone: 'suspect' | 'primary';
+  roleLabel: string;
+  code: string;
+  lat: number;
+  lng: number;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span
+          className={cn(
+            'size-2 shrink-0 rounded-full',
+            tone === 'suspect' ? 'bg-amber-500' : 'bg-brand'
+          )}
+          aria-hidden
+        />
+        <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {roleLabel}
+        </span>
+        <span className="truncate text-[11px] font-semibold tabular-nums text-slate-700">
+          #{code}
+        </span>
+      </div>
+      <CoordsLink lat={lat} lng={lng} />
+    </div>
   );
 }
 
@@ -174,7 +232,7 @@ function SeverityPill({ severity }: { severity: DuplicateCandidateDetailSide['se
   );
 }
 
-/** Badge loại báo cáo + #code (text-sm) + copy — parity recurrence detail. */
+/** Badge loại + #code (text) + copy + Xem chi tiết (ml-auto) — parity recurrence detail. */
 function SidePanelHeader({
   side,
   roleLabel,
@@ -186,8 +244,10 @@ function SidePanelHeader({
   roleTone: 'suspect' | 'primary';
   fromPath: string;
 }) {
+  const detailHref = resolveReportDetailHref(side.id, side.status, fromPath);
+
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className="flex min-w-0 w-full flex-wrap items-center gap-2">
       <span
         className={cn(
           'inline-flex shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase',
@@ -197,23 +257,28 @@ function SidePanelHeader({
         {roleLabel}
       </span>
       <div className="group/copyrow flex min-w-0 items-center gap-1">
-        <Link
-          href={trackingDetailHref(side.id, fromPath)}
+        <span
           title={side.code}
-          className={cn(
-            'min-w-0 truncate text-sm font-bold tabular-nums text-slate-900 no-underline',
-            'hover:text-sky-700 hover:underline',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
-          )}
+          className="min-w-0 truncate text-sm font-bold tabular-nums text-slate-900"
         >
           #{side.code}
-        </Link>
+        </span>
         <CopyIconButton
           value={side.code}
           label={`Sao chép mã ${side.code}`}
           successMessage="Đã sao chép mã báo cáo."
         />
       </div>
+      <Link
+        href={detailHref}
+        className={cn(
+          'ml-auto shrink-0 text-xs font-medium text-sky-700 transition-colors',
+          'hover:text-sky-800 hover:underline',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+        )}
+      >
+        Xem chi tiết
+      </Link>
     </div>
   );
 }
@@ -366,6 +431,7 @@ type DuplicateCompareField = {
   render: (side: DuplicateCandidateDetailSide) => ReactNode;
 };
 
+/** Field so sánh — tọa độ chuyển xuống section map. */
 const DUPLICATE_COMPARE_FIELDS: DuplicateCompareField[] = [
   {
     key: 'status',
@@ -387,9 +453,9 @@ const DUPLICATE_COMPARE_FIELDS: DuplicateCompareField[] = [
     render: d => d.address?.trim() || '—',
   },
   {
-    key: 'coords',
-    label: 'Tọa độ GPS',
-    render: d => <CoordsLink lat={d.latitude} lng={d.longitude} />,
+    key: 'createdAt',
+    label: 'Thời điểm báo cáo',
+    render: d => formatShortDate(d.createdAt),
   },
   {
     key: 'category',
@@ -406,14 +472,9 @@ const DUPLICATE_COMPARE_FIELDS: DuplicateCompareField[] = [
     label: 'Mô tả',
     render: d => d.description?.trim() || '—',
   },
-  {
-    key: 'createdAt',
-    label: 'Thời điểm báo cáo',
-    render: d => formatShortDate(d.createdAt),
-  },
 ];
 
-/** Skeleton mirror layout so sánh — media 2 cột + hàng field. */
+/** Skeleton mirror layout so sánh — media 2 cột + hàng field + map. */
 function CompareDetailSkeleton() {
   return (
     <div className="flex flex-col gap-5" aria-busy aria-label="Đang tải">
@@ -436,7 +497,6 @@ function CompareDetailSkeleton() {
 
       <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
         <Skeleton className="h-7 w-28 rounded-lg" />
-        <Skeleton className="h-7 w-32 rounded-full" />
         <Skeleton className="h-7 w-20 rounded-full" />
       </div>
 
@@ -454,6 +514,15 @@ function CompareDetailSkeleton() {
           </div>
         ))}
       </div>
+
+      <div className="space-y-2.5">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className={cn('w-full rounded-xl', COMPARE_MAP_FRAME_HEIGHT)} />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Skeleton className="h-16 w-full rounded-lg" />
+          <Skeleton className="h-16 w-full rounded-lg" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -469,6 +538,7 @@ function DuplicateCompareBody({
 }) {
   const { report, primaryReport } = detail;
   const similarity = formatSimilarity(detail.aiSimilarityScore);
+  const { distanceMeters } = detail;
 
   return (
     <motion.div
@@ -518,33 +588,24 @@ function DuplicateCompareBody({
         </div>
       </div>
 
-      <TooltipProvider delayDuration={200}>
-        <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
               <span
                 className={cn(
                   'inline-flex cursor-help items-center rounded-lg px-3 py-1 text-xs font-semibold',
-                  detail.distanceMeters <= 200
+                  distanceMeters <= 200
                     ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
-                    : detail.distanceMeters <= 1000
+                    : distanceMeters <= 1000
                       ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-200/80'
                       : 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80'
                 )}
               >
-                Cách nhau ~{formatMeters(detail.distanceMeters)}
+                Cách nhau ~{formatMeters(distanceMeters)}
               </span>
             </TooltipTrigger>
             <TooltipContent side="top">Khoảng cách GPS giữa hai vị trí báo cáo</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex cursor-help items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/80">
-                Cách gốc {formatHoursSince(detail.hoursSincePrimaryCreated)}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">Thời gian kể từ khi báo cáo gốc được tạo</TooltipContent>
           </Tooltip>
 
           {similarity ? (
@@ -559,12 +620,15 @@ function DuplicateCompareBody({
               </TooltipContent>
             </Tooltip>
           ) : null}
-        </div>
-      </TooltipProvider>
+        </TooltipProvider>
+      </div>
 
       <div>
         {DUPLICATE_COMPARE_FIELDS.map(field => (
-          <div key={field.key} className="grid grid-cols-2">
+          <div
+            key={field.key}
+            className="grid grid-cols-2 transition-colors duration-150 hover:bg-slate-50/90"
+          >
             <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
               <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
               <div className="text-sm leading-relaxed font-semibold wrap-break-word text-slate-800">
@@ -580,6 +644,60 @@ function DuplicateCompareBody({
           </div>
         ))}
       </div>
+
+      <section className="min-w-0 w-full space-y-2.5" aria-label="Bản đồ vị trí hai báo cáo">
+        <div className="flex min-w-0 items-center gap-2 px-0.5">
+          <MapPinned className="size-4 shrink-0 text-slate-500" aria-hidden />
+          <h3 className="text-sm font-semibold text-slate-800">Vị trí trên bản đồ</h3>
+          <span className="min-w-0 truncate text-xs text-slate-500">
+            · cách nhau ~{formatMeters(distanceMeters)}
+          </span>
+        </div>
+        <CompareReportsMap
+          className="min-w-0 w-full"
+          legend={{ suspect: 'Nghi trùng', original: 'Báo cáo gốc' }}
+          pins={[
+            {
+              latitude: report.latitude,
+              longitude: report.longitude,
+              label: report.code,
+              tone: 'suspect',
+            },
+            ...(primaryReport
+              ? [
+                  {
+                    latitude: primaryReport.latitude,
+                    longitude: primaryReport.longitude,
+                    label: primaryReport.code,
+                    tone: 'original' as const,
+                  },
+                ]
+              : []),
+          ]}
+        />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <CoordCard
+            tone="suspect"
+            roleLabel="Nghi trùng"
+            code={report.code}
+            lat={report.latitude}
+            lng={report.longitude}
+          />
+          {primaryReport ? (
+            <CoordCard
+              tone="primary"
+              roleLabel="Báo cáo gốc"
+              code={primaryReport.code}
+              lat={primaryReport.latitude}
+              lng={primaryReport.longitude}
+            />
+          ) : (
+            <div className="flex min-w-0 items-center rounded-lg border border-dashed border-slate-200 px-3 py-2.5 text-xs text-slate-500">
+              Chưa có tọa độ báo cáo gốc
+            </div>
+          )}
+        </div>
+      </section>
     </motion.div>
   );
 }
@@ -605,7 +723,7 @@ export function DuplicateCandidateDetailClient() {
   const { openPreview, previewDialog } = useReportImagePreview(allPreviewImages);
 
   return (
-    <div className="flex flex-1 flex-col px-4 pb-8 sm:px-6 lg:px-8">
+    <div className="flex flex-1 flex-col px-4 pb-8 sm:px-6 lg:px-8 xl:px-10">
       <header className="mb-4 space-y-3 border-b border-slate-200 pb-3">
         <div className="flex flex-wrap items-center gap-3">
           <Button
