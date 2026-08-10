@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LeoTrackingReportDetail } from './LeoTrackingReportDetail';
 import { resolveSafeOfficerFrom } from '@/utils/officerNavigation';
+import { cn } from '@/lib/utils';
 
 function TrackingFallback() {
   return (
@@ -40,17 +41,28 @@ export function TrackingPageClient() {
     setDetailReportId(null);
   };
 
-  if (activeDetailReportId) {
-    return (
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        <LeoTrackingReportDetail reportId={activeDetailReportId} onBack={handleBackFromDetail} />
-      </div>
-    );
-  }
-
+  /**
+   * Giữ LeoTrackingPageClient mounted khi mở detail để filter/search/page
+   * không bị reset. Chỉ ẩn UI (không unmount). Clear filter = nút 「Xóa tất cả」.
+   */
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <LeoTrackingPageClient onOpenDetail={setDetailReportId} />
+    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={cn(
+          'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
+          activeDetailReportId && 'hidden'
+        )}
+        aria-hidden={Boolean(activeDetailReportId)}
+        {...(activeDetailReportId ? { inert: true } : {})}
+      >
+        <LeoTrackingPageClient onOpenDetail={setDetailReportId} />
+      </div>
+
+      {activeDetailReportId ? (
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          <LeoTrackingReportDetail reportId={activeDetailReportId} onBack={handleBackFromDetail} />
+        </div>
+      ) : null}
     </div>
   );
 }
