@@ -66,7 +66,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Persist profile only — never token / secrets (BR-DAT / XSS)
+      // Persist profile only — never token / secrets (BR-DAT / XSS).
+      // Protected REST must wait for memory JWT: hooks/useAuthSession.ts → useCanFetchProtected().
       partialize: state => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
