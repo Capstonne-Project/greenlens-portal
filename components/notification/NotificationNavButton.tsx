@@ -11,9 +11,9 @@
  */
 
 import { useSidebar } from '@/components/ui/sidebar';
+import { useCanFetchProtected } from '@/hooks/useAuthSession';
 import { useNotificationRealtime } from '@/hooks/useNotificationRealtime';
 import { useNotificationsPreview } from '@/hooks/useNotification';
-import { useAuthStore } from '@/lib/store/authStore';
 import { useNotificationUiStore } from '@/lib/store/notificationUiStore';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
@@ -31,12 +31,12 @@ export function NotificationNavButton({ label, icon, active = false }: Notificat
 
   const openDrawer = useNotificationUiStore(s => s.openDrawer);
   const isDrawerOpen = useNotificationUiStore(s => s.isDrawerOpen);
-  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
-  const token = useAuthStore(s => s.token);
+  const canFetchProtected = useCanFetchProtected();
   // Badge chỉ cần unreadCount — pageSize=1 tối ưu bandwidth.
-  const { data } = useNotificationsPreview(1);
+  // Gate memory JWT — tránh 401 flash lúc hard reload (isAuthenticated có thể true sớm).
+  const { data } = useNotificationsPreview(1, { enabled: canFetchProtected });
   // Seam realtime luôn gắn ở trigger (luôn mount) → badge cập nhật cả khi drawer đóng.
-  useNotificationRealtime(isAuthenticated && Boolean(token));
+  useNotificationRealtime(canFetchProtected);
   const unreadCount = data?.unreadCount ?? 0;
   const badgeCount = unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : null;
 

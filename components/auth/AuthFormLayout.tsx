@@ -31,7 +31,7 @@ export function AuthFormLayout({ renderPanel }: AuthFormLayoutProps) {
               alt="Protect our Planet — hành động vì môi trường"
               fill
               priority
-              sizes="100vw"
+              sizes="(min-width: 1024px) 1px, 100vw"
               className="object-cover object-[center_38%]"
             />
             <div
