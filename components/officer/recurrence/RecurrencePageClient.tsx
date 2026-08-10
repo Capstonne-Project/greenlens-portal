@@ -1633,7 +1633,12 @@ function RecurrenceCandidateRows({
   );
 }
 
-export function RecurrencePageClient() {
+type RecurrencePageClientProps = {
+  /** Hub 「Sau xử lý」 — bỏ page title; filter/table giữ nguyên. */
+  embedded?: boolean;
+};
+
+export function RecurrencePageClient({ embedded = false }: RecurrencePageClientProps) {
   const router = useRouter();
 
   const [search, setSearch] = useState('');
@@ -1763,21 +1768,25 @@ export function RecurrencePageClient() {
   return (
     <>
       <header className="mb-6 shrink-0">
-        <div className="border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
-              <History className="size-7" aria-hidden />
-            </span>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-slate-900">Tái diễn</h1>
-              <p className="text-xs font-normal text-slate-500">
-                Xem xét các báo cáo nghi bị ô nhiễm tái diễn sau khi đã xử lý xong
-              </p>
+        {!embedded ? (
+          <div className="border-b border-slate-200 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
+                <History className="size-7" aria-hidden />
+              </span>
+              <div>
+                <h1 className="text-lg font-bold tracking-tight text-slate-900">Tái diễn</h1>
+                <p className="text-xs font-normal text-slate-500">
+                  Xem xét các báo cáo nghi bị ô nhiễm tái diễn sau khi đã xử lý xong
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div
+          className={cn('flex flex-wrap items-center justify-between gap-3', !embedded && 'mt-6')}
+        >
           <div className="flex min-w-0 items-center gap-2">
             <DateToolbarFilter
               value={hasDrawerDateFilter ? 'all' : toolbarDatePreset}

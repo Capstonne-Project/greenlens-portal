@@ -56,7 +56,7 @@ const ReportLocationMap = dynamic(
 );
 
 const RECURRENCE_LIST_PATH = '/officer/recurrence';
-const INSPECTIONS_LIST_PATH = '/officer/inspections';
+const INSPECTIONS_HUB_PATH = '/officer/recurrence?tab=inspections';
 
 const EMPTY = {
   team: 'Chưa gán đội thanh tra',
@@ -1374,7 +1374,7 @@ export function InspectionDetailClient() {
   const inspectionId = typeof params.id === 'string' ? params.id : '';
 
   const isInspectionsQueueRoute = pathname.startsWith('/officer/inspections');
-  const backPath = isInspectionsQueueRoute ? INSPECTIONS_LIST_PATH : RECURRENCE_LIST_PATH;
+  const backPath = isInspectionsQueueRoute ? INSPECTIONS_HUB_PATH : RECURRENCE_LIST_PATH;
   const backLabel = isInspectionsQueueRoute
     ? 'Quay lại danh sách hồ sơ xử phạt'
     : 'Quay lại danh sách tái diễn';
