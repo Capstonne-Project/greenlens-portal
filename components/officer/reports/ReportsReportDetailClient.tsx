@@ -10,17 +10,9 @@ import {
 import { ReassignTeamDialog } from '@/components/officer/tracking/ReassignTeamDialog';
 import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useReportDetail, useReportProgress } from '@/hooks/useReport';
+import { useTeamDetail } from '@/hooks/useTeams';
 import type {
   ReportProgress,
   ReportProgressAssignment,
@@ -35,9 +27,9 @@ import {
   AlignLeft,
   ArrowLeft,
   CalendarDays,
-  Camera,
   Check,
   ChevronDown,
+  ChevronUp,
   CircleDot,
   Copy,
   ExternalLink,
@@ -69,7 +61,7 @@ const ReportLocationMap = dynamic(
   }
 );
 
-interface LeoTrackingReportDetailProps {
+interface ReportsReportDetailClientProps {
   reportId: string;
   onBack: () => void;
 }
@@ -100,17 +92,6 @@ interface MediaStageImage {
   uploadedAt?: string;
 }
 
-/** Một lần cập nhật tiến độ (từ assignment.progressUpdates). */
-interface ProgressUpdateStageItem {
-  id: string;
-  progressPercent: number;
-  progressNote: string | null;
-  updatedAt: string;
-  updatedByName: string;
-  teamName: string;
-  images: MediaStageImage[];
-}
-
 /**
  * Một mốc trên cột phải. `media` gắn minh chứng vào đúng giai đoạn sinh ra nó;
  * caption từng ảnh dùng `uploadedAt` (API progress không có mô tả text riêng).
@@ -131,9 +112,7 @@ interface LifecycleStage {
   mediaLabel?: string;
   mediaEmptyHint?: string;
   images?: MediaStageImage[];
-  /** Step Cập nhật tiến độ — nhiều lần update (không dùng media.progressImages). */
-  progressUpdates?: ProgressUpdateStageItem[];
-  /** Ghi chú hiển thị dưới ảnh (step khác). */
+  /** Ghi chú hiển thị dưới ảnh (step Cập nhật tiến độ). */
   noteBelowMedia?: string | null;
   state: LifecycleState;
 }
@@ -146,17 +125,6 @@ function formatDateTime(iso: string | null | undefined): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-/** Chỉ giờ:phút — caption dưới ảnh progress update. */
-function formatTimeOnly(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -394,8 +362,6 @@ function LifecycleSpine({
   stages: LifecycleStage[];
   onPreview: ReportPreviewHandler;
 }) {
-  const [progressOpen, setProgressOpen] = useState(true);
-
   const currentKey =
     stages.find(s => s.state === 'current')?.key ??
     stages.find(s => s.state === 'pending')?.key ??
@@ -410,9 +376,6 @@ function LifecycleSpine({
         const isCurrent = stage.key === currentKey;
         const hasMedia = stage.mediaLabel != null;
         const images = stage.images ?? [];
-        const isProgressStep = stage.key === 'progress';
-        const progressCollapsed = isProgressStep && !progressOpen;
-        const progressCount = stage.progressUpdates?.length ?? 0;
 
         return (
           <li key={stage.key} className="relative flex gap-4 pb-7 last:pb-0">
@@ -450,66 +413,31 @@ function LifecycleSpine({
             </div>
 
             <div className="min-w-0 flex-1 pt-1">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                  {isProgressStep ? (
-                    <button
-                      type="button"
-                      onClick={() => setProgressOpen(v => !v)}
-                      aria-expanded={progressOpen}
-                      className={cn(
-                        'inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-md text-left',
-                        'transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
-                      )}
-                    >
-                      <h3
-                        className={cn(
-                          'text-sm font-semibold',
-                          isDone || isCurrent ? 'text-slate-900' : 'text-slate-400'
-                        )}
-                      >
-                        {stage.label}
-                      </h3>
-                      <motion.span
-                        animate={{ rotate: progressOpen ? 180 : 0 }}
-                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                        className="inline-flex"
-                      >
-                        <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
-                      </motion.span>
-                      {!progressOpen && progressCount > 0 ? (
-                        <span className="text-[11px] font-medium tabular-nums text-slate-400">
-                          ({progressCount})
-                        </span>
-                      ) : null}
-                    </button>
-                  ) : (
-                    <h3
-                      className={cn(
-                        'text-sm font-semibold',
-                        isDone || isCurrent ? 'text-slate-900' : 'text-slate-400'
-                      )}
-                    >
-                      {stage.label}
-                    </h3>
-                  )}
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <h3
+                    className={cn(
+                      'text-sm font-semibold',
+                      isDone || isCurrent ? 'text-slate-900' : 'text-slate-400'
+                    )}
+                  >
+                    {stage.label}
+                  </h3>
                   {isCurrent ? (
                     <span className="inline-flex rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
                       Hiện tại
                     </span>
                   ) : null}
                 </div>
-                {stage.key !== 'progress' ? (
-                  <span className="shrink-0 text-right text-xs tabular-nums text-slate-500">
-                    {stage.at ? (
-                      formatDateTime(stage.at)
-                    ) : isDone ? (
-                      '—'
-                    ) : (
-                      <span className="italic text-slate-400">Chưa thực hiện</span>
-                    )}
-                  </span>
-                ) : null}
+                <span className="shrink-0 text-right text-xs tabular-nums text-slate-500">
+                  {stage.at ? (
+                    formatDateTime(stage.at)
+                  ) : isDone ? (
+                    '—'
+                  ) : (
+                    <span className="italic text-slate-400">Chưa thực hiện</span>
+                  )}
+                </span>
               </div>
 
               {stage.meta ? (
@@ -542,101 +470,7 @@ function LifecycleSpine({
                 </ul>
               ) : null}
 
-              {stage.progressUpdates ? (
-                <AnimatePresence initial={false}>
-                  {!progressCollapsed ? (
-                    <motion.div
-                      key={`${stage.key}-progress`}
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-2.5">
-                        {stage.progressUpdates.length === 0 ? (
-                          <p className="text-sm text-slate-400 italic">
-                            {stage.mediaEmptyHint ?? 'Chưa có cập nhật tiến độ.'}
-                          </p>
-                        ) : (
-                          <ul className="mt-1 flex flex-col gap-10">
-                            {stage.progressUpdates.map(update => {
-                              const percent = Math.max(
-                                0,
-                                Math.min(100, Math.round(update.progressPercent))
-                              );
-                              return (
-                                <li key={update.id} className="space-y-2 py-1">
-                                  <div className="space-y-1">
-                                    <div className="flex items-baseline justify-between gap-2">
-                                      <p className="text-sm font-semibold text-slate-800">
-                                        Tiến độ{' '}
-                                        <span className="tabular-nums text-emerald-700">
-                                          {percent}%
-                                        </span>
-                                      </p>
-                                      <span className="shrink-0 text-[11px] tabular-nums text-slate-500">
-                                        {formatDateTime(update.updatedAt)}
-                                      </span>
-                                    </div>
-                                    {update.updatedByName?.trim() ? (
-                                      <p className="text-xs text-slate-500">
-                                        Được cập nhật bởi {update.updatedByName.trim()}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                  {update.images.length > 0 ? (
-                                    <ul className="flex flex-wrap gap-2 pt-0.5">
-                                      {update.images.map(img => (
-                                        <li
-                                          key={`${update.id}-${img.url}-${img.uploadedAt}`}
-                                          className="w-20 sm:w-24"
-                                        >
-                                          <ClickableReportImage
-                                            url={img.url}
-                                            label={`Tiến độ ${percent}%`}
-                                            uploadedAt={img.uploadedAt}
-                                            onPreview={onPreview}
-                                            showTimestamp={false}
-                                            className="aspect-square w-full rounded-lg"
-                                          />
-                                          {img.uploadedAt ? (
-                                            <p className="mt-1 text-center text-[11px] leading-snug text-slate-500 tabular-nums">
-                                              {formatTimeOnly(img.uploadedAt)}
-                                            </p>
-                                          ) : null}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : null}
-                                  {update.progressNote?.trim() ? (
-                                    <p
-                                      className={cn(
-                                        'relative max-w-lg rounded-r-md py-1.5 pl-3 pr-2',
-                                        'bg-emerald-50/60 text-sm leading-relaxed text-slate-600',
-                                        'whitespace-pre-wrap wrap-break-word'
-                                      )}
-                                    >
-                                      <span
-                                        className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-emerald-400/70"
-                                        aria-hidden
-                                      />
-                                      <span className="font-semibold text-slate-700">
-                                        Ghi chú:{' '}
-                                      </span>
-                                      {update.progressNote.trim()}
-                                    </p>
-                                  ) : null}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </div>
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-              ) : hasMedia ? (
+              {hasMedia ? (
                 <div className="mt-2.5">
                   <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                     {stage.mediaLabel}
@@ -708,9 +542,17 @@ function TeamProgressRow({
   const isDeclined = assignment.status === 'Declined';
   const statusLabel = ASSIGNMENT_STATUS_LABEL[assignment.status] ?? assignment.status;
 
+  const {
+    data: teamDetail,
+    isPending,
+    isError,
+    refetch,
+    isFetching,
+  } = useTeamDetail(expanded ? assignment.teamId : null);
+
   const members = useMemo(
-    () => [...(assignment.members ?? [])].sort((a, b) => Number(b.isLeader) - Number(a.isLeader)),
-    [assignment.members]
+    () => [...(teamDetail?.members ?? [])].sort((a, b) => Number(b.isLeader) - Number(a.isLeader)),
+    [teamDetail?.members]
   );
 
   const percent = Math.max(0, Math.min(100, Math.round(assignment.progressPercent)));
@@ -765,13 +607,11 @@ function TeamProgressRow({
             </div>
           ) : null}
 
-          <motion.span
-            animate={{ rotate: expanded ? 180 : 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="inline-flex shrink-0"
-          >
-            <ChevronDown className="size-4 text-slate-400" aria-hidden />
-          </motion.span>
+          {expanded ? (
+            <ChevronUp className="size-4 shrink-0 text-slate-400" aria-hidden />
+          ) : (
+            <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
+          )}
         </button>
 
         {isDeclined ? (
@@ -787,66 +627,71 @@ function TeamProgressRow({
         ) : null}
       </div>
 
-      <AnimatePresence initial={false}>
-        {expanded ? (
-          <motion.div
-            key={`${assignment.assignmentId}-members`}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="mt-3 ml-12 border-l border-slate-100 pl-3">
-              {members.length === 0 ? (
-                <p className="py-2 text-xs text-muted-foreground">Đội chưa có thành viên.</p>
-              ) : (
-                <ul className="space-y-2.5 py-1">
-                  {members.map(member => (
-                    <li key={member.userId} className="flex items-center gap-2.5">
-                      {member.avatarUrl ? (
-                        <span className="relative size-8 shrink-0 overflow-hidden rounded-full bg-muted">
-                          <Image
-                            src={member.avatarUrl}
-                            alt={member.fullName}
-                            fill
-                            className="object-cover"
-                            sizes="32px"
-                            unoptimized
-                          />
-                        </span>
-                      ) : (
-                        <span
-                          className={cn(
-                            'flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white',
-                            hashColor(member.userId)
-                          )}
-                          aria-hidden
-                        >
-                          {getInitials(member.fullName)}
-                        </span>
-                      )}
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-800">
-                          {member.fullName}
-                          {member.isLeader ? (
-                            <span className="ml-1.5 text-[11px] font-semibold text-emerald-700">
-                              Leader
-                            </span>
-                          ) : null}
-                        </p>
-                        {member.email ? (
-                          <p className="truncate text-xs text-slate-500">{member.email}</p>
-                        ) : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+      {expanded ? (
+        <div className="mt-3 ml-12 border-l border-slate-100 pl-3">
+          {isPending ? (
+            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              Đang tải thành viên…
             </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+          ) : isError ? (
+            <div className="flex flex-wrap items-center gap-2 py-2">
+              <p className="text-xs text-destructive">Không tải được danh sách thành viên.</p>
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="text-xs font-medium text-brand hover:underline"
+              >
+                {isFetching ? 'Đang thử lại…' : 'Thử lại'}
+              </button>
+            </div>
+          ) : members.length === 0 ? (
+            <p className="py-2 text-xs text-muted-foreground">Đội chưa có thành viên.</p>
+          ) : (
+            <ul className="space-y-2.5 py-1">
+              {members.map(member => (
+                <li key={member.userId} className="flex items-center gap-2.5">
+                  {member.avatarUrl ? (
+                    <span className="relative size-8 shrink-0 overflow-hidden rounded-full bg-muted">
+                      <Image
+                        src={member.avatarUrl}
+                        alt={member.fullName}
+                        fill
+                        className="object-cover"
+                        sizes="32px"
+                        unoptimized
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      className={cn(
+                        'flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white',
+                        hashColor(member.userId)
+                      )}
+                      aria-hidden
+                    >
+                      {getInitials(member.fullName)}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-800">
+                      {member.fullName}
+                      {member.isLeader ? (
+                        <span className="ml-1.5 text-[11px] font-semibold text-emerald-700">
+                          Leader
+                        </span>
+                      ) : null}
+                    </p>
+                    {member.email ? (
+                      <p className="truncate text-xs text-slate-500">{member.email}</p>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
 
       <ReassignTeamDialog
         open={reassignOpen}
@@ -895,16 +740,15 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
   const firstAcceptedAt = assignment?.acceptedAt ?? null;
   const anyAccepted = Boolean(assignment?.acceptedAt);
 
-  const companyName =
-    data.assignedCompany?.companyName?.trim() || assignment?.companyName?.trim() || '';
-
   const assignItems = assignment
     ? [
         {
           assignmentId: assignment.assignmentId,
           teamId: assignment.teamId,
           teamName: assignment.teamName,
-          subtitle: companyName ? `Điều phối bởi công ty ${companyName}` : null,
+          subtitle: assignment.assignedByName?.trim()
+            ? `Điều phối bởi ${assignment.assignedByName.trim()}`
+            : null,
         },
       ]
     : [];
@@ -926,17 +770,14 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
       ]
     : [];
 
-  const progressUpdates: ProgressUpdateStageItem[] = (assignment?.progressUpdates ?? [])
-    .map(u => ({
-      id: u.id,
-      progressPercent: u.progressPercent,
-      progressNote: u.progressNote,
-      updatedAt: u.updatedAt,
-      updatedByName: u.updatedByName,
-      teamName: assignment?.teamName ?? '',
-      images: u.images.map(img => ({ url: img.url, uploadedAt: img.uploadedAt })),
-    }))
-    .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+  const progressImages = assignment?.progressUpdates.flatMap(u => u.images) ?? [];
+  const progressNotes = (assignment?.progressUpdates ?? [])
+    .map(u => u.progressNote?.trim())
+    .filter((n): n is string => Boolean(n));
+  const latestProgressAt =
+    progressImages.length > 0
+      ? latestUploadedAt(progressImages)
+      : (assignment?.progressUpdatedAt ?? null);
 
   const stages: LifecycleStage[] = [
     {
@@ -982,12 +823,13 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
       key: 'progress',
       step: 4,
       label: 'Cập nhật tiến độ',
-      at: null,
-      mediaLabel: 'Cập nhật tiến độ',
-      mediaEmptyHint: 'Chưa có cập nhật tiến độ từ các đội.',
-      progressUpdates,
+      at: nullIso(latestProgressAt),
+      noteBelowMedia: progressNotes.length > 0 ? progressNotes.join('\n') : null,
+      mediaLabel: 'Ảnh tiến độ',
+      mediaEmptyHint: 'Chưa có ảnh cập nhật từ các đội.',
+      images: progressImages,
       state:
-        progressUpdates.length > 0
+        progressImages.length > 0
           ? 'done'
           : stateFor(statusRank('InProgress'), {
               forceCurrent: status === 'InProgress',
@@ -1248,150 +1090,6 @@ function ActivityTimeline({ items }: { items: ReportProgressStatusHistory[] }) {
   );
 }
 
-function formatBytes(sizeBytes: number): string {
-  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let value = sizeBytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  const precision = unitIndex === 0 ? 0 : value < 10 ? 1 : 0;
-  return `${value.toFixed(precision)} ${units[unitIndex]}`;
-}
-
-const GALLERY_PREVIEW_MAX = 5;
-
-/**
- * Gallery submissionImages — mosaic hero5 giống VerifyDetailClient.Gallery.
- */
-function SubmissionGallery({
-  images,
-  address,
-  onPreview,
-}: {
-  images: ReportProgressImage[];
-  address: string;
-  onPreview: ReportPreviewHandler;
-}) {
-  const [showAll, setShowAll] = useState(false);
-
-  const total = images.length;
-  const hasMore = total > GALLERY_PREVIEW_MAX;
-  const totalSizeBytes = useMemo(
-    () =>
-      images.reduce((sum, item) => sum + (Number.isFinite(item.sizeBytes) ? item.sizeBytes : 0), 0),
-    [images]
-  );
-  const galleryMetaAt = useMemo(() => {
-    if (images.length === 0) return null;
-    return (
-      [...images].sort((a, b) => a.uploadedAt.localeCompare(b.uploadedAt))[0]?.uploadedAt ?? null
-    );
-  }, [images]);
-
-  const cards = useMemo((): LayoutGridCard[] => {
-    const preview = images.slice(0, GALLERY_PREVIEW_MAX);
-    return preview.map((img, i) => {
-      const isLastPreview = i === preview.length - 1;
-      return {
-        id: img.id || `${img.url}-${i}`,
-        thumbnail: img.url,
-        className: hero5CardClass(i, preview.length),
-        content: (
-          <div>
-            <p className="text-xl font-bold text-white md:text-2xl">Ảnh {i + 1}</p>
-            <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
-              <span className="rounded-full bg-black/35 px-2 py-1 text-white/95">
-                {formatBytes(totalSizeBytes)}
-              </span>
-              {galleryMetaAt ? (
-                <span className="rounded-full bg-black/35 px-2 py-1 text-white/95">
-                  {formatDateTime(galleryMetaAt)}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        ),
-        overlay:
-          hasMore && isLastPreview ? (
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation();
-                setShowAll(true);
-              }}
-              className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-slate-50"
-            >
-              <Camera className="size-3.5 shrink-0" aria-hidden />
-              Xem gallery ({total} ảnh)
-            </button>
-          ) : undefined,
-      };
-    });
-  }, [images, total, hasMore, totalSizeBytes, galleryMetaAt]);
-
-  if (total === 0) {
-    return (
-      <Card className="relative flex h-64 items-center justify-center overflow-hidden border-dashed shadow-none">
-        <CardContent className="space-y-2 p-0 text-center text-sm text-muted-foreground">
-          <ImageIcon className="mx-auto size-8 opacity-40" aria-hidden />
-          <p>Không có hình ảnh gửi báo cáo</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <>
-      <div className="relative h-[min(42vh,360px)] w-full overflow-hidden rounded-xl bg-white">
-        <LayoutGrid cards={cards} variant="hero5" className="h-full gap-1 p-0" />
-      </div>
-
-      <Dialog open={showAll} onOpenChange={setShowAll}>
-        <DialogContent className="flex h-[92vh] max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
-          <DialogDescription className="sr-only">
-            Hộp thoại xem tất cả hình ảnh gửi báo cáo theo dạng lưới.
-          </DialogDescription>
-          <DialogHeader className="shrink-0 space-y-0 border-b px-12 py-4 text-center">
-            <DialogTitle className="truncate text-center text-sm font-semibold tracking-tight text-foreground md:text-base">
-              {address?.trim() || 'Hình ảnh gửi báo cáo'}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="shrink-0 border-b px-4 pt-2 md:px-6">
-            <div className="inline-flex items-center gap-1.5 border-b-2 border-foreground pb-2 text-sm font-medium text-foreground">
-              <Camera className="size-4" aria-hidden />
-              Hình ảnh
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-              {images.map((img, i) => (
-                <ClickableReportImage
-                  key={img.id || `${img.url}-${i}`}
-                  url={img.url}
-                  label={`Ảnh ${i + 1}`}
-                  uploadedAt={img.uploadedAt}
-                  onPreview={image => {
-                    setShowAll(false);
-                    onPreview(image);
-                  }}
-                  showTimestamp={false}
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  className="aspect-4/3 w-full rounded-lg"
-                />
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
 function ReportInfoCard({
   data,
   mapLat,
@@ -1399,7 +1097,6 @@ function ReportInfoCard({
   hasCoords,
   isDetailPending,
   googleMapsUrl,
-  onPreview,
 }: {
   data: ReportProgress;
   mapLat: number | undefined;
@@ -1407,9 +1104,13 @@ function ReportInfoCard({
   hasCoords: boolean;
   isDetailPending: boolean;
   googleMapsUrl: string | null;
-  onPreview: ReportPreviewHandler;
 }) {
-  const submissionImages = data.media.submissionImages;
+  const heroUrl =
+    data.media.submissionImages[0]?.url ??
+    data.media.beforeImages[0]?.url ??
+    data.media.afterImages[0]?.url ??
+    null;
+
   const statusBadge =
     REPORT_STATUS_BADGE_CLASSES[data.status] ?? 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80';
 
@@ -1417,30 +1118,39 @@ function ReportInfoCard({
   const resolveDueAt = data.sla.resolveDueAt;
   const slaBreached = !isMergedDuplicate && Boolean(resolveDueAt) && data.sla.isBreached;
 
-  const assignedCompanyName =
-    data.assignedCompany?.companyName?.trim() || data.assignment?.companyName?.trim() || '';
-
   const teamTooltipItems = useMemo(() => {
     const a = data.assignment;
     if (!a) return [];
-    const leader = a.teamLeaderName?.trim() || '—';
-    const designation = assignedCompanyName
-      ? `Trưởng nhóm: ${leader} · ${assignedCompanyName}`
-      : `Trưởng nhóm: ${leader}`;
     return [
       {
         id: 1,
         name: a.teamName,
-        designation,
+        designation: `Trưởng nhóm: ${a.teamLeaderName}`,
         initials: getInitials(a.teamName),
         fallbackClassName: hashColor(a.teamId),
       },
     ];
-  }, [data.assignment, assignedCompanyName]);
+  }, [data.assignment]);
 
   return (
     <div className="flex flex-col">
-      <SubmissionGallery images={submissionImages} address={data.address} onPreview={onPreview} />
+      {/* Hero — chỉ ảnh, không overlay code/ward */}
+      <div className="relative aspect-video max-h-52 w-full overflow-hidden rounded-xl bg-muted">
+        {heroUrl ? (
+          <Image
+            src={heroUrl}
+            alt={data.categoryName || 'Báo cáo'}
+            fill
+            sizes="(max-width: 1024px) 100vw, 58rem"
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-muted-foreground">
+            <ImageIcon className="size-8 opacity-40" aria-hidden />
+          </div>
+        )}
+      </div>
 
       <div className="pt-5">
         <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
@@ -1548,18 +1258,9 @@ function ReportInfoCard({
 
         <TabsContent value="progress" className="mt-5 focus-visible:ring-0">
           <div className="mb-4 min-w-0">
-            <p className="text-sm font-semibold text-foreground">Tiến độ đội phụ trách</p>
+            <p className="text-sm font-semibold text-foreground">Tiến độ các đội</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {assignedCompanyName ? (
-                <>
-                  Tiến độ và trạng thái xử lý của đội được phân công{' '}
-                  <span className="font-semibold text-foreground/80">
-                    bởi công ty {assignedCompanyName}
-                  </span>
-                </>
-              ) : (
-                'Tiến độ và trạng thái xử lý của đội được phân công'
-              )}
+              Tiến độ và trạng thái xử lý của từng đội
             </p>
           </div>
           {!data.assignment ? (
@@ -1784,7 +1485,6 @@ function DetailShell({
   const allImages = useMemo((): ReportPreviewImage[] => {
     const map = (items: ReportProgressImage[], label: string) =>
       items.map(img => ({ url: img.url, label, uploadedAt: img.uploadedAt }));
-
     const progressUpdateImages = (data.assignment?.progressUpdates ?? []).flatMap(u =>
       u.images.map(img => ({
         url: img.url,
@@ -1792,8 +1492,6 @@ function DetailShell({
         uploadedAt: img.uploadedAt,
       }))
     );
-
-    // Không dùng inspectionImages / reopenEvidenceImages trên màn tracking.
     return [
       ...map(data.media.submissionImages, 'Ảnh gửi báo cáo'),
       ...map(data.media.beforeImages, 'Ảnh trước xử lý'),
@@ -1852,7 +1550,6 @@ function DetailShell({
               hasCoords={hasCoords}
               isDetailPending={isDetailPending}
               googleMapsUrl={googleMapsUrl}
-              onPreview={handlePreview}
             />
           </aside>
 
@@ -1882,7 +1579,12 @@ function DetailShell({
   );
 }
 
-export function LeoTrackingReportDetail({ reportId, onBack }: LeoTrackingReportDetailProps) {
+/**
+ * Chi tiết báo cáo tra cứu (`/officer/reports/[id]`).
+ * UI đồng bộ Leo tracking progress — file riêng để URL browser có `/id`.
+ * Data: GET /v1/reports/{id}/progress (+ detail lat/lng).
+ */
+export function ReportsReportDetailClient({ reportId, onBack }: ReportsReportDetailClientProps) {
   const { data, isPending, isError, refetch, isFetching } = useReportProgress(reportId);
 
   if (isPending) {

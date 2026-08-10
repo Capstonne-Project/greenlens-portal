@@ -145,6 +145,13 @@ export function officerNotificationHref(
     case 'CommunityCleanupLeaderAssigned':
       if (ref) return `/officer/community?eventId=${encodeURIComponent(ref)}`;
       return '/officer/community';
+    case 'CleanupTaskAccepted':
+    case 'CleanupTaskCompleted':
+    case 'CleanupProgressUpdated':
+    case 'CompanyTeamAssigned':
+      // referenceId = reportId → LeoTrackingReportDetail
+      if (ref) return `/officer/tracking?reportId=${encodeURIComponent(ref)}`;
+      return '/officer/tracking';
     default:
       if (ref) return `/officer/verify/${encodeURIComponent(ref)}`;
       return '/officer/dashboard';

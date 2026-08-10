@@ -1,5 +1,5 @@
-import { DeoReportsPageClient } from '@/components/officer/reports/DeoReportsPageClient';
+import { ReportsPageClient } from '@/components/officer/reports/ReportsPageClient';
 
 export default function OfficerReportsPage() {
-  return <DeoReportsPageClient />;
+  return <ReportsPageClient />;
 }
