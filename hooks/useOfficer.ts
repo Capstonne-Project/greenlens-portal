@@ -146,6 +146,8 @@ function violationRecurrenceCandidatesListKeyParts(params: ViolationRecurrenceCa
 }
 
 const LIST_STALE_MS = 3 * 60 * 1000;
+/** Chi tiết inspection có thể bị Inspector đổi status ở app mobile bất kỳ lúc nào — cần stale ngắn hơn query dạng list. */
+const INSPECTION_DETAIL_STALE_MS = 15 * 1000;
 
 /** Tab Phân công — BE chỉ nhận một `status`/request nên gọi song song rồi gộp. */
 const ASSIGN_QUEUE_STATUSES = [
@@ -636,7 +638,7 @@ export function useInspectionDetail(id: string, enabled = true) {
     queryKey: officerKeys.inspectionDetail(id),
     queryFn: () => fetchInspectionDetail(id),
     enabled: Boolean(id) && enabled,
-    staleTime: LIST_STALE_MS,
+    staleTime: INSPECTION_DETAIL_STALE_MS,
   });
 }
 
