@@ -1448,7 +1448,10 @@ export function InspectionDetailClient() {
               <InspectionDetailBody
                 key={data.id}
                 data={data}
-                onRecordPaymentClick={() => setPaymentDialogOpen(true)}
+                onRecordPaymentClick={() => {
+                  void refetch();
+                  setPaymentDialogOpen(true);
+                }}
               />
             </TabsContent>
 
