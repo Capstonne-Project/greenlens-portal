@@ -11,7 +11,6 @@ import {
   faGear,
   faScroll,
   faUser,
-  faUserGroup,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
@@ -27,11 +26,10 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
   const mainNav: MapShellNavItem[] = [
     // Vận hành
     item('dashboard', 'Tổng quan', '/company', faGaugeHigh),
-    item('queue', 'Điều phối báo cáo', '/company/queue', faClipboardList),
-    item('assignments', 'Phân công', '/company/assignments', faChartLine),
+    item('assign', 'Phân công', '/company/assign', faClipboardList),
+    item('tracking', 'Theo dõi xử lý', '/company/tracking', faChartLine),
     // Nguồn lực
-    item('staff', 'Nhân sự', '/company/staff', faUsers),
-    item('teams', 'Đội dọn dẹp', '/company/teams', faUserGroup),
+    item('workforce', 'Đội ngũ', '/company/workforce', faUsers),
     item('contract-history', 'Lịch sử hợp đồng', '/company/contract-history', faScroll),
     item('account', 'Tài khoản', '/company/settings/account', faUser),
   ];

@@ -1,5 +1,6 @@
-import { CompanyTeamsView } from '@/components/company/teams/CompanyTeamsView';
+import { redirect } from 'next/navigation';
 
+/** Legacy — gộp vào Đội ngũ tab Đội nhóm. */
 export default function CompanyTeamsPage() {
-  return <CompanyTeamsView />;
+  redirect('/company/workforce');
 }

@@ -1,14 +1,12 @@
 'use client';
 
 import { AppSidebar } from '@/components/common/AppSidebar';
-import { CompanyTopHeader } from '@/components/company/CompanyTopHeader';
-import { useCompanyAssignmentsNewCount, useCompanyQueueCount } from '@/hooks/useCompany';
+import { CompanyPageHeader } from '@/components/company/CompanyPageHeader';
 import { getCompanyShellNavConfig } from '@/lib/constants/companyShellNav';
 import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
-import type { MapShellNavConfig } from '@/lib/constants/mapShellNav';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
-import { useMemo } from 'react';
+import { Suspense } from 'react';
 
 /**
  * Company shell — AppSidebar + Officer/Admin-matching bordered content panel.
@@ -18,29 +16,11 @@ import { useMemo } from 'react';
 export function CompanyAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isOverview = pathname === '/company';
-  const isAssignments = pathname === '/company/assignments';
-  const { data: queueCount } = useCompanyQueueCount();
-  const { data: assignmentsNewCount } = useCompanyAssignmentsNewCount();
-
-  const companyNavConfig = useMemo((): MapShellNavConfig => {
-    const base = getCompanyShellNavConfig();
-    return {
-      ...base,
-      mainNav: base.mainNav.map(item => {
-        if (item.id === 'queue' && typeof queueCount === 'number' && queueCount > 0) {
-          return { ...item, badge: queueCount };
-        }
-        if (
-          item.id === 'assignments' &&
-          typeof assignmentsNewCount === 'number' &&
-          assignmentsNewCount > 0
-        ) {
-          return { ...item, badge: assignmentsNewCount };
-        }
-        return item;
-      }),
-    };
-  }, [queueCount, assignmentsNewCount]);
+  const isAssign = pathname === '/company/assign';
+  const isTracking = pathname === '/company/tracking';
+  const isWorkforce = pathname === '/company/workforce';
+  const fillViewport = isAssign || isTracking || isWorkforce;
+  const companyNavConfig = getCompanyShellNavConfig();
 
   return (
     <div className="app-canvas flex h-dvh w-screen overflow-hidden font-sans md:flex-row">
@@ -58,14 +38,16 @@ export function CompanyAppShell({ children }: { children: React.ReactNode }) {
             'shadow-[2px_0_10px_-2px_rgb(0_0_0/10%),0_1px_3px_rgb(0_0_0/4%)]'
           )}
         >
-          <CompanyTopHeader />
+          <Suspense fallback={null}>
+            <CompanyPageHeader />
+          </Suspense>
           <div
             className={cn(
               'min-h-0 min-w-0 flex-1 overscroll-contain',
+              fillViewport && 'flex flex-col overflow-hidden',
               isOverview
                 ? 'overflow-x-hidden overflow-y-auto overscroll-contain pt-2 md:pt-3 lg:overflow-hidden'
-                : 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5',
-              isAssignments && 'scrollbar-hide'
+                : !fillViewport && 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5'
             )}
           >
             {children}

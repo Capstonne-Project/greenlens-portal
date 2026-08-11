@@ -1,21 +1,44 @@
 'use client';
 
 import { ValidatedInput } from '@/components/common/ValidatedField';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Field, FieldDescription, FieldGroup } from '@/components/ui/field';
+import { Label } from '@/components/ui/label';
 import { useCreateCompanyTeam } from '@/hooks/useCompany';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getCompanyMutationError } from '@/utils/companyUi';
+import { faUserGroup } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, X } from 'lucide-react';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Loader2 } from 'lucide-react';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-const schema = z.object({
-  name: z.string().min(1, 'Vui lòng nhập tên đội').max(120, 'Tối đa 120 ký tự').trim(),
+/** Company chỉ có đội dọn dẹp — cố định trên UI (parity officer CreateTeamDialog). */
+const COMPANY_TEAM_TYPE_LABEL = 'Đội Dọn dẹp';
+
+const TEAM_NAME_MIN = 3;
+const TEAM_NAME_MAX = 100;
+
+const createCompanyTeamSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Vui lòng nhập tên đội')
+    .min(TEAM_NAME_MIN, `Tên đội phải có ít nhất ${TEAM_NAME_MIN} ký tự`)
+    .max(TEAM_NAME_MAX, `Tên đội không được quá ${TEAM_NAME_MAX} ký tự`),
 });
 
-type FormValues = z.infer<typeof schema>;
+type CreateCompanyTeamFormValues = z.infer<typeof createCompanyTeamSchema>;
 
 interface CompanyTeamCreateDialogProps {
   open: boolean;
@@ -29,98 +52,122 @@ export function CompanyTeamCreateDialog({ open, onClose }: CompanyTeamCreateDial
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<CreateCompanyTeamFormValues>({
     ...REALTIME_FORM_OPTIONS,
-    resolver: zodResolver(schema),
+    resolver: zodResolver(createCompanyTeamSchema),
     defaultValues: { name: '' },
   });
 
-  useEffect(() => {
-    if (!open) return;
-    reset({ name: '' });
-  }, [open, reset]);
+  const isBusy = createTeam.isPending;
+  const nameValue = useWatch({ control, name: 'name', defaultValue: '' }) ?? '';
 
-  if (!open) return null;
+  const closeDialog = () => {
+    reset({ name: '' });
+    onClose();
+  };
 
   const onSubmit = handleSubmit(values => {
     createTeam.mutate(
-      { name: values.name.trim() },
+      { name: values.name },
       {
         onSuccess: env => {
-          toast.success(env.message ?? 'Đã tạo đội');
-          onClose();
+          toast.success(env.message ?? 'Đã tạo đội mới.');
+          closeDialog();
         },
-        onError: err => toast.error(getCompanyMutationError(err, 'Không thể tạo đội')),
+        onError: err =>
+          toast.error(getCompanyMutationError(err, 'Không thể tạo đội. Vui lòng thử lại.')),
       }
     );
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/40"
-        aria-label="Đóng"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="company-team-create-title"
-        className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl"
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && !isBusy) closeDialog();
+      }}
+    >
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        onInteractOutside={e => {
+          if (isBusy) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isBusy) e.preventDefault();
+        }}
       >
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <h2 id="company-team-create-title" className="text-lg font-semibold">
-            Tạo đội dọn dẹp
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-            aria-label="Đóng"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
+        <form onSubmit={onSubmit} className="flex flex-col">
+          <div className="space-y-4 p-6 md:p-8">
+            <DialogHeader className="pr-8 text-left">
+              <DialogTitle className="flex items-center gap-2.5">
+                <FontAwesomeIcon
+                  icon={faUserGroup}
+                  className="size-4 shrink-0 text-foreground"
+                  aria-hidden
+                />
+                Tạo đội mới
+              </DialogTitle>
+              <DialogDescription>Tạo đội dọn dẹp trong công ty của bạn.</DialogDescription>
+            </DialogHeader>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="team-name" className="mb-1.5 block text-sm font-medium">
-              Tên đội
-            </label>
-            <ValidatedInput
-              id="team-name"
-              type="text"
-              placeholder="VD: Green Warriors Team"
-              {...register('name')}
-              value={watch('name')}
-              minLength={1}
-              maxLength={120}
-              error={errors.name?.message}
-            />
+            <FieldGroup>
+              <Field>
+                <Label>Loại đội</Label>
+                <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground">
+                  <span
+                    className="inline-block size-2.5 shrink-0 rounded-full bg-emerald-500"
+                    aria-hidden
+                  />
+                  <span className="font-medium">{COMPANY_TEAM_TYPE_LABEL}</span>
+                </div>
+              </Field>
+              <Field>
+                <Label htmlFor="company-create-team-name">Tên đội</Label>
+                <FieldDescription>Ví dụ: Đội dọn dẹp khu vực A</FieldDescription>
+                <ValidatedInput
+                  id="company-create-team-name"
+                  placeholder="Nhập tên đội"
+                  disabled={isBusy}
+                  {...register('name')}
+                  value={nameValue}
+                  minLength={TEAM_NAME_MIN}
+                  maxLength={TEAM_NAME_MAX}
+                  error={errors.name?.message}
+                  className="h-9 rounded-md"
+                />
+              </Field>
+            </FieldGroup>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
+          <DialogFooter className="gap-2 border-t border-border bg-slate-50 px-6 py-4 sm:space-x-0">
+            <Button
               type="button"
-              onClick={onClose}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+              variant="outline"
+              disabled={isBusy}
+              onClick={closeDialog}
+              className="cursor-pointer"
             >
               Huỷ
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={createTeam.isPending}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+              disabled={isBusy}
+              className="cursor-pointer bg-emerald-600 text-white hover:bg-emerald-500"
             >
-              {createTeam.isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              Tạo
-            </button>
-          </div>
+              {isBusy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Đang tạo...
+                </>
+              ) : (
+                'Tạo đội'
+              )}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
