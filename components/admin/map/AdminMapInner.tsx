@@ -8,7 +8,7 @@ import { MAP_VIEWPORT_PIN_LIMIT } from '@/lib/constants/mapReports';
 import { clampMapViewportToVietnam } from '@/lib/constants/vietnamMapBounds';
 import { cn } from '@/lib/utils';
 import type { FeatureCollection, Point } from 'geojson';
-import type { CircleLayerSpecification, StyleSpecification } from 'maplibre-gl';
+import type { CircleLayerSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import Map, {
@@ -21,28 +21,7 @@ import Map, {
   type MapRef,
   type ViewStateChangeEvent,
 } from 'react-map-gl/maplibre';
-
-const OSM_LIGHT_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
-      maxzoom: 19,
-    },
-  },
-  layers: [
-    {
-      id: 'osm-raster',
-      type: 'raster',
-      source: 'osm',
-      minzoom: 0,
-      maxzoom: 22,
-    },
-  ],
-};
+import { getMapStyle } from '@/lib/map/mapStyle';
 
 /** Default center HCM — BR-MAP-001 */
 const DEFAULT_CENTER: [number, number] = [106.6297, 10.8231];
@@ -186,7 +165,8 @@ export function AdminMapInner() {
               latitude: DEFAULT_CENTER[1],
               zoom: DEFAULT_ZOOM,
             }}
-            mapStyle={OSM_LIGHT_STYLE}
+            mapStyle={getMapStyle()}
+            projection={{ type: 'globe' }}
             attributionControl={false}
             interactiveLayerIds={[REPORT_POINTS_LAYER_ID]}
             style={{ width: '100%', height: '100%' }}

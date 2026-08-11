@@ -1,24 +1,11 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Map, { Marker, NavigationControl, type MapRef } from 'react-map-gl/maplibre';
 import { MapPin } from 'lucide-react';
 
-const OSM_LIGHT_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
-      maxzoom: 19,
-    },
-  },
-  layers: [{ id: 'osm-raster', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22 }],
-};
+import { getMapStyle } from '@/lib/map/mapStyle';
 
 export interface ReportLocationMapProps {
   latitude: number;
@@ -26,7 +13,7 @@ export interface ReportLocationMapProps {
   className?: string;
 }
 
-/** Bản đồ đọc-only — pin vị trí báo cáo (MapLibre + OSM). */
+/** Bản đồ đọc-only — pin vị trí báo cáo (MapLibre + Goong Maptiles). */
 export function ReportLocationMap({ latitude, longitude, className }: ReportLocationMapProps) {
   const mapRef = useRef<MapRef | null>(null);
 
@@ -40,7 +27,8 @@ export function ReportLocationMap({ latitude, longitude, className }: ReportLoca
     <div className={className}>
       <Map
         ref={mapRef}
-        mapStyle={OSM_LIGHT_STYLE}
+        mapStyle={getMapStyle()}
+        projection={{ type: 'globe' }}
         initialViewState={{ longitude, latitude, zoom: 15 }}
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}

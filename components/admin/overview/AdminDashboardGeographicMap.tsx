@@ -22,7 +22,7 @@ import type {
   Polygon,
   Position,
 } from 'geojson';
-import { LngLatBounds, type StyleSpecification } from 'maplibre-gl';
+import { LngLatBounds } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Map, {
@@ -33,33 +33,12 @@ import Map, {
   type MapLayerMouseEvent,
   type MapRef,
 } from 'react-map-gl/maplibre';
+import { getMapStyle } from '@/lib/map/mapStyle';
 
 type MapSourceErrorEvent = {
   sourceId?: string;
   error?: Error | { message?: string } | string;
   message?: string;
-};
-
-const OSM_LIGHT_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
-      maxzoom: 19,
-    },
-  },
-  layers: [
-    {
-      id: 'osm-raster',
-      type: 'raster',
-      source: 'osm',
-      minzoom: 0,
-      maxzoom: 22,
-    },
-  ],
 };
 
 /** Vietnam overview — not HCM street zoom */
@@ -496,7 +475,7 @@ export function AdminDashboardGeographicMap({
             latitude: VIETNAM_CENTER[1],
             zoom: VIETNAM_ZOOM,
           }}
-          mapStyle={OSM_LIGHT_STYLE}
+          mapStyle={getMapStyle()}
           attributionControl={false}
           style={{ width: '100%', height: '100%' }}
           interactiveLayerIds={provincesGeojson ? [PROVINCES_FILL_LAYER_ID] : []}

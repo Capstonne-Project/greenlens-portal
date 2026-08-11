@@ -1,11 +1,14 @@
 'use client';
 
 import { useCallback, useState, type ReactNode } from 'react';
-import { Filter, Layers, Play, RefreshCw } from 'lucide-react';
+import { Filter, Globe2, Map as MapIcon, Play, RefreshCw } from 'lucide-react';
+import type { MapViewMode } from './MapLibreView';
 import { PlaybackDialog } from './PlaybackDialog';
 
 type MapRightSidebarProps = {
   onRefresh?: () => void;
+  viewMode?: MapViewMode;
+  onToggleViewMode?: () => void;
 };
 
 /** Panel xám bọc ngoài — rộng 52px, nút căn giữa */
@@ -41,8 +44,13 @@ function MapToolButton({ label, tooltip, onClick, children }: MapToolButtonProps
   );
 }
 
-export function MapRightSidebar({ onRefresh }: MapRightSidebarProps) {
+export function MapRightSidebar({
+  onRefresh,
+  viewMode = 'map',
+  onToggleViewMode,
+}: MapRightSidebarProps) {
   const [playbackOpen, setPlaybackOpen] = useState(false);
+  const isGlobe = viewMode === 'globe';
 
   const handleRefresh = useCallback(() => {
     onRefresh?.();
@@ -54,10 +62,18 @@ export function MapRightSidebar({ onRefresh }: MapRightSidebarProps) {
         className="pointer-events-none absolute top-3 right-3 z-20 flex flex-col gap-2"
         aria-label="Công cụ bản đồ"
       >
-        {/* Panel trên — Map Type, Filters, Playback */}
+        {/* Panel trên — View mode (Map/Globe), Filters, Playback */}
         <div className={MAP_TOOL_PANEL}>
-          <MapToolButton label="Map Type" tooltip="Map Type">
-            <Layers className="size-4" strokeWidth={1.75} aria-hidden />
+          <MapToolButton
+            label={isGlobe ? 'Xem bản đồ chi tiết' : 'Xem toàn cầu'}
+            tooltip={isGlobe ? 'Chuyển sang bản đồ chi tiết' : 'Chuyển sang xem toàn cầu'}
+            onClick={onToggleViewMode}
+          >
+            {isGlobe ? (
+              <MapIcon className="size-4" strokeWidth={1.75} aria-hidden />
+            ) : (
+              <Globe2 className="size-4" strokeWidth={1.75} aria-hidden />
+            )}
           </MapToolButton>
           <MapToolButton label="Filter" tooltip="Filter">
             <Filter className="size-4" strokeWidth={1.75} aria-hidden />
