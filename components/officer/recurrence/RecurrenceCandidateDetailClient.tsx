@@ -22,7 +22,9 @@ import {
 } from '@/lib/constants/reportActions';
 import type { ReportStatus } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
 import { withOfficerFromQuery } from '@/utils/officerNavigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, Copy, FileText, ImageIcon, MapPinned } from 'lucide-react';
 import { motion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -663,6 +665,7 @@ function RecurrenceCompareBody({
 
 export function RecurrenceCandidateDetailClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams<{ id: string }>();
   const reportId = typeof params.id === 'string' ? params.id : '';
   const fromPath = reportId ? `${RECURRENCE_LIST_PATH}/${reportId}` : RECURRENCE_LIST_PATH;
@@ -690,7 +693,14 @@ export function RecurrenceCandidateDetailClient() {
             variant="ghost"
             size="sm"
             className="gap-1.5 px-2 text-slate-600"
-            onClick={() => router.push(RECURRENCE_LIST_PATH)}
+            onClick={() =>
+              goBackWithListSoftReload({
+                router,
+                queryClient,
+                from: null,
+                fallbackHref: RECURRENCE_LIST_PATH,
+              })
+            }
           >
             <ArrowLeft className="size-4" aria-hidden />
             Quay lại danh sách

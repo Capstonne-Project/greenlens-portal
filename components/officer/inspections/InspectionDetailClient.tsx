@@ -36,6 +36,8 @@ import type {
   InspectionDetail,
   InspectionPayment,
 } from '@/lib/api/models/inspectionReport';
+import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   inspectionShowsClosedAt,
   inspectionShowsPenaltyFields,
@@ -1371,6 +1373,7 @@ export function InspectionDetailClient() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const inspectionId = typeof params.id === 'string' ? params.id : '';
 
   const isInspectionsQueueRoute = pathname.startsWith('/officer/inspections');
@@ -1398,7 +1401,14 @@ export function InspectionDetailClient() {
           variant="ghost"
           size="sm"
           className="gap-1.5 px-2 text-slate-500 hover:text-slate-900"
-          onClick={() => router.push(backPath)}
+          onClick={() =>
+            goBackWithListSoftReload({
+              router,
+              queryClient,
+              from: null,
+              fallbackHref: backPath,
+            })
+          }
         >
           <ArrowLeft className="size-4" aria-hidden />
           {backLabel}
