@@ -86,7 +86,7 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   BadgeProgressNear: 'Sắp đạt huy hiệu',
 };
 
-export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 10;
+export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 8;
 
 export function notificationChannelLabel(channel: string): string {
   return NOTIFICATION_CHANNEL_LABEL_VI[channel] ?? channel;

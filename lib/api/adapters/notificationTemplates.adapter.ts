@@ -18,9 +18,11 @@ import {
 import type {
   CreateNotificationTemplateResult,
   NotificationTemplateDetail,
+  NotificationTemplateListItem,
   NotificationTemplateWriteInput,
   NotificationTemplatesList,
   NotificationTemplatesListParams,
+  NotificationTemplatesPagination,
   PublishNotificationTemplateInput,
 } from '@/lib/api/models/notificationTemplate';
 import type {
@@ -29,6 +31,8 @@ import type {
 } from '@/lib/api/models/gamification';
 import apiService from '@/lib/api/core';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
+
+const SEARCH_FETCH_PAGE_SIZE = 200;
 
 function buildQuery(
   params?: NotificationTemplatesListParamsDto
@@ -39,7 +43,48 @@ function buildQuery(
   if (params?.channel?.trim()) query.channel = params.channel.trim();
   if (params?.isPublished === true) query.isPublished = true;
   if (params?.isPublished === false) query.isPublished = false;
+  if (params?.search?.trim()) query.search = params.search.trim();
   return query;
+}
+
+function filterNotificationTemplateItems(
+  items: NotificationTemplateListItem[],
+  params?: NotificationTemplatesListParams
+): NotificationTemplateListItem[] {
+  const search = params?.search?.trim().toLowerCase();
+  if (!search) return items;
+
+  return items.filter(item => {
+    const haystack = [item.titleVi, item.templateKey, item.type, item.channel]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(search);
+  });
+}
+
+function paginateNotificationTemplateItems(
+  items: NotificationTemplateListItem[],
+  page: number,
+  pageSize: number
+): NotificationTemplatesList {
+  const totalItems = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize) || 1);
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * pageSize;
+  const pagination: NotificationTemplatesPagination = {
+    page: safePage,
+    pageSize,
+    totalItems,
+    totalPages,
+    hasNext: safePage < totalPages,
+    hasPrev: safePage > 1,
+  };
+
+  return {
+    items: items.slice(start, start + pageSize),
+    pagination,
+  };
 }
 
 function toWriteBody(body: NotificationTemplateWriteInput): NotificationTemplateWriteBodyDto {
@@ -60,21 +105,41 @@ export async function adaptNotificationTemplatesList(
 ): Promise<ApiEnvelope<NotificationTemplatesList>> {
   const page = Math.max(1, params?.page ?? 1);
   const pageSize = Math.max(1, params?.pageSize ?? 10);
-  const query = buildQuery({
-    page,
-    pageSize,
-    channel: params?.channel,
-    isPublished: params?.isPublished,
-  });
+  const search = params?.search?.trim();
+  const listQuery = search
+    ? buildQuery({
+        page: 1,
+        pageSize: SEARCH_FETCH_PAGE_SIZE,
+        channel: params?.channel,
+        isPublished: params?.isPublished,
+      })
+    : buildQuery({
+        page,
+        pageSize,
+        channel: params?.channel,
+        isPublished: params?.isPublished,
+      });
 
   const res = await apiService.get<ApiEnvelope<NotificationTemplatesListDataDto>>(
     '/v1/admin/notification-templates',
-    query
+    listQuery
   );
 
-  return mapApiEnvelope(res.data, data =>
-    mapNotificationTemplatesListDataDto(data, page, pageSize)
-  );
+  return mapApiEnvelope(res.data, data => {
+    const mapped = mapNotificationTemplatesListDataDto(
+      data,
+      search ? 1 : page,
+      search ? SEARCH_FETCH_PAGE_SIZE : pageSize
+    );
+
+    if (!search) return mapped;
+
+    const filtered = filterNotificationTemplateItems(
+      mapped.items.filter(item => item.isActive),
+      params
+    );
+    return paginateNotificationTemplateItems(filtered, page, pageSize);
+  });
 }
 
 /** GET /v1/admin/notification-templates/{id} */
