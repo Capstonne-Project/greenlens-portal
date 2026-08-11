@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import {
   fetchMapReports,
   fetchMapSummary,
@@ -32,7 +33,33 @@ export const mapKeys = {
   reportViewport: (params: MapReportsQueryParams) => [...mapKeys.reports(), params] as const,
   summary: () => [...mapKeys.all, 'summary'] as const,
   summaryViewport: (params: MapSummaryQueryParams) => [...mapKeys.summary(), params] as const,
+  wardBoundaryFeature: (url: string, wardCode: string) =>
+    [...mapKeys.all, 'ward-boundary-feature', url, wardCode] as const,
 };
+
+/**
+ * File tại `boundaryUrl` là 1 FeatureCollection CHỨA NHIỀU WARD gộp theo vùng (giảm số file CDN) —
+ * phải fetch rồi tìm đúng feature theo `properties.ma_xa === wardCode`, không dùng cả file làm polygon.
+ * Field thật của dataset là `ma_xa` (đã verify từ CDN thật) — KHÔNG phải `code` như ví dụ minh hoạ
+ * trong guide BE (`docs/leo-ward-boundary-fe-guide.md`), field đó không khớp dữ liệu thật.
+ *
+ * Fetch qua `/api/ward-boundary` (Route Handler proxy) — không gọi thẳng CDN từ browser vì
+ * CloudFront không set CORS header (`Access-Control-Allow-Origin`), fetch trực tiếp bị chặn.
+ */
+async function fetchWardFeatureFromBoundaryUrl(
+  url: string,
+  wardCode: string
+): Promise<Feature<Geometry> | null> {
+  const res = await fetch(`/api/ward-boundary?url=${encodeURIComponent(url)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const collection = (await res.json()) as FeatureCollection;
+  return (
+    collection.features.find(f => {
+      const props = f.properties as Record<string, unknown> | null;
+      return props?.ma_xa === wardCode || props?.code === wardCode;
+    }) ?? null
+  );
+}
 
 export function useMapReports(params: MapViewportParams | null) {
   const clamped = params
@@ -73,6 +100,20 @@ export function useMapReports(params: MapViewportParams | null) {
     },
     staleTime: 10 * 60 * 1000,
     enabled: Boolean(queryParams),
+    retry: false,
+  });
+}
+
+/**
+ * Feature (Polygon/MultiPolygon) đúng phường của LEO, đã filter khỏi file GeoJSON gộp nhiều ward.
+ * `boundaryUrl`/`wardCode` lấy từ `useLeoWardBoundary` (GET /v1/offices/my/ward-boundary).
+ */
+export function useWardBoundaryFeature(boundaryUrl: string | null, wardCode: string | null) {
+  return useQuery({
+    queryKey: mapKeys.wardBoundaryFeature(boundaryUrl ?? '', wardCode ?? ''),
+    queryFn: () => fetchWardFeatureFromBoundaryUrl(boundaryUrl!, wardCode!),
+    staleTime: 30 * 60 * 1000,
+    enabled: Boolean(boundaryUrl && wardCode),
     retry: false,
   });
 }
