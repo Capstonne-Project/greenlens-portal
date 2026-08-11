@@ -6,11 +6,11 @@ import { cn } from '@/lib/utils';
 import { formatCompanyDateTime } from '@/utils/companyUi';
 import { AlertTriangle, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
 
-interface CompanyReportProgressSectionProps {
+interface CompanyTrackingProgressSectionProps {
   reportId: string;
 }
 
-export function CompanyReportProgressSection({ reportId }: CompanyReportProgressSectionProps) {
+export function CompanyTrackingProgressSection({ reportId }: CompanyTrackingProgressSectionProps) {
   const { data, isPending, isError, refetch, isFetching } = useReportProgress(reportId);
 
   if (isPending) {

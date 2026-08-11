@@ -1,7 +1,7 @@
-import { CompanyAssignmentsView } from '@/components/company/assignments/CompanyAssignmentsView';
+import { CompanyTrackingView } from '@/components/company/tracking/CompanyTrackingView';
 import { Suspense } from 'react';
 
-export default function CompanyAssignmentsPage() {
+export default function CompanyTrackingPage() {
   return (
     <Suspense
       fallback={
@@ -10,7 +10,7 @@ export default function CompanyAssignmentsPage() {
         </div>
       }
     >
-      <CompanyAssignmentsView />
+      <CompanyTrackingView />
     </Suspense>
   );
 }

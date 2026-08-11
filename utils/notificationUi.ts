@@ -92,17 +92,17 @@ export function companyNotificationHref(
 
   switch (item.type) {
     case 'ReportUnassigned':
-      return '/company/queue';
+      return '/company/assign';
     case 'ContractExpiry':
       return '/company/contract-history';
     case 'ReportStatusChanged':
     case 'ReportOverdue':
     case 'ReportAutoClosed':
     case 'SlaBreachWarning':
-      if (ref) return `/company/assignments?tab=detail&reportId=${encodeURIComponent(ref)}`;
-      return '/company/assignments';
+      if (ref) return `/company/tracking?reportId=${encodeURIComponent(ref)}`;
+      return '/company/tracking';
     default:
-      if (ref) return `/company/assignments?tab=detail&reportId=${encodeURIComponent(ref)}`;
+      if (ref) return `/company/tracking?reportId=${encodeURIComponent(ref)}`;
       return '/company/notifications';
   }
 }

@@ -128,7 +128,7 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
     return () => window.clearTimeout(timer);
   }, [isDrawerOpen, highlightedNotificationId, isPending, items.length, clearHighlight]);
 
-  /** Click row → mở đích; gắn from + soft-invalidate list (Quay lại refetch bảng, không F5). */
+  /** Click row → mở đích; from=hub module đích + highlight; soft-invalidate list (không F5). */
   const handleSelect = (item: NotificationItem) => {
     clearHighlight();
     closeDrawer();

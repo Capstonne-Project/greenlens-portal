@@ -20,7 +20,7 @@ function companyInitials(name: string): string {
   return name.slice(0, 2).toUpperCase() || 'CM';
 }
 
-/** Single-row company identity + filters — rendered inside CompanyTopHeader on `/company`. */
+/** Single-row company identity + filters — rendered inside CompanyPageHeader on `/company`. */
 export function CompanyOverviewHeaderBar() {
   const datePreset = useCompanyOverviewUiStore(s => s.datePreset);
   const dateParams = useCompanyOverviewUiStore(s => s.dateParams);
@@ -107,7 +107,7 @@ export function CompanyOverviewHeaderBar() {
           <span>Làm mới</span>
         </button>
         <Link
-          href="/company/queue"
+          href="/company/assign"
           className={cn(
             'inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition sm:h-10 sm:text-sm',
             hasQueue

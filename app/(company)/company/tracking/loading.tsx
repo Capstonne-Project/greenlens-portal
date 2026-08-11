@@ -1,4 +1,4 @@
-export default function CompanyAssignmentsLoading() {
+export default function CompanyTrackingLoading() {
   return (
     <div className="space-y-5 animate-pulse">
       <div className="h-8 w-56 rounded-lg bg-emerald-100" />
