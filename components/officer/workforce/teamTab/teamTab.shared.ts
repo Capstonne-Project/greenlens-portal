@@ -5,6 +5,10 @@ import { z } from 'zod';
 // ── Constants (list view) ─────────────────────────────────────────────────────
 export const PAGE_SIZE = 10;
 
+/** Giới hạn tên đội — dùng chung schema Zod + ValidatedInput counter. */
+export const TEAM_NAME_MIN = 3;
+export const TEAM_NAME_MAX = 100;
+
 export const TYPE_LABEL: Record<string, string> = {
   Cleanup: 'Dọn dẹp',
   Inspection: 'Thanh tra',
@@ -90,7 +94,8 @@ export const createTeamSchema = z.object({
     .string()
     .trim()
     .min(1, 'Vui lòng nhập tên đội')
-    .max(100, 'Tên đội không được quá 100 ký tự'),
+    .min(TEAM_NAME_MIN, `Tên đội phải có ít nhất ${TEAM_NAME_MIN} ký tự`)
+    .max(TEAM_NAME_MAX, `Tên đội không được quá ${TEAM_NAME_MAX} ký tự`),
 });
 
 export type CreateTeamFormValues = z.infer<typeof createTeamSchema>;
@@ -106,6 +111,16 @@ export type AddMemberTeamTarget = {
   name: string;
   teamType: TeamListItem['teamType'];
 };
+
+export function toAddMemberTarget(
+  team: Pick<TeamListItem, 'id' | 'name' | 'teamType'>
+): AddMemberTeamTarget {
+  return {
+    id: team.id,
+    name: team.name,
+    teamType: team.teamType,
+  };
+}
 
 export function buildAddMemberStaffParams(teamType: string): OfficeStaffListParams | null {
   const role = teamTypeToStaffRole(teamType);

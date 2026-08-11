@@ -3,6 +3,7 @@
 import {
   fetchLeoMyReports,
   fetchOfficeStaff,
+  lookupOfficeStaff,
   recruitOfficeStaff,
 } from '@/lib/api/services/fetchOffice';
 import type {
@@ -28,9 +29,11 @@ export const leoOfficesKeys = {
   reportsList: (params: LeoMyReportsParams) => [...leoOfficesKeys.myReports(), params] as const,
   myStaff: () => [...leoOfficesKeys.all, 'my-staff'] as const,
   staffList: (params: OfficeStaffListParams) => [...leoOfficesKeys.myStaff(), params] as const,
+  staffLookup: (email: string) => [...leoOfficesKeys.myStaff(), 'lookup', email] as const,
 };
 
 const LIST_STALE_MS = 3 * 60 * 1000;
+const LOOKUP_STALE_MS = 60 * 1000;
 
 /** Trạng thái tab Phân công — BE chỉ nhận một `status`/request nên gọi song song rồi gộp. */
 const ASSIGN_REPORT_STATUSES = [
@@ -120,6 +123,22 @@ export function useOfficeStaffList(params: OfficeStaffListParams, options?: { en
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
     enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * GET /v1/offices/my/staff/lookup — tra cứu Citizen theo email (exact).
+ * Gọi khi `email` hợp lệ; 404 → query error (`Không tìm thấy email`).
+ */
+export function useOfficeStaffLookup(email: string, options?: { enabled?: boolean }) {
+  const trimmed = email.trim();
+  return useQuery({
+    queryKey: leoOfficesKeys.staffLookup(trimmed.toLowerCase()),
+    queryFn: () => lookupOfficeStaff(trimmed),
+    select: envelope => envelope.data,
+    staleTime: LOOKUP_STALE_MS,
+    retry: false,
+    enabled: (options?.enabled ?? true) && Boolean(trimmed),
   });
 }
 

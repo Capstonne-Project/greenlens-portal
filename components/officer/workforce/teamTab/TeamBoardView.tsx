@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils';
 import {
   Building2,
   ChevronDown,
-  ChevronUp,
   Crown,
   Loader2,
   MoreHorizontal,
@@ -27,6 +26,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import {
   WorkforceExportCsvButton,
@@ -52,6 +52,11 @@ import {
   type StatusFilter,
   type TeamTypeFilter,
 } from './teamTab.shared';
+
+const CARD_EXPAND_TRANSITION = {
+  duration: 0.28,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
 
 function TeamCard({
   team,
@@ -102,9 +107,10 @@ function TeamCard({
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-all duration-200 hover:shadow-md ${
+      className={cn(
+        'flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-md',
         isExpanded ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-border'
-      }`}
+      )}
     >
       {/* Card body — click to expand */}
       <button
@@ -125,11 +131,13 @@ function TeamCard({
               {availability.label}
             </span>
           </div>
-          {isExpanded ? (
-            <ChevronUp className="mt-0.5 size-4 shrink-0 text-slate-400" />
-          ) : (
-            <ChevronDown className="mt-0.5 size-4 shrink-0 text-slate-400" />
-          )}
+          <motion.span
+            animate={{ rotate: isExpanded ? 180 : 0 }}
+            transition={{ duration: 0.22, ease: CARD_EXPAND_TRANSITION.ease }}
+            className="mt-0.5 inline-flex shrink-0"
+          >
+            <ChevronDown className="size-4 text-slate-400" />
+          </motion.span>
         </div>
 
         {/* Row 2: office */}
@@ -139,126 +147,142 @@ function TeamCard({
         </div>
       </button>
 
-      {/* Card footer — hidden when expanded */}
-      {!isExpanded && (
-        <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-xs text-slate-500">
-              <Users className="size-3.5" />
-              <span>{team.memberCount}</span>
-            </div>
-            <span className="text-xs text-slate-500">{formatDate(team.createdAt)}</span>
-          </div>
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              onAddMember();
-            }}
-            className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
+      <AnimatePresence initial={false} mode="sync">
+        {!isExpanded ? (
+          <motion.div
+            key="footer"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={CARD_EXPAND_TRANSITION}
+            className="overflow-hidden"
           >
-            <Plus className="size-3" />
-            Thêm thành viên
-          </button>
-        </div>
-      )}
-
-      {/* Expanded: member list */}
-      {isExpanded && (
-        <div className="border-t border-border bg-muted/20 px-4 pb-4 pt-3">
-          <RemoveMemberConfirmDialog
-            open={memberToRemove != null}
-            memberName={memberToRemove?.fullName ?? ''}
-            submitting={removeMemberMutation.isPending}
-            onConfirm={() => void handleConfirmRemove()}
-            onClose={() => setMemberToRemove(null)}
-          />
-
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Thành viên ({membersLoading ? '…' : members.length})
-            </p>
-            {!membersLoading && members.length > 0 && (
+            <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 text-xs text-slate-500">
+                  <Users className="size-3.5" />
+                  <span>{team.memberCount}</span>
+                </div>
+                <span className="text-xs text-slate-500">{formatDate(team.createdAt)}</span>
+              </div>
               <button
                 type="button"
                 onClick={e => {
                   e.stopPropagation();
-                  setShowMemberActions(prev => !prev);
+                  onAddMember();
                 }}
-                className={`flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
-                  showMemberActions
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-                title="Quản lý thành viên"
-                aria-pressed={showMemberActions}
+                className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
               >
-                <MoreHorizontal className="size-4" />
+                <Plus className="size-3" />
+                Thêm thành viên
               </button>
-            )}
-          </div>
-
-          {membersLoading ? (
-            <div className="space-y-2.5">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="flex animate-pulse items-center gap-2.5">
-                  <div className="size-8 rounded-full bg-muted" />
-                  <div className="space-y-1.5">
-                    <div className="h-2.5 w-28 rounded bg-muted" />
-                    <div className="h-2 w-36 rounded bg-muted" />
-                  </div>
-                </div>
-              ))}
             </div>
-          ) : members.length === 0 ? (
-            <p className="py-2 text-center text-xs text-slate-500">Chưa có thành viên</p>
-          ) : (
-            <ul className="space-y-2">
-              {members.map(m => (
-                <li key={m.userId} className="flex items-center gap-2.5">
-                  <div
-                    className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
-                      m.isLeader ? 'bg-amber-400' : 'bg-slate-300'
-                    }`}
-                  >
-                    {getInitials(m.fullName)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-slate-800">{m.fullName}</p>
-                    <p className="truncate text-[11px] text-slate-500">{m.email}</p>
-                  </div>
-                  {m.isLeader && <Crown className="size-3.5 shrink-0 text-amber-400" />}
-                  {showMemberActions && (
-                    <button
-                      type="button"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setMemberToRemove({ userId: m.userId, fullName: m.fullName });
-                      }}
-                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                      title="Xóa thành viên"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              onAddMember();
-            }}
-            className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-emerald-300 hover:text-emerald-600"
+          </motion.div>
+        ) : (
+          <motion.div
+            key="expanded"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={CARD_EXPAND_TRANSITION}
+            className="overflow-hidden"
           >
-            <UserPlus className="size-3.5" />
-            Thêm thành viên vào đội
-          </button>
-        </div>
-      )}
+            <div className="border-t border-border bg-muted/20 px-4 pb-4 pt-3">
+              <RemoveMemberConfirmDialog
+                open={memberToRemove != null}
+                memberName={memberToRemove?.fullName ?? ''}
+                submitting={removeMemberMutation.isPending}
+                onConfirm={() => void handleConfirmRemove()}
+                onClose={() => setMemberToRemove(null)}
+              />
+
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Thành viên ({membersLoading ? '…' : members.length})
+                </p>
+                {!membersLoading && members.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setShowMemberActions(prev => !prev);
+                    }}
+                    className={`flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
+                      showMemberActions
+                        ? 'bg-muted text-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                    title="Quản lý thành viên"
+                    aria-pressed={showMemberActions}
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </button>
+                )}
+              </div>
+
+              {membersLoading ? (
+                <div className="space-y-2.5">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="flex animate-pulse items-center gap-2.5">
+                      <div className="size-8 rounded-full bg-muted" />
+                      <div className="space-y-1.5">
+                        <div className="h-2.5 w-28 rounded bg-muted" />
+                        <div className="h-2 w-36 rounded bg-muted" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : members.length === 0 ? (
+                <p className="py-2 text-center text-xs text-slate-500">Chưa có thành viên</p>
+              ) : (
+                <ul className="space-y-2">
+                  {members.map(m => (
+                    <li key={m.userId} className="flex items-center gap-2.5">
+                      <div
+                        className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
+                          m.isLeader ? 'bg-amber-400' : 'bg-slate-300'
+                        }`}
+                      >
+                        {getInitials(m.fullName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-slate-800">{m.fullName}</p>
+                        <p className="truncate text-[11px] text-slate-500">{m.email}</p>
+                      </div>
+                      {m.isLeader && <Crown className="size-3.5 shrink-0 text-amber-400" />}
+                      {showMemberActions && (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setMemberToRemove({ userId: m.userId, fullName: m.fullName });
+                          }}
+                          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                          title="Xóa thành viên"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  onAddMember();
+                }}
+                className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition hover:border-emerald-300 hover:text-emerald-600"
+              >
+                <UserPlus className="size-3.5" />
+                Thêm thành viên vào đội
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -564,7 +588,7 @@ export function BoardView({
                       .filter((_, i) => i % 2 === 0)
                       .map(team => (
                         <TeamCard
-                          key={`${team.id}-${expandedId === team.id ? 'open' : 'closed'}`}
+                          key={team.id}
                           team={team}
                           isExpanded={expandedId === team.id}
                           onToggle={() =>
@@ -585,7 +609,7 @@ export function BoardView({
                       .filter((_, i) => i % 2 !== 0)
                       .map(team => (
                         <TeamCard
-                          key={`${team.id}-${expandedId === team.id ? 'open' : 'closed'}`}
+                          key={team.id}
                           team={team}
                           isExpanded={expandedId === team.id}
                           onToggle={() =>
@@ -674,7 +698,7 @@ export function BoardView({
                       .filter((_, i) => i % 2 === 0)
                       .map(team => (
                         <TeamCard
-                          key={`${team.id}-${expandedId === team.id ? 'open' : 'closed'}`}
+                          key={team.id}
                           team={team}
                           isExpanded={expandedId === team.id}
                           onToggle={() =>
@@ -695,7 +719,7 @@ export function BoardView({
                       .filter((_, i) => i % 2 !== 0)
                       .map(team => (
                         <TeamCard
-                          key={`${team.id}-${expandedId === team.id ? 'open' : 'closed'}`}
+                          key={team.id}
                           team={team}
                           isExpanded={expandedId === team.id}
                           onToggle={() =>
