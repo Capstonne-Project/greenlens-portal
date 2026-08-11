@@ -12,8 +12,10 @@ import {
   getMustChangePasswordFromCookie,
   setMustChangePasswordCookie,
 } from '@/lib/storage/authCookies';
+import { resetQueryClientCache } from '@/lib/query/appQueryClient';
 import type { AuthUser } from '@/lib/store/authStore';
 import { useAuthStore } from '@/lib/store/authStore';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 function sessionToAuthUser(data: AuthSessionEventDetail): AuthUser {
@@ -92,6 +94,7 @@ async function syncAuthAfterHydration(
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { token, logout, setAuth } = useAuthStore();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const persistApi = useAuthStore.persist;
@@ -129,10 +132,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   useEffect(() => {
-    const handleLogout = () => logout();
+    // Sidebar logout + L1 forceLogout both dispatch auth:logout.
+    // Clear the LIVE Provider QueryClient here — module singleton can drift after HMR.
+    const handleLogout = () => {
+      void resetQueryClientCache(queryClient);
+      const s = useAuthStore.getState();
+      if (s.token || s.user || s.isAuthenticated) {
+        logout();
+      }
+    };
     window.addEventListener('auth:logout', handleLogout);
     return () => window.removeEventListener('auth:logout', handleLogout);
-  }, [logout]);
+  }, [logout, queryClient]);
 
   useEffect(() => {
     const handler = (e: Event) => {

@@ -30,7 +30,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    set => ({
+    (set, get) => ({
       token: null,
       user: null,
       isAuthenticated: false,
@@ -50,6 +50,13 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       logout: () => {
+        const { token, user, isAuthenticated } = get();
+        // Idempotent: auth:logout listeners may call logout() again after we dispatch.
+        if (!token && !user && !isAuthenticated) {
+          return;
+        }
+
+        // RQ cache clear happens in AuthProvider via useQueryClient (live Provider instance).
         if (typeof window !== 'undefined') {
           (window as Window & { __authToken?: string }).__authToken = undefined;
           clearLegacyClientAuthCookies();
@@ -61,6 +68,11 @@ export const useAuthStore = create<AuthState>()(
           }
         }
         set({ token: null, user: null, isAuthenticated: false });
+
+        // Notify AuthProvider (RQ clear) + SignalR.
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('auth:logout'));
+        }
       },
     }),
     {
