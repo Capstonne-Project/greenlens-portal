@@ -1,18 +1,6 @@
-import { Suspense } from 'react';
-import { InspectionsPageClient } from '@/components/officer/inspections/InspectionsPageClient';
+import { redirect } from 'next/navigation';
 
-function InspectionsPageFallback() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
-      Đang tải…
-    </div>
-  );
-}
-
+/** Legacy list route — gộp vào hub 「Sau xử lý」 tab Hồ sơ xử phạt. */
 export default function OfficerInspectionsPage() {
-  return (
-    <Suspense fallback={<InspectionsPageFallback />}>
-      <InspectionsPageClient />
-    </Suspense>
-  );
+  redirect('/officer/recurrence?tab=inspections');
 }

@@ -13,6 +13,7 @@ import {
   resolveNotificationHref,
   type NotificationPortal,
 } from '@/utils/notificationUi';
+import { navigateFromNotification } from '@/utils/notificationNavigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,9 +22,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import FilledBellIcon from '@/components/ui/filled-bell-icon';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCheck, MoreHorizontal, Settings2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { NotificationListItem } from './NotificationListItem';
@@ -79,6 +81,9 @@ function NotificationDrawerSkeleton() {
  */
 export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const isDrawerOpen = useNotificationUiStore(s => s.isDrawerOpen);
   const closeDrawer = useNotificationUiStore(s => s.closeDrawer);
   const highlightedNotificationId = useNotificationUiStore(s => s.highlightedNotificationId);
@@ -105,10 +110,7 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
   const unreadCount = data?.unreadCount ?? 0;
   const links = getNotificationDrawerLinks(portal);
   const groupedItems = groupNotificationsByTime(items);
-  const hasNewGroup = groupedItems.some(g => g.group === 'new');
-  /** Facebook: "Xem tất cả" nằm cạnh header Mới; không có Mới → footer. */
-  const showSeeAllInNewHeader = Boolean(links.inboxHref && hasNewGroup);
-  const showSeeAllFooter = Boolean(links.inboxHref && !hasNewGroup);
+  const showSeeAllFooter = Boolean(links.inboxHref);
 
   /** Scroll tới hàng + bỏ highlight sau vài giây (chỉ khi tìm thấy row). */
   useEffect(() => {
@@ -126,11 +128,17 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
     return () => window.clearTimeout(timer);
   }, [isDrawerOpen, highlightedNotificationId, isPending, items.length, clearHighlight]);
 
-  /** Click row → mở đích; mark-read theo id nằm ở ListItem (menu). */
+  /** Click row → mở đích; gắn from + soft-invalidate list (Quay lại refetch bảng, không F5). */
   const handleSelect = (item: NotificationItem) => {
     clearHighlight();
     closeDrawer();
-    router.push(resolveNotificationHref(portal, item));
+    navigateFromNotification({
+      router,
+      queryClient,
+      href: resolveNotificationHref(portal, item),
+      pathname,
+      search: searchParams.toString(),
+    });
   };
 
   /** PUT /v1/notifications/read-all — L4 `useMarkAllNotificationsRead`. */
@@ -288,15 +296,6 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
                   >
                     {NOTIFICATION_TIME_GROUP_LABEL[group]}
                   </h3>
-                  {group === 'new' && showSeeAllInNewHeader && links.inboxHref ? (
-                    <Link
-                      href={links.inboxHref}
-                      onClick={closeDrawer}
-                      className="shrink-0 text-xs font-semibold text-brand hover:underline"
-                    >
-                      Xem tất cả
-                    </Link>
-                  ) : null}
                 </div>
                 <ul>
                   {groupItems.map(item => (

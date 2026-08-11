@@ -5,6 +5,14 @@ import {
   type IdempotencyRequestOptions,
 } from '@/lib/api/idempotency';
 import type {
+  CompanyAssignmentDetailDto,
+  CompanyAssignmentsListDto,
+} from '@/lib/api/dto/companyAssignment.dto';
+import {
+  mapCompanyAssignmentDetailDto,
+  mapCompanyAssignmentsListDto,
+} from '@/lib/api/mappers/companyAssignment.mapper';
+import type {
   AddCompanyTeamMemberInput,
   AssignCompanyTeamInput,
   CompanyAssignmentDetail,
@@ -219,20 +227,30 @@ function buildAssignmentsQuery(params?: CompanyAssignmentsParams): Record<string
 export async function adaptCompanyAssignments(
   params?: CompanyAssignmentsParams
 ): Promise<ApiEnvelope<CompanyAssignmentsList>> {
-  const res = await apiService.get<ApiEnvelope<CompanyAssignmentsList>>(
+  const res = await apiService.get<ApiEnvelope<CompanyAssignmentsListDto>>(
     '/v1/reports/company-assignments',
     buildAssignmentsQuery(params)
   );
-  return res.data;
+  const envelope = res.data;
+  if (!envelope.data) return envelope as ApiEnvelope<CompanyAssignmentsList>;
+  return {
+    ...envelope,
+    data: mapCompanyAssignmentsListDto(envelope.data),
+  };
 }
 
 export async function adaptCompanyAssignmentDetail(
   reportId: string
 ): Promise<ApiEnvelope<CompanyAssignmentDetail>> {
-  const res = await apiService.get<ApiEnvelope<CompanyAssignmentDetail>>(
+  const res = await apiService.get<ApiEnvelope<CompanyAssignmentDetailDto>>(
     `/v1/reports/company-assignments/${reportId}`
   );
-  return res.data;
+  const envelope = res.data;
+  if (!envelope.data) return envelope as ApiEnvelope<CompanyAssignmentDetail>;
+  return {
+    ...envelope,
+    data: mapCompanyAssignmentDetailDto(envelope.data),
+  };
 }
 
 /**

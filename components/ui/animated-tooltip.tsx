@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from 'motion/react';
 
 import { cn } from '@/lib/utils';
@@ -109,7 +110,8 @@ function useTooltipMotion() {
 
 /**
  * Hover tooltip for truncated / overflow text.
- * Uses `fixed` so overflow parents (sidebar) do not clip the bubble.
+ * Bubble portal → `document.body` để `position:fixed` không bị lệch khi ancestor có `transform`
+ * (vd. `-translate-y-1/2` trên badge cluster).
  */
 export type AnimatedHoverTooltipProps = {
   name: string;
@@ -131,6 +133,12 @@ export function AnimatedHoverTooltip({
 }: AnimatedHoverTooltipProps) {
   const [hovered, setHovered] = useState(false);
   const [anchor, setAnchor] = useState({ top: 0, left: 0 });
+  /** Client-only portal target — tránh SSR `document` và không setState trong effect. */
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const triggerRef = useRef<HTMLSpanElement>(null);
   const { rotate, translateX, handleMouseMove } = useTooltipMotion();
 
@@ -142,6 +150,26 @@ export function AnimatedHoverTooltip({
     const rect = el.getBoundingClientRect();
     setAnchor({ top: rect.top - 8, left: rect.left + rect.width / 2 });
   };
+
+  const bubble = mounted
+    ? createPortal(
+        <AnimatePresence>
+          {show ? (
+            <TooltipBubble
+              key="hover-tip"
+              name={name}
+              designation={designation}
+              translateX={translateX}
+              rotate={rotate}
+              wrap={wrap}
+              className="pointer-events-none fixed -translate-y-full"
+              style={{ top: anchor.top, left: anchor.left }}
+            />
+          ) : null}
+        </AnimatePresence>,
+        document.body
+      )
+    : null;
 
   return (
     <span
@@ -159,19 +187,7 @@ export function AnimatedHoverTooltip({
       }}
     >
       {children}
-      <AnimatePresence>
-        {show ? (
-          <TooltipBubble
-            name={name}
-            designation={designation}
-            translateX={translateX}
-            rotate={rotate}
-            wrap={wrap}
-            className="pointer-events-none fixed -translate-y-full"
-            style={{ top: anchor.top, left: anchor.left }}
-          />
-        ) : null}
-      </AnimatePresence>
+      {bubble}
     </span>
   );
 }

@@ -2,6 +2,7 @@ import type {
   AssignOfficeOfficerBodyDto,
   CreateOfficeBodyDto,
   LeoMyReportsDataDto,
+  LeoWardBoundaryDto,
   OfficeDetailDto,
   OfficeDto,
   OfficesListDataDto,
@@ -13,6 +14,7 @@ import type {
 } from '@/lib/api/dto/office.dto';
 import {
   mapLeoMyReportsDataDto,
+  mapLeoWardBoundaryDto,
   mapOfficeDetailDto,
   mapOfficeDto,
   mapOfficeStaffListDataDto,
@@ -24,6 +26,7 @@ import type {
   CreateOfficeInput,
   LeoMyReportsData,
   LeoMyReportsParams,
+  LeoWardBoundary,
   Office,
   OfficeDetail,
   OfficesList,
@@ -115,6 +118,15 @@ export async function adaptFetchLeoMyReports(
     buildLeoMyReportsQuery(params)
   );
   return mapApiEnvelope(res.data, mapLeoMyReportsDataDto);
+}
+
+/**
+ * GET /v1/offices/my/ward-boundary — ranh giới phường LEO đang quản lý, suy từ JWT.
+ * 404 `OFFICE_NOT_FOUND` khi LEO chưa được gán office — caller xử lý qua `extractApiErrorCode`.
+ */
+export async function adaptFetchLeoWardBoundary(): Promise<ApiEnvelope<LeoWardBoundary>> {
+  const res = await apiService.get<ApiEnvelope<LeoWardBoundaryDto>>('/v1/offices/my/ward-boundary');
+  return mapApiEnvelope(res.data, mapLeoWardBoundaryDto);
 }
 
 /** POST /v1/offices/my/staff — tuyển Citizen vào LocalOffice và đội xử lý. */

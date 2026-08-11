@@ -19,7 +19,9 @@ const axiosInstance = axios.create({
   timeout: 15000,
 });
 
-// Request interceptor — resolve base URL per request + Bearer from in-memory token only
+// Request interceptor — resolve base URL per request + Bearer from in-memory token only.
+// Hard-reload rule: call sites must `enabled: useCanFetchProtected()` until token is restored
+// (see hooks/useAuthSession.ts). Cookie alone is not Bearer.
 axiosInstance.interceptors.request.use(config => {
   config.baseURL = getApiBaseUrl();
   if (typeof window !== 'undefined') {
@@ -159,6 +161,7 @@ export {
   createIdempotencyKey,
   createIdempotencyKeyStore,
   executeIdempotentRequest,
+  extractApiErrorCode,
   IDEMPOTENCY_ERROR_CODES,
   IDEMPOTENCY_HEADER,
   mergeIdempotencyConfig,

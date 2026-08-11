@@ -28,7 +28,8 @@ export const OFFICER_ROUTE_ACL: ReadonlyArray<{
   { prefix: '/officer/reopen', roles: ['LEO'] },
   { prefix: '/officer/workforce', roles: ['LEO'] },
   { prefix: '/officer/companies', roles: ['DEO'] },
-  { prefix: '/officer/reports', roles: ['DEO'] },
+  /** Tra cứu báo cáo (Resolved/Closed/Rejected) — LEO + DEO. */
+  { prefix: '/officer/reports', roles: ['DEO', 'LEO'] },
 ];
 
 export function parseOfficerApiRole(role: string | undefined): OfficerApiRole | null {
@@ -56,9 +57,17 @@ export function canAccessCompanies(systemRole: UserRole | string | undefined): b
   return parseOfficerApiRole(systemRole) === 'DEO';
 }
 
-/** Danh sách văn phòng MT (my-offices) — chỉ DEO. */
+/**
+ * Tra cứu báo cáo kết thúc (`/officer/reports`) — LEO + DEO.
+ * @deprecated Tên cũ (DEO-only); giữ alias để không gãy import.
+ */
 export function canAccessDeoReports(systemRole: UserRole | string | undefined): boolean {
-  return parseOfficerApiRole(systemRole) === 'DEO';
+  return canAccessOfficerReports(systemRole);
+}
+
+/** Tra cứu báo cáo (Resolved / Closed / Rejected) — LEO + DEO. */
+export function canAccessOfficerReports(systemRole: UserRole | string | undefined): boolean {
+  return parseOfficerApiRole(systemRole) !== null;
 }
 
 /** Layout phân công DEO — báo cáo + đơn vị VP (không tab đội/thành viên). */

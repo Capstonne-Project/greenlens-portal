@@ -12,6 +12,7 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { TeamDetailDialog } from '@/components/admin/teams/TeamDetailDialog';
+import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -32,10 +33,13 @@ import {
 import { useOfficesList } from '@/hooks/useOffices';
 import { useTeamsList } from '@/hooks/useTeams';
 import {
+  ADMIN_TEAMS_BOARD_COLUMN_PAGE_SIZE,
   ADMIN_TEAMS_OFFICE_PAGE_SIZE,
   ADMIN_TEAMS_PAGE_SIZE,
+  buildAdminTeamsColumnPagination,
   getTeamTypeClasses,
   getTeamTypeLabel,
+  paginateAdminTeamsColumn,
   TEAM_TYPE_OPTIONS,
 } from '@/lib/constants/adminTeams';
 import type { TeamListItem } from '@/lib/api/models/team';
@@ -48,7 +52,6 @@ import {
   Loader2,
   LayoutGrid,
   RadioTower,
-  Search,
   ShieldCheck,
   Table2,
   UsersRound,
@@ -110,6 +113,83 @@ interface TeamSpotlightCardProps {
   onOpen: (id: string) => void;
 }
 
+interface TeamColumnProps {
+  title: string;
+  dotClassName: string;
+  teams: TeamListItem[];
+  totalCount: number;
+  page: number;
+  totalPages: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPageChange: (page: number) => void;
+  onOpen: (id: string) => void;
+  emptyLabel: string;
+}
+
+function TeamColumn({
+  title,
+  dotClassName,
+  teams,
+  totalCount,
+  page,
+  totalPages,
+  hasPrev,
+  hasNext,
+  onPageChange,
+  onOpen,
+  emptyLabel,
+}: TeamColumnProps) {
+  return (
+    <div className="flex min-h-[220px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+        <span className={`size-2.5 shrink-0 rounded-full ${dotClassName}`} aria-hidden />
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">
+          {totalCount}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        {teams.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <UsersRound className="size-8 opacity-30" aria-hidden />
+            <span>{emptyLabel}</span>
+          </div>
+        ) : (
+          teams.map(team => <TeamSpotlightCard key={team.id} team={team} onOpen={onOpen} />)
+        )}
+      </div>
+      {totalPages > 1 ? (
+        <div className={cn(ADMIN_TABLE_PAGINATION_NAV, 'border-t border-border bg-muted/20 px-4')}>
+          <span className="text-xs text-muted-foreground">
+            Trang {page}/{totalPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!hasPrev}
+              onClick={() => onPageChange(page - 1)}
+              className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+            >
+              <ChevronLeft className="size-3.5" />
+              Trước
+            </button>
+            <button
+              type="button"
+              disabled={!hasNext}
+              onClick={() => onPageChange(page + 1)}
+              className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+            >
+              Sau
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TeamSpotlightCard({ team, onOpen }: TeamSpotlightCardProps) {
   return (
     <button
@@ -149,45 +229,14 @@ function TeamSpotlightCard({ team, onOpen }: TeamSpotlightCardProps) {
   );
 }
 
-function TeamSearchControls({
-  searchQ,
-  onApply,
-}: {
-  searchQ: string;
-  onApply: (trimmed: string) => void;
-}) {
-  const [localSearch, setLocalSearch] = useState(searchQ);
-  return (
-    <div className="flex gap-2">
-      <div className="relative min-w-0 flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          id="team-search"
-          type="text"
-          value={localSearch}
-          onChange={e => setLocalSearch(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && onApply(localSearch.trim())}
-          placeholder="Cleanup HCM, văn phòng, loại team…"
-          className="h-10 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/40"
-        />
-      </div>
-      <button
-        type="button"
-        onClick={() => onApply(localSearch.trim())}
-        className="h-10 shrink-0 rounded-lg bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800"
-      >
-        Tìm
-      </button>
-    </div>
-  );
-}
-
 export function AdminTeamsView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const cleanupPage = Math.max(1, Number(searchParams.get('cPage')) || 1);
+  const inspectionPage = Math.max(1, Number(searchParams.get('iPage')) || 1);
   const searchQ = searchParams.get('q') ?? '';
   const officeId = searchParams.get('officeId') ?? '';
   const teamType = searchParams.get('type') ?? 'all';
@@ -240,9 +289,85 @@ export function AdminTeamsView() {
       team =>
         team.name.toLowerCase().includes(q) ||
         (team.officeName?.toLowerCase().includes(q) ?? false) ||
-        team.teamType.toLowerCase().includes(q)
+        team.teamType.toLowerCase().includes(q) ||
+        getTeamTypeLabel(team.teamType).toLowerCase().includes(q)
     );
   }, [data, searchQ]);
+
+  const boardItems = useMemo(() => {
+    if (viewMode !== 'cards' || teamType !== 'all') return null;
+
+    let base = statsQuery.data?.items ?? [];
+    if (officeId) base = base.filter(team => team.localOfficeId === officeId);
+    if (activeFilter === 'active') base = base.filter(team => team.isActive);
+    else if (activeFilter === 'inactive') base = base.filter(team => !team.isActive);
+
+    const q = searchQ.trim().toLowerCase();
+    if (!q) return base;
+
+    return base.filter(
+      team =>
+        team.name.toLowerCase().includes(q) ||
+        (team.officeName?.toLowerCase().includes(q) ?? false) ||
+        team.teamType.toLowerCase().includes(q) ||
+        getTeamTypeLabel(team.teamType).toLowerCase().includes(q)
+    );
+  }, [activeFilter, officeId, searchQ, statsQuery.data?.items, teamType, viewMode]);
+
+  const cleanupBoardItems = useMemo(
+    () => boardItems?.filter(team => team.teamType === 'Cleanup') ?? [],
+    [boardItems]
+  );
+  const inspectionBoardItems = useMemo(
+    () => boardItems?.filter(team => team.teamType === 'Inspection') ?? [],
+    [boardItems]
+  );
+  const otherBoardItems = useMemo(
+    () =>
+      boardItems?.filter(team => team.teamType !== 'Cleanup' && team.teamType !== 'Inspection') ??
+      [],
+    [boardItems]
+  );
+
+  const cleanupPagination = useMemo(
+    () =>
+      buildAdminTeamsColumnPagination(
+        cleanupBoardItems.length,
+        cleanupPage,
+        ADMIN_TEAMS_BOARD_COLUMN_PAGE_SIZE
+      ),
+    [cleanupBoardItems.length, cleanupPage]
+  );
+  const inspectionPagination = useMemo(
+    () =>
+      buildAdminTeamsColumnPagination(
+        inspectionBoardItems.length,
+        inspectionPage,
+        ADMIN_TEAMS_BOARD_COLUMN_PAGE_SIZE
+      ),
+    [inspectionBoardItems.length, inspectionPage]
+  );
+
+  const cleanupPageItems = useMemo(
+    () =>
+      paginateAdminTeamsColumn(
+        cleanupBoardItems,
+        cleanupPagination.page,
+        ADMIN_TEAMS_BOARD_COLUMN_PAGE_SIZE
+      ),
+    [cleanupBoardItems, cleanupPagination.page]
+  );
+  const inspectionPageItems = useMemo(
+    () =>
+      paginateAdminTeamsColumn(
+        inspectionBoardItems,
+        inspectionPagination.page,
+        ADMIN_TEAMS_BOARD_COLUMN_PAGE_SIZE
+      ),
+    [inspectionBoardItems, inspectionPagination.page]
+  );
+
+  const resetBoardPages = { cPage: null, iPage: null };
 
   const statsItems = statsQuery.data?.items ?? [];
   const totalTeams = statsQuery.data?.pagination.totalItems ?? 0;
@@ -265,7 +390,7 @@ export function AdminTeamsView() {
                 Điều phối đội môi trường
               </p>
               <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                Theo dõi đội cleanup, kiểm tra và ứng cứu theo từng văn phòng.
+                Theo dõi đội dọn dẹp và đội thanh tra theo từng văn phòng.
               </p>
             </div>
           </div>
@@ -274,25 +399,25 @@ export function AdminTeamsView() {
             <div className="flex flex-wrap gap-2">
               {[
                 {
-                  label: 'Team',
+                  label: 'Nhóm',
                   value: totalTeams,
                   icon: UsersRound,
                   tone: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200',
                 },
                 {
-                  label: 'Active',
+                  label: 'Đang hoạt động',
                   value: activeTeams,
                   icon: Activity,
                   tone: 'bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
                 },
                 {
-                  label: 'Member',
+                  label: 'Thành viên',
                   value: totalMembers,
                   icon: ShieldCheck,
                   tone: 'bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
                 },
                 {
-                  label: 'Cleanup',
+                  label: 'Dọn dẹp',
                   value: cleanupTeams,
                   icon: Waves,
                   tone: 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
@@ -322,16 +447,13 @@ export function AdminTeamsView() {
         {/* Filters + view toggle — một hàng, không card riêng */}
         <div className="space-y-3 border-b border-border px-4 py-4 sm:px-5">
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_14rem_10rem_auto] lg:items-end">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="team-search" className="text-xs font-medium text-muted-foreground">
-                Tìm team
-              </label>
-              <TeamSearchControls
-                key={searchQ}
-                searchQ={searchQ}
-                onApply={q => setQuery({ q: q || null, page: '1' })}
-              />
-            </div>
+            <AdminSearchField
+              id="team-search"
+              label="Tìm team"
+              value={searchQ}
+              onCommit={q => setQuery({ q: q || null, page: '1', ...resetBoardPages })}
+              placeholder="Tên đội, văn phòng, loại đội…"
+            />
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="team-office" className="text-xs font-medium text-muted-foreground">
@@ -339,7 +461,9 @@ export function AdminTeamsView() {
               </label>
               <Select
                 value={officeId || 'all'}
-                onValueChange={v => setQuery({ officeId: v === 'all' ? null : v, page: '1' })}
+                onValueChange={v =>
+                  setQuery({ officeId: v === 'all' ? null : v, page: '1', ...resetBoardPages })
+                }
               >
                 <SelectTrigger id="team-office" className="h-10 rounded-lg">
                   <SelectValue placeholder="Tất cả văn phòng" />
@@ -361,7 +485,9 @@ export function AdminTeamsView() {
               </label>
               <Select
                 value={teamType || 'all'}
-                onValueChange={v => setQuery({ type: v === 'all' ? null : v, page: '1' })}
+                onValueChange={v =>
+                  setQuery({ type: v === 'all' ? null : v, page: '1', ...resetBoardPages })
+                }
               >
                 <SelectTrigger id="team-type" className="h-10 rounded-lg">
                   <SelectValue placeholder="Tất cả" />
@@ -381,7 +507,7 @@ export function AdminTeamsView() {
               <div className="flex h-10 rounded-lg border border-border bg-background p-1">
                 {(
                   [
-                    ['active', 'Active'],
+                    ['active', 'Đang hoạt động'],
                     ['inactive', 'Tạm dừng'],
                     ['all', 'Tất cả'],
                   ] as const
@@ -390,7 +516,11 @@ export function AdminTeamsView() {
                     key={value}
                     type="button"
                     onClick={() =>
-                      setQuery({ status: value === 'active' ? null : value, page: '1' })
+                      setQuery({
+                        status: value === 'active' ? null : value,
+                        page: '1',
+                        ...resetBoardPages,
+                      })
                     }
                     className={`rounded-md px-2.5 text-xs font-medium ${
                       activeFilter === value
@@ -435,7 +565,7 @@ export function AdminTeamsView() {
         </div>
 
         {/* Content */}
-        {isPending && (
+        {(isPending || (viewMode === 'cards' && teamType === 'all' && statsQuery.isPending)) && (
           <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
             <Loader2 className="size-5 animate-spin" />
             Đang tải team…
@@ -457,50 +587,99 @@ export function AdminTeamsView() {
           </div>
         )}
 
-        {!isPending && !isError && viewMode === 'cards' && (
-          <>
-            {items.length === 0 ? (
-              <div className="px-6 py-16 text-center text-muted-foreground">
-                <UsersRound className="mx-auto mb-2 size-8 opacity-30" />
-                Chưa có team phù hợp bộ lọc.
-              </div>
-            ) : (
-              <div className="grid gap-3 bg-zinc-50/80 p-4 dark:bg-zinc-900/30 sm:grid-cols-2 xl:grid-cols-3">
-                {items.map(team => (
-                  <TeamSpotlightCard key={team.id} team={team} onOpen={setDetailId} />
-                ))}
-              </div>
-            )}
-
-            {pagination && pagination.totalPages > 1 && (
-              <div className={ADMIN_TABLE_PAGINATION_NAV}>
-                <span className="text-xs text-muted-foreground">
-                  Trang {pagination.page}/{pagination.totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={!pagination.hasPrev}
-                    onClick={() => setQuery({ page: String(page - 1) })}
-                    className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
-                  >
-                    <ChevronLeft className="size-3.5" />
-                    Trước
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!pagination.hasNext}
-                    onClick={() => setQuery({ page: String(page + 1) })}
-                    className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
-                  >
-                    Sau
-                    <ChevronRight className="size-3.5" />
-                  </button>
+        {!isPending &&
+          !(viewMode === 'cards' && teamType === 'all' && statsQuery.isPending) &&
+          !isError &&
+          viewMode === 'cards' && (
+            <>
+              {teamType === 'all' ? (
+                <div className="space-y-4 bg-zinc-50/80 p-4 dark:bg-zinc-900/30">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <TeamColumn
+                      title="Đội dọn dẹp"
+                      dotClassName="bg-teal-600"
+                      teams={cleanupPageItems}
+                      totalCount={cleanupBoardItems.length}
+                      page={cleanupPagination.page}
+                      totalPages={cleanupPagination.totalPages}
+                      hasPrev={cleanupPagination.hasPrev}
+                      hasNext={cleanupPagination.hasNext}
+                      onPageChange={p => setQuery({ cPage: p === 1 ? null : String(p) })}
+                      onOpen={setDetailId}
+                      emptyLabel="Chưa có đội dọn dẹp"
+                    />
+                    <TeamColumn
+                      title="Đội thanh tra"
+                      dotClassName="bg-sky-500"
+                      teams={inspectionPageItems}
+                      totalCount={inspectionBoardItems.length}
+                      page={inspectionPagination.page}
+                      totalPages={inspectionPagination.totalPages}
+                      hasPrev={inspectionPagination.hasPrev}
+                      hasNext={inspectionPagination.hasNext}
+                      onPageChange={p => setQuery({ iPage: p === 1 ? null : String(p) })}
+                      onOpen={setDetailId}
+                      emptyLabel="Chưa có đội thanh tra"
+                    />
+                  </div>
+                  {otherBoardItems.length > 0 ? (
+                    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                      <h3 className="mb-3 text-sm font-semibold text-foreground">
+                        Loại đội khác
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          ({otherBoardItems.length})
+                        </span>
+                      </h3>
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {otherBoardItems.map(team => (
+                          <TeamSpotlightCard key={team.id} team={team} onOpen={setDetailId} />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              ) : items.length === 0 ? (
+                <div className="px-6 py-16 text-center text-muted-foreground">
+                  <UsersRound className="mx-auto mb-2 size-8 opacity-30" />
+                  Chưa có đội phù hợp bộ lọc.
+                </div>
+              ) : (
+                <div className="grid gap-3 bg-zinc-50/80 p-4 dark:bg-zinc-900/30 sm:grid-cols-2 xl:grid-cols-3">
+                  {items.map(team => (
+                    <TeamSpotlightCard key={team.id} team={team} onOpen={setDetailId} />
+                  ))}
+                </div>
+              )}
+
+              {teamType !== 'all' && pagination && pagination.totalPages > 1 && (
+                <div className={ADMIN_TABLE_PAGINATION_NAV}>
+                  <span className="text-xs text-muted-foreground">
+                    Trang {pagination.page}/{pagination.totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!pagination.hasPrev}
+                      onClick={() => setQuery({ page: String(page - 1) })}
+                      className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+                    >
+                      <ChevronLeft className="size-3.5" />
+                      Trước
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!pagination.hasNext}
+                      onClick={() => setQuery({ page: String(page + 1) })}
+                      className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+                    >
+                      Sau
+                      <ChevronRight className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
         {!isPending && !isError && viewMode === 'table' && (
           <div className={ADMIN_TABLE_SHELL}>
@@ -513,7 +692,7 @@ export function AdminTeamsView() {
                     <TableHead
                       className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('first', 'head'))}
                     >
-                      Team
+                      Đội
                     </TableHead>
                     <TableHead
                       className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPad('middle', 'head'))}

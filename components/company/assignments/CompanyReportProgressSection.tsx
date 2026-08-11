@@ -41,7 +41,8 @@ export function CompanyReportProgressSection({ reportId }: CompanyReportProgress
     );
   }
 
-  const progressPercent = Math.min(100, Math.max(0, data.summary.overallProgressPercent ?? 0));
+  const assignment = data.assignment;
+  const progressPercent = Math.min(100, Math.max(0, assignment?.progressPercent ?? 0));
 
   return (
     <div className="space-y-4">
@@ -75,10 +76,8 @@ export function CompanyReportProgressSection({ reportId }: CompanyReportProgress
 
       <dl className="grid gap-2 text-xs sm:grid-cols-2">
         <div>
-          <dt className="text-muted-foreground">Đội hoàn thành</dt>
-          <dd className="font-semibold">
-            {data.summary.completedTeams}/{data.summary.totalTeams}
-          </dd>
+          <dt className="text-muted-foreground">Đội phụ trách</dt>
+          <dd className="font-semibold">{assignment?.teamName?.trim() || 'Chưa phân công'}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">SLA</dt>
@@ -89,24 +88,19 @@ export function CompanyReportProgressSection({ reportId }: CompanyReportProgress
         </div>
       </dl>
 
-      {data.assignments.length > 0 ? (
+      {assignment ? (
         <ul className="divide-y divide-emerald-50 rounded-lg border border-emerald-100 dark:divide-border dark:border-border">
-          {data.assignments.map(a => (
-            <li
-              key={a.assignmentId}
-              className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium">{a.teamName}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {formatCompanyDateTime(a.assignedAt)}
-                </p>
-              </div>
-              <span className="shrink-0 text-xs font-bold tabular-nums text-emerald-800">
-                {a.progressPercent}%
-              </span>
-            </li>
-          ))}
+          <li className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+            <div className="min-w-0">
+              <p className="truncate font-medium">{assignment.teamName}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {formatCompanyDateTime(assignment.assignedAt)}
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-bold tabular-nums text-emerald-800">
+              {assignment.progressPercent}%
+            </span>
+          </li>
         </ul>
       ) : (
         <p className="text-sm text-muted-foreground">Chưa có đội được phân công.</p>

@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedInput, ValidatedSearchInput } from '@/components/common/ValidatedField';
 import {
   useAssignOfficeOfficer,
   useChangeUserRole,
@@ -14,6 +15,7 @@ import type { Department } from '@/lib/api/models/department';
 import type { Office } from '@/lib/api/models/office';
 import type { AdminUser } from '@/lib/api/models/adminUser';
 import { normalizeApiRole } from '@/lib/constants/systemRoles';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { roleDisplayVi } from '@/utils/adminUserUi';
 import { Check, ChevronRight, Loader2 } from 'lucide-react';
@@ -21,13 +23,10 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 const STEPS = [
-  { id: 1, title: 'Tạo ủy ban (Sở)', desc: 'Department cấp tỉnh/TP' },
-  { id: 2, title: 'Tạo phòng (Office)', desc: 'Văn phòng cấp phường/xã' },
-  { id: 3, title: 'Gán cán bộ LEO', desc: 'Nâng role & phụ trách phòng' },
+  { id: 1, title: 'Tạo ủy ban (Sở)', desc: 'Đơn vị quản lý cấp tỉnh/thành phố' },
+  { id: 2, title: 'Tạo phòng', desc: 'Văn phòng cấp phường/xã' },
+  { id: 3, title: 'Gán cán bộ phụ trách', desc: 'Phân công cán bộ quản lý phòng' },
 ] as const;
-
-const fieldClass =
-  'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 export function OrganizationOnboardingView() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -175,8 +174,8 @@ export function OrganizationOnboardingView() {
     <div className="w-full min-w-0 space-y-8">
       <div>
         <p className="text-sm text-muted-foreground">
-          Onboard tổ chức: tạo <strong>ủy ban</strong> (Sở TNMT tỉnh) → <strong>phòng</strong> (cấp
-          phường) → gán <strong>LEO</strong> phụ trách.
+          Thiết lập tổ chức: tạo <strong>ủy ban</strong> (Sở TNMT tỉnh) → <strong>phòng</strong>{' '}
+          (cấp phường) → gán <strong>cán bộ phụ trách</strong>.
         </p>
       </div>
 
@@ -216,19 +215,20 @@ export function OrganizationOnboardingView() {
 
       {step === 1 && (
         <section className="rounded-card border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Bước 1 — Tạo ủy ban (Department)</h2>
+          <h2 className="text-lg font-semibold">Bước 1 — Tạo ủy ban</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Mỗi tỉnh/TP chỉ có một department. API: POST /v1/departments
+            Mỗi tỉnh/thành phố chỉ có một ủy ban quản lý.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-sm font-medium">Tên ủy ban / Sở</label>
-              <input
+              <ValidatedInput
                 type="text"
                 value={deptName}
                 onChange={e => setDeptName(e.target.value)}
+                minLength={1}
+                maxLength={200}
                 placeholder="Ủy ban nhân dân TP HCM"
-                className={fieldClass}
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -236,7 +236,7 @@ export function OrganizationOnboardingView() {
               <select
                 value={provinceCode}
                 onChange={e => setProvinceCode(e.target.value)}
-                className={fieldClass}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
                 disabled={provincesPending}
               >
                 <option value="">— Chọn tỉnh/thành —</option>
@@ -265,20 +265,20 @@ export function OrganizationOnboardingView() {
 
       {step === 2 && department && (
         <section className="rounded-card border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Bước 2 — Tạo phòng (Office)</h2>
+          <h2 className="text-lg font-semibold">Bước 2 — Tạo phòng</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ủy ban: <strong>{department.name}</strong> (mã tỉnh {department.provinceCode}). API:
-            POST /v1/offices
+            Ủy ban: <strong>{department.name}</strong> (mã tỉnh {department.provinceCode}).
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-sm font-medium">Tên phòng / Văn phòng MT</label>
-              <input
+              <ValidatedInput
                 type="text"
                 value={officeName}
                 onChange={e => setOfficeName(e.target.value)}
+                minLength={1}
+                maxLength={200}
                 placeholder="UBND phường Bến Thành"
-                className={fieldClass}
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -286,7 +286,7 @@ export function OrganizationOnboardingView() {
               <select
                 value={wardCode}
                 onChange={e => setWardCode(e.target.value)}
-                className={fieldClass}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
                 disabled={wardsPending || !effectiveProvince}
               >
                 <option value="">— Chọn phường/xã —</option>
@@ -323,21 +323,20 @@ export function OrganizationOnboardingView() {
 
       {step === 3 && office && (
         <section className="rounded-card border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Bước 3 — Gán cán bộ LEO</h2>
+          <h2 className="text-lg font-semibold">Bước 3 — Gán cán bộ phụ trách</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Phòng: <strong>{office.name}</strong> · Mã phường {office.wardCode}. Đổi role PUT
-            /v1/admin/users/&#123;id&#125;/role · Gán PUT /v1/offices/&#123;id&#125;/officer
+            Phòng: <strong>{office.name}</strong> · Mã phường {office.wardCode}. Chọn cán bộ và gán
+            phụ trách phòng này.
           </p>
 
           <div className="mt-6 space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Tìm người dùng (email, họ tên)</label>
-              <input
-                type="search"
+              <ValidatedSearchInput
                 value={userSearch}
                 onChange={e => setUserSearch(e.target.value)}
+                maxLength={SEARCH_INPUT_MAX_LENGTH}
                 placeholder="Nhập để tìm..."
-                className={fieldClass}
               />
             </div>
 

@@ -1,6 +1,9 @@
 'use client';
 
+import { NotificationTemplatePreview } from '@/components/admin/notification-templates/NotificationTemplatePreview';
+import { ValidatedInput, ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import type { NotificationTemplateWriteInput } from '@/lib/api/models/notificationTemplate';
 import {
   NOTIFICATION_TEMPLATE_CHANNELS,
@@ -55,11 +58,8 @@ interface Props {
   onRetryDetail?: () => void;
 }
 
-const fieldClass =
-  'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
-const textareaClass =
-  'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
+const selectClass =
+  'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
 
 const emptyDefaults: NotificationTemplateFormValues = {
   templateKey: '',
@@ -86,9 +86,11 @@ export function NotificationTemplateFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<NotificationTemplateFormValues>({
     resolver: zodResolver(formSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: emptyDefaults,
   });
 
@@ -122,6 +124,7 @@ export function NotificationTemplateFormDialog({
 
   const title = mode === 'create' ? 'Tạo mẫu thông báo' : 'Cập nhật mẫu thông báo';
   const showForm = mode === 'create' || (Boolean(initial) && !loadingDetail && !detailError);
+  const isEdit = mode === 'edit';
 
   return (
     <OfficeDialogShell
@@ -129,7 +132,7 @@ export function NotificationTemplateFormDialog({
       title={title}
       titleId="notification-template-form-title"
       onClose={onClose}
-      size="wide"
+      size={isEdit ? 'full' : 'wide'}
     >
       {mode === 'edit' && loadingDetail ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -142,7 +145,7 @@ export function NotificationTemplateFormDialog({
         <div className="space-y-3 py-6 text-center">
           <p className="text-sm text-destructive">{detailError}</p>
           <p className="text-xs text-muted-foreground">
-            API chi tiết có thể đang lỗi phía máy chủ. Thử lại hoặc sửa khi BE ổn định.
+            Không tải được chi tiết. Vui lòng thử lại sau.
           </p>
           {onRetryDetail ? (
             <button
@@ -159,118 +162,153 @@ export function NotificationTemplateFormDialog({
       {showForm ? (
         <form
           onSubmit={handleSubmit(values => onSubmit(values))}
-          className="space-y-4"
+          className="flex min-h-0 flex-col"
           key={mode === 'edit' ? (initial?.templateKey ?? 'edit') : 'create'}
         >
-          {mode === 'edit' ? (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-              Sau khi lưu, hệ thống tự chuyển template về trạng thái nháp (chưa publish).
+          {isEdit ? (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              Sau khi lưu, hệ thống tự chuyển mẫu về trạng thái nháp (chưa xuất bản).
             </p>
-          ) : (
-            <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              Template mới tạo ở trạng thái nháp — cần Publish trước khi hệ thống sử dụng.
-            </p>
-          )}
+          ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label htmlFor="nt-key" className="mb-1.5 block text-sm font-medium">
-                Template key <span className="text-destructive">*</span>
-              </label>
-              <input
-                id="nt-key"
-                className={fieldClass}
-                placeholder="badge_earned_test"
-                disabled={mode === 'edit'}
-                {...register('templateKey')}
-              />
-              {errors.templateKey ? (
-                <p className="mt-1 text-xs text-destructive">{errors.templateKey.message}</p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  snake_case, duy nhất trong hệ thống.
-                </p>
-              )}
+          <div
+            className={
+              isEdit
+                ? 'grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(260px,320px)] xl:items-start'
+                : 'space-y-4'
+            }
+          >
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label htmlFor="nt-key" className="mb-1 block text-sm font-medium">
+                    Mã mẫu <span className="text-destructive">*</span>
+                  </label>
+                  <ValidatedInput
+                    id="nt-key"
+                    placeholder="badge_earned_test"
+                    disabled={isEdit}
+                    {...register('templateKey')}
+                    value={watch('templateKey') ?? ''}
+                    minLength={2}
+                    maxLength={100}
+                    error={errors.templateKey?.message}
+                    hint="snake_case, duy nhất trong hệ thống."
+                    className="h-10"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="nt-channel" className="mb-1 block text-sm font-medium">
+                    Kênh <span className="text-destructive">*</span>
+                  </label>
+                  <select id="nt-channel" className={selectClass} {...register('channel')}>
+                    {NOTIFICATION_TEMPLATE_CHANNELS.map(ch => (
+                      <option key={ch} value={ch}>
+                        {notificationChannelLabel(ch)}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.channel ? (
+                    <p className="mt-1 text-xs text-destructive">{errors.channel.message}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label htmlFor="nt-type" className="mb-1 block text-sm font-medium">
+                    Loại <span className="text-destructive">*</span>
+                  </label>
+                  <select id="nt-type" className={selectClass} {...register('type')}>
+                    {NOTIFICATION_TEMPLATE_TYPES.map(t => (
+                      <option key={t} value={t}>
+                        {notificationTypeLabel(t)}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.type ? (
+                    <p className="mt-1 text-xs text-destructive">{errors.type.message}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div>
+                  <label htmlFor="nt-title-vi" className="mb-1 block text-sm font-medium">
+                    Tiêu đề (VI) <span className="text-destructive">*</span>
+                  </label>
+                  <ValidatedInput
+                    id="nt-title-vi"
+                    {...register('titleVi')}
+                    value={watch('titleVi') ?? ''}
+                    minLength={1}
+                    maxLength={200}
+                    error={errors.titleVi?.message}
+                    className="h-10"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="nt-title-en" className="mb-1 block text-sm font-medium">
+                    Tiêu đề (EN) <span className="text-destructive">*</span>
+                  </label>
+                  <ValidatedInput
+                    id="nt-title-en"
+                    {...register('titleEn')}
+                    value={watch('titleEn') ?? ''}
+                    minLength={1}
+                    maxLength={200}
+                    error={errors.titleEn?.message}
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="nt-body-vi" className="mb-1 block text-sm font-medium">
+                  Nội dung (VI) <span className="text-destructive">*</span>
+                </label>
+                <ValidatedTextarea
+                  id="nt-body-vi"
+                  rows={2}
+                  {...register('bodyVi')}
+                  value={watch('bodyVi') ?? ''}
+                  minLength={1}
+                  maxLength={2000}
+                  showWordCount
+                  error={errors.bodyVi?.message}
+                  hint="Hỗ trợ placeholder dạng {{BadgeName}} hoặc {ten_bien}."
+                />
+              </div>
+
+              <div>
+                <label htmlFor="nt-body-en" className="mb-1 block text-sm font-medium">
+                  Nội dung (EN) <span className="text-destructive">*</span>
+                </label>
+                <ValidatedTextarea
+                  id="nt-body-en"
+                  rows={2}
+                  {...register('bodyEn')}
+                  value={watch('bodyEn') ?? ''}
+                  minLength={1}
+                  maxLength={2000}
+                  showWordCount
+                  error={errors.bodyEn?.message}
+                />
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="nt-channel" className="mb-1.5 block text-sm font-medium">
-                Kênh <span className="text-destructive">*</span>
-              </label>
-              <select id="nt-channel" className={fieldClass} {...register('channel')}>
-                {NOTIFICATION_TEMPLATE_CHANNELS.map(ch => (
-                  <option key={ch} value={ch}>
-                    {notificationChannelLabel(ch)}
-                  </option>
-                ))}
-              </select>
-              {errors.channel ? (
-                <p className="mt-1 text-xs text-destructive">{errors.channel.message}</p>
-              ) : null}
-            </div>
-
-            <div>
-              <label htmlFor="nt-type" className="mb-1.5 block text-sm font-medium">
-                Loại <span className="text-destructive">*</span>
-              </label>
-              <select id="nt-type" className={fieldClass} {...register('type')}>
-                {NOTIFICATION_TEMPLATE_TYPES.map(t => (
-                  <option key={t} value={t}>
-                    {notificationTypeLabel(t)}
-                  </option>
-                ))}
-              </select>
-              {errors.type ? (
-                <p className="mt-1 text-xs text-destructive">{errors.type.message}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="nt-title-vi" className="mb-1.5 block text-sm font-medium">
-              Tiêu đề (VI) <span className="text-destructive">*</span>
-            </label>
-            <input id="nt-title-vi" className={fieldClass} {...register('titleVi')} />
-            {errors.titleVi ? (
-              <p className="mt-1 text-xs text-destructive">{errors.titleVi.message}</p>
+            {isEdit ? (
+              <div className="xl:sticky xl:top-0">
+                <NotificationTemplatePreview
+                  channel={watch('channel') ?? 'Both'}
+                  title={watch('titleVi') ?? ''}
+                  body={watch('bodyVi') ?? ''}
+                />
+              </div>
             ) : null}
           </div>
 
-          <div>
-            <label htmlFor="nt-body-vi" className="mb-1.5 block text-sm font-medium">
-              Nội dung (VI) <span className="text-destructive">*</span>
-            </label>
-            <textarea id="nt-body-vi" rows={3} className={textareaClass} {...register('bodyVi')} />
-            {errors.bodyVi ? (
-              <p className="mt-1 text-xs text-destructive">{errors.bodyVi.message}</p>
-            ) : (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Hỗ trợ placeholder dạng {'{{BadgeName}}'}.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="nt-title-en" className="mb-1.5 block text-sm font-medium">
-              Tiêu đề (EN) <span className="text-destructive">*</span>
-            </label>
-            <input id="nt-title-en" className={fieldClass} {...register('titleEn')} />
-            {errors.titleEn ? (
-              <p className="mt-1 text-xs text-destructive">{errors.titleEn.message}</p>
-            ) : null}
-          </div>
-
-          <div>
-            <label htmlFor="nt-body-en" className="mb-1.5 block text-sm font-medium">
-              Nội dung (EN) <span className="text-destructive">*</span>
-            </label>
-            <textarea id="nt-body-en" rows={3} className={textareaClass} {...register('bodyEn')} />
-            {errors.bodyEn ? (
-              <p className="mt-1 text-xs text-destructive">{errors.bodyEn.message}</p>
-            ) : null}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
+          <footer className="sticky bottom-0 z-10 mt-4 flex justify-end gap-2 border-t border-border bg-card/95 pt-4 backdrop-blur-sm">
             <button
               type="button"
               onClick={onClose}
@@ -286,7 +324,7 @@ export function NotificationTemplateFormDialog({
               {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
               {mode === 'create' ? 'Tạo nháp' : 'Lưu'}
             </button>
-          </div>
+          </footer>
         </form>
       ) : null}
     </OfficeDialogShell>

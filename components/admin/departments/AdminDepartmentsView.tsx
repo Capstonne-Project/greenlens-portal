@@ -139,13 +139,12 @@ export function AdminDepartmentsView() {
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 sm:shrink-0">
+                <div className="flex w-full items-end gap-2 sm:w-auto sm:shrink-0">
                   <DepartmentLiveSearch
-                    key={searchQ}
                     value={searchQ}
                     onChange={handleSearchChange}
                     resultCount={searchQ.trim() ? items.length : undefined}
-                    className="w-full min-w-[180px] sm:w-52"
+                    className="min-w-0 flex-1 sm:w-64 sm:flex-none"
                   />
                   <button
                     type="button"

@@ -125,12 +125,14 @@ export type {
 } from '@/lib/api/dto/report.dto';
 export type {
   ReportProgress,
+  ReportProgressAssignedCompany,
   ReportProgressAssignment,
   ReportProgressImage,
   ReportProgressMedia,
+  ReportProgressMember,
   ReportProgressSla,
   ReportProgressStatusHistory,
-  ReportProgressSummary,
+  ReportProgressUpdate,
 } from '@/lib/api/models/reportProgress';
 export type {
   AssignReportInput,

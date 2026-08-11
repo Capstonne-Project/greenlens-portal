@@ -37,7 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
 import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
 import {
@@ -51,22 +50,34 @@ import {
   useReportQueue,
   useVerifyReport,
 } from '@/hooks/useOfficer';
+import { useCanFetchProtected } from '@/hooks/useAuthSession';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
+import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
-import type { ReportDetail, ReportSeverity, ReportStatus } from '@/lib/api/models/report';
+import type {
+  ReportDetail,
+  ReportSeverity,
+  ReportStatus,
+  ReportWasteTag,
+} from '@/lib/api/models/report';
+import type { VerifyReportInput } from '@/lib/api/models/reportAction';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
+import { getWasteTagFaIcon } from '@/lib/constants/adminWasteTags';
+import { pollutionCategoryLabelVi } from '@/lib/constants/pollutionCategories';
 import { normalizeReportQueueStatus, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { withOfficerFromQuery } from '@/utils/officerNavigation';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   AlertTriangle,
   AlignLeft,
   ArrowLeft,
   Calendar,
   Camera,
-  Check,
   CheckCircle2,
+  ClipboardList,
   Copy,
   History,
   Hourglass,
@@ -84,15 +95,8 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-
-const SEVERITY_SET_BY_LABEL: Record<string, string> = {
-  User: 'Người dùng',
-  AI: 'Hệ thống AI',
-  Officer: 'Cán bộ',
-};
-
-/** Nhãn status — dùng chung REPORT_STATUS_LABEL_VI (đồng bộ bảng Verify / Assign / Leo). */
 
 const SEVERITY_TEXT_CLASSES: Record<ReportSeverity, string> = {
   Low: 'text-slate-600',
@@ -129,6 +133,295 @@ function StatusBadge({ status }: { status: ReportStatus }) {
     <span className={cn('text-base font-semibold', STATUS_TEXT_CLASSES[status])}>
       {reportStatusLabelVi(status)}
     </span>
+  );
+}
+
+/** Giữ xuống dòng từ response; dài hơn 6 dòng → Xem thêm / Thu gọn (animate height nhẹ). */
+function ExpandableDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [collapsedH, setCollapsedH] = useState(0);
+  const [fullH, setFullH] = useState(0);
+  const contentRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const full = el.scrollHeight;
+      const style = getComputedStyle(el);
+      const parsedLh = Number.parseFloat(style.lineHeight);
+      const lineHeight =
+        Number.isFinite(parsedLh) && parsedLh > 0
+          ? parsedLh
+          : Number.parseFloat(style.fontSize) * 1.625;
+      const collapsed = Math.round(lineHeight * 6);
+      setFullH(full);
+      setCollapsedH(Math.min(collapsed, full));
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text]);
+
+  const needsToggle = fullH > collapsedH + 1;
+  const targetHeight = !needsToggle || expanded ? fullH : collapsedH;
+
+  return (
+    <div className="min-w-0">
+      <div className="relative">
+        <motion.div
+          initial={false}
+          animate={{ height: targetHeight > 0 ? targetHeight : 'auto' }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="overflow-hidden"
+        >
+          <p
+            ref={contentRef}
+            className="text-base leading-relaxed whitespace-pre-wrap wrap-break-word text-foreground"
+          >
+            {text}
+          </p>
+        </motion.div>
+
+        <AnimatePresence initial={false}>
+          {!expanded && needsToggle ? (
+            <motion.div
+              key="fade"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-background to-transparent"
+              aria-hidden
+            />
+          ) : null}
+        </AnimatePresence>
+      </div>
+
+      {needsToggle ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(v => !v)}
+          aria-expanded={expanded}
+          className="mt-1.5 text-sm font-semibold text-brand transition-colors hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={expanded ? 'collapse' : 'expand'}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="inline-block"
+            >
+              {expanded ? 'Thu gọn' : 'Xem thêm'}
+            </motion.span>
+          </AnimatePresence>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+const INFO_ICON_CLASS =
+  'flex size-7 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40';
+
+/** Icon section title — stroke xanh, căn giữa theo dòng tiêu đề. */
+const SECTION_ICON_CLASS = 'size-5 shrink-0 text-emerald-600';
+
+/** Horizontal inset — HeaderStrip, Gallery, content cột phải/trái đồng bộ. */
+const DETAIL_PAGE_X_PAD = 'px-14 xl:px-24';
+
+function InfoField({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof TrendingUp;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2.5">
+      {/* Icon chỉ căn giữa với label, không với cả khối value */}
+      <span className={cn(INFO_ICON_CLASS, 'col-start-1 row-start-1 self-center')}>
+        <Icon className="size-4 text-muted-foreground" aria-hidden />
+      </span>
+      <Label className="col-start-2 row-start-1 self-center font-normal leading-none text-muted-foreground">
+        {label}
+      </Label>
+      <div className="col-start-2 row-start-2 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+/** Parse AI waste-tag codes → nameVi (catalog + attached tags; fallback code). */
+function resolveAiWasteTagNames(
+  raw: string | null | undefined,
+  attached: ReportWasteTag[],
+  catalog: Array<{ code: string; nameVi: string }>
+): string[] {
+  if (!raw?.trim()) return [];
+  const byCode = new Map<string, string>();
+  for (const tag of catalog) {
+    const name = tag.nameVi.trim();
+    if (tag.code && name) byCode.set(tag.code.toUpperCase(), name);
+  }
+  for (const tag of attached) {
+    const name = tag.nameVi.trim();
+    if (tag.code && name) byCode.set(tag.code.toUpperCase(), name);
+  }
+  return raw
+    .split(/[,;|]/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(code => byCode.get(code.toUpperCase()) || code);
+}
+
+const REPORT_WASTE_TAG_MIN = 1;
+const REPORT_WASTE_TAG_MAX = 12;
+
+const WASTE_TAG_SELECTED_CLASS =
+  'cursor-pointer border-transparent bg-emerald-600 text-white hover:bg-emerald-500';
+const WASTE_TAG_IDLE_CLASS =
+  'cursor-pointer border-transparent bg-secondary text-secondary-foreground hover:bg-emerald-50 hover:text-emerald-800';
+/** Padding trong badge — khoảng cách chữ/icon so với viền. */
+const WASTE_TAG_BADGE_PAD = 'px-3.5 py-1.5';
+
+function sameWasteTagIds(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const left = [...a].sort();
+  const right = [...b].sort();
+  return left.every((id, i) => id === right[i]);
+}
+
+/** Local toggle — wasteTagIds gửi kèm PUT /verify. */
+function WasteTagPicker({
+  attachedTags,
+  selectedIds,
+  onSelectedIdsChange,
+  canEdit,
+}: {
+  attachedTags: ReportWasteTag[];
+  selectedIds: string[];
+  onSelectedIdsChange: (ids: string[]) => void;
+  canEdit: boolean;
+}) {
+  const { data: catalog = [], isPending: catalogLoading } = useCatalogWasteTags(canEdit);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const displayTags = useMemo(() => {
+    const sortByNameLengthDesc = <T extends { nameVi: string }>(items: T[]): T[] =>
+      [...items].sort((a, b) => {
+        const byLen = b.nameVi.length - a.nameVi.length;
+        if (byLen !== 0) return byLen;
+        return a.nameVi.localeCompare(b.nameVi, 'vi');
+      });
+
+    if (!canEdit) {
+      return sortByNameLengthDesc(
+        attachedTags.map(t => ({
+          id: t.tagId,
+          code: t.code,
+          nameVi: t.nameVi.trim(),
+        }))
+      );
+    }
+
+    const byId = new Map<string, { id: string; code: string; nameVi: string }>();
+    for (const tag of catalog) {
+      const name = tag.nameVi.trim();
+      if (tag.id && name) byId.set(tag.id, { id: tag.id, code: tag.code, nameVi: name });
+    }
+    for (const tag of attachedTags) {
+      if (!byId.has(tag.tagId)) {
+        const name = tag.nameVi.trim();
+        if (tag.tagId && name) {
+          byId.set(tag.tagId, { id: tag.tagId, code: tag.code, nameVi: name });
+        }
+      }
+    }
+    return sortByNameLengthDesc(Array.from(byId.values()));
+  }, [canEdit, catalog, attachedTags]);
+
+  const handleToggle = (tagId: string) => {
+    if (!canEdit) return;
+    const isSelected = selectedSet.has(tagId);
+    if (isSelected) {
+      if (selectedIds.length <= REPORT_WASTE_TAG_MIN) {
+        toastApiError(undefined, `Cần giữ ít nhất ${REPORT_WASTE_TAG_MIN} thẻ rác thải.`);
+        return;
+      }
+      onSelectedIdsChange(selectedIds.filter(id => id !== tagId));
+      return;
+    }
+    if (selectedIds.length >= REPORT_WASTE_TAG_MAX) {
+      toastApiError(undefined, `Tối đa ${REPORT_WASTE_TAG_MAX} thẻ rác thải.`);
+      return;
+    }
+    onSelectedIdsChange([...selectedIds, tagId]);
+  };
+
+  if (canEdit && catalogLoading) {
+    return <p className="text-sm text-muted-foreground">Đang tải thẻ rác thải...</p>;
+  }
+
+  if (displayTags.length === 0) {
+    return <p className="text-base font-medium text-muted-foreground">Chưa gắn thẻ</p>;
+  }
+
+  return (
+    <div
+      className="flex w-full min-w-0 flex-wrap gap-2"
+      role={canEdit ? 'group' : undefined}
+      aria-label={canEdit ? 'Chọn thẻ rác thải' : undefined}
+    >
+      {displayTags.map(tag => {
+        const selected = canEdit ? selectedSet.has(tag.id) : true;
+        const icon = getWasteTagFaIcon(tag.code, tag.nameVi);
+        if (!canEdit) {
+          return (
+            <Badge
+              key={tag.id}
+              className={cn(
+                'inline-flex items-center gap-1.5 border-transparent bg-emerald-600 font-medium text-white',
+                WASTE_TAG_BADGE_PAD
+              )}
+            >
+              <FontAwesomeIcon icon={icon} className="size-3 opacity-95" aria-hidden />
+              {tag.nameVi}
+            </Badge>
+          );
+        }
+        return (
+          <button
+            key={tag.id}
+            type="button"
+            onClick={() => handleToggle(tag.id)}
+            aria-pressed={selected}
+            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+          >
+            <Badge
+              className={cn(
+                'inline-flex items-center gap-1.5 font-medium transition-colors',
+                WASTE_TAG_BADGE_PAD,
+                selected ? WASTE_TAG_SELECTED_CLASS : WASTE_TAG_IDLE_CLASS
+              )}
+            >
+              <FontAwesomeIcon
+                icon={icon}
+                className={cn('size-3', selected ? 'opacity-95' : 'opacity-80')}
+                aria-hidden
+              />
+              {tag.nameVi}
+            </Badge>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -282,40 +575,45 @@ function HeaderStrip({
   return (
     <CardTitle className="flex min-w-0 items-start justify-between gap-3 text-2xl font-bold tracking-tight">
       <span className="min-w-0 flex-1">
-        <span>Khu vực {pendingCategoryName} tại </span>
-        <span className="relative inline-block pr-6">
-          {detail.address}
+        Báo cáo{' '}
+        <span className="relative inline-block align-baseline pr-6">
+          {pendingCategoryName}
           {isPossibleDuplicate ? (
-            <span className="absolute -right-0.5 -top-3">
-              <AnimatedHoverTooltip name="Nghi ngờ trùng lặp">
-                <span
-                  className={cn(
-                    'inline-flex size-5 shrink-0 items-center justify-center',
-                    'rounded-full bg-amber-500 text-white shadow-sm',
-                    'ring-2 ring-white'
-                  )}
-                  aria-label="Nghi ngờ trùng lặp"
-                >
-                  <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
-                </span>
-              </AnimatedHoverTooltip>
-            </span>
+            <AnimatedHoverTooltip
+              name="Nghi ngờ trùng lặp"
+              className="absolute -right-1 -top-2.5 z-10 max-w-none"
+            >
+              <span
+                className={cn(
+                  'inline-flex size-5 shrink-0 items-center justify-center',
+                  'rounded-full bg-amber-500 text-white shadow-sm',
+                  'ring-2 ring-white'
+                )}
+                aria-label="Nghi ngờ trùng lặp"
+              >
+                <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+              </span>
+            </AnimatedHoverTooltip>
           ) : null}
           {isSuspectedViolationRecurrence ? (
-            <span className={cn('absolute -top-3', isPossibleDuplicate ? 'right-5' : '-right-0.5')}>
-              <AnimatedHoverTooltip name="Nghi ô nhiễm tái diễn">
-                <span
-                  className={cn(
-                    'inline-flex size-5 shrink-0 items-center justify-center',
-                    'rounded-full bg-orange-500 text-white shadow-sm',
-                    'ring-2 ring-white'
-                  )}
-                  aria-label="Nghi ô nhiễm tái diễn"
-                >
-                  <History className="size-2.5" aria-hidden strokeWidth={2.75} />
-                </span>
-              </AnimatedHoverTooltip>
-            </span>
+            <AnimatedHoverTooltip
+              name="Nghi ô nhiễm tái diễn"
+              className={cn(
+                'absolute z-10 max-w-none',
+                isPossibleDuplicate ? 'right-4 -top-2.5' : '-right-1 -top-2.5'
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-flex size-5 shrink-0 items-center justify-center',
+                  'rounded-full bg-orange-500 text-white shadow-sm',
+                  'ring-2 ring-white'
+                )}
+                aria-label="Nghi ô nhiễm tái diễn"
+              >
+                <History className="size-2.5" aria-hidden strokeWidth={2.75} />
+              </span>
+            </AnimatedHoverTooltip>
           ) : null}
         </span>
       </span>
@@ -330,10 +628,14 @@ function Gallery({
   media,
   address,
   createdAt,
+  isSuspicious = false,
+  suspiciousReasons = [],
 }: {
   media: ReportDetail['media'];
   address: string;
   createdAt: string;
+  isSuspicious?: boolean;
+  suspiciousReasons?: string[];
 }) {
   const [showAll, setShowAll] = useState(false);
 
@@ -345,6 +647,11 @@ function Gallery({
   );
   const total = images.length;
   const hasMore = total > GALLERY_PREVIEW_MAX;
+  const suspiciousLabel = suspiciousReasons
+    .map(r => r.trim())
+    .filter(Boolean)
+    .join(', ');
+  const showSuspiciousBadge = isSuspicious && Boolean(suspiciousLabel);
 
   const cards = useMemo((): LayoutGridCard[] => {
     const preview = images.slice(0, GALLERY_PREVIEW_MAX);
@@ -385,29 +692,42 @@ function Gallery({
     });
   }, [images, total, hasMore, totalSizeBytes, createdAt]);
 
+  const suspiciousBadge = showSuspiciousBadge ? (
+    <span
+      className={cn(
+        'pointer-events-none absolute right-3 top-3 z-30 max-w-[min(100%-1.5rem,20rem)]',
+        'truncate rounded-md bg-rose-600 px-2.5 py-1 text-[11px] font-semibold text-white',
+        'shadow-sm ring-1 ring-white/25'
+      )}
+      title={suspiciousLabel}
+    >
+      {suspiciousLabel}
+    </span>
+  ) : null;
+
   if (total === 0) {
     return (
-      <div>
-        <Card className="flex h-64 items-center justify-center border-dashed shadow-none">
-          <CardContent className="space-y-2 p-0 text-center text-sm text-muted-foreground">
-            <p>Không có hình ảnh</p>
-            <div className="inline-flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium">
-              <span className="rounded-full bg-muted px-2 py-1 text-foreground">
-                {formatBytes(totalSizeBytes)}
-              </span>
-              <span className="rounded-full bg-muted px-2 py-1 text-foreground">
-                {formatDateTime(createdAt)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="relative flex h-64 items-center justify-center overflow-hidden border-dashed shadow-none">
+        {suspiciousBadge}
+        <CardContent className="space-y-2 p-0 text-center text-sm text-muted-foreground">
+          <p>Không có hình ảnh</p>
+          <div className="inline-flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium">
+            <span className="rounded-full bg-muted px-2 py-1 text-foreground">
+              {formatBytes(totalSizeBytes)}
+            </span>
+            <span className="rounded-full bg-muted px-2 py-1 text-foreground">
+              {formatDateTime(createdAt)}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <>
-      <div className="h-[min(62vh,520px)] w-full overflow-hidden rounded-xl bg-white">
+      <div className="relative h-[min(62vh,520px)] w-full overflow-hidden rounded-xl bg-white">
+        {suspiciousBadge}
         <LayoutGrid cards={cards} variant="hero5" className="h-full gap-1 p-0" />
       </div>
 
@@ -461,6 +781,8 @@ function LocationCard({
   pendingCategoryId,
   setPendingCategoryId,
   setPendingSeverity,
+  pendingWasteTagIds,
+  setPendingWasteTagIds,
   categories,
   catsLoading,
 }: {
@@ -470,213 +792,139 @@ function LocationCard({
   pendingCategoryId: string;
   setPendingCategoryId: (id: string) => void;
   setPendingSeverity: (s: ReportSeverity) => void;
+  pendingWasteTagIds: string[];
+  setPendingWasteTagIds: (ids: string[]) => void;
   categories: { id: string; nameVi: string }[];
   catsLoading: boolean;
 }) {
   const [mapType, setMapType] = useState<'m' | 'k'>('m');
-  const [editingCategoryField, setEditingCategoryField] = useState(false);
-  const [editingSeverityField, setEditingSeverityField] = useState(false);
   const canEditFields = detail.status === 'Submitted';
   const mapsUrl = `https://www.google.com/maps?q=${detail.latitude},${detail.longitude}`;
 
-  const readOnlyItems: Array<{
-    icon: typeof TrendingUp;
-    label: string;
-    value: ReactNode;
-  }> = [
-    { icon: TrendingUp, label: 'Điểm ưu tiên', value: detail.priorityScore.toFixed(2) },
-    { icon: Users, label: 'Lượt báo cáo', value: `${detail.reporterCount} người` },
-    {
-      icon: RefreshCw,
-      label: 'Trạng thái',
-      value: <StatusBadge status={detail.status} />,
-    },
-    {
-      icon: RefreshCw,
-      label: 'Đã mở lại',
-      value: detail.reopenedCount > 0 ? `${detail.reopenedCount} lần` : 'Không',
-    },
-  ];
-  const wasteTagNames = detail.wasteTags.map(tag => tag.nameVi.trim()).filter(Boolean);
-
-  // Inline-edit Select trigger: underline only, no border-box, matches read-only display size.
+  // Always-visible editable Select: underline cue so officer sees the field is editable.
   const editSelectTriggerClass =
     'h-auto w-full rounded-none border-x-0 border-t-0 border-b border-foreground/40 bg-transparent px-0 py-1 text-lg font-medium text-foreground shadow-none focus:border-emerald-500 focus:ring-0 data-[state=open]:border-emerald-500';
-
-  const infoIconClass =
-    'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40';
 
   return (
     <div>
       <Card className="rounded-none border-0 border-t border-border bg-transparent shadow-none">
-        <CardHeader className="space-y-0 p-0 pt-6">
-          <CardTitle className="text-xl">Thông tin báo cáo ô nhiễm</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 pt-5 pb-6">
-          <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-            <div className="flex items-start gap-3">
-              <span className={infoIconClass}>
-                <Tag className="size-4 text-muted-foreground" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <Label className="font-normal text-muted-foreground">Loại ô nhiễm</Label>
-                {canEditFields && editingCategoryField ? (
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={pendingCategoryId}
-                      onValueChange={setPendingCategoryId}
-                      disabled={catsLoading}
-                    >
-                      <SelectTrigger className={editSelectTriggerClass}>
-                        <SelectValue placeholder={catsLoading ? 'Đang tải...' : 'Chọn loại'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id} className="text-base">
-                            {cat.nameVi}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="size-8 shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                      onClick={() => setEditingCategoryField(false)}
-                      aria-label="Xác nhận loại ô nhiễm"
-                    >
-                      <Check className="size-4" aria-hidden />
-                    </Button>
-                  </div>
-                ) : canEditFields ? (
-                  <p
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setEditingCategoryField(true)}
-                    onKeyDown={event => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setEditingCategoryField(true);
-                      }
-                    }}
-                    className="cursor-pointer text-lg font-medium text-foreground transition hover:text-emerald-700"
-                  >
-                    {pendingCategoryName}
-                  </p>
-                ) : (
-                  <p className="text-lg font-medium text-foreground">{pendingCategoryName}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <span className={infoIconClass}>
-                <AlertTriangle className="size-4 text-muted-foreground" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <Label className="font-normal text-muted-foreground">Mức độ</Label>
-                {canEditFields && editingSeverityField ? (
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <Select
-                      value={pendingSeverity}
-                      onValueChange={v => setPendingSeverity(v as ReportSeverity)}
-                    >
-                      <SelectTrigger className={editSelectTriggerClass}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(['Critical', 'High', 'Medium', 'Low'] as ReportSeverity[]).map(s => (
-                          <SelectItem key={s} value={s} className="text-base">
-                            {REPORT_SEVERITY_LABEL_VI[s]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="size-8 shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                      onClick={() => setEditingSeverityField(false)}
-                      aria-label="Xác nhận mức độ"
-                    >
-                      <Check className="size-4" aria-hidden />
-                    </Button>
-                  </div>
-                ) : canEditFields ? (
-                  <div className="mt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setEditingSeverityField(true)}
-                      className="inline-flex cursor-pointer rounded-sm transition hover:opacity-80"
-                      aria-label="Chỉnh mức độ"
-                    >
-                      <SeverityBadge severity={pendingSeverity} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-0.5">
-                    <SeverityBadge severity={pendingSeverity} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {readOnlyItems.map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-start gap-3">
-                <span className={infoIconClass}>
-                  <Icon className="size-4 text-muted-foreground" />
-                </span>
-                <div>
-                  <Label className="font-normal text-muted-foreground">{label}</Label>
-                  <div className="mt-0.5 text-lg font-medium text-foreground">{value}</div>
-                </div>
-              </div>
-            ))}
-
-            <div className="flex items-start gap-3 sm:col-span-2">
-              <span className={infoIconClass}>
-                <Tag className="size-4 text-muted-foreground" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <Label className="font-normal text-muted-foreground">Thẻ rác thải</Label>
-                {wasteTagNames.length > 0 ? (
-                  <div className="mt-1.5 flex flex-wrap gap-2">
-                    {wasteTagNames.map(name => (
-                      <Badge key={name} variant="secondary" className="font-medium">
-                        {name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-0.5 text-base font-medium text-muted-foreground">Chưa gắn thẻ</p>
-                )}
-              </div>
-            </div>
+        <CardHeader className="space-y-0 p-0 pt-10">
+          <div className="flex gap-2.5">
+            <span className="inline-flex h-7 shrink-0 items-center" aria-hidden>
+              <ClipboardList className={SECTION_ICON_CLASS} />
+            </span>
+            <CardTitle className="text-xl leading-7">Thông tin báo cáo ô nhiễm</CardTitle>
           </div>
+        </CardHeader>
+        <CardContent className="p-0 pt-7 pb-6">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+            {/* Hàng 1: Loại | Trạng thái — DOM order giữ responsive stack 1 cột */}
+            <InfoField icon={Tag} label="Loại ô nhiễm">
+              {canEditFields ? (
+                <Select
+                  value={pendingCategoryId}
+                  onValueChange={setPendingCategoryId}
+                  disabled={catsLoading}
+                >
+                  <SelectTrigger className={editSelectTriggerClass}>
+                    <SelectValue placeholder={catsLoading ? 'Đang tải...' : 'Chọn loại'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id} className="text-base">
+                        {cat.nameVi}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-lg font-medium text-foreground">{pendingCategoryName}</p>
+              )}
+            </InfoField>
 
-          {detail.description ? (
-            <>
-              <Separator className="my-4" />
-              <div className="flex items-start gap-3">
-                <span className={infoIconClass}>
-                  <AlignLeft className="size-4 text-muted-foreground" />
-                </span>
-                <div>
-                  <Label className="font-normal text-muted-foreground">Mô tả</Label>
-                  <p className="text-base leading-relaxed text-foreground">{detail.description}</p>
-                </div>
+            <InfoField icon={Shield} label="Trạng thái">
+              <div className="text-lg font-medium text-foreground">
+                <StatusBadge status={detail.status} />
               </div>
-            </>
-          ) : null}
+            </InfoField>
+
+            {/* Hàng 2: Mức độ | Lượt báo cáo */}
+            <InfoField icon={AlertTriangle} label="Mức độ">
+              {canEditFields ? (
+                <Select
+                  value={pendingSeverity}
+                  onValueChange={v => setPendingSeverity(v as ReportSeverity)}
+                >
+                  <SelectTrigger className={editSelectTriggerClass}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(['Critical', 'High', 'Medium', 'Low'] as ReportSeverity[]).map(s => (
+                      <SelectItem key={s} value={s} className="text-base">
+                        {REPORT_SEVERITY_LABEL_VI[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <SeverityBadge severity={pendingSeverity} />
+              )}
+            </InfoField>
+
+            <InfoField icon={Users} label="Lượt báo cáo">
+              <div className="text-lg font-medium text-foreground">
+                {detail.reporterCount} người
+              </div>
+            </InfoField>
+
+            {/* Hàng 3: Thẻ rác thải full width */}
+            <div className="min-w-0 sm:col-span-2">
+              <InfoField icon={Tag} label="Thẻ rác thải">
+                <WasteTagPicker
+                  attachedTags={detail.wasteTags}
+                  selectedIds={pendingWasteTagIds}
+                  onSelectedIdsChange={setPendingWasteTagIds}
+                  canEdit={canEditFields}
+                />
+              </InfoField>
+            </div>
+
+            {/* Hàng 4: Điểm ưu tiên | Đã mở lại */}
+            <InfoField icon={TrendingUp} label="Điểm ưu tiên">
+              <div className="text-lg font-medium text-foreground">
+                {detail.priorityScore.toFixed(2)}
+              </div>
+            </InfoField>
+
+            <InfoField icon={RefreshCw} label="Đã mở lại">
+              <div className="text-lg font-medium text-foreground">
+                {detail.reopenedCount > 0 ? `${detail.reopenedCount} lần` : 'Không'}
+              </div>
+            </InfoField>
+
+            {/* Hàng 5: Mô tả — cùng gap-y-6 với Điểm ưu tiên (không Separator my-4) */}
+            {detail.description ? (
+              <div className="min-w-0 sm:col-span-2">
+                <InfoField icon={AlignLeft} label="Mô tả">
+                  <ExpandableDescription key={detail.description} text={detail.description} />
+                </InfoField>
+              </div>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 
       <Card className="rounded-none border-0 border-t border-border bg-transparent shadow-none">
-        <CardHeader className="space-y-0 p-0 pt-6">
-          <CardTitle className="text-xl">Nơi {pendingCategoryName}</CardTitle>
-          <CardDescription className="text-base">{detail.address}</CardDescription>
+        <CardHeader className="space-y-0 p-0 pt-10">
+          <div className="flex gap-2.5">
+            <span className="inline-flex h-7 shrink-0 items-center" aria-hidden>
+              <MapPin className={SECTION_ICON_CLASS} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-xl leading-7">Nơi {pendingCategoryName}</CardTitle>
+              <CardDescription className="mt-1.5 text-base">{detail.address}</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0 pt-4 pb-6">
           <div className="relative overflow-hidden rounded-xl border border-border">
@@ -740,8 +988,10 @@ function AiInsightCard({
   detail: ReportDetail;
   isPossibleDuplicate: boolean;
 }) {
+  const { data: catalogWasteTags = [] } = useCatalogWasteTags();
   const aiType = detail.aiClassifiedType?.trim();
   const hasAiType = Boolean(aiType);
+  const aiTypeLabel = pollutionCategoryLabelVi(aiType);
   const aiConfidence = detail.aiConfidence;
   const aiConfidenceLabel =
     aiConfidence != null && aiConfidence > 0
@@ -750,13 +1000,21 @@ function AiInsightCard({
         : `${aiConfidence.toFixed(0)}%`
       : 'Không có';
   const wasteTags = detail.wasteTags
-    .map(tag => ({ id: tag.tagId, name: tag.nameVi.trim() }))
+    .map(tag => ({
+      id: tag.tagId,
+      code: tag.code,
+      name: tag.nameVi.trim(),
+    }))
     .filter(tag => Boolean(tag.name));
-  const aiSuggestedLabel = detail.aiSuggestedWasteTagCodes?.trim() || 'Không có';
+  const aiSuggestedNames = useMemo(
+    () =>
+      resolveAiWasteTagNames(detail.aiSuggestedWasteTagCodes, detail.wasteTags, catalogWasteTags),
+    [detail.aiSuggestedWasteTagCodes, detail.wasteTags, catalogWasteTags]
+  );
   const hasAiData =
     hasAiType ||
     (aiConfidence != null && aiConfidence > 0) ||
-    Boolean(detail.aiSuggestedWasteTagCodes?.trim()) ||
+    aiSuggestedNames.length > 0 ||
     detail.wasteTags.length > 0;
 
   return (
@@ -771,7 +1029,7 @@ function AiInsightCard({
         {hasAiType && aiType ? (
           <InsightRow
             label="Loại AI phân loại"
-            value={aiType}
+            value={aiTypeLabel}
             tone={detail.severitySetBy === 'AI' ? 'warn' : 'neutral'}
           />
         ) : null}
@@ -780,13 +1038,46 @@ function AiInsightCard({
           value={aiConfidenceLabel}
           tone={aiConfidence != null && aiConfidence >= 0.7 ? 'warn' : 'neutral'}
         />
-        <InsightRow label="Gợi ý mã thẻ rác" value={aiSuggestedLabel} tone="neutral" />
+        <Field orientation="horizontal" className="items-start justify-between gap-3">
+          <Label className="pt-1 text-base font-normal text-muted-foreground">Gợi ý thẻ rác</Label>
+          {aiSuggestedNames.length > 0 ? (
+            <div className="flex max-w-[65%] flex-wrap justify-end gap-1.5">
+              {aiSuggestedNames.map((name, index) => (
+                <Badge
+                  key={`${name}-${index}`}
+                  variant="secondary"
+                  className="inline-flex items-center gap-1.5 font-medium"
+                >
+                  <FontAwesomeIcon
+                    icon={getWasteTagFaIcon(undefined, name)}
+                    className="size-3 opacity-80"
+                    aria-hidden
+                  />
+                  {name}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <Badge variant="outline" className="border-0 bg-gray-100 font-semibold text-gray-500">
+              Không có
+            </Badge>
+          )}
+        </Field>
         <Field orientation="horizontal" className="items-start justify-between gap-3">
           <Label className="pt-1 text-base font-normal text-muted-foreground">Thẻ rác thải</Label>
           {wasteTags.length > 0 ? (
             <div className="flex max-w-[65%] flex-wrap justify-end gap-1.5">
               {wasteTags.map(tag => (
-                <Badge key={tag.id} variant="secondary" className="font-medium">
+                <Badge
+                  key={tag.id}
+                  variant="secondary"
+                  className="inline-flex items-center gap-1.5 font-medium"
+                >
+                  <FontAwesomeIcon
+                    icon={getWasteTagFaIcon(tag.code, tag.name)}
+                    className="size-3 opacity-80"
+                    aria-hidden
+                  />
                   {tag.name}
                 </Badge>
               ))}
@@ -864,6 +1155,22 @@ function SlaActionCard({
 
   return (
     <Card className="overflow-hidden p-0">
+      {isPossibleDuplicate ? (
+        <Alert className="rounded-none border-x-0 border-t-0 border-amber-200 bg-amber-50 text-amber-900">
+          <Copy className="size-4 text-amber-600" />
+          <AlertDescription className="font-medium">
+            Nghi ngờ trùng lặp — đối chiếu báo cáo gốc trước khi xác minh.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      {isSuspectedViolationRecurrence ? (
+        <Alert className="rounded-none border-x-0 border-t-0 border-orange-200 bg-orange-50 text-orange-900">
+          <History className="size-4 text-orange-600" />
+          <AlertDescription className="font-medium">
+            Nghi ô nhiễm tái diễn — kiểm tra báo cáo Closed trước đó trước khi xác minh.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {tokens.bannerText ? (
         <Alert className="rounded-none border-x-0 border-t-0 border-amber-200 bg-amber-50 text-amber-800">
           <AlertTriangle className="size-4" />
@@ -872,9 +1179,9 @@ function SlaActionCard({
       ) : null}
 
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Shield className="size-4" />
-          Hạn xác minh
+        <CardTitle className="flex items-center gap-2 text-base leading-none">
+          <Shield className="size-4 shrink-0 text-emerald-600" aria-hidden />
+          <span>Hạn xác minh</span>
         </CardTitle>
       </CardHeader>
 
@@ -931,6 +1238,7 @@ function SlaActionCard({
             type="button"
             disabled={isVerifying || isRejecting}
             onClick={onVerify}
+            aria-busy={isVerifying}
             title={
               isPossibleDuplicate
                 ? 'Kiểm tra trùng trước khi xác minh'
@@ -945,8 +1253,14 @@ function SlaActionCard({
                 : 'bg-emerald-600 hover:bg-emerald-500'
             )}
           >
-            {isVerifying ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
-            Xác minh
+            {isVerifying ? (
+              <>
+                <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
+                Đang xác minh…
+              </>
+            ) : (
+              'Xác minh'
+            )}
           </Button>
           <Button
             type="button"
@@ -955,8 +1269,14 @@ function SlaActionCard({
             onClick={onReject}
             className="w-full border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800"
           >
-            {isRejecting ? <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden /> : null}
-            Từ chối
+            {isRejecting ? (
+              <>
+                <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
+                Đang từ chối…
+              </>
+            ) : (
+              'Từ chối'
+            )}
           </Button>
         </div>
       </CardFooter>
@@ -1033,6 +1353,43 @@ function ActionCard({
             Phân công đội xử lý
           </Button>
         </CardFooter>
+      </Card>
+    );
+  }
+
+  if (status === 'Duplicate') {
+    const primaryId = detail.mergedIntoPrimaryReportId;
+    const primaryCode = detail.mergedIntoPrimaryReportCode?.trim();
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Trạng thái</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center px-4 py-5 text-center">
+          <div className="flex size-11 items-center justify-center rounded-full border border-orange-200 bg-white shadow-sm">
+            <Copy className="size-6 text-orange-600" aria-hidden />
+          </div>
+          <p className={cn('mt-3 text-lg font-semibold', STATUS_TEXT_CLASSES.Duplicate)}>
+            Trùng lặp
+          </p>
+          <CardDescription className="mt-1 text-base">
+            {primaryCode
+              ? `Báo cáo đã được gộp vào báo cáo gốc ${primaryCode}.`
+              : 'Báo cáo đã được đánh dấu trùng lặp và gộp vào báo cáo gốc.'}
+          </CardDescription>
+        </CardContent>
+        {primaryId ? (
+          <CardFooter>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full rounded-lg border-orange-200 text-orange-800 hover:bg-orange-50 hover:text-orange-900"
+            >
+              <Link href={`/officer/verify/${encodeURIComponent(primaryId)}`}>Xem báo cáo gốc</Link>
+            </Button>
+          </CardFooter>
+        ) : null}
       </Card>
     );
   }
@@ -1179,7 +1536,7 @@ export function VerifyDetailClient({
   detailMode = 'verify',
 }: {
   id: string;
-  /** Khi embed (vd. tab Phân công) — quay lại danh sách thay vì route /officer/verify */
+  /** Khi có — nút back gọi callback (vd. `/officer/assign/[id]` → danh sách phân công). */
   onBack?: () => void;
   /** `tracking` — hiển thị panel phân công & chuyển giao đội. */
   detailMode?: 'verify' | 'tracking';
@@ -1192,6 +1549,7 @@ export function VerifyDetailClient({
   const rejectMutation = useRejectReport();
 
   /** Cùng nguồn flag trùng với hàng đợi — mở DuplicateSuspectDialog trước khi verify. */
+  const canFetchProtected = useCanFetchProtected();
   const { data: queueSlice } = useReportQueue(
     {
       page: 1,
@@ -1199,7 +1557,7 @@ export function VerifyDetailClient({
       status: 'Submitted',
       ...(detail?.code ? { search: detail.code } : {}),
     },
-    { enabled: Boolean(detail?.code) }
+    { enabled: canFetchProtected && Boolean(detail?.code) }
   );
 
   const queueItem = useMemo(
@@ -1250,23 +1608,39 @@ export function VerifyDetailClient({
 
   const [pendingCategoryId, setPendingCategoryId] = useState<string>('');
   const [pendingSeverity, setPendingSeverity] = useState<ReportSeverity>('Medium');
+  const [pendingWasteTagIds, setPendingWasteTagIds] = useState<string[]>([]);
   const [successOpen, setSuccessOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [suspectDialogMode, setSuspectDialogMode] = useState<SuspectDialogMode>('duplicate');
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [verifyFieldsRemindOpen, setVerifyFieldsRemindOpen] = useState(false);
 
-  // Sync pending state once detail loads (runs once)
-  const [synced, setSynced] = useState(false);
-  if (detail && !synced) {
+  // Sync pending state once detail loads / khi đổi báo cáo
+  const [syncedReportId, setSyncedReportId] = useState<string | null>(null);
+  if (detail && syncedReportId !== detail.id) {
     setPendingCategoryId(detail.categoryId);
     setPendingSeverity(detail.severity);
-    setSynced(true);
+    setPendingWasteTagIds(detail.wasteTags.map(t => t.tagId).filter(Boolean));
+    setSyncedReportId(detail.id);
   }
 
   const pendingCategoryName =
     categories.find(c => c.id === pendingCategoryId)?.nameVi ?? detail?.categoryName ?? '';
+
+  const serverWasteTagIds = useMemo(
+    () => (detail?.wasteTags ?? []).map(t => t.tagId).filter(Boolean),
+    [detail?.wasteTags]
+  );
+
+  /** Cả 3 loại / mức độ / thẻ giữ nguyên → nhắc cán bộ xác nhận (BR-AI-005). */
+  const isClassificationUnchanged = Boolean(
+    detail &&
+    pendingCategoryId === detail.categoryId &&
+    pendingSeverity === detail.severity &&
+    sameWasteTagIds(pendingWasteTagIds, serverWasteTagIds)
+  );
 
   if (isLoading) {
     return (
@@ -1289,7 +1663,7 @@ export function VerifyDetailClient({
   if (isError || !detail) {
     return (
       <div className="space-y-4">
-        <BackLink onBack={onBack} />
+        <BackLink onBack={onBack} reportId={id} />
         <Alert variant="destructive">
           <AlertTriangle className="size-4" />
           <AlertDescription>Không thể tải chi tiết báo cáo. Vui lòng thử lại.</AlertDescription>
@@ -1336,9 +1710,25 @@ export function VerifyDetailClient({
   };
 
   const performVerify = async (): Promise<boolean> => {
-    const body = {
+    if (pendingWasteTagIds.length < REPORT_WASTE_TAG_MIN) {
+      toastApiError(
+        undefined,
+        `Cần chọn ít nhất ${REPORT_WASTE_TAG_MIN} thẻ rác thải trước khi xác minh.`
+      );
+      return false;
+    }
+    if (pendingWasteTagIds.length > REPORT_WASTE_TAG_MAX) {
+      toastApiError(undefined, `Tối đa ${REPORT_WASTE_TAG_MAX} thẻ rác thải.`);
+      return false;
+    }
+
+    const serverWasteTagIds = detail.wasteTags.map(t => t.tagId).filter(Boolean);
+    const body: VerifyReportInput = {
       ...(pendingSeverity !== detail.severity ? { overrideSeverity: pendingSeverity } : {}),
       ...(pendingCategoryId !== detail.categoryId ? { overrideCategoryId: pendingCategoryId } : {}),
+      ...(!sameWasteTagIds(pendingWasteTagIds, serverWasteTagIds)
+        ? { wasteTagIds: pendingWasteTagIds }
+        : {}),
     };
 
     try {
@@ -1374,87 +1764,118 @@ export function VerifyDetailClient({
       return;
     }
 
+    if (isClassificationUnchanged) {
+      setVerifyFieldsRemindOpen(true);
+      return;
+    }
+
     await performVerify();
   };
 
   const handleContinueRecurrenceVerify = async () => {
+    if (isClassificationUnchanged) {
+      setDuplicateDialogOpen(false);
+      setSuspectDialogMode('duplicate');
+      setVerifyFieldsRemindOpen(true);
+      return;
+    }
     const ok = await performVerify();
     if (!ok) return;
     setDuplicateDialogOpen(false);
     setSuspectDialogMode('duplicate');
   };
 
+  const handleConfirmVerifyDespiteUnchanged = async () => {
+    const ok = await performVerify();
+    if (ok) setVerifyFieldsRemindOpen(false);
+  };
+
   return (
     <div className="space-y-4">
-      <BackLink onBack={onBack} />
+      <BackLink onBack={onBack} reportId={detail.id} />
 
-      <HeaderStrip
-        detail={detail}
-        pendingCategoryName={pendingCategoryName}
-        isPossibleDuplicate={isPossibleDuplicate}
-        isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
-      />
+      <div className={cn(DETAIL_PAGE_X_PAD, 'space-y-4')}>
+        <HeaderStrip
+          detail={detail}
+          pendingCategoryName={pendingCategoryName}
+          isPossibleDuplicate={isPossibleDuplicate}
+          isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
+        />
 
-      <Gallery media={detail.media} address={detail.address} createdAt={detail.createdAt} />
+        {/* Gallery → nội dung bên dưới */}
+        <div className="space-y-16">
+          <Gallery
+            media={detail.media}
+            address={detail.address}
+            createdAt={detail.createdAt}
+            isSuspicious={detail.isSuspicious}
+            suspiciousReasons={detail.suspiciousReasons}
+          />
 
-      {/* Content below gallery — padded on both sides */}
-      <div className="px-14 xl:px-24">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Left — scrollable content */}
-          <div className="min-w-0 space-y-4">
-            {/* Title block */}
-            <div className="pt-2 pb-2">
-              <CardTitle className="text-2xl font-semibold tracking-tight">
-                Được báo cáo bởi{' '}
-                {SEVERITY_SET_BY_LABEL[detail.severitySetBy] ?? detail.severitySetBy}
-              </CardTitle>
-              <CardDescription className="mt-1.5 flex items-center gap-1.5 text-base">
-                <MapPin className="size-3.5 shrink-0 text-red-500" />
-                <span>{detail.address}</span>
-                <span className="size-1 rounded-full bg-foreground" />
-                <span>
-                  {new Date(detail.createdAt).toLocaleString('vi-VN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </CardDescription>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
+            {/* Left — scrollable content */}
+            <div className="min-w-0 space-y-8">
+              {/* Title block */}
+              <div className="pt-2 pb-2">
+                <CardTitle className="text-2xl font-semibold leading-8 tracking-tight">
+                  Được báo cáo bởi {detail.reporterName?.trim() || 'Ẩn danh'}
+                </CardTitle>
+                <CardDescription className="mt-1.5 text-base leading-normal">
+                  <MapPin
+                    className="mr-1.5 inline size-3.5 shrink-0 text-red-500 align-[-0.125em]"
+                    aria-hidden
+                  />
+                  {detail.address}
+                  <span
+                    className="mx-1.5 inline-block size-1 shrink-0 rounded-full bg-foreground align-middle"
+                    aria-hidden
+                  />
+                  <time dateTime={detail.createdAt}>
+                    {new Date(detail.createdAt).toLocaleString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </time>
+                </CardDescription>
+              </div>
+
+              <LocationCard
+                detail={detail}
+                pendingCategoryName={pendingCategoryName}
+                pendingSeverity={pendingSeverity}
+                pendingCategoryId={pendingCategoryId}
+                setPendingCategoryId={setPendingCategoryId}
+                setPendingSeverity={setPendingSeverity}
+                pendingWasteTagIds={pendingWasteTagIds}
+                setPendingWasteTagIds={setPendingWasteTagIds}
+                categories={categories}
+                catsLoading={catsLoading}
+              />
+
+              {detailMode === 'tracking' && (
+                // <ReportAssignmentPanel detail={detail} onGoToAssign={handleAssignNow} />
+                <div>ReportAssignmentPanel</div>
+              )}
             </div>
 
-            <LocationCard
-              detail={detail}
-              pendingCategoryName={pendingCategoryName}
-              pendingSeverity={pendingSeverity}
-              pendingCategoryId={pendingCategoryId}
-              setPendingCategoryId={setPendingCategoryId}
-              setPendingSeverity={setPendingSeverity}
-              categories={categories}
-              catsLoading={catsLoading}
-            />
-
-            {detailMode === 'tracking' && (
-              // <ReportAssignmentPanel detail={detail} onGoToAssign={handleAssignNow} />
-              <div>ReportAssignmentPanel</div>
-            )}
-          </div>
-
-          {/* Right — sticky: AI insight above action card */}
-          <div className="flex flex-col gap-4 lg:sticky lg:top-19 lg:self-start">
-            <AiInsightCard detail={detail} isPossibleDuplicate={isPossibleDuplicate} />
-            <ActionCard
-              detail={detail}
-              onAssignNow={handleAssignNow}
-              status={detail.status}
-              onVerify={() => void handleVerify()}
-              onReject={() => setRejectDialogOpen(true)}
-              isVerifying={verifyMutation.isPending}
-              isRejecting={rejectMutation.isPending}
-              isPossibleDuplicate={isPossibleDuplicate}
-              isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
-            />
+            {/* Right — sticky: AI insight above action card */}
+            <div className="flex flex-col gap-4 lg:sticky lg:top-19 lg:self-start">
+              <AiInsightCard detail={detail} isPossibleDuplicate={isPossibleDuplicate} />
+              <ActionCard
+                detail={detail}
+                onAssignNow={handleAssignNow}
+                status={detail.status}
+                onVerify={() => void handleVerify()}
+                onReject={() => setRejectDialogOpen(true)}
+                isVerifying={verifyMutation.isPending}
+                isRejecting={rejectMutation.isPending}
+                isPossibleDuplicate={isPossibleDuplicate}
+                isSuspectedViolationRecurrence={isSuspectedViolationRecurrence}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1474,7 +1895,14 @@ export function VerifyDetailClient({
           const parentId = queueItem?.possibleDuplicateOfReportId;
           setDuplicateDialogOpen(false);
           setSuspectDialogMode('duplicate');
-          if (parentId) router.push(`/officer/verify/${parentId}`);
+          if (!parentId) return;
+          // Back từ detail gốc → list highlight đúng report gốc (user biết mình vừa xem report nào).
+          router.push(
+            withOfficerFromQuery(
+              `/officer/verify/${parentId}`,
+              `/officer/verify?highlight=${encodeURIComponent(parentId)}`
+            )
+          );
         }}
         onResolved={() => {
           setDuplicateDialogOpen(false);
@@ -1490,6 +1918,7 @@ export function VerifyDetailClient({
         onOpenChange={next => {
           if (!next) setSuccessOpen(false);
         }}
+        accent="emerald"
         title="Thành công"
         description="Báo cáo đã được xác minh. Bước tiếp theo, bạn có thể phân công đội xử lý ngay trên trang Phân công."
         secondaryAction={{
@@ -1520,15 +1949,112 @@ export function VerifyDetailClient({
         onSubmit={() => void handleReject()}
         isSubmitting={rejectMutation.isPending}
       />
+
+      <Dialog
+        open={verifyFieldsRemindOpen}
+        onOpenChange={open => {
+          if (verifyMutation.isPending) return;
+          setVerifyFieldsRemindOpen(open);
+        }}
+      >
+        <DialogContent className={cn('gap-0 overflow-hidden p-0 sm:max-w-md', '[&>button]:hidden')}>
+          <div
+            className="relative flex h-36 items-center justify-center overflow-hidden bg-amber-600 text-white"
+            aria-hidden
+          >
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute top-1/2 left-1/2 size-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-400/40" />
+              <div className="absolute top-1/2 left-1/2 size-[20rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-300/35" />
+              <div className="absolute top-1/2 left-1/2 size-[13rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/30" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.14),transparent_45%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(180,83,9,0.5)_1px,transparent_1.5px)] bg-size-[14px_14px] opacity-30" />
+            </div>
+            <div className="relative flex size-16 items-center justify-center rounded-full bg-white shadow-md shadow-amber-950/20">
+              <AlertTriangle className="size-8 stroke-[2.5] text-amber-600" aria-hidden />
+            </div>
+          </div>
+
+          <div className="space-y-2 px-6 pt-6 pb-2 text-center">
+            <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+              Kiểm tra trước khi xác minh
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              Bạn chưa chỉnh loại ô nhiễm, mức độ và thẻ rác. Xác nhận đã đúng trước khi xác minh?
+            </DialogDescription>
+            <ul className="mt-3 space-y-2.5 rounded-lg border border-border bg-muted/40 px-3 py-3 text-left text-sm text-foreground">
+              <li>
+                <span className="text-muted-foreground">Loại: </span>
+                <span className="font-medium">{pendingCategoryName || '—'}</span>
+              </li>
+              <li>
+                <span className="text-muted-foreground">Mức độ: </span>
+                <span className="font-medium">{REPORT_SEVERITY_LABEL_VI[pendingSeverity]}</span>
+              </li>
+              <li className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+                <span className="shrink-0 text-muted-foreground">Thẻ:</span>
+                {detail.wasteTags.length > 0 ? (
+                  detail.wasteTags.map(tag => (
+                    <Badge
+                      key={tag.tagId}
+                      className="inline-flex h-5 items-center gap-1 border-transparent bg-emerald-600 px-2 py-0 text-xs font-medium text-white"
+                    >
+                      <FontAwesomeIcon
+                        icon={getWasteTagFaIcon(tag.code, tag.nameVi)}
+                        className="size-2.5 opacity-95"
+                        aria-hidden
+                      />
+                      {tag.nameVi}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="font-medium">Chưa gắn thẻ</span>
+                )}
+              </li>
+            </ul>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 px-6 pt-4 pb-6">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 border-border bg-background font-medium text-foreground hover:bg-muted/60"
+              disabled={verifyMutation.isPending}
+              onClick={() => setVerifyFieldsRemindOpen(false)}
+            >
+              Kiểm tra lại
+            </Button>
+            <Button
+              type="button"
+              className="h-11 bg-emerald-600 font-medium text-white hover:bg-emerald-500"
+              disabled={verifyMutation.isPending}
+              aria-busy={verifyMutation.isPending}
+              onClick={() => void handleConfirmVerifyDespiteUnchanged()}
+            >
+              {verifyMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-1.5 size-4 animate-spin" />
+                  Đang xác minh…
+                </>
+              ) : (
+                'Tiếp tục xác minh'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function BackLink({ onBack }: { onBack?: () => void }) {
+function BackLink({ onBack, reportId }: { onBack?: () => void; reportId?: string }) {
+  const listHref = reportId
+    ? `/officer/verify?highlight=${encodeURIComponent(reportId)}`
+    : '/officer/verify';
+
   const content = (
     <>
       <ArrowLeft className="size-3.5" />
-      {onBack ? 'Quay lại' : 'Quay lại danh sách'}
+      Quay lại danh sách
     </>
   );
 
@@ -1542,7 +2068,7 @@ function BackLink({ onBack }: { onBack?: () => void }) {
 
   return (
     <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" asChild>
-      <Link href="/officer/verify">{content}</Link>
+      <Link href={listHref}>{content}</Link>
     </Button>
   );
 }

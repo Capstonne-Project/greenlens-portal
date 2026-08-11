@@ -16,6 +16,7 @@ import { AdminUserDeleteDialog } from '@/components/admin/users/AdminUserDeleteD
 import { AdminUserDetailDialog } from '@/components/admin/users/AdminUserDetailDialog';
 import { AdminUserEditDialog } from '@/components/admin/users/AdminUserEditDialog';
 import { AdminUserSummaryStrip } from '@/components/admin/users/AdminUserSummaryStrip';
+import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -39,7 +40,7 @@ import { ADMIN_USERS_PAGE_SIZE } from '@/lib/constants/adminUsersNav';
 import { cn } from '@/lib/utils';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
-import { Download, Eye, Loader2, Pencil, Search, Trash2, UserCog } from 'lucide-react';
+import { Download, Eye, Loader2, Pencil, Trash2, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
@@ -74,6 +75,40 @@ function formatCreatedAt(iso: string): string {
 interface AdminUsersViewProps {
   /** Giá trị `role` gửi API — ví dụ `Admin`, `Citizen`. `undefined` = tất cả. */
   apiRole?: string;
+}
+
+/** Tìm kiếm người dùng — debounce + nút Tìm. */
+function AdminUsersSearchField({
+  searchQ,
+  pathname,
+  searchParams,
+}: {
+  searchQ: string;
+  pathname: string;
+  searchParams: URLSearchParams;
+}) {
+  const router = useRouter();
+
+  const commitSearch = useCallback(
+    (q: string) => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (q) next.set('search', q);
+      else next.delete('search');
+      next.set('page', '1');
+      router.push(`${pathname}?${next.toString()}`);
+    },
+    [pathname, router, searchParams]
+  );
+
+  return (
+    <AdminSearchField
+      label="Tìm người dùng"
+      value={searchQ}
+      onCommit={commitSearch}
+      placeholder="Họ tên, email, số điện thoại..."
+      className="min-w-[220px] flex-1"
+    />
+  );
 }
 
 export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
@@ -139,43 +174,12 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
           pageLabel={pageLabel}
         />
 
-        <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-
-              const formData = new FormData(e.currentTarget);
-
-              const q = String(formData.get('q') ?? '').trim();
-
-              const next = new URLSearchParams(searchParams.toString());
-
-              if (q) next.set('search', q);
-              else next.delete('search');
-
-              next.set('page', '1');
-
-              router.push(`${pathname}?${next.toString()}`);
-            }}
-            className="flex min-w-[220px] flex-1 items-center gap-2"
-          >
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                name="q"
-                defaultValue={searchQ}
-                placeholder="Họ tên, email, số điện thoại..."
-                className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-                aria-label="Tìm trong danh sách"
-              />
-            </div>
-            <button
-              type="submit"
-              className="h-9 shrink-0 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
-            >
-              Tìm
-            </button>
-          </form>
+        <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
+          <AdminUsersSearchField
+            searchQ={searchQ}
+            pathname={pathname}
+            searchParams={searchParams}
+          />
 
           <div className="flex flex-wrap items-center gap-2">
             <Select

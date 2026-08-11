@@ -1,12 +1,15 @@
 'use client';
 
+import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { CompanyReportThumbnail } from '@/components/company/shared/CompanyReportThumbnail';
 import {
   COMPANY_PAGINATION_CONTROLS,
   COMPANY_PAGINATION_FOOTER,
   COMPANY_PAGINATION_META,
 } from '@/components/company/shared/companyPaginationChrome';
-import { useCompanyAssignments } from '@/hooks/useCompany';
+import { useCompanyAssignments, useCompanyAssignmentThumbnails } from '@/hooks/useCompany';
 import { REPORT_STATUSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { cn } from '@/lib/utils';
 import {
   assignmentStatusClasses,
@@ -86,6 +89,7 @@ export function CompanyAssignmentsTrackingTab({
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
+  const thumbnailMap = useCompanyAssignmentThumbnails(items);
 
   const handleSearch = () => {
     setSearch(searchInput.trim());
@@ -160,14 +164,14 @@ export function CompanyAssignmentsTrackingTab({
           </div>
           <div className="flex flex-1 gap-2">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
+              <Search className="pointer-events-none absolute left-3 top-3 z-10 size-4 text-muted-foreground" />
+              <ValidatedSearchInput
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 placeholder="Mã báo cáo, địa chỉ, tên đội…"
-                className="h-10 w-full rounded-lg border border-emerald-100 bg-white pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-border dark:bg-background"
+                maxLength={SEARCH_INPUT_MAX_LENGTH}
+                className="h-10 border-emerald-100 bg-white pl-9 dark:border-border dark:bg-background"
               />
             </div>
             <button
@@ -198,7 +202,7 @@ export function CompanyAssignmentsTrackingTab({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-left text-sm">
+            <table className="w-full min-w-[1020px] text-left text-sm">
               <thead>
                 <tr className="border-b border-emerald-50 bg-emerald-50/60 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:border-border dark:bg-muted/40 dark:text-muted-foreground">
                   <th className="px-4 py-3">Báo cáo</th>
@@ -211,7 +215,7 @@ export function CompanyAssignmentsTrackingTab({
                 </tr>
               </thead>
               <tbody>
-                {items.map(row => {
+                {items.map((row, index) => {
                   const slaUrgent = isSlaUrgent(row.report.slaResolveDueAt);
                   return (
                     <tr
@@ -220,24 +224,39 @@ export function CompanyAssignmentsTrackingTab({
                       onClick={() => onSelectReport(row.report.reportId)}
                     >
                       <td className="px-4 py-3">
-                        <p className="font-mono text-xs font-semibold text-emerald-800">
-                          {row.report.code}
-                        </p>
-                        <p className="mt-0.5 line-clamp-1 text-muted-foreground">
-                          {row.report.address}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                              queueSeverityClasses(row.report.severity)
-                            )}
-                          >
-                            {queueSeverityLabel(row.report.severity)}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {row.report.categoryName}
-                          </span>
+                        <div className="flex items-start gap-3">
+                          <CompanyReportThumbnail
+                            url={
+                              row.report.thumbnailUrl ??
+                              row.report.reportImages?.[0]?.url ??
+                              thumbnailMap.get(row.report.reportId) ??
+                              null
+                            }
+                            code={row.report.code}
+                            alt={`Ảnh báo cáo ${row.report.code}`}
+                            eager={index < 3}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-mono text-xs font-semibold text-emerald-800">
+                              {row.report.code}
+                            </p>
+                            <p className="mt-0.5 line-clamp-2 text-muted-foreground">
+                              {row.report.address}
+                            </p>
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              <span
+                                className={cn(
+                                  'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                                  queueSeverityClasses(row.report.severity)
+                                )}
+                              >
+                                {queueSeverityLabel(row.report.severity)}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {row.report.categoryName}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">

@@ -5,6 +5,7 @@ import { AdminTopHeader } from '@/components/admin/AdminTopHeader';
 import { getAdminShellNavConfig } from '@/lib/constants/adminShellNav';
 import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 const adminNavConfig = getAdminShellNavConfig();
 
@@ -13,6 +14,9 @@ const adminNavConfig = getAdminShellNavConfig();
  * Does not nest MapShellContent's overflow-auto (that caused 2–3 scrollbars).
  */
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isViewportFitPage = pathname === '/admin' || pathname === '/admin/notification-templates';
+
   return (
     <div className="app-canvas flex h-dvh w-screen overflow-hidden font-sans md:flex-row">
       <AppSidebar
@@ -30,8 +34,14 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <AdminTopHeader />
-          {/* Sole content scroller for Admin pages */}
-          <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pt-4 md:pt-5">
+          <div
+            className={cn(
+              'min-h-0 min-w-0 flex-1 overflow-x-hidden overscroll-contain',
+              isViewportFitPage
+                ? 'flex flex-col overflow-hidden pt-2 md:pt-3'
+                : 'overflow-y-auto pt-4 md:pt-5'
+            )}
+          >
             {children}
           </div>
         </div>

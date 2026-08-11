@@ -21,13 +21,13 @@ export interface ReportAssignmentDto {
   teamName: string;
   teamType: string;
   status: string;
-  note: string;
+  note?: string | null;
   assignedAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  progressPercent: number;
-  progressNote: string;
-  progressUpdatedAt: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  progressPercent?: number;
+  progressNote?: string | null;
+  progressUpdatedAt?: string | null;
 }
 
 /** GET /v1/reports/{id} — `data.wasteTags[]` */
@@ -35,8 +35,8 @@ export interface ReportWasteTagDto {
   tagId: string;
   code: string;
   nameVi: string;
-  nameEn: string;
-  iconUrl: string;
+  nameEn?: string | null;
+  iconUrl?: string | null;
 }
 
 /** GET /v1/reports/{id} — `data.satisfaction` */
@@ -78,6 +78,9 @@ export interface ReportDetailDto {
   id: string;
   code: string;
   reporterId: string;
+  /** Tên người gửi — BE có thể null (report ẩn danh / thiếu profile). */
+  reporterName?: string | null;
+  reporterAvatarUrl?: string | null;
   categoryId: string;
   categoryCode: string;
   categoryName: string;
@@ -121,6 +124,9 @@ export interface ReportDetailDto {
   isSuspectedViolationRecurrence?: boolean;
   suspectedRecurrenceOfReportId?: string | null;
   priorClosedReport?: ReportPriorClosedReportDto | null;
+  /** BE flag báo cáo bị gắn nghi ngờ (spam / bất thường). */
+  isSuspicious?: boolean;
+  suspiciousReasons?: string[] | null;
 }
 
 /** GET /v1/reports/{id} — envelope response. */

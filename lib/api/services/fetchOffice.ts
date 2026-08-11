@@ -2,6 +2,7 @@ import {
   adaptAssignOfficeOfficer,
   adaptCreateOffice,
   adaptFetchLeoMyReports,
+  adaptFetchLeoWardBoundary,
   adaptFetchOfficeStaff,
   adaptOfficeDetail,
   adaptOfficesList,
@@ -13,6 +14,7 @@ import type {
   CreateOfficeInput,
   LeoMyReportsData,
   LeoMyReportsParams,
+  LeoWardBoundary,
   Office,
   OfficeDetail,
   OfficesList,
@@ -35,6 +37,7 @@ export type {
   LeoMyReportsSeverity,
   LeoMyReportsSortBy,
   LeoMyReportsStatus,
+  LeoWardBoundary,
   Office,
   OfficeDetail,
   OfficeListItem,
@@ -91,6 +94,11 @@ export async function recruitOfficeStaff(
   return adaptRecruitOfficeStaff(body);
 }
 
+/** GET /v1/offices/my/ward-boundary — ranh giới phường LEO đang quản lý (suy từ JWT). */
+export async function fetchLeoWardBoundary(): Promise<ApiEnvelope<LeoWardBoundary>> {
+  return adaptFetchLeoWardBoundary();
+}
+
 export default {
   fetchOffices,
   fetchOfficeDetail,
@@ -100,4 +108,5 @@ export default {
   fetchLeoMyReports,
   fetchOfficeStaff,
   recruitOfficeStaff,
+  fetchLeoWardBoundary,
 };

@@ -100,7 +100,7 @@ export function OfficeDialogShell({
       className={
         isTop
           ? 'fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4 pt-10 sm:p-6 sm:pt-12'
-          : 'fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/45 p-4 sm:p-6'
+          : 'fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4 py-6 sm:p-6'
       }
       role="presentation"
       onClick={onClose}
@@ -113,14 +113,13 @@ export function OfficeDialogShell({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        data-dialog-scroll
         className={`${
-          isTop ? 'mb-10' : ''
-        } w-full overflow-visible rounded-2xl border border-border bg-card p-6 shadow-2xl sm:p-8 ${SIZE_CLASS[size]}`}
+          isTop ? 'mb-10' : 'my-auto max-h-[calc(100dvh-2rem)]'
+        } flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl ${SIZE_CLASS[size]}`}
         onClick={e => e.stopPropagation()}
       >
-        <header className="mb-5 flex shrink-0 items-start justify-between gap-4">
-          <h2 id={titleId} className="text-xl font-semibold tracking-tight">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-6 py-4 sm:px-8">
+          <h2 id={titleId} className="text-lg font-semibold tracking-tight sm:text-xl">
             {title}
           </h2>
           <button
@@ -132,7 +131,12 @@ export function OfficeDialogShell({
             <X className="size-5" />
           </button>
         </header>
-        {children}
+        <div
+          data-dialog-scroll
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4 sm:px-8 sm:py-5"
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

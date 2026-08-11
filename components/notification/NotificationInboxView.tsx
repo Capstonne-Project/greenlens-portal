@@ -18,6 +18,7 @@ import {
   resolveNotificationHref,
   type NotificationPortal,
 } from '@/utils/notificationUi';
+import { navigateFromNotification } from '@/utils/notificationNavigation';
 import {
   AlertTriangle,
   CheckCheck,
@@ -29,9 +30,10 @@ import {
   Settings2,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 type ReadFilter = 'all' | 'unread';
 
@@ -52,6 +54,9 @@ type NotificationInboxViewProps = {
 /** Trang inbox đầy đủ — cùng UI/UX với NotificationDrawerPanel (Leo). */
 export function NotificationInboxView({ portal }: NotificationInboxViewProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -73,7 +78,13 @@ export function NotificationInboxView({ portal }: NotificationInboxViewProps) {
   const links = getNotificationDrawerLinks(portal);
 
   const handleSelect = (item: NotificationItem) => {
-    router.push(resolveNotificationHref(portal, item));
+    navigateFromNotification({
+      router,
+      queryClient,
+      href: resolveNotificationHref(portal, item),
+      pathname,
+      search: searchParams.toString(),
+    });
   };
 
   const handleMarkAllRead = () => {

@@ -5,7 +5,6 @@
 
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
-  faBullseye,
   faChartLine,
   faClipboardList,
   faGaugeHigh,
@@ -28,7 +27,6 @@ export function getCompanyShellNavConfig(): MapShellNavConfig {
   const mainNav: MapShellNavItem[] = [
     // Vận hành
     item('dashboard', 'Tổng quan', '/company', faGaugeHigh),
-    item('kpi', 'KPI công ty', '/company/kpi', faBullseye),
     item('queue', 'Điều phối báo cáo', '/company/queue', faClipboardList),
     item('assignments', 'Phân công', '/company/assignments', faChartLine),
     // Nguồn lực

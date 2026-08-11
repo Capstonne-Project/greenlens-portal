@@ -1,9 +1,15 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { CommunityCleanupDetailClient } from './CommunityCleanupDetailClient';
+import {
+  goBackWithListSoftReload,
+  softReloadNotificationDestination,
+} from '@/utils/notificationNavigation';
+import { resolveSafeOfficerFrom } from '@/utils/officerNavigation';
 
 function QueueFallback() {
   return (
@@ -24,6 +30,7 @@ const CommunityQueueBoard = dynamic(
 export function CommunityQueuePageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [detailId, setDetailId] = useState<string | null>(null);
   const detailFromQuery = searchParams.get('eventId')?.trim() || null;
   const activeDetailId = detailFromQuery ?? detailId;
@@ -32,9 +39,17 @@ export function CommunityQueuePageClient() {
 
   const handleBackFromDetail = () => {
     if (detailFromQuery) {
-      router.replace('/officer/community', { scroll: false });
+      const from = resolveSafeOfficerFrom(searchParams.get('from'));
+      goBackWithListSoftReload({
+        router,
+        queryClient,
+        from,
+        fallbackHref: '/officer/community',
+        method: 'replace',
+      });
       return;
     }
+    void softReloadNotificationDestination(queryClient, '/officer/community');
     setDetailId(null);
   };
 

@@ -1,8 +1,10 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { VerifyDetailClient } from '@/components/officer/verify/VerifyDetailClient';
+import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
 import { resolveSafeOfficerFrom } from '@/utils/officerNavigation';
 
 type VerifyDetailRouteClientProps = {
@@ -13,7 +15,20 @@ type VerifyDetailRouteClientProps = {
 export function VerifyDetailRouteClient({ id }: VerifyDetailRouteClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const from = resolveSafeOfficerFrom(searchParams.get('from'));
 
-  return <VerifyDetailClient id={id} onBack={from ? () => router.push(from) : undefined} />;
+  return (
+    <VerifyDetailClient
+      id={id}
+      onBack={() =>
+        goBackWithListSoftReload({
+          router,
+          queryClient,
+          from,
+          fallbackHref: `/officer/verify?highlight=${encodeURIComponent(id)}`,
+        })
+      }
+    />
+  );
 }

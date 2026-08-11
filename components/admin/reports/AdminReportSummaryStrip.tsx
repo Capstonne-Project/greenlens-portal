@@ -12,7 +12,12 @@ type AdminReportSummaryItem = {
 };
 
 type AdminReportSummaryStripProps = {
+  /** Tổng toàn hệ thống (không đổi khi lọc). */
   totalItems: number | null;
+  /** Có bộ lọc/search đang áp dụng. */
+  hasActiveFilters?: boolean;
+  /** Số bản ghi khớp bộ lọc — `undefined` khi đang tải. */
+  matchedCount?: number | null;
   openOnPage: number;
   submittedOnPage: number;
   anonymousOnPage: number;
@@ -26,6 +31,8 @@ function formatCount(value: number | null): string {
 
 export function AdminReportSummaryStrip({
   totalItems,
+  hasActiveFilters = false,
+  matchedCount,
   openOnPage,
   submittedOnPage,
   anonymousOnPage,
@@ -36,7 +43,11 @@ export function AdminReportSummaryStrip({
       key: 'total',
       label: 'Tổng báo cáo',
       value: formatCount(totalItems),
-      hint: 'Toàn hệ thống',
+      hint: hasActiveFilters
+        ? matchedCount != null
+          ? `${formatCount(matchedCount)} khớp bộ lọc hiện tại`
+          : 'Đang lọc…'
+        : 'Toàn hệ thống',
       icon: Files,
       iconClassName: 'text-emerald-700',
       accentClassName: 'bg-emerald-500/10',

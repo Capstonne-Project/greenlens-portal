@@ -36,6 +36,8 @@ import type {
   InspectionDetail,
   InspectionPayment,
 } from '@/lib/api/models/inspectionReport';
+import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   inspectionShowsClosedAt,
   inspectionShowsPenaltyFields,
@@ -56,7 +58,7 @@ const ReportLocationMap = dynamic(
 );
 
 const RECURRENCE_LIST_PATH = '/officer/recurrence';
-const INSPECTIONS_LIST_PATH = '/officer/inspections';
+const INSPECTIONS_HUB_PATH = '/officer/recurrence?tab=inspections';
 
 const EMPTY = {
   team: 'Chưa gán đội thanh tra',
@@ -197,14 +199,14 @@ function CopyIconButton({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** Eyebrow label — sắc thái hồ sơ hành chính: số thứ tự + nhãn viết hoa, letter-spacing rộng. */
+/** Section label — đồng bộ officer detail (CommunityCleanup SectionHeading). */
 function SectionEyebrow({ index, label }: { index: number; label: string }) {
   return (
-    <div className="flex items-baseline gap-2">
-      <span className="font-mono text-[11px] font-semibold tabular-nums text-brand">
+    <div className="flex items-baseline gap-2.5">
+      <span className="font-mono text-sm font-semibold tabular-nums text-brand sm:text-base">
         {String(index).padStart(2, '0')}
       </span>
-      <span className="text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+      <span className="text-sm font-semibold tracking-tight text-slate-900 sm:text-base">
         {label}
       </span>
     </div>
@@ -227,10 +229,12 @@ function Section({
 }) {
   return (
     <section className="w-full min-w-0">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 pb-3">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3">
         <div className="min-w-0">
           <SectionEyebrow index={index} label={title} />
-          {description ? <p className="mt-1.5 text-xs text-slate-500">{description}</p> : null}
+          {description ? (
+            <p className="mt-1.5 text-xs font-normal text-slate-500">{description}</p>
+          ) : null}
         </div>
         {action}
       </div>
@@ -942,7 +946,7 @@ function InvestigationTimeline({
             </div>
 
             <div className="min-w-0 flex-1 pt-1">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                 <h3
                   className={cn(
                     'text-sm font-semibold',
@@ -951,28 +955,27 @@ function InvestigationTimeline({
                 >
                   {step.title}
                 </h3>
+                <span className="font-mono text-xs tabular-nums text-slate-500">
+                  {step.at ? (
+                    formatViDateTime(step.at)
+                  ) : step.done ? (
+                    '—'
+                  ) : (
+                    <span className="italic text-slate-400">Chưa thực hiện</span>
+                  )}
+                </span>
                 {isCurrent ? (
-                  <span className="inline-flex rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                  <span className="inline-flex rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
                     Đang chờ
                   </span>
                 ) : null}
-              </div>
-
-              <p className="mt-0.5 font-mono text-xs tabular-nums text-slate-400">
-                {step.at ? (
-                  formatViDateTime(step.at)
-                ) : step.done ? (
-                  '—'
-                ) : (
-                  <span className="text-slate-400 italic">Chưa thực hiện</span>
-                )}
                 {step.tooltip ? (
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="ml-1.5 not-italic text-slate-300 underline decoration-dotted"
+                          className="font-mono text-[11px] text-slate-400 underline decoration-dotted hover:text-slate-600"
                         >
                           id
                         </button>
@@ -981,10 +984,10 @@ function InvestigationTimeline({
                     </Tooltip>
                   </TooltipProvider>
                 ) : null}
-              </p>
+              </div>
 
               {step.detail ? (
-                <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-slate-600">
+                <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-slate-500">
                   {step.detail}
                 </p>
               ) : !step.done &&
@@ -1043,7 +1046,7 @@ function PaymentTable({ payments }: { payments: InspectionPayment[] }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[36rem] text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+          <tr className="border-b border-slate-200 text-xs font-medium text-slate-500">
             <th className="py-2 pr-3 font-medium">Số tiền</th>
             <th className="py-2 pr-3 font-medium">Ngày nộp</th>
             <th className="py-2 pr-3 font-medium">Người ghi nhận</th>
@@ -1120,7 +1123,7 @@ function PaymentHistoryPanel({ inspectionId }: { inspectionId: string }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold tracking-tight text-slate-900">Lịch sử nộp phạt</h2>
+        <h2 className="text-lg font-bold tracking-tight text-slate-900">Lịch sử nộp phạt</h2>
         {isFetching ? (
           <Skeleton className="size-4 rounded-full" aria-label="Đang cập nhật" />
         ) : null}
@@ -1128,19 +1131,19 @@ function PaymentHistoryPanel({ inspectionId }: { inspectionId: string }) {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200/90 bg-white px-4 py-3">
-          <p className="text-[11px] font-medium text-slate-500">Tổng tiền phạt</p>
+          <p className="text-xs font-normal text-slate-500">Tổng tiền phạt</p>
           <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900">
             {formatVnd(data.penaltyAmount)}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200/90 bg-white px-4 py-3">
-          <p className="text-[11px] font-medium text-slate-500">Đã nộp</p>
+          <p className="text-xs font-normal text-slate-500">Đã nộp</p>
           <p className="mt-1 text-sm font-semibold tabular-nums text-emerald-800">
             {formatVnd(data.paidAmount)}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200/90 bg-white px-4 py-3">
-          <p className="text-[11px] font-medium text-slate-500">Còn lại</p>
+          <p className="text-xs font-normal text-slate-500">Còn lại</p>
           <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900">
             {formatVnd(data.remainingAmount)}
           </p>
@@ -1148,7 +1151,7 @@ function PaymentHistoryPanel({ inspectionId }: { inspectionId: string }) {
       </div>
 
       <Panel>
-        <p className="mb-3 text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+        <p className="mb-3 text-xs font-medium text-slate-500">
           Các lần nộp ({data.payments.length})
         </p>
         <PaymentTable payments={data.payments} />
@@ -1160,7 +1163,7 @@ function PaymentHistoryPanel({ inspectionId }: { inspectionId: string }) {
 const DETAIL_TAB_TRIGGER = cn(
   'relative h-auto gap-1.5 rounded-none border-0 bg-transparent px-0.5 pb-2.5 pt-0',
   'text-sm font-medium text-slate-500 shadow-none',
-  'hover:text-slate-800',
+  'hover:text-slate-900',
   'focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-0',
   'data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-slate-900 data-[state=active]:shadow-none',
   'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-transparent',
@@ -1187,21 +1190,38 @@ function InspectionDetailHeader({
   return (
     <header className="border-b border-slate-200 pb-5">
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
-          Hồ sơ xử phạt
-        </p>
+        {/* Tiêu đề đồng bộ list officer + badge nhỏ cạnh */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+            Hồ sơ xử phạt
+          </h1>
+          <span
+            className={cn(
+              'inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none',
+              inspectionStatusBadgeClass(data.status)
+            )}
+          >
+            {inspectionStatusLabelVi(data.status)}
+          </span>
+          {data.isRepeatOffender ? (
+            <span className="inline-flex shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold leading-none text-orange-800">
+              Tái phạm
+            </span>
+          ) : null}
+        </div>
 
-        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+        {/* Code + Id — nhỏ hơn tiêu đề */}
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <div className="flex min-w-0 max-w-full items-center gap-1">
             {reportHref ? (
               <Link
                 href={reportHref}
-                className="truncate font-mono text-lg font-bold tracking-tight tabular-nums text-slate-900 hover:text-brand hover:underline sm:text-xl"
+                className="truncate font-mono text-xs font-semibold tracking-tight tabular-nums text-slate-600 hover:text-brand hover:underline sm:text-sm"
               >
                 {data.reportCode?.trim() || 'Báo cáo gốc'}
               </Link>
             ) : (
-              <span className="truncate font-mono text-lg font-bold tracking-tight tabular-nums text-slate-900 sm:text-xl">
+              <span className="truncate font-mono text-xs font-semibold tracking-tight tabular-nums text-slate-600 sm:text-sm">
                 {data.reportCode?.trim() || '—'}
               </span>
             )}
@@ -1210,34 +1230,20 @@ function InspectionDetailHeader({
             ) : null}
           </div>
 
-          <span
-            className={cn(
-              'inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold',
-              inspectionStatusBadgeClass(data.status)
-            )}
-          >
-            {inspectionStatusLabelVi(data.status)}
-          </span>
-          {data.isRepeatOffender ? (
-            <span className="inline-flex shrink-0 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800">
-              Tái phạm
-            </span>
-          ) : null}
-        </div>
-
-        <dl className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-slate-500">
-          <div className="flex min-w-0 max-w-full items-center gap-1">
-            <dt className="sr-only">Id hồ sơ</dt>
-            <dd className="min-w-0 truncate font-mono text-xs tabular-nums text-slate-400">
-              {data.id}
-            </dd>
-            <CopyIconButton value={data.id} label="Id hồ sơ" />
-          </div>
-
           <span aria-hidden className="hidden text-slate-300 sm:inline">
             ·
           </span>
 
+          <div className="flex min-w-0 max-w-full items-center gap-1">
+            <span className="sr-only">Id hồ sơ</span>
+            <span className="min-w-0 truncate font-mono text-[11px] tabular-nums text-slate-400">
+              {data.id}
+            </span>
+            <CopyIconButton value={data.id} label="Id hồ sơ" />
+          </div>
+        </div>
+
+        <dl className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 sm:text-sm">
           <div className="flex items-baseline gap-1">
             <dt className="sr-only">Người lập</dt>
             <dd>{data.createdByOfficerName?.trim() || '—'}</dd>
@@ -1327,7 +1333,7 @@ function InspectionDetailBody({
           >
             <p
               className={cn(
-                'mb-4 font-mono text-[11px] tabular-nums',
+                'mb-4 font-mono text-xs tabular-nums',
                 slaOverdue ? 'font-semibold text-red-600' : 'text-slate-500'
               )}
             >
@@ -1367,10 +1373,11 @@ export function InspectionDetailClient() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const inspectionId = typeof params.id === 'string' ? params.id : '';
 
   const isInspectionsQueueRoute = pathname.startsWith('/officer/inspections');
-  const backPath = isInspectionsQueueRoute ? INSPECTIONS_LIST_PATH : RECURRENCE_LIST_PATH;
+  const backPath = isInspectionsQueueRoute ? INSPECTIONS_HUB_PATH : RECURRENCE_LIST_PATH;
   const backLabel = isInspectionsQueueRoute
     ? 'Quay lại danh sách hồ sơ xử phạt'
     : 'Quay lại danh sách tái diễn';
@@ -1393,8 +1400,15 @@ export function InspectionDetailClient() {
           type="button"
           variant="ghost"
           size="sm"
-          className="gap-1.5 px-2 text-slate-600"
-          onClick={() => router.push(backPath)}
+          className="gap-1.5 px-2 text-slate-500 hover:text-slate-900"
+          onClick={() =>
+            goBackWithListSoftReload({
+              router,
+              queryClient,
+              from: null,
+              fallbackHref: backPath,
+            })
+          }
         >
           <ArrowLeft className="size-4" aria-hidden />
           {backLabel}
@@ -1448,7 +1462,10 @@ export function InspectionDetailClient() {
               <InspectionDetailBody
                 key={data.id}
                 data={data}
-                onRecordPaymentClick={() => setPaymentDialogOpen(true)}
+                onRecordPaymentClick={() => {
+                  void refetch();
+                  setPaymentDialogOpen(true);
+                }}
               />
             </TabsContent>
 

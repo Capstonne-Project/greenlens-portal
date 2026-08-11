@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { InspectionDetailClient } from '@/components/officer/recurrence/InspectionDetailClient';
+import { InspectionDetailClient } from '@/components/officer/inspections/InspectionDetailClient';
 
 export const metadata: Metadata = {
   title: 'Chi tiết hồ sơ xử phạt',

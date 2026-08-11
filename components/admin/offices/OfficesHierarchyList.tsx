@@ -84,7 +84,7 @@ export function OfficesHierarchyList({ groups, onEdit, onAssign }: OfficesHierar
                         <th className="pb-2 pr-4 font-medium">Văn phòng</th>
                         <th className="pb-2 pr-4 font-medium">Phường / Xã</th>
                         <th className="pb-2 pr-4 font-medium">LEO</th>
-                        <th className="pb-2 pr-4 font-medium">Onboard</th>
+                        <th className="pb-2 pr-4 font-medium">Thiết lập</th>
                         <th className="pb-2 text-right font-medium">Thao tác</th>
                       </tr>
                     </thead>

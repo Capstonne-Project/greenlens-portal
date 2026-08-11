@@ -19,8 +19,9 @@ import {
   clearLegacyClientAuthCookies,
   setMustChangePasswordCookie,
 } from '@/lib/storage/authCookies';
+import { resetQueryClientCache } from '@/lib/query/appQueryClient';
 import { useAuthStore } from '@/lib/store/authStore';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
 export const authKeys = {
@@ -31,6 +32,7 @@ export const authKeys = {
 export function useLogin() {
   const router = useRouter();
   const setAuth = useAuthStore(s => s.setAuth);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: Parameters<typeof loginWithEmailPassword>[0]) => {
@@ -42,7 +44,10 @@ export function useLogin() {
       }
       return envelope;
     },
-    onSuccess: envelope => {
+    onSuccess: async envelope => {
+      // Wipe previous account's React Query cache on the live Provider client.
+      await resetQueryClientCache(queryClient);
+
       const { accessToken, user } = envelope.data;
       clearLegacyClientAuthCookies();
       const authUser = buildAuthUserFromApi(user);

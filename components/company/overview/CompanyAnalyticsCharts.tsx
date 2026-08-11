@@ -25,7 +25,7 @@ import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 
-const OVERVIEW_LIST_LIMIT = 3;
+const OVERVIEW_LIST_LIMIT = 5;
 
 const STATUS_COLORS = ['#4f46e5', '#0ea5e9', '#f59e0b', '#059669', '#ef4444', '#94a3b8'];
 const QUEUE_COLORS = ['#22c55e', '#facc15', '#f97316', '#dc2626'];
@@ -35,26 +35,40 @@ function CardShell({
   subtitle,
   className,
   fitContent = false,
+  chart = false,
   children,
 }: {
   title: string;
   subtitle?: string;
   className?: string;
-  /** Không ép chiều cao / cắt overflow — dùng cho list widget overview. */
   fitContent?: boolean;
+  /** Biểu đồ chính — padding và chiều cao tối thiểu lớn hơn. */
+  chart?: boolean;
   children: ReactNode;
 }) {
   return (
     <article
       className={cn(
-        'flex flex-col rounded-card border border-border bg-card p-2 shadow-sm sm:p-2.5',
+        'flex flex-col rounded-card border border-border bg-card shadow-sm',
+        chart ? 'min-h-[220px] p-3 sm:p-4' : 'p-2 shadow-sm sm:p-2.5',
         fitContent ? 'h-auto shrink-0' : 'h-full min-h-0 overflow-hidden',
         className
       )}
     >
-      <header className="mb-1.5 shrink-0">
-        <h2 className="text-[11px] font-semibold text-foreground sm:text-xs">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-[9px] text-muted-foreground">{subtitle}</p> : null}
+      <header className={cn('shrink-0', chart ? 'mb-3' : 'mb-1.5')}>
+        <h2
+          className={cn(
+            'font-semibold text-foreground',
+            chart ? 'text-sm' : 'text-[11px] sm:text-xs'
+          )}
+        >
+          {title}
+        </h2>
+        {subtitle ? (
+          <p className={cn('mt-0.5 text-muted-foreground', chart ? 'text-xs' : 'text-[9px]')}>
+            {subtitle}
+          </p>
+        ) : null}
       </header>
       <div className={cn(fitContent ? 'shrink-0' : 'min-h-0 flex-1 overflow-hidden')}>
         {children}
@@ -79,118 +93,46 @@ function trendDispatched(point: CompanyWorkloadTrendPoint): number {
   return 0;
 }
 
-/** Three overview charts from /overview — replaces the 7-card KPI strip. */
-export function CompanyOverviewSummaryCharts({ overview }: { overview: CompanyDashboardOverview }) {
-  const taskBars = [
+/** Biểu đồ cột — khối lượng nhiệm vụ từ /overview. */
+export function CompanyTaskVolumeBarChart({ overview }: { overview: CompanyDashboardOverview }) {
+  const bars = [
     { label: 'Đã giao', value: Math.max(0, overview.assignedTasks), color: '#4f46e5' },
     { label: 'Hoàn thành', value: Math.max(0, overview.completedTasks), color: '#059669' },
     { label: 'Đang chờ', value: Math.max(0, overview.pendingTasks), color: '#f59e0b' },
   ];
-  const taskMax = Math.max(1, ...taskBars.map(b => b.value));
-
-  const capacityBars = [
-    { label: 'Đội', value: Math.max(0, overview.activeTeams), color: '#0ea5e9' },
-    { label: 'Nhân sự', value: Math.max(0, overview.activeStaff), color: '#14b8a6' },
-  ];
-  const capacityMax = Math.max(1, ...capacityBars.map(b => b.value));
-
+  const max = Math.max(1, ...bars.map(b => b.value));
   const slaPct = Math.min(100, Math.max(0, normalizeRatePercent(overview.slaComplianceRate)));
-  const gaugeR = 42;
-  const gaugeC = Math.PI * gaugeR;
-  const gaugeFilled = (slaPct / 100) * gaugeC;
 
   return (
-    <section className="grid h-full min-h-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      <CardShell title="Khối lượng nhiệm vụ" subtitle="Đã giao · hoàn thành · đang chờ">
-        <div className="flex h-full min-h-[72px] items-end gap-3 px-1">
-          {taskBars.map(bar => (
-            <div key={bar.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <span className="text-[10px] font-semibold tabular-nums text-foreground">
-                {formatOverviewNumber(bar.value)}
-              </span>
+    <CardShell
+      chart
+      title="Khối lượng nhiệm vụ"
+      subtitle={`SLA ${slaPct.toFixed(0)}% · TB ${formatHours(overview.averageResolutionHours, 1)} · ${formatOverviewNumber(overview.activeTeams)} đội / ${formatOverviewNumber(overview.activeStaff)} nhân sự`}
+    >
+      <div className="flex h-full min-h-[140px] items-end justify-center gap-6 px-2 pb-1 pt-2">
+        {bars.map(bar => (
+          <div
+            key={bar.label}
+            className="flex min-w-0 flex-1 max-w-[88px] flex-col items-center gap-2"
+          >
+            <span className="text-sm font-bold tabular-nums text-foreground">
+              {formatOverviewNumber(bar.value)}
+            </span>
+            <div className="flex w-full flex-1 items-end justify-center">
               <div
-                className="w-full max-w-10 rounded-t"
+                className="w-full max-w-14 rounded-t-md transition-all"
                 style={{
-                  height: `${Math.max(8, (bar.value / taskMax) * 100)}%`,
+                  height: `${Math.max(12, (bar.value / max) * 120)}px`,
                   backgroundColor: bar.color,
                 }}
                 title={`${bar.label}: ${bar.value}`}
               />
-              <span className="truncate text-[10px] text-muted-foreground">{bar.label}</span>
             </div>
-          ))}
-        </div>
-      </CardShell>
-
-      <CardShell title="Năng lực vận hành" subtitle="Đội và nhân sự đang hoạt động">
-        <div className="flex h-full min-h-[72px] flex-col justify-center gap-2 px-1">
-          {capacityBars.map(bar => (
-            <div key={bar.label}>
-              <div className="mb-1 flex items-center justify-between text-[10px]">
-                <span className="text-muted-foreground">{bar.label}</span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {formatOverviewNumber(bar.value)}
-                </span>
-              </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.max(6, (bar.value / capacityMax) * 100)}%`,
-                    backgroundColor: bar.color,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardShell>
-
-      <CardShell title="SLA & thời gian xử lý" subtitle="Tuân thủ đúng hạn · TB giờ">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col items-center">
-            <svg
-              width={110}
-              height={66}
-              viewBox="0 0 120 72"
-              role="img"
-              aria-label={`SLA ${slaPct}%`}
-            >
-              <path
-                d="M 18 60 A 42 42 0 0 1 102 60"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={10}
-                className="text-muted"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 18 60 A 42 42 0 0 1 102 60"
-                fill="none"
-                stroke={slaPct >= 90 ? '#059669' : slaPct >= 70 ? '#f59e0b' : '#ef4444'}
-                strokeWidth={10}
-                strokeLinecap="round"
-                strokeDasharray={`${gaugeFilled} ${gaugeC}`}
-              />
-            </svg>
-            <p className="-mt-1 text-lg font-bold tabular-nums text-foreground">
-              {slaPct.toFixed(0)}%
-            </p>
+            <span className="text-center text-xs text-muted-foreground">{bar.label}</span>
           </div>
-          <div className="min-w-0 flex-1 rounded-lg border border-border bg-muted/30 px-2.5 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              TB xử lý
-            </p>
-            <p className="mt-0.5 text-base font-bold tabular-nums text-foreground">
-              {formatHours(overview.averageResolutionHours, 1)}
-            </p>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              SLA {formatRatePercent(overview.slaComplianceRate, 0)}
-            </p>
-          </div>
-        </div>
-      </CardShell>
-    </section>
+        ))}
+      </div>
+    </CardShell>
   );
 }
 
@@ -201,9 +143,9 @@ export function CompanyWorkloadTrend({
   points: CompanyWorkloadTrendPoint[] | undefined;
 }) {
   const data = points ?? [];
-  const W = 340;
-  const H = 140;
-  const PAD = { t: 10, r: 8, b: 22, l: 28 };
+  const W = 400;
+  const H = 180;
+  const PAD = { t: 12, r: 12, b: 28, l: 32 };
   const iw = W - PAD.l - PAD.r;
   const ih = H - PAD.t - PAD.b;
   const maxY = Math.max(1, ...data.map(p => Math.max(trendDispatched(p), p.completed)));
@@ -216,14 +158,14 @@ export function CompanyWorkloadTrend({
     data.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(getter(p))}`).join(' ');
 
   return (
-    <CardShell title="Xu hướng khối lượng" subtitle="Dispatched vs hoàn thành theo ngày">
+    <CardShell chart title="Xu hướng khối lượng" subtitle="Giao việc vs hoàn thành theo ngày">
       {data.length === 0 ? (
         <EmptyHint text="Chưa có chuỗi thời gian" />
       ) : (
         <>
           <svg
             viewBox={`0 0 ${W} ${H}`}
-            className="h-full max-h-[110px] w-full"
+            className="h-full min-h-[150px] w-full"
             role="img"
             aria-label="Xu hướng"
           >
@@ -280,7 +222,7 @@ export function CompanyWorkloadTrend({
               </g>
             ))}
           </svg>
-          <div className="mt-1 flex gap-3 text-[10px] text-muted-foreground">
+          <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <span className="size-1.5 rounded-full bg-indigo-600" aria-hidden /> Giao việc
             </span>
@@ -298,8 +240,8 @@ export function CompanyWorkloadTrend({
 export function CompanyTaskStatusDonut({ items }: { items: CompanyTaskStatusItem[] | undefined }) {
   const slices = items ?? [];
   const total = slices.reduce((s, i) => s + Math.max(0, i.count), 0);
-  const SIZE = 112;
-  const STROKE = 16;
+  const SIZE = 140;
+  const STROKE = 18;
   const R = (SIZE - STROKE) / 2;
   const C = 2 * Math.PI * R;
   const segments = slices.map((slice, index) => ({
@@ -313,12 +255,16 @@ export function CompanyTaskStatusDonut({ items }: { items: CompanyTaskStatusItem
   }));
 
   return (
-    <CardShell title="Theo trạng thái nhiệm vụ" subtitle={`Tổng ${formatOverviewNumber(total)}`}>
+    <CardShell
+      chart
+      title="Theo trạng thái nhiệm vụ"
+      subtitle={`Tổng ${formatOverviewNumber(total)} task`}
+    >
       {total === 0 ? (
         <EmptyHint text="Chưa có phân bố trạng thái" />
       ) : (
-        <div className="flex items-center gap-3">
-          <div className="relative size-20 shrink-0 sm:size-24">
+        <div className="flex items-center gap-4">
+          <div className="relative size-28 shrink-0 sm:size-32">
             <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="size-full">
               <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
                 {segments.map(segment => (
@@ -337,11 +283,11 @@ export function CompanyTaskStatusDonut({ items }: { items: CompanyTaskStatusItem
               </g>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-[9px] uppercase text-muted-foreground">Tổng</p>
-              <p className="text-sm font-bold tabular-nums">{formatOverviewNumber(total)}</p>
+              <p className="text-[10px] uppercase text-muted-foreground">Tổng</p>
+              <p className="text-lg font-bold tabular-nums">{formatOverviewNumber(total)}</p>
             </div>
           </div>
-          <ul className="min-w-0 flex-1 space-y-1 overflow-y-auto text-[10px]">
+          <ul className="min-w-0 flex-1 space-y-1.5 overflow-y-auto text-xs">
             {slices.map((slice, i) => {
               const pct =
                 typeof slice.percentage === 'number'
@@ -554,7 +500,12 @@ export function CompanyUpcomingDeadlines({
   const urgentCount = allRows.filter(row => (row.remainingHours ?? 0) < 24).length;
 
   return (
-    <CardShell fitContent title="Sắp đến hạn SLA" subtitle="Nhiệm vụ gần deadline">
+    <CardShell
+      fitContent
+      title="Sắp đến hạn SLA"
+      subtitle="Ưu tiên xử lý — task gần hoặc quá deadline"
+      className="p-3 sm:p-4"
+    >
       {allRows.length > 0 ? (
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-[10px] text-muted-foreground">

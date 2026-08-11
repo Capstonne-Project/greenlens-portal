@@ -25,14 +25,9 @@ import type {
   LeoMyReportAssignment,
   LeoMyReportItem,
   LeoMyReportsSeverity,
-  LeoMyReportsStatus,
   LeoReportAssignmentStatus,
 } from '@/lib/api/models/office';
-import {
-  LEO_MY_REPORTS_SEVERITIES,
-  LEO_MY_REPORTS_STATUSES,
-  LEO_REPORT_ASSIGNMENT_STATUSES,
-} from '@/lib/api/models/office';
+import { LEO_MY_REPORTS_SEVERITIES, LEO_REPORT_ASSIGNMENT_STATUSES } from '@/lib/api/models/office';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
 import { reportStatusLabelVi, REPORT_STATUS_BADGE_CLASSES } from '@/lib/constants/reportStatus';
@@ -50,7 +45,7 @@ import {
   Search,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 /** Query `pageSize` → GET /v1/offices/my/reports — cố định 10 / trang. */
 const LEO_BOARD_PAGE_SIZE = 10;
@@ -62,13 +57,6 @@ const LEO_LIST_PAGE_SIZE = 10;
  */
 const LEO_BOARD_GRID_CLASS = 'grid w-full grid-cols-2 gap-2 py-0 sm:grid-cols-3 lg:grid-cols-5';
 
-/** Tab trạng thái theo dõi — bỏ Submitted (đã gửi); luồng đó thuộc hàng đợi xác minh. */
-const LEO_TRACKING_STATUSES = LEO_MY_REPORTS_STATUSES.filter(
-  (status): status is Exclude<LeoMyReportsStatus, 'Submitted'> => status !== 'Submitted'
-);
-
-type LeoTrackingStatus = (typeof LEO_TRACKING_STATUSES)[number];
-type LeoStatusTab = 'All' | LeoTrackingStatus;
 type LeoViewMode = 'list' | 'board';
 
 const SEVERITY_LABEL = REPORT_SEVERITY_LABEL_VI;
@@ -192,120 +180,35 @@ function formatSlaDate(slaIso: string | null): string {
   });
 }
 
-// ─── Status tab bar (giống DeoTrackingPageClient) ───────────────────────────
+// ─── View mode toggle ───────────────────────────────────────────────────────
 
-function LeoStatusTabBar({
-  tabs,
-  activeKey,
-  onChange,
+function LeoViewToggle({
   viewMode,
   onViewModeChange,
 }: {
-  tabs: Array<{ key: LeoStatusTab; label: string }>;
-  activeKey: LeoStatusTab;
-  onChange: (key: LeoStatusTab) => void;
   viewMode: LeoViewMode;
   onViewModeChange: (mode: LeoViewMode) => void;
 }) {
-  const tabsScrollRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef(new Map<LeoStatusTab, HTMLButtonElement>());
-  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
-
-  const syncIndicator = useCallback(() => {
-    const scroll = tabsScrollRef.current;
-    const active = tabRefs.current.get(activeKey);
-    if (!scroll || !active) {
-      setIndicator({ left: 0, width: 0 });
-      return;
-    }
-    const scrollRect = scroll.getBoundingClientRect();
-    const tabRect = active.getBoundingClientRect();
-    setIndicator({
-      left: tabRect.left - scrollRect.left + scroll.scrollLeft,
-      width: tabRect.width,
-    });
-  }, [activeKey]);
-
-  useLayoutEffect(() => {
-    syncIndicator();
-  }, [syncIndicator, tabs]);
-
-  useEffect(() => {
-    const scroll = tabsScrollRef.current;
-    if (!scroll) return undefined;
-
-    const observer = new ResizeObserver(() => syncIndicator());
-    observer.observe(scroll);
-    scroll.addEventListener('scroll', syncIndicator, { passive: true });
-    window.addEventListener('resize', syncIndicator);
-
-    return () => {
-      observer.disconnect();
-      scroll.removeEventListener('scroll', syncIndicator);
-      window.removeEventListener('resize', syncIndicator);
-    };
-  }, [syncIndicator]);
-
   return (
-    <div className="relative flex shrink-0 items-end gap-2">
-      <div
-        ref={tabsScrollRef}
-        className="relative min-w-0 flex-1 overflow-x-auto border-b border-border pb-2 scrollbar-hide"
-        role="tablist"
-        aria-label="Lọc báo cáo theo trạng thái"
+    <div className="flex shrink-0 items-center gap-1">
+      <button
+        type="button"
+        title="Board"
+        aria-pressed={viewMode === 'board'}
+        onClick={() => onViewModeChange('board')}
+        className={LEO_VIEW_TOGGLE_CLASS(viewMode === 'board')}
       >
-        <div className="inline-flex items-stretch">
-          {tabs.map(tab => {
-            const isActive = tab.key === activeKey;
-            return (
-              <button
-                key={tab.key}
-                ref={node => {
-                  if (node) tabRefs.current.set(tab.key, node);
-                  else tabRefs.current.delete(tab.key);
-                }}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => onChange(tab.key)}
-                className={cn(
-                  'whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors first:pl-0',
-                  isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-        {indicator.width > 0 ? (
-          <span
-            className="pointer-events-none absolute bottom-0 z-10 h-0.5 bg-emerald-600 transition-[left,width] duration-200 ease-out"
-            style={{ left: indicator.left, width: indicator.width }}
-            aria-hidden
-          />
-        ) : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-1 self-stretch border-b border-border pb-2">
-        <button
-          type="button"
-          title="Board"
-          aria-pressed={viewMode === 'board'}
-          onClick={() => onViewModeChange('board')}
-          className={LEO_VIEW_TOGGLE_CLASS(viewMode === 'board')}
-        >
-          <LayoutGrid className="size-4" />
-        </button>
-        <button
-          type="button"
-          title="Danh sách"
-          aria-pressed={viewMode === 'list'}
-          onClick={() => onViewModeChange('list')}
-          className={LEO_VIEW_TOGGLE_CLASS(viewMode === 'list')}
-        >
-          <List className="size-4" />
-        </button>
-      </div>
+        <LayoutGrid className="size-4" />
+      </button>
+      <button
+        type="button"
+        title="Danh sách"
+        aria-pressed={viewMode === 'list'}
+        onClick={() => onViewModeChange('list')}
+        className={LEO_VIEW_TOGGLE_CLASS(viewMode === 'list')}
+      >
+        <List className="size-4" />
+      </button>
     </div>
   );
 }
@@ -674,7 +577,6 @@ interface LeoTrackingPageClientProps {
 
 export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientProps) {
   const [page, setPage] = useState(1);
-  const [statusTab, setStatusTab] = useState<LeoStatusTab>('All');
   const [viewMode, setViewMode] = useState<LeoViewMode>('board');
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | LeoMyReportsSeverity>('all');
@@ -694,10 +596,6 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const isSearchPending = search.trim() !== debouncedSearch;
 
-  const handleStatusTabChange = (tab: LeoStatusTab) => {
-    setStatusTab(tab);
-    setPage(1);
-  };
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
@@ -745,7 +643,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     sortBy: 'createdAt',
     sortDesc: true,
     search: debouncedSearch || undefined,
-    status: statusTab === 'All' ? undefined : statusTab,
+    status: 'InProgress',
     categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
     severity: severityFilter === 'all' ? undefined : severityFilter,
     assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
@@ -755,21 +653,8 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
 
   const items = useMemo(() => data?.items ?? EMPTY_LEO_ITEMS, [data?.items]);
 
-  const tabConfigs: Array<{ key: LeoStatusTab; label: string }> = useMemo(
-    () => [
-      { key: 'All', label: 'Tất cả' },
-      ...LEO_TRACKING_STATUSES.map(s => ({
-        key: s,
-        label: reportStatusLabelVi(s),
-      })),
-    ],
-    []
-  );
-
   /** Tổng trang từ BE (`pagination.totalPages`), tính theo `pageSize` server nhận. */
   const totalPages = Math.max(1, data?.pagination.totalPages ?? 1);
-
-  const activeTabLabel = statusTab === 'All' ? 'Tất cả' : reportStatusLabelVi(statusTab);
 
   const categoryFilterLabel =
     categoryFilter === 'all'
@@ -800,14 +685,6 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <LeoStatusTabBar
-          tabs={tabConfigs}
-          activeKey={statusTab}
-          onChange={handleStatusTabChange}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-        />
-
         <div className="flex shrink-0 flex-wrap items-center gap-2 py-3 sm:gap-3">
           <div className="flex items-center gap-2">
             <div className="relative w-72 max-w-full sm:w-80">
@@ -925,6 +802,10 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
               Xóa tất cả
             </button>
           ) : null}
+
+          <div className="ml-auto">
+            <LeoViewToggle viewMode={viewMode} onViewModeChange={handleViewModeChange} />
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-2 sm:p-3">
@@ -939,8 +820,11 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
               <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <SaveIcon size={32} className="opacity-30" />
                 <p>
-                  Không có báo cáo phù hợp ở trạng thái{' '}
-                  <span className="font-medium text-foreground">{activeTabLabel}</span>.
+                  Không có báo cáo ở trạng thái{' '}
+                  <span className="font-medium text-foreground">
+                    {reportStatusLabelVi('InProgress')}
+                  </span>
+                  .
                 </p>
               </div>
             ) : (
@@ -972,8 +856,11 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
               <SaveIcon size={32} className="opacity-30" />
               <p>
-                Không có báo cáo phù hợp ở trạng thái{' '}
-                <span className="font-medium text-foreground">{activeTabLabel}</span>.
+                Không có báo cáo ở trạng thái{' '}
+                <span className="font-medium text-foreground">
+                  {reportStatusLabelVi('InProgress')}
+                </span>
+                .
               </p>
             </div>
           ) : (

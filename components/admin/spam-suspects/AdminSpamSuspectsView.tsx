@@ -10,6 +10,7 @@ import {
   ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
+import { ValidatedNumberInput } from '@/components/common/ValidatedField';
 import { useSpamSuspectsList } from '@/hooks/useSpamSuspects';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
@@ -93,8 +94,8 @@ export function AdminSpamSuspectsView() {
     <div className="w-full min-w-0 space-y-6">
       <header className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
-          Dashboard heuristic: gửi &gt;{SPAM_SUSPECT_DEFAULTS.minReportsPerHour}/giờ, từ chối &gt;
-          {SPAM_SUSPECT_DEFAULTS.minRejected7Days}/7 ngày, AI gắn cờ ≥
+          Phát hiện tài khoản có dấu hiệu spam: gửi &gt;{SPAM_SUSPECT_DEFAULTS.minReportsPerHour}
+          /giờ, từ chối &gt;{SPAM_SUSPECT_DEFAULTS.minRejected7Days}/7 ngày, AI gắn cờ ≥
           {SPAM_SUSPECT_DEFAULTS.minAiFlagged}. Chỉ xem — không khóa tài khoản từ màn này.
         </p>
       </header>
@@ -111,7 +112,7 @@ export function AdminSpamSuspectsView() {
       <section className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-950">
           <Filter className="size-4 text-emerald-700" aria-hidden />
-          Ngưỡng heuristic
+          Ngưỡng phát hiện
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto] xl:items-end">
@@ -119,48 +120,42 @@ export function AdminSpamSuspectsView() {
             <label htmlFor="spam-min-hour" className="text-sm font-medium">
               Báo cáo / giờ (tối thiểu)
             </label>
-            <input
+            <ValidatedNumberInput
               id="spam-min-hour"
-              type="number"
               min={0}
               value={minReportsPerHour}
               onChange={e => {
                 setMinReportsPerHour(e.target.value);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             />
           </div>
           <div className="space-y-2">
             <label htmlFor="spam-min-reject" className="text-sm font-medium">
               Từ chối / 7 ngày (tối thiểu)
             </label>
-            <input
+            <ValidatedNumberInput
               id="spam-min-reject"
-              type="number"
               min={0}
               value={minRejected7Days}
               onChange={e => {
                 setMinRejected7Days(e.target.value);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             />
           </div>
           <div className="space-y-2">
             <label htmlFor="spam-min-ai" className="text-sm font-medium">
               AI gắn cờ (tối thiểu)
             </label>
-            <input
+            <ValidatedNumberInput
               id="spam-min-ai"
-              type="number"
               min={0}
               value={minAiFlagged}
               onChange={e => {
                 setMinAiFlagged(e.target.value);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
             />
           </div>
           <button
@@ -262,7 +257,7 @@ export function AdminSpamSuspectsView() {
                       <SaveIcon size={32} className="opacity-30" />
                       <span>Không có tài khoản nghi spam</span>
                       <span className="text-xs">
-                        Thử giảm ngưỡng heuristic nếu cần quét rộng hơn.
+                        Thử giảm ngưỡng phát hiện nếu cần quét rộng hơn.
                       </span>
                     </div>
                   </TableCell>

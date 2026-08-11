@@ -1,6 +1,8 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -29,9 +31,6 @@ const formSchema = z.object({
 
 export type PollutionCategoryFormValues = z.infer<typeof formSchema>;
 
-const fieldClass =
-  'h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
 interface PollutionCategoryFormDialogProps {
   open: boolean;
   mode: 'create' | 'edit';
@@ -53,9 +52,11 @@ export function PollutionCategoryFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<PollutionCategoryFormValues>({
     resolver: zodResolver(formSchema),
+    ...REALTIME_FORM_OPTIONS,
     defaultValues: {
       code: '',
       nameVi: '',
@@ -94,59 +95,62 @@ export function PollutionCategoryFormDialog({
             <label className="text-sm font-medium" htmlFor="pc-code">
               Mã (code)
             </label>
-            <input
+            <ValidatedInput
               id="pc-code"
               {...register('code')}
+              value={watch('code') ?? ''}
+              minLength={2}
+              maxLength={32}
+              error={errors.code?.message}
               disabled={mode === 'edit' || busy}
               placeholder="SMOKE"
-              className={`${fieldClass} uppercase disabled:opacity-60`}
+              className="uppercase disabled:opacity-60"
             />
-            {errors.code ? <p className="text-xs text-destructive">{errors.code.message}</p> : null}
           </div>
           <div className="space-y-2 sm:col-span-2">
             <label className="text-sm font-medium" htmlFor="pc-icon">
               Icon URL (tuỳ chọn)
             </label>
-            <input
+            <ValidatedInput
               id="pc-icon"
               {...register('iconUrl')}
+              value={watch('iconUrl') ?? ''}
+              minLength={0}
+              maxLength={500}
+              error={errors.iconUrl?.message}
               disabled={busy}
               placeholder="https://cdn.example.com/icons/smoke.png"
-              className={fieldClass}
             />
-            {errors.iconUrl ? (
-              <p className="text-xs text-destructive">{errors.iconUrl.message}</p>
-            ) : null}
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="pc-name-vi">
               Tên tiếng Việt
             </label>
-            <input
+            <ValidatedInput
               id="pc-name-vi"
               {...register('nameVi')}
+              value={watch('nameVi') ?? ''}
+              minLength={1}
+              maxLength={120}
+              error={errors.nameVi?.message}
               disabled={busy}
               placeholder="Ô nhiễm không khí"
-              className={fieldClass}
             />
-            {errors.nameVi ? (
-              <p className="text-xs text-destructive">{errors.nameVi.message}</p>
-            ) : null}
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="pc-name-en">
               Tên tiếng Anh
             </label>
-            <input
+            <ValidatedInput
               id="pc-name-en"
               {...register('nameEn')}
+              value={watch('nameEn') ?? ''}
+              minLength={1}
+              maxLength={120}
+              error={errors.nameEn?.message}
               disabled={busy}
               placeholder="Air pollution"
-              className={fieldClass}
             />
-            {errors.nameEn ? (
-              <p className="text-xs text-destructive">{errors.nameEn.message}</p>
-            ) : null}
           </div>
         </div>
         <div className="flex justify-end gap-3 border-t border-border pt-4">

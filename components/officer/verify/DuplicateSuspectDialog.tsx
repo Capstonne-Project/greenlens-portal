@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -12,6 +14,7 @@ import {
   History,
   ImageIcon,
   Loader2,
+  MapPinned,
   XCircle,
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -22,8 +25,16 @@ import {
   type ReportPreviewHandler,
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
-import { Button } from '@/components/ui/button';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
+import { Button } from '@/components/ui/button';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from '@/components/ui/carousel';
 import {
   Dialog,
   DialogContent,
@@ -43,12 +54,35 @@ import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { ReportDetail } from '@/lib/api/models/report';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ViolationRecurrenceReport } from '@/lib/api/models/violationRecurrence';
+import { pollutionCategoryLabelVi } from '@/lib/constants/pollutionCategories';
 import {
   REPORT_SEVERITY_BADGE_CLASSES,
   REPORT_SEVERITY_LABEL_VI,
 } from '@/lib/constants/reportActions';
-import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import {
+  normalizeReportStatus,
+  reportStatusLabelVi,
+  type ReportStatus,
+} from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { COMPARE_MAP_FRAME_HEIGHT } from '@/components/officer/verify/compareMapFrame';
+
+const CompareReportsMap = dynamic(
+  () => import('@/components/officer/verify/CompareReportsMap').then(m => m.CompareReportsMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className={cn(
+          'flex min-w-0 items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-500 ring-1 ring-slate-200',
+          COMPARE_MAP_FRAME_HEIGHT
+        )}
+      >
+        <Loader2 className="size-5 animate-spin text-slate-400" aria-hidden />
+      </div>
+    ),
+  }
+);
 
 export type DuplicateParentPreview = {
   id: string;
@@ -81,13 +115,49 @@ type DuplicateSuspectDialogProps = {
   isContinuingVerify?: boolean;
 };
 
-function firstImageUrl(
+/** Parent đã qua giai đoạn “chỉ cần phân công” — mở chi tiết để theo dõi/xử lý. */
+const POST_MERGE_VERIFY_DETAIL_STATUSES = new Set<ReportStatus>([
+  'Dispatched',
+  'Assigned',
+  'InProgress',
+  'Resolved',
+  'Reopened',
+  'Closed',
+  'Rejected',
+  'Duplicate',
+  'PenaltyIssued',
+  'ClosedNoViolation',
+]);
+
+/**
+ * Sau gộp trùng thành công — điều hướng theo status báo gốc:
+ * - Verified → trang Phân công, highlight đúng parentId
+ * - Dispatched / Assigned / InProgress / … → chi tiết xác minh của báo gốc
+ */
+function postMergeParentHref(parentId: string, status: string | undefined): string | null {
+  if (!parentId) return null;
+  const normalized = normalizeReportStatus(status ?? '');
+  if (normalized === 'Verified') {
+    return `/officer/assign?${new URLSearchParams({ highlightReportId: parentId }).toString()}`;
+  }
+  if (POST_MERGE_VERIFY_DETAIL_STATUSES.has(normalized)) {
+    return `/officer/verify/${encodeURIComponent(parentId)}`;
+  }
+  return null;
+}
+
+/** Mọi URL ảnh từ chi tiết báo cáo; fallback khi media rỗng. */
+function reportImageUrls(
   detail: ReportDetail | undefined,
   fallback: string | null = null
-): string | null {
-  if (!detail?.media?.length) return fallback;
-  const image = detail.media.find(m => m.mediaType.toLowerCase().includes('image'));
-  return image?.url ?? detail.media[0]?.url ?? fallback;
+): string[] {
+  const fromMedia =
+    detail?.media
+      ?.filter(m => m.mediaType.toLowerCase().includes('image') && Boolean(m.url?.trim()))
+      .map(m => m.url.trim()) ?? [];
+  if (fromMedia.length > 0) return fromMedia;
+  const fb = fallback?.trim();
+  return fb ? [fb] : [];
 }
 
 function formatShortDate(iso: string | null | undefined): string {
@@ -163,23 +233,12 @@ function CompareThumb({
   badgeLabel?: string;
   onPreview?: ReportPreviewHandler;
 }) {
-  const ring =
-    tone === 'suspect'
-      ? 'ring-amber-300/80 shadow-amber-500/10'
-      : 'ring-sky-300/70 shadow-sky-500/10';
-
   const canPreview = Boolean(url && !loading && onPreview);
   const showBadge = tone === 'suspect' && badgeLabel !== '';
   const resolvedBadge = badgeLabel ?? 'Trùng lặp';
 
   return (
-    <div
-      className={cn(
-        'group relative aspect-4/3 w-full overflow-hidden rounded-xl bg-slate-100',
-        'ring-1 shadow-md',
-        ring
-      )}
-    >
+    <div className="group relative aspect-3/2 w-full overflow-hidden rounded-xl bg-slate-100">
       {loading ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <Loader2 className="size-5 animate-spin text-slate-400" aria-hidden />
@@ -235,6 +294,139 @@ function CompareThumb({
           </span>
         </button>
       ) : null}
+    </div>
+  );
+}
+
+/** 1 ảnh → CompareThumb; ≥2 ảnh → shadcn Carousel. */
+function CompareSideMedia({
+  urls,
+  alt,
+  loading,
+  tone,
+  badgeLabel,
+  onPreview,
+}: {
+  urls: string[];
+  alt: string;
+  loading?: boolean;
+  tone: 'suspect' | 'original';
+  badgeLabel?: string;
+  onPreview?: ReportPreviewHandler;
+}) {
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    const onSelect = () => setSlideIndex(carouselApi.selectedScrollSnap());
+    onSelect();
+    carouselApi.on('select', onSelect);
+    return () => {
+      carouselApi.off('select', onSelect);
+    };
+  }, [carouselApi]);
+
+  if (loading || urls.length <= 1) {
+    return (
+      <CompareThumb
+        url={urls[0] ?? null}
+        alt={alt}
+        loading={loading}
+        tone={tone}
+        badgeLabel={badgeLabel}
+        onPreview={onPreview}
+      />
+    );
+  }
+
+  const showBadge = tone === 'suspect' && badgeLabel !== '';
+  const resolvedBadge = badgeLabel ?? 'Trùng lặp';
+
+  return (
+    <div className="relative w-full min-w-0 overflow-hidden rounded-xl bg-slate-100">
+      {showBadge ? (
+        <span
+          className={cn(
+            'pointer-events-none absolute left-2 top-2 z-20',
+            'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5',
+            'bg-amber-500 text-[10px] font-bold uppercase tracking-wide text-white',
+            'shadow-sm ring-1 ring-white/30'
+          )}
+        >
+          {resolvedBadge === 'Tái diễn' ? (
+            <History className="size-2.5" aria-hidden strokeWidth={2.75} />
+          ) : (
+            <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
+          )}
+          {resolvedBadge}
+        </span>
+      ) : null}
+
+      <Carousel setApi={setCarouselApi} opts={{ loop: true }} className="w-full">
+        <CarouselContent className="ml-0">
+          {urls.map((url, index) => {
+            const label = `${alt} · ${index + 1}`;
+            return (
+              <CarouselItem key={`${url}-${index}`} className="pl-0">
+                <button
+                  type="button"
+                  onClick={() => onPreview?.({ url, label })}
+                  aria-label={`Xem trước ${label}`}
+                  className={cn(
+                    'group relative aspect-3/2 w-full overflow-hidden',
+                    'cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40'
+                  )}
+                >
+                  <Image
+                    src={url}
+                    alt={label}
+                    fill
+                    sizes="(max-width: 768px) 45vw, 280px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                  <span
+                    className={cn(
+                      'absolute inset-0 z-10 flex items-center justify-center',
+                      'bg-black/0 transition-colors duration-200',
+                      'group-hover:bg-black/35 group-focus-visible:bg-black/35'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'flex size-9 items-center justify-center rounded-full',
+                        'bg-black/55 text-white shadow-lg ring-1 ring-white/25 backdrop-blur-sm',
+                        'opacity-0 transition-opacity duration-200',
+                        'group-hover:opacity-100 group-focus-visible:opacity-100'
+                      )}
+                    >
+                      <Eye className="size-4" aria-hidden />
+                    </span>
+                  </span>
+                </button>
+              </CarouselItem>
+            );
+          })}
+        </CarouselContent>
+
+        <CarouselPrevious
+          type="button"
+          variant="secondary"
+          className="left-2 top-1/2 z-20 size-8 border-0 bg-white/90 text-slate-800 shadow-sm hover:bg-white disabled:opacity-40"
+        />
+        <CarouselNext
+          type="button"
+          variant="secondary"
+          className="right-2 top-1/2 z-20 size-8 border-0 bg-white/90 text-slate-800 shadow-sm hover:bg-white disabled:opacity-40"
+        />
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center">
+          <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium tabular-nums text-white">
+            {slideIndex + 1}/{urls.length}
+          </span>
+        </div>
+      </Carousel>
     </div>
   );
 }
@@ -300,12 +492,12 @@ function LinkPulse({ tall }: { tall?: boolean }) {
     <div
       className={cn(
         'relative mx-1 flex w-10 shrink-0 items-center justify-center sm:mx-2 sm:w-14',
-        tall ? 'min-h-28 self-stretch' : 'h-full min-h-16'
+        tall ? 'min-h-24 self-stretch' : 'h-full min-h-16'
       )}
       aria-hidden
     >
       <div ref={trackRef} className="relative h-px w-full">
-        <div className="absolute inset-0 bg-linear-to-r from-amber-400 via-slate-300 to-sky-400" />
+        <div className="absolute inset-0 bg-linear-to-r from-amber-400 via-slate-300 to-brand" />
         <div className="absolute inset-y-0 left-0 w-full overflow-hidden">
           <motion.div
             className="absolute -inset-y-0.5 w-8 bg-linear-to-r from-transparent via-white/70 to-transparent"
@@ -347,7 +539,7 @@ function formatWasteTags(detail: ReportDetail): string {
 }
 
 function formatAiClassifiedType(detail: ReportDetail): string {
-  return detail.aiClassifiedType?.trim() || '—';
+  return pollutionCategoryLabelVi(detail.aiClassifiedType);
 }
 
 /** Haversine (m) — tín hiệu quan trọng khi quyết định gộp trùng cùng điểm. */
@@ -380,12 +572,6 @@ function formatMeters(meters: number): string {
   return `${Math.round(rounded / 1000)} km`;
 }
 
-function formatSimilarity(score: number | null | undefined): string | null {
-  if (score == null || Number.isNaN(score)) return null;
-  const pct = score <= 1 ? Math.round(score * 100) : Math.round(score);
-  return `${pct}%`;
-}
-
 function SeverityPill({ severity }: { severity: ReportDetail['severity'] }) {
   return (
     <span
@@ -403,97 +589,74 @@ type CompareField = {
   key: string;
   label: string;
   render: (detail: ReportDetail) => ReactNode;
-  /** Chuỗi chuẩn hóa để tô khác biệt giữa 2 cột. */
-  compareValue: (detail: ReportDetail) => string;
-  /** Mặc định true — tắt với field luôn khác nhau (vd. thời điểm). */
-  highlightDiff?: boolean;
 };
 
 /**
  * Field đủ để cán bộ quyết định gộp / bác bỏ.
- * Ảnh đã so ở trên. Chip AI tương đồng vẫn ở banner.
+ * Thứ tự: địa chỉ → loại → thời điểm → mức độ → thành phần → AI.
+ * Vị trí GPS so trên map bên dưới (không còn hàng tọa độ).
  */
 const COMPARE_FIELDS: CompareField[] = [
   {
     key: 'address',
     label: 'Địa chỉ',
     render: d => d.address?.trim() || '—',
-    compareValue: d => (d.address?.trim() || '').toLowerCase(),
-  },
-  {
-    key: 'coords',
-    label: 'Tọa độ GPS',
-    render: d => <CoordsLink lat={d.latitude} lng={d.longitude} />,
-    compareValue: d => formatCoords(d.latitude, d.longitude),
   },
   {
     key: 'category',
     label: 'Loại ô nhiễm',
     render: d => d.categoryName?.trim() || d.categoryCode || '—',
-    compareValue: d => (d.categoryId || d.categoryCode || d.categoryName || '').toLowerCase(),
-  },
-  {
-    key: 'wasteTags',
-    label: 'Thành phần rác',
-    render: d => formatWasteTags(d),
-    compareValue: d =>
-      d.wasteTags
-        ?.map(t => t.code)
-        .sort()
-        .join('|') ?? '',
-  },
-  {
-    key: 'severity',
-    label: 'Mức độ',
-    render: d => <SeverityPill severity={d.severity} />,
-    compareValue: d => d.severity,
-  },
-  {
-    key: 'aiClassifiedType',
-    label: 'AI phân loại',
-    render: d => formatAiClassifiedType(d),
-    compareValue: d => (d.aiClassifiedType?.trim() || '').toLowerCase(),
   },
   {
     key: 'createdAt',
     label: 'Thời điểm báo cáo',
     render: d => formatShortDate(d.createdAt),
-    compareValue: d => d.createdAt || '',
-    highlightDiff: false,
+  },
+  {
+    key: 'severity',
+    label: 'Mức độ',
+    render: d => <SeverityPill severity={d.severity} />,
+  },
+  {
+    key: 'wasteTags',
+    label: 'Thành phần',
+    render: d => formatWasteTags(d),
+  },
+  {
+    key: 'aiClassifiedType',
+    label: 'Loại AI phân loại',
+    render: d => formatAiClassifiedType(d),
   },
 ];
 
 function VerifiedRecordsCompare({
   suspect,
   parent,
-  suspectImageUrl,
-  parentImageUrl,
+  suspectImageUrls,
+  parentImageUrls,
   suspectLoading,
-  similarityScore,
   onPreview,
 }: {
   suspect: ReportDetail;
   parent: ReportDetail;
-  suspectImageUrl: string | null;
-  parentImageUrl: string | null;
+  suspectImageUrls: string[];
+  parentImageUrls: string[];
   suspectLoading?: boolean;
-  similarityScore?: number | null;
   onPreview: ReportPreviewHandler;
 }) {
   const distanceM = metersBetween(suspect, parent);
-  const similarityLabel = formatSimilarity(similarityScore ?? null);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
-      className="flex min-h-0 flex-1 flex-col gap-5"
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-5"
     >
-      <div className="flex shrink-0 items-stretch gap-2 sm:gap-3">
+      <div className="flex min-w-0 shrink-0 items-start gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
-          <CompareThumb
-            url={suspectImageUrl}
+          <CompareSideMedia
+            urls={suspectImageUrls}
             alt={`${suspect.code} · Đang xác minh`}
             loading={suspectLoading}
             tone="suspect"
@@ -502,8 +665,8 @@ function VerifiedRecordsCompare({
         </div>
         <LinkPulse tall />
         <div className="min-w-0 flex-1">
-          <CompareThumb
-            url={parentImageUrl}
+          <CompareSideMedia
+            urls={parentImageUrls}
             alt={`${parent.code} · Báo cáo gốc`}
             tone="original"
             onPreview={onPreview}
@@ -511,7 +674,7 @@ function VerifiedRecordsCompare({
         </div>
       </div>
 
-      {(distanceM != null || similarityLabel || parent.reporterCount > 1) && (
+      {(distanceM != null || parent.reporterCount > 1) && (
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
           {distanceM != null ? (
             <AnimatedHoverTooltip name="Khoảng cách GPS giữa vị trí hai báo cáo">
@@ -529,19 +692,9 @@ function VerifiedRecordsCompare({
               </span>
             </AnimatedHoverTooltip>
           ) : null}
-          {similarityLabel ? (
-            <AnimatedHoverTooltip
-              name="Điểm tương đồng AI"
-              designation="Chỉ tham khảo — cán bộ quyết định cuối"
-            >
-              <span className="inline-flex cursor-help items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/80">
-                AI tương đồng {similarityLabel}
-              </span>
-            </AnimatedHoverTooltip>
-          ) : null}
           {parent.reporterCount > 1 ? (
             <AnimatedHoverTooltip name="Số người đã báo cáo trùng vào báo cáo gốc này">
-              <span className="inline-flex cursor-help items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-sky-200/80">
+              <span className="inline-flex cursor-help items-center rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand ring-1 ring-brand/25">
                 Gốc có {parent.reporterCount} người báo
               </span>
             </AnimatedHoverTooltip>
@@ -584,44 +737,55 @@ function VerifiedRecordsCompare({
           </div>
         </div>
 
-        {COMPARE_FIELDS.map(field => {
-          const shouldHighlight = field.highlightDiff !== false;
-          const differs =
-            shouldHighlight && field.compareValue(suspect) !== field.compareValue(parent);
-          return (
-            <div
-              key={field.key}
-              className={cn(
-                'grid grid-cols-2 transition-colors duration-150',
-                differs ? 'bg-amber-50/50 hover:bg-amber-50/80' : 'hover:bg-slate-50/90'
-              )}
-            >
-              <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
-                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
-                <div
-                  className={cn(
-                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
-                    differs && 'text-amber-950'
-                  )}
-                >
-                  {field.render(suspect)}
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
-                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
-                <div
-                  className={cn(
-                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
-                    differs && 'text-amber-950'
-                  )}
-                >
-                  {field.render(parent)}
-                </div>
+        {COMPARE_FIELDS.map(field => (
+          <div
+            key={field.key}
+            className="grid grid-cols-2 transition-colors duration-150 hover:bg-slate-50/90"
+          >
+            <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
+              <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
+              <div className="text-sm leading-relaxed font-semibold wrap-break-word text-slate-800">
+                {field.render(suspect)}
               </div>
             </div>
-          );
-        })}
+            <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
+              <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
+              <div className="text-sm leading-relaxed font-semibold wrap-break-word text-slate-800">
+                {field.render(parent)}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      <section className="min-w-0 w-full space-y-2.5" aria-label="Bản đồ vị trí hai báo cáo">
+        <div className="flex min-w-0 items-center gap-2 px-0.5">
+          <MapPinned className="size-4 shrink-0 text-slate-500" aria-hidden />
+          <h3 className="text-sm font-semibold text-slate-800">Vị trí trên bản đồ</h3>
+          {distanceM != null ? (
+            <span className="min-w-0 truncate text-xs text-slate-500">
+              · cách nhau ~{formatMeters(distanceM)}
+            </span>
+          ) : null}
+        </div>
+        <CompareReportsMap
+          className="min-w-0 w-full"
+          pins={[
+            {
+              latitude: suspect.latitude,
+              longitude: suspect.longitude,
+              label: suspect.code,
+              tone: 'suspect',
+            },
+            {
+              latitude: parent.latitude,
+              longitude: parent.longitude,
+              label: parent.code,
+              tone: 'original',
+            },
+          ]}
+        />
+      </section>
     </motion.div>
   );
 }
@@ -637,8 +801,6 @@ type RecurrenceCompareField = {
   key: string;
   label: string;
   render: (side: ViolationRecurrenceReport) => ReactNode;
-  compareValue: (side: ViolationRecurrenceReport) => string;
-  highlightDiff?: boolean;
 };
 
 const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
@@ -646,51 +808,41 @@ const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
     key: 'address',
     label: 'Địa chỉ',
     render: d => d.address?.trim() || '—',
-    compareValue: d => (d.address?.trim() || '').toLowerCase(),
   },
   {
     key: 'coords',
     label: 'Tọa độ GPS',
     render: d => <CoordsLink lat={d.latitude} lng={d.longitude} />,
-    compareValue: d => formatCoords(d.latitude, d.longitude),
   },
   {
     key: 'category',
     label: 'Loại ô nhiễm',
     render: d => d.categoryName?.trim() || d.categoryCode || '—',
-    compareValue: d => (d.categoryCode || d.categoryName || '').toLowerCase(),
   },
   {
     key: 'severity',
     label: 'Mức độ',
     render: d => <SeverityPill severity={d.severity} />,
-    compareValue: d => d.severity,
   },
   {
     key: 'description',
     label: 'Mô tả',
     render: d => d.description?.trim() || '—',
-    compareValue: d => (d.description?.trim() || '').toLowerCase(),
   },
   {
     key: 'createdAt',
     label: 'Thời điểm báo cáo',
     render: d => formatShortDate(d.createdAt),
-    compareValue: d => d.createdAt || '',
-    highlightDiff: false,
   },
   {
     key: 'closedAt',
     label: 'Thời điểm đóng',
     render: d => formatShortDate(d.closedAt),
-    compareValue: d => d.closedAt || '',
-    highlightDiff: false,
   },
   {
     key: 'inspection',
     label: 'Đã thanh tra trước',
     render: d => (d.hadPriorInspection ? 'Có' : 'Không'),
-    compareValue: d => (d.hadPriorInspection ? '1' : '0'),
   },
 ];
 
@@ -805,43 +957,25 @@ function RecurrenceRecordsCompare({
           </div>
         </div>
 
-        {RECURRENCE_COMPARE_FIELDS.map(field => {
-          const shouldHighlight = field.highlightDiff !== false;
-          const differs =
-            shouldHighlight && field.compareValue(current) !== field.compareValue(prior);
-          return (
-            <div
-              key={field.key}
-              className={cn(
-                'grid grid-cols-2 transition-colors duration-150',
-                differs ? 'bg-amber-50/50 hover:bg-amber-50/80' : 'hover:bg-slate-50/90'
-              )}
-            >
-              <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
-                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
-                <div
-                  className={cn(
-                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
-                    differs && 'text-amber-950'
-                  )}
-                >
-                  {field.render(current)}
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
-                <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
-                <div
-                  className={cn(
-                    'text-sm leading-relaxed font-semibold wrap-break-word text-slate-800',
-                    differs && 'text-amber-950'
-                  )}
-                >
-                  {field.render(prior)}
-                </div>
+        {RECURRENCE_COMPARE_FIELDS.map(field => (
+          <div
+            key={field.key}
+            className="grid grid-cols-2 transition-colors duration-150 hover:bg-slate-50/90"
+          >
+            <div className="flex flex-col items-center gap-1.5 border-r border-slate-200 px-2 py-4 text-center sm:px-5">
+              <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
+              <div className="text-sm leading-relaxed font-semibold wrap-break-word text-slate-800">
+                {field.render(current)}
               </div>
             </div>
-          );
-        })}
+            <div className="flex flex-col items-center gap-1.5 px-2 py-4 text-center sm:px-5">
+              <p className="text-xs font-normal uppercase text-slate-500">{field.label}</p>
+              <div className="text-sm leading-relaxed font-semibold wrap-break-word text-slate-800">
+                {field.render(prior)}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </motion.div>
   );
@@ -926,8 +1060,8 @@ function RecurrenceSuspectDialogBody({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           className={cn(
-            'flex h-[min(92vh,56rem)] w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden border-slate-200 p-0',
-            'sm:max-w-5xl lg:max-w-6xl'
+            'flex h-[min(94vh,68rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden border-slate-200 p-0',
+            'sm:max-w-7xl xl:max-w-[88rem]'
           )}
         >
           {isPending ? (
@@ -1111,6 +1245,7 @@ function DuplicateSuspectDialogBody({
   onGoToParent,
   onResolved,
 }: Omit<DuplicateSuspectDialogProps, 'mode'>) {
+  const router = useRouter();
   const parentId = row?.possibleDuplicateOfReportId ?? '';
   const suspectId = row?.id ?? '';
 
@@ -1135,19 +1270,19 @@ function DuplicateSuspectDialogBody({
     parentId ??
     '—';
 
-  const suspectImageUrl = firstImageUrl(suspectDetail, row?.firstImageUrl ?? null);
-  const parentImageUrl = firstImageUrl(parentDetail, parentPreview?.firstImageUrl ?? null);
+  const suspectImageUrls = reportImageUrls(suspectDetail, row?.firstImageUrl ?? null);
+  const parentImageUrls = reportImageUrls(parentDetail, parentPreview?.firstImageUrl ?? null);
 
-  const previewImages: ReportPreviewImage[] = [];
-  if (suspectImageUrl) {
-    previewImages.push({
-      url: suspectImageUrl,
-      label: `${row?.code ?? 'Báo cáo'} · Đang xác minh`,
-    });
-  }
-  if (parentImageUrl) {
-    previewImages.push({ url: parentImageUrl, label: `${parentCode} · Báo cáo gốc` });
-  }
+  const previewImages: ReportPreviewImage[] = [
+    ...suspectImageUrls.map((url, index) => ({
+      url,
+      label: `${row?.code ?? 'Báo cáo'} · Đang xác minh · ${index + 1}`,
+    })),
+    ...parentImageUrls.map((url, index) => ({
+      url,
+      label: `${parentCode} · Báo cáo gốc · ${index + 1}`,
+    })),
+  ];
 
   const { openPreview, previewDialog } = useReportImagePreview(previewImages);
 
@@ -1173,6 +1308,10 @@ function DuplicateSuspectDialogBody({
       toastApiSuccess(result, 'Đã gộp báo cáo trùng lặp.');
       onOpenChange(false);
       onResolved?.();
+      const nextHref = postMergeParentHref(parentId, parentStatus);
+      if (nextHref) {
+        router.push(nextHref);
+      }
     } catch (error) {
       toastApiError(error, 'Không thể gộp báo cáo trùng lặp.');
     }
@@ -1188,8 +1327,8 @@ function DuplicateSuspectDialogBody({
           className={cn(
             'flex flex-col gap-0 overflow-hidden border-slate-200 p-0',
             dialogWide
-              ? 'h-[min(92vh,56rem)] w-[calc(100%-1rem)] sm:max-w-5xl lg:max-w-6xl'
-              : 'max-h-[min(90vh,52rem)] sm:max-w-lg'
+              ? 'h-[min(94vh,68rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-7xl xl:max-w-[88rem]'
+              : 'max-h-[min(92vh,60rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-2xl'
           )}
         >
           {row ? (
@@ -1227,7 +1366,7 @@ function DuplicateSuspectDialogBody({
                                 {parentCode}
                               </span>{' '}
                               đang ở trạng thái{' '}
-                              <span className="font-semibold text-emerald-700">
+                              <span className="font-semibold text-brand-dark">
                                 {reportStatusLabelVi(parentStatus ?? '')}
                               </span>
                               . Đối chiếu thông tin hai bên rồi chọn{' '}
@@ -1267,17 +1406,16 @@ function DuplicateSuspectDialogBody({
                     <VerifiedRecordsCompare
                       suspect={suspectDetail}
                       parent={parentDetail}
-                      suspectImageUrl={suspectImageUrl}
-                      parentImageUrl={parentImageUrl}
+                      suspectImageUrls={suspectImageUrls}
+                      parentImageUrls={parentImageUrls}
                       suspectLoading={suspectLoading}
-                      similarityScore={row.aiSimilarityScore}
                       onPreview={openPreview}
                     />
                   ) : (
-                    <div className="flex items-stretch gap-2 sm:gap-3">
+                    <div className="flex items-start gap-2 sm:gap-3">
                       <div className="min-w-0 flex-1">
-                        <CompareThumb
-                          url={suspectImageUrl}
+                        <CompareSideMedia
+                          urls={suspectImageUrls}
                           alt={`${row.code} · Đang xác minh`}
                           tone="suspect"
                           onPreview={openPreview}
@@ -1288,8 +1426,8 @@ function DuplicateSuspectDialogBody({
                       <LinkPulse />
 
                       <div className="min-w-0 flex-1">
-                        <CompareThumb
-                          url={parentImageUrl}
+                        <CompareSideMedia
+                          urls={parentImageUrls}
                           alt={`${parentCode} · Báo cáo gốc`}
                           loading={parentLoading}
                           tone="original"

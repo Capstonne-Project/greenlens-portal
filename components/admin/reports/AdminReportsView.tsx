@@ -1,8 +1,10 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { AdminReportDetailPanel } from '@/components/admin/reports/AdminReportDetailPanel';
 import { AdminReportHideDialog } from '@/components/admin/reports/AdminReportHideDialog';
 import { AdminReportSummaryStrip } from '@/components/admin/reports/AdminReportSummaryStrip';
+import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
 import {
@@ -34,10 +36,10 @@ import {
 } from '@/components/ui/table';
 import {
   useAdminReportsList,
-  usePollutionCategories,
+  useAdminReportsTotal,
   useUnhideAdminReport,
 } from '@/hooks/useAdminReports';
-import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { ADMIN_REPORT_PAGE_SIZE, ADMIN_REPORT_STATUS_TABS } from '@/lib/constants/adminReports';
 import type { AdminReportListItem } from '@/lib/api/models/adminReport';
 import {
@@ -49,10 +51,10 @@ import { cn } from '@/lib/utils';
 import { OPEN_REPORT_STATUSES } from '@/utils/adminOverview';
 import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { formatReportRelativeTime, reportListTitle } from '@/utils/adminReportUi';
-import { Download, Eye, EyeOff, FileWarning, Loader2, MoreHorizontal, Search } from 'lucide-react';
+import { Download, Eye, EyeOff, FileWarning, Loader2, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 function categoryInitial(name: string): string {
@@ -90,32 +92,53 @@ function colPad(key: AdminColumnKey, layer: 'head' | 'body' = 'body') {
   return adminTableCellPad(position, layer);
 }
 
-/** Local draft + debounce; remount via `key={searchQ}` when URL search changes. */
-function AdminReportsSearchField({
-  searchQ,
+function AdminReportsLocationFields({
+  provinceCode,
+  wardCode,
   onCommit,
 }: {
-  searchQ: string;
-  onCommit: (trimmed: string) => void;
+  provinceCode: string;
+  wardCode: string;
+  onCommit: (next: { provinceCode: string | null; wardCode: string | null }) => void;
 }) {
-  const [searchInput, setSearchInput] = useState(searchQ);
-
-  useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS, value => {
-    const next = value.trim();
-    if (next === searchQ.trim()) return;
-    onCommit(next);
-  });
+  const [province, setProvince] = useState(provinceCode);
+  const [ward, setWard] = useState(wardCode);
 
   return (
-    <div className="relative min-w-[12rem] flex-1">
-      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-      <input
-        type="search"
-        value={searchInput}
-        onChange={e => setSearchInput(e.target.value)}
-        placeholder="Mã, tiêu đề, khu vực, người gửi..."
-        className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-        aria-label="Tìm báo cáo"
+    <div className="flex shrink-0 items-center gap-2">
+      <ValidatedInput
+        type="text"
+        value={province}
+        onChange={e => setProvince(e.target.value)}
+        onBlur={() =>
+          onCommit({
+            provinceCode: province.trim() || null,
+            wardCode: ward.trim() || null,
+          })
+        }
+        minLength={0}
+        maxLength={10}
+        showCounter={false}
+        placeholder="Mã tỉnh"
+        className="h-10 w-28"
+        aria-label="Mã tỉnh"
+      />
+      <ValidatedInput
+        type="text"
+        value={ward}
+        onChange={e => setWard(e.target.value)}
+        onBlur={() =>
+          onCommit({
+            provinceCode: province.trim() || null,
+            wardCode: ward.trim() || null,
+          })
+        }
+        minLength={0}
+        maxLength={12}
+        showCounter={false}
+        placeholder="Mã phường"
+        className="h-10 w-28"
+        aria-label="Mã phường"
       />
     </div>
   );
@@ -135,11 +158,12 @@ export function AdminReportsView() {
   const searchParams = useSearchParams();
 
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
-  const searchQ = searchParams.get('search') ?? '';
   const statusTab = searchParams.get('tab') ?? 'all';
   const categoryId = searchParams.get('categoryId') ?? '';
   const wardCode = searchParams.get('wardCode') ?? '';
   const provinceCode = searchParams.get('provinceCode') ?? '';
+
+  const [searchInput, setSearchInput] = useState('');
 
   const activeTab =
     ADMIN_REPORT_STATUS_TABS.find(t => t.id === statusTab) ?? ADMIN_REPORT_STATUS_TABS[0];
@@ -160,21 +184,13 @@ export function AdminReportsView() {
     [hiddenOverride]
   );
 
-  const queryParams = useMemo(
-    () => ({
-      page,
-      pageSize: ADMIN_REPORT_PAGE_SIZE,
-      ...(searchQ.trim() ? { search: searchQ.trim() } : {}),
-      ...(activeTab.status ? { status: activeTab.status } : {}),
-      ...(categoryId ? { categoryId } : {}),
-      ...(wardCode.trim() ? { wardCode: wardCode.trim() } : {}),
-      ...(provinceCode.trim() ? { provinceCode: provinceCode.trim() } : {}),
-    }),
-    [page, searchQ, activeTab.status, categoryId, wardCode, provinceCode]
-  );
+  const { data: systemTotal } = useAdminReportsTotal();
+  const { data: categories } = useCatalogPollutionCategories();
 
-  const { data, isPending, isError, error, refetch } = useAdminReportsList(queryParams);
-  const { data: categories } = usePollutionCategories();
+  const selectedCategoryCode = useMemo(
+    () => categories?.find(c => c.id === categoryId)?.code,
+    [categories, categoryId]
+  );
 
   const setQuery = useCallback(
     (patch: Record<string, string | null>) => {
@@ -183,9 +199,47 @@ export function AdminReportsView() {
         if (v === null || v === '') next.delete(k);
         else next.set(k, v);
       });
-      router.push(`${pathname}?${next.toString()}`);
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams]
+  );
+
+  const queryParams = useMemo(
+    () => ({
+      page,
+      pageSize: ADMIN_REPORT_PAGE_SIZE,
+      ...(searchInput.trim() ? { search: searchInput.trim() } : {}),
+      ...(activeTab.status ? { status: activeTab.status } : {}),
+      ...(selectedCategoryCode ? { categoryCode: selectedCategoryCode } : {}),
+      ...(wardCode.trim() ? { wardCode: wardCode.trim() } : {}),
+      ...(provinceCode.trim() ? { provinceCode: provinceCode.trim() } : {}),
+    }),
+    [page, searchInput, activeTab.status, selectedCategoryCode, wardCode, provinceCode]
+  );
+
+  const hasActiveFilters = Boolean(
+    searchInput.trim() ||
+    activeTab.status ||
+    selectedCategoryCode ||
+    wardCode.trim() ||
+    provinceCode.trim()
+  );
+
+  const prevSearchInput = useRef(searchInput);
+
+  useEffect(() => {
+    if (prevSearchInput.current === searchInput) return;
+    prevSearchInput.current = searchInput;
+    if (page !== 1) {
+      setQuery({ page: '1' });
+    }
+  }, [searchInput, page, setQuery]);
+
+  const categoryFilterReady = !categoryId || Boolean(selectedCategoryCode);
+
+  const { data, isPending, isError, error, refetch, isFetching } = useAdminReportsList(
+    queryParams,
+    { enabled: categoryFilterReady }
   );
 
   const items = data?.items ?? [];
@@ -215,28 +269,31 @@ export function AdminReportsView() {
     <div className="w-full min-w-0 space-y-4">
       <div className="rounded-card border border-border bg-card p-4 shadow-sm">
         <AdminReportSummaryStrip
-          totalItems={pagination?.totalItems ?? null}
+          totalItems={systemTotal ?? pagination?.totalItems ?? null}
+          hasActiveFilters={hasActiveFilters}
+          matchedCount={
+            hasActiveFilters ? (isPending ? undefined : (pagination?.totalItems ?? 0)) : undefined
+          }
           openOnPage={openOnPage}
           submittedOnPage={submittedOnPage}
           anonymousOnPage={anonymousOnPage}
           className="mb-3"
         />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <AdminReportsSearchField
-            key={searchQ}
-            searchQ={searchQ}
-            onCommit={next => setQuery({ search: next || null, page: '1' })}
+        <div className="flex flex-wrap items-end gap-2">
+          <AdminSearchField
+            label="Tìm báo cáo"
+            value={searchInput}
+            onCommit={setSearchInput}
+            placeholder="Mã, tiêu đề, khu vực, người gửi..."
+            className="min-w-[14rem] flex-1"
           />
 
           <Select
             value={categoryId || 'all'}
             onValueChange={v => setQuery({ categoryId: v === 'all' ? null : v, page: '1' })}
           >
-            <SelectTrigger
-              className="h-10 w-[11.5rem] shrink-0 rounded-lg"
-              aria-label="Loại ô nhiễm"
-            >
+            <SelectTrigger className="h-10 w-[12rem] shrink-0 rounded-lg" aria-label="Loại ô nhiễm">
               <SelectValue placeholder="Loại: Tất cả" />
             </SelectTrigger>
             <SelectContent position="popper" sideOffset={4}>
@@ -249,27 +306,19 @@ export function AdminReportsView() {
             </SelectContent>
           </Select>
 
-          <input
-            type="text"
-            defaultValue={provinceCode}
-            placeholder="Mã tỉnh"
-            onBlur={e => setQuery({ provinceCode: e.target.value.trim() || null, page: '1' })}
-            className="h-10 w-24 shrink-0 rounded-lg border border-input bg-background px-3 text-sm"
-            aria-label="Mã tỉnh"
-          />
-          <input
-            type="text"
-            defaultValue={wardCode}
-            placeholder="Mã phường"
-            onBlur={e => setQuery({ wardCode: e.target.value.trim() || null, page: '1' })}
-            className="h-10 w-28 shrink-0 rounded-lg border border-input bg-background px-3 text-sm"
-            aria-label="Mã phường"
+          <AdminReportsLocationFields
+            key={`${provinceCode}|${wardCode}`}
+            provinceCode={provinceCode}
+            wardCode={wardCode}
+            onCommit={({ provinceCode: p, wardCode: w }) =>
+              setQuery({ provinceCode: p, wardCode: w, page: '1' })
+            }
           />
 
           <button
             type="button"
             disabled
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground"
+            className="ml-auto inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground"
           >
             <Download className="size-4" />
             Xuất CSV
@@ -295,6 +344,12 @@ export function AdminReportsView() {
       </div>
 
       <div className={ADMIN_TABLE_SHELL}>
+        {isFetching && !isPending ? (
+          <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            Đang cập nhật danh sách…
+          </div>
+        ) : null}
         <div className={ADMIN_TABLE_SCROLL}>
           <Table className={ADMIN_TABLE_CLASS}>
             <TableHeader className="sticky top-0 z-10 bg-slate-100">

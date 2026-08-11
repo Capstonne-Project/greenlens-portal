@@ -59,7 +59,7 @@ export function AdminBlockedWordsView() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Danh sách từ cấm dùng lọc bình luận / mô tả báo cáo (ADM-38–41).
+          Danh sách từ cấm dùng để lọc bình luận và mô tả báo cáo.
         </p>
         <button
           type="button"
@@ -130,7 +130,7 @@ export function AdminBlockedWordsView() {
                             : 'bg-muted text-muted-foreground'
                         )}
                       >
-                        {item.isActive ? 'Active' : 'Inactive'}
+                        {item.isActive ? 'Đang bật' : 'Đã tắt'}
                       </span>
                     </td>
                     <td className={cn(adminTableCellPad('last'), 'text-right')}>
