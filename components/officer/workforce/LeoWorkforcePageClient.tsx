@@ -2,16 +2,14 @@
 
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CircleHelp, Users, UsersRound } from 'lucide-react';
+import { Users, UsersRound } from 'lucide-react';
 import { LayoutGroup, motion, useReducedMotion } from 'motion/react';
 
 import { MembersTab } from './MembersTab';
 import { TeamTab } from './TeamTab';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect';
 import { useOfficeStaffList } from '@/hooks/useLeoOffices';
 import { useTeamsList } from '@/hooks/useTeams';
-import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 
 export type WorkforceTab = 'teams' | 'members';
@@ -48,9 +46,6 @@ export function LeoWorkforcePageClient() {
     setMounted(prev => (prev[activeTab] ? prev : { ...prev, [activeTab]: true }));
     setPrevTab(activeTab);
   }
-
-  const user = useAuthStore(s => s.user);
-  const fullName = user?.name?.trim() || 'Người dùng';
 
   const { data: teamsData } = useTeamsList({ page: 1, pageSize: 1 });
   const { data: staffData } = useOfficeStaffList({ page: 1, pageSize: 1 });
@@ -103,32 +98,17 @@ export function LeoWorkforcePageClient() {
     <>
       <header className="mb-3 shrink-0">
         <div className="border-b border-slate-200 pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-[0.35rem]">
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
+              <UsersRound className="size-7" aria-hidden />
+            </span>
+            <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Đội ngũ</h1>
-              <button
-                type="button"
-                className="inline-flex cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-[0.15rem] text-slate-500 hover:bg-slate-400/15 hover:text-slate-700"
-                aria-label="Thông tin quản lý đội ngũ"
-              >
-                <CircleHelp className="size-4" aria-hidden />
-              </button>
+              <p className="text-xs font-normal text-slate-500">
+                Quản lý đội nhóm và nhân sự thuộc văn phòng môi trường.
+              </p>
             </div>
           </div>
-          <TypewriterEffectSmooth
-            words={[
-              { text: 'Welcome', className: 'font-normal text-slate-500' },
-              { text: 'back,', className: 'font-normal text-slate-500' },
-              {
-                text: fullName,
-                className: 'font-medium text-slate-800 dark:text-slate-100',
-              },
-            ]}
-            className="mt-1 my-0"
-            textClassName="text-sm font-normal sm:text-sm md:text-sm lg:text-sm xl:text-sm"
-            cursorClassName="h-3.5 w-0.5 bg-slate-400 sm:h-3.5 xl:h-3.5"
-            hideCursorOnComplete
-          />
         </div>
       </header>
 
