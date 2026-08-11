@@ -58,14 +58,13 @@ export function textLimitHint(
   const status = getTextLimitStatus(value, opts);
   const mode = opts.mode ?? 'chars';
   const unit = textLimitUnit(mode);
-  const count = getTextCount(value, mode);
   const min = opts.min ?? 0;
 
   if (status === 'too-short' && min > 0) {
-    return `Cần ít nhất ${min} ${unit} (hiện ${count})`;
+    return `Cần ít nhất ${min} ${unit}`;
   }
   if (status === 'too-long' && opts.max != null) {
-    return `Tối đa ${opts.max} ${unit} (hiện ${count})`;
+    return `Tối đa ${opts.max} ${unit}`;
   }
   return null;
 }
