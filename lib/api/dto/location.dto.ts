@@ -18,3 +18,9 @@ export interface WardDto {
 export interface WardListDataDto {
   items: WardDto[];
 }
+
+/** GET /v1/catalog/wards/{wardCode}/boundary — đề xuất BE, chưa có trong Swagger hiện tại. */
+export interface WardBoundaryDto {
+  wardCode: string;
+  boundaryUrl?: string | null;
+}

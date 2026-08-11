@@ -157,6 +157,13 @@ export interface LeoMyReportsDataDto {
   pagination: LeoOfficePaginationDto;
 }
 
+/** GET /v1/offices/my/ward-boundary — data envelope */
+export interface LeoWardBoundaryDto {
+  wardCode: string;
+  wardName: string;
+  boundaryUrl?: string | null;
+}
+
 /** POST /v1/offices/my/staff — vai trò đích khi tuyển Citizen. */
 export type RecruitStaffTargetRoleDto = 'Citizen' | 'Cleaner' | 'Inspector';
 
