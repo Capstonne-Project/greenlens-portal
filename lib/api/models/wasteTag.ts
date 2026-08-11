@@ -9,6 +9,8 @@ export interface WasteTag {
   description: string | null;
   displayOrder: number;
   isActive: boolean;
+  /** Số báo cáo đang dùng thẻ — admin list (GET /v1/admin/waste-tags). */
+  reportCount: number;
 }
 
 export interface WasteTagList {

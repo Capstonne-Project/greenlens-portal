@@ -24,12 +24,24 @@ import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
 export interface AdminWasteTagsParams {
   /** true = chỉ đang dùng, false = chỉ đã tắt, undefined = tất cả */
   isActive?: boolean;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  sortDesc?: boolean;
 }
 
-function buildWasteTagsQuery(params?: AdminWasteTagsParams): Record<string, boolean> {
-  const query: Record<string, boolean> = {};
+function buildWasteTagsQuery(
+  params?: AdminWasteTagsParams
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
+  if (params?.page != null) query.page = params.page;
+  if (params?.pageSize != null) query.pageSize = params.pageSize;
+  if (params?.search?.trim()) query.search = params.search.trim();
   if (params?.isActive === true) query.isActive = true;
   if (params?.isActive === false) query.isActive = false;
+  if (params?.sortBy?.trim()) query.sortBy = params.sortBy.trim();
+  if (params?.sortDesc != null) query.sortDesc = params.sortDesc;
   return query;
 }
 
@@ -42,10 +54,6 @@ export async function adaptCatalogWasteTags(): Promise<ApiEnvelope<WasteTagList>
 export async function adaptAdminWasteTags(
   params?: AdminWasteTagsParams
 ): Promise<ApiEnvelope<WasteTagList>> {
-  if (params?.isActive !== false) {
-    return adaptCatalogWasteTags();
-  }
-
   const res = await apiService.get<ApiEnvelope<WasteTagListDataDto>>(
     '/v1/admin/waste-tags',
     buildWasteTagsQuery(params)

@@ -2,6 +2,10 @@
 
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
+import {
+  getWasteTagDeactivateBlockedMessage,
+  isAdminCatalogInUse,
+} from '@/utils/adminCatalogGuards';
 import { Loader2 } from 'lucide-react';
 
 interface WasteTagToggleDialogProps {
@@ -21,6 +25,7 @@ export function WasteTagToggleDialog({
   onConfirm,
 }: WasteTagToggleDialogProps) {
   const deactivating = !isActive;
+  const deactivateBlocked = deactivating && tag != null && isAdminCatalogInUse(tag.reportCount);
 
   return (
     <OfficeDialogShell
@@ -32,7 +37,9 @@ export function WasteTagToggleDialog({
       {tag && (
         <div className="space-y-5">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {deactivating ? (
+            {deactivateBlocked ? (
+              getWasteTagDeactivateBlockedMessage(tag.reportCount)
+            ) : deactivating ? (
               <>
                 Bạn có chắc muốn vô hiệu hóa{' '}
                 <span className="font-semibold text-foreground">{tag.nameVi}</span> (
@@ -54,21 +61,23 @@ export function WasteTagToggleDialog({
               disabled={busy}
               className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
             >
-              Hủy
+              {deactivateBlocked ? 'Đóng' : 'Hủy'}
             </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={busy}
-              className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium text-white disabled:opacity-60 ${
-                deactivating
-                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                  : 'bg-emerald-700 hover:bg-emerald-800'
-              }`}
-            >
-              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              {deactivating ? 'Vô hiệu hóa' : 'Kích hoạt'}
-            </button>
+            {!deactivateBlocked ? (
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={busy}
+                className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium text-white disabled:opacity-60 ${
+                  deactivating
+                    ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                    : 'bg-emerald-700 hover:bg-emerald-800'
+                }`}
+              >
+                {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                {deactivating ? 'Vô hiệu hóa' : 'Kích hoạt'}
+              </button>
+            ) : null}
           </div>
         </div>
       )}

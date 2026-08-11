@@ -471,7 +471,7 @@ export function OverviewReportTrend({
   const max = Math.max(1, ...list.map(p => p.count));
 
   return (
-    <CardShell title="Xu hướng báo cáo" subtitle="Theo ngày · ADM-51">
+    <CardShell title="Xu hướng báo cáo" subtitle="Theo ngày">
       {list.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu xu hướng" />
       ) : (

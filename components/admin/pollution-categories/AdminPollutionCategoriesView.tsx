@@ -6,7 +6,10 @@ import {
   type PollutionCategoryFormValues,
 } from '@/components/admin/pollution-categories/PollutionCategoryFormDialog';
 import { PollutionCategoryCard } from '@/components/admin/pollution-categories/PollutionCategoryCard';
-import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import {
+  AdminFilterSearch,
+  AdminFilterStatusToggle,
+} from '@/components/admin/shared/AdminFilterToolbar';
 import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import {
   useAdminPollutionCategoriesList,
@@ -16,9 +19,12 @@ import {
 } from '@/hooks/usePollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import { ADMIN_POLLUTION_CATEGORIES_PAGE_SIZE } from '@/lib/constants/pollutionCategories';
-import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { getPollutionCategoryMutationError } from '@/utils/pollutionCategoryErrors';
-import { ChevronLeft, ChevronRight, Loader2, Plus, Search } from 'lucide-react';
+import {
+  getPollutionCategoryArchiveBlockedMessage,
+  isAdminCatalogInUse,
+} from '@/utils/adminCatalogGuards';
+import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -37,7 +43,6 @@ export function AdminPollutionCategoriesView() {
   const searchQ = searchParams.get('q') ?? '';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
 
-  const [localSearch, setLocalSearch] = useState(searchQ);
   const [createOpen, setCreateOpen] = useState(false);
   const [editCategory, setEditCategory] = useState<PollutionCategory | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
@@ -73,14 +78,15 @@ export function AdminPollutionCategoriesView() {
         if (v === null || v === '') next.delete(k);
         else next.set(k, v);
       });
-      router.push(`${pathname}?${next.toString()}`);
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams]
   );
 
-  const applySearch = () => {
-    setQuery({ q: localSearch.trim() || null, page: '1' });
-  };
+  const handleSearchCommit = useCallback(
+    (q: string) => setQuery({ q: q || null, page: '1' }),
+    [setQuery]
+  );
 
   const handleCreate = (values: PollutionCategoryFormValues) => {
     createMutation.mutate(
@@ -124,6 +130,10 @@ export function AdminPollutionCategoriesView() {
   };
 
   const requestArchiveToggle = (category: PollutionCategory, archive: boolean) => {
+    if (archive && isAdminCatalogInUse(category.reportCount)) {
+      toast.error(getPollutionCategoryArchiveBlockedMessage(category.reportCount));
+      return;
+    }
     setArchiveTarget({ category, archive });
   };
 
@@ -141,7 +151,13 @@ export function AdminPollutionCategoriesView() {
           if (archive) setQuery({ status: 'inactive', page: '1' });
         },
         onError: err => {
-          toast.error(getPollutionCategoryMutationError(err, 'Không thể đổi trạng thái.'));
+          toast.error(
+            getPollutionCategoryMutationError(
+              err,
+              'Không thể đổi trạng thái.',
+              category.reportCount
+            )
+          );
           setArchivingId(null);
         },
       }
@@ -157,67 +173,26 @@ export function AdminPollutionCategoriesView() {
     <div className="w-full min-w-0">
       <header className="mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">
-          Danh mục ô nhiễm · phân trang từ server · kèm số báo cáo đang dùng
+          Quản lý danh mục loại ô nhiễm · kèm số báo cáo đang sử dụng
           {pagination ? <> · {pagination.totalItems.toLocaleString('vi-VN')} kết quả</> : null}
         </p>
       </header>
 
       <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-          <div className="flex min-w-[220px] flex-col gap-2">
-            <label htmlFor="pc-search" className="text-sm font-medium">
-              Tìm loại ô nhiễm
-            </label>
-            <div className="flex gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-[13px] z-10 size-4 text-muted-foreground" />
-                <ValidatedSearchInput
-                  id="pc-search"
-                  value={localSearch}
-                  onChange={e => setLocalSearch(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && applySearch()}
-                  maxLength={SEARCH_INPUT_MAX_LENGTH}
-                  placeholder="code, tên VN, tên EN…"
-                  className="pl-10"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={applySearch}
-                className="h-10 shrink-0 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
-              >
-                Tìm
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Trạng thái</span>
-            <div className="flex h-10 rounded-lg border border-border bg-background p-1">
-              <button
-                type="button"
-                onClick={() => setQuery({ status: null, page: '1' })}
-                className={`rounded-md px-4 text-sm font-medium transition ${
-                  status === 'active'
-                    ? 'bg-emerald-700 text-white'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Đang dùng
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuery({ status: 'inactive', page: '1' })}
-                className={`rounded-md px-4 text-sm font-medium transition ${
-                  status === 'inactive'
-                    ? 'bg-emerald-700 text-white'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Ngưng
-              </button>
-            </div>
-          </div>
+          <AdminFilterSearch
+            id="pc-search"
+            label="Tìm loại ô nhiễm"
+            value={searchQ}
+            onCommit={handleSearchCommit}
+            placeholder="code, tên VN, tên EN…"
+          />
+          <AdminFilterStatusToggle
+            isActive={status === 'active'}
+            inactiveLabel="Ngưng"
+            onActive={() => setQuery({ status: null, page: '1' })}
+            onInactive={() => setQuery({ status: 'inactive', page: '1' })}
+          />
         </div>
 
         <button

@@ -1,9 +1,16 @@
-export function getPollutionCategoryMutationError(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const res = (err as { response?: { data?: { message?: string } } }).response;
-    const msg = res?.data?.message;
-    if (typeof msg === 'string' && msg.trim()) return msg.trim();
-  }
-  if (err instanceof Error && err.message.trim()) return err.message;
-  return fallback;
+import {
+  getCatalogInUseMutationError,
+  getPollutionCategoryArchiveBlockedMessage,
+} from '@/utils/adminCatalogGuards';
+
+export function getPollutionCategoryMutationError(
+  err: unknown,
+  fallback: string,
+  reportCount = 0
+): string {
+  const blockedMessage =
+    reportCount > 0
+      ? getPollutionCategoryArchiveBlockedMessage(reportCount)
+      : 'Không thể ngưng danh mục vì đang có báo cáo sử dụng.';
+  return getCatalogInUseMutationError(err, fallback, blockedMessage);
 }

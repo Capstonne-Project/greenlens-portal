@@ -95,14 +95,14 @@ export function AdminGamificationConfigsView() {
   const errorMessage =
     listQuery.error instanceof Error
       ? listQuery.error.message
-      : 'Không tải được cấu hình gamification.';
+      : 'Không tải được cấu hình điểm thưởng.';
 
   return (
     <div className="w-full min-w-0 space-y-4">
       <header>
         <p className="text-sm text-muted-foreground">
-          Cấu hình điểm cho từng hành động (verify, resolve, reject…). Thay đổi điểm và bật/tắt hành
-          động theo BR-GAM.
+          Cấu hình điểm thưởng cho từng hành động (xác minh, xử lý, từ chối…). Có thể thay đổi điểm
+          và bật/tắt từng hành động.
         </p>
       </header>
 

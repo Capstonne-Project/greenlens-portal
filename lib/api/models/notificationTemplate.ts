@@ -46,6 +46,7 @@ export interface NotificationTemplatesListParams {
   pageSize?: number;
   channel?: string;
   isPublished?: boolean;
+  search?: string;
 }
 
 export interface NotificationTemplateWriteInput {

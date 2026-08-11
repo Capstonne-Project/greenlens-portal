@@ -20,6 +20,7 @@ import {
   faTrophy,
   faUserGroup,
   faUsers,
+  faAward,
   faBan,
 } from '@fortawesome/free-solid-svg-icons';
 import { ADMIN_USERS_NAV } from '@/lib/constants/adminUsersNav';
@@ -57,7 +58,8 @@ export function getAdminShellNavConfig(): MapShellNavConfig {
     item('pollution-categories', 'Danh mục ô nhiễm', '/admin/pollution-categories', faTags),
     item('waste-tags', 'Thẻ rác thải', '/admin/waste-tags', faRecycle),
     item('penalty-frameworks', 'Khung xử phạt', '/admin/penalty-frameworks', faGavel),
-    item('gamification-configs', 'Điểm gamification', '/admin/gamification-configs', faTrophy),
+    item('gamification-configs', 'Cấu hình điểm thưởng', '/admin/gamification-configs', faTrophy),
+    item('badges', 'Huy hiệu', '/admin/badges', faAward),
     item('blocked-words', 'Từ cấm', '/admin/blocked-words', faBan),
     item('permissions', 'Ma trận quyền', '/admin/permissions', faShieldHalved),
     // Người dùng (collapse + children từ ADMIN_USERS_NAV)
