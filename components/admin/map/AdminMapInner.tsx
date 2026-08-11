@@ -145,7 +145,7 @@ export function AdminMapInner() {
           Bản đồ công khai
         </h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Báo cáo Verified trở lên · theo dõi viewport quản trị
+          Báo cáo đã xác minh trở lên · theo dõi khung nhìn bản đồ
         </p>
       </div>
 

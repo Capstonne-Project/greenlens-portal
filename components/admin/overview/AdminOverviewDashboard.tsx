@@ -98,11 +98,8 @@ export function AdminOverviewDashboard() {
   );
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-3 pb-1">
-      {/*
-        Mobile: 1 cột · Tablet (md): 2 cột · Desktop (lg): wireframe 12 cột
-      */}
-      <section className="grid min-h-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-12 lg:auto-rows-[minmax(150px,1fr)]">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <section className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-12 lg:auto-rows-[minmax(0,1fr)]">
         {/* Column 1 — left stack */}
         <div className="min-h-0 md:col-span-1 lg:col-span-3 lg:col-start-1 lg:row-start-1">
           <OverviewLifecycleFunnel stages={reportFunnel} />
@@ -131,8 +128,8 @@ export function AdminOverviewDashboard() {
         </div>
 
         {/* Column 3 — portrait map + queue aging */}
-        <article className="flex min-h-[280px] flex-col rounded-card border border-border bg-card p-3 shadow-sm sm:min-h-[320px] md:col-span-2 lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2 lg:min-h-0">
-          <header className="mb-2 shrink-0">
+        <article className="flex min-h-0 flex-col rounded-card border border-border bg-card p-3 shadow-sm md:col-span-2 lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2">
+          <header className="mb-1.5 shrink-0">
             <h2 className="text-xs font-semibold text-foreground sm:text-sm">Bản đồ Việt Nam</h2>
             <p className="text-[10px] text-muted-foreground">
               Toàn quốc hình chữ S · click tỉnh để focus · phóng to che sidebar

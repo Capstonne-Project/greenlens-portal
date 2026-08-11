@@ -36,6 +36,8 @@ import type {
   InspectionDetail,
   InspectionPayment,
 } from '@/lib/api/models/inspectionReport';
+import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   inspectionShowsClosedAt,
   inspectionShowsPenaltyFields,
@@ -56,7 +58,7 @@ const ReportLocationMap = dynamic(
 );
 
 const RECURRENCE_LIST_PATH = '/officer/recurrence';
-const INSPECTIONS_LIST_PATH = '/officer/inspections';
+const INSPECTIONS_HUB_PATH = '/officer/recurrence?tab=inspections';
 
 const EMPTY = {
   team: 'Chưa gán đội thanh tra',
@@ -1371,10 +1373,11 @@ export function InspectionDetailClient() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const inspectionId = typeof params.id === 'string' ? params.id : '';
 
   const isInspectionsQueueRoute = pathname.startsWith('/officer/inspections');
-  const backPath = isInspectionsQueueRoute ? INSPECTIONS_LIST_PATH : RECURRENCE_LIST_PATH;
+  const backPath = isInspectionsQueueRoute ? INSPECTIONS_HUB_PATH : RECURRENCE_LIST_PATH;
   const backLabel = isInspectionsQueueRoute
     ? 'Quay lại danh sách hồ sơ xử phạt'
     : 'Quay lại danh sách tái diễn';
@@ -1398,7 +1401,14 @@ export function InspectionDetailClient() {
           variant="ghost"
           size="sm"
           className="gap-1.5 px-2 text-slate-500 hover:text-slate-900"
-          onClick={() => router.push(backPath)}
+          onClick={() =>
+            goBackWithListSoftReload({
+              router,
+              queryClient,
+              from: null,
+              fallbackHref: backPath,
+            })
+          }
         >
           <ArrowLeft className="size-4" aria-hidden />
           {backLabel}

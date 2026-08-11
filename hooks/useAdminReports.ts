@@ -31,13 +31,17 @@ const LIST_STALE_MS = 3 * 60 * 1000;
 const DETAIL_STALE_MS = 3 * 60 * 1000;
 const CATALOG_STALE_MS = 10 * 60 * 1000;
 
-export function useAdminReportsList(params: AdminReportsListParams) {
+export function useAdminReportsList(
+  params: AdminReportsListParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: adminReportKeys.list(params),
     queryFn: () => fetchAdminReports(params),
     select: (envelope: ApiEnvelope<AdminReportsList>) => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 

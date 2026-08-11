@@ -22,6 +22,8 @@ export type CompareMapPin = {
 type CompareReportsMapProps = {
   pins: CompareMapPin[];
   className?: string;
+  /** Legend dưới map — `null` ẩn; mặc định nhãn dialog trùng lặp. */
+  legend?: { suspect: string; original: string } | null;
 };
 
 function isValidCoord(lat: number, lng: number): boolean {
@@ -29,7 +31,11 @@ function isValidCoord(lat: number, lng: number): boolean {
 }
 
 /** Bản đồ so sánh 2 vị trí báo cáo — fitBounds cả 2 pin (MapLibre + OSM). */
-export function CompareReportsMap({ pins, className }: CompareReportsMapProps) {
+export function CompareReportsMap({
+  pins,
+  className,
+  legend = { suspect: 'Đang xác minh', original: 'Báo cáo gốc' },
+}: CompareReportsMapProps) {
   const mapRef = useRef<MapRef | null>(null);
 
   const validPins = useMemo(() => pins.filter(p => isValidCoord(p.latitude, p.longitude)), [pins]);
@@ -120,16 +126,18 @@ export function CompareReportsMap({ pins, className }: CompareReportsMapProps) {
           ))}
         </Map>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 bg-white px-3 py-2 text-[11px] text-slate-600">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 shrink-0 rounded-full bg-amber-500" aria-hidden />
-          Đang xác minh
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 shrink-0 rounded-full bg-brand" aria-hidden />
-          Báo cáo gốc
-        </span>
-      </div>
+      {legend ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 bg-white px-3 py-2 text-[11px] text-slate-600">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 shrink-0 rounded-full bg-amber-500" aria-hidden />
+            {legend.suspect}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 shrink-0 rounded-full bg-brand" aria-hidden />
+            {legend.original}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

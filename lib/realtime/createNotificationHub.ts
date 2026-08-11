@@ -13,6 +13,7 @@
  *
  * Race note: React Strict Mode + bell/nav cùng mount từng gọi stop() giữa negotiate
  * → "connection was stopped during negotiation". Fix: subscribe() + delayed stop.
+ * auth:session: chỉ stop+start khi access JWT đổi (connectedWithToken) — tránh WS đôi lúc hydrate.
  */
 
 import {
@@ -163,6 +164,8 @@ class SignalRNotificationHub implements NotificationHub {
   private authListenersBound = false;
   /** Tăng mỗi lần stop có chủ đích — start in-flight bỏ qua nếu generation lệch. */
   private runGeneration = 0;
+  /** Access JWT gắn với connection đang Connected — tránh stop+start khi auth:session trùng token (hydrate). */
+  private connectedWithToken: string | null = null;
 
   constructor(hubUrl: string) {
     this.connection = new HubConnectionBuilder()
@@ -219,6 +222,9 @@ class SignalRNotificationHub implements NotificationHub {
     if (this.consumers === 0) return;
 
     if (this.connection.state === HubConnectionState.Connected) {
+      if (!this.connectedWithToken) {
+        this.connectedWithToken = readAccessToken() || null;
+      }
       this.emit({ kind: 'connected', reason: 'start' });
       return;
     }
@@ -236,6 +242,7 @@ class SignalRNotificationHub implements NotificationHub {
 
   private async stopInternal(): Promise<void> {
     this.runGeneration += 1;
+    this.connectedWithToken = null;
 
     if (this.connection.state === HubConnectionState.Disconnected) return;
 
@@ -244,6 +251,11 @@ class SignalRNotificationHub implements NotificationHub {
     } catch {
       // teardown
     }
+  }
+
+  private markConnected(): void {
+    this.connectedWithToken = readAccessToken() || null;
+    this.emit({ kind: 'connected', reason: 'start' });
   }
 
   private async connectWithAuthRetry(generation: number): Promise<void> {
@@ -258,7 +270,7 @@ class SignalRNotificationHub implements NotificationHub {
         await this.connection.stop().catch(() => undefined);
         return;
       }
-      this.emit({ kind: 'connected', reason: 'start' });
+      this.markConnected();
       return;
     } catch (firstError) {
       if (generation !== this.runGeneration || this.consumers === 0) return;
@@ -283,7 +295,7 @@ class SignalRNotificationHub implements NotificationHub {
         await this.connection.stop().catch(() => undefined);
         return;
       }
-      this.emit({ kind: 'connected', reason: 'start' });
+      this.markConnected();
     }
   }
 
@@ -305,6 +317,12 @@ class SignalRNotificationHub implements NotificationHub {
     });
   }
 
+  /**
+   * Sau silent refresh / migrate:
+   * - Đang Connected cùng token → no-op (tránh WS đôi lúc hard reload).
+   * - Token đổi trong lúc Connected → stop+start để hub nhận JWT mới.
+   * - Disconnected → ensureStarted.
+   */
   private async onSessionRefreshed(): Promise<void> {
     if (this.consumers === 0) return;
 
@@ -313,25 +331,32 @@ class SignalRNotificationHub implements NotificationHub {
     }
     if (this.consumers === 0) return;
 
-    if (this.connection.state === HubConnectionState.Disconnected) {
-      await this.ensureStarted().catch(() => undefined);
+    const nextToken = readAccessToken();
+    if (!nextToken) return;
+
+    if (this.connection.state === HubConnectionState.Connected) {
+      if (this.connectedWithToken === nextToken) return;
+
+      try {
+        const generation = this.runGeneration;
+        await this.connection.stop();
+        this.connectedWithToken = null;
+        if (this.consumers === 0 || generation !== this.runGeneration) return;
+        await this.connection.start();
+        if (this.consumers === 0) {
+          await this.connection.stop().catch(() => undefined);
+          return;
+        }
+        this.connectedWithToken = nextToken;
+        this.emit({ kind: 'connected', reason: 'reconnect' });
+      } catch (error) {
+        if (isNegotiationAbort(error)) return;
+        await this.ensureStarted().catch(() => undefined);
+      }
       return;
     }
 
-    if (this.connection.state !== HubConnectionState.Connected) return;
-
-    try {
-      const generation = this.runGeneration;
-      await this.connection.stop();
-      if (this.consumers === 0 || generation !== this.runGeneration) return;
-      await this.connection.start();
-      if (this.consumers === 0) {
-        await this.connection.stop().catch(() => undefined);
-        return;
-      }
-      this.emit({ kind: 'connected', reason: 'reconnect' });
-    } catch (error) {
-      if (isNegotiationAbort(error)) return;
+    if (this.connection.state === HubConnectionState.Disconnected) {
       await this.ensureStarted().catch(() => undefined);
     }
   }

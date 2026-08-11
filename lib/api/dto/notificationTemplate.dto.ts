@@ -22,6 +22,7 @@ export interface NotificationTemplatesListParamsDto {
   pageSize?: number;
   channel?: string;
   isPublished?: boolean;
+  search?: string;
 }
 
 export interface NotificationTemplateDetailDto {

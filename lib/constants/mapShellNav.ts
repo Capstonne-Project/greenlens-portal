@@ -143,7 +143,7 @@ const NAV_ITEMS = {
   },
   recurrence: {
     id: 'recurrence',
-    label: 'Tái diễn',
+    label: 'Sau xử lý',
     href: '/officer/recurrence',
     icon: History,
   },
@@ -208,7 +208,6 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.duplicates, 'Rà soát'),
       NAV_ITEMS.recurrence,
       withSection(NAV_ITEMS.reports, 'Tra cứu'),
-      NAV_ITEMS.inspections,
       withSection(NAV_ITEMS.companies, 'Quản lý')
     );
   } else if (role === 'LEO') {
@@ -222,7 +221,6 @@ export function getMapShellNavForRole(
       withSection(NAV_ITEMS.duplicates, 'Rà soát'),
       NAV_ITEMS.recurrence,
       withSection(NAV_ITEMS.reports, 'Tra cứu'),
-      NAV_ITEMS.inspections,
       withSection(NAV_ITEMS.community, 'Cộng đồng'),
       withSection(NAV_ITEMS.workforce, 'Quản lý')
     );
@@ -246,6 +244,12 @@ export function isMapShellRoute(pathname: string): boolean {
 
 export function getActiveNavId(pathname: string, config: MapShellNavConfig): string | null {
   const path = pathname.split('?')[0] ?? pathname;
+
+  // Detail/list legacy hồ sơ xử phạt → highlight hub 「Sau xử lý」
+  if (path === '/officer/inspections' || path.startsWith('/officer/inspections/')) {
+    const hub = config.mainNav.find(item => item.id === 'recurrence');
+    if (hub) return hub.id;
+  }
 
   for (const item of config.mainNav) {
     if (item.children?.length) {

@@ -19,6 +19,8 @@ type ValidatedFieldBaseProps = {
   countMode?: TextCountMode;
   /** Textarea: hiển thị thêm số từ bên cạnh bộ đếm ký tự. */
   showWordCount?: boolean;
+  /** Toolbar/filter — ẩn footer đếm ký tự để căn hàng với select/button. */
+  showCounter?: boolean;
   error?: string;
   hint?: ReactNode;
   className?: string;
@@ -93,6 +95,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
       maxLength,
       countMode = 'chars',
       showWordCount = false,
+      showCounter = true,
       error,
       hint,
       className,
@@ -117,7 +120,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
     });
 
     return (
-      <div className="space-y-1">
+      <div className={cn(showCounter && 'space-y-1')}>
         <input
           ref={ref}
           disabled={disabled}
@@ -131,13 +134,15 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
           )}
           {...props}
         />
-        <FieldFooter
-          message={message}
-          invalid={invalid}
-          counter={counter}
-          hint={hint}
-          counterClassName={counterClassName}
-        />
+        {showCounter ? (
+          <FieldFooter
+            message={message}
+            invalid={invalid}
+            counter={counter}
+            hint={hint}
+            counterClassName={counterClassName}
+          />
+        ) : null}
       </div>
     );
   }

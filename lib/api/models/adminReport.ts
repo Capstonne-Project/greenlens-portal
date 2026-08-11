@@ -52,6 +52,8 @@ export interface AdminReportsListParams {
   pageSize?: number;
   status?: string;
   categoryId?: string;
+  /** FE-only — map từ catalog để lọc client-side theo `categoryCode` trên item. */
+  categoryCode?: string;
   wardCode?: string;
   provinceCode?: string;
   search?: string;

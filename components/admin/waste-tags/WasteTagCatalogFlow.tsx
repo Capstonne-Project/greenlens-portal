@@ -32,7 +32,7 @@ export function WasteTagCatalogFlow({
   return (
     <div className="w-full min-w-0">
       <p className="mb-3 text-xs text-zinc-500">
-        Đang dùng · {countLabel} · sắp theo thứ tự hiển thị
+        {countLabel} đang dùng · sắp xếp theo thứ tự hiển thị
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">

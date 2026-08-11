@@ -50,6 +50,7 @@ import {
   useReportQueue,
   useVerifyReport,
 } from '@/hooks/useOfficer';
+import { useCanFetchProtected } from '@/hooks/useAuthSession';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
@@ -1548,6 +1549,7 @@ export function VerifyDetailClient({
   const rejectMutation = useRejectReport();
 
   /** Cùng nguồn flag trùng với hàng đợi — mở DuplicateSuspectDialog trước khi verify. */
+  const canFetchProtected = useCanFetchProtected();
   const { data: queueSlice } = useReportQueue(
     {
       page: 1,
@@ -1555,7 +1557,7 @@ export function VerifyDetailClient({
       status: 'Submitted',
       ...(detail?.code ? { search: detail.code } : {}),
     },
-    { enabled: Boolean(detail?.code) }
+    { enabled: canFetchProtected && Boolean(detail?.code) }
   );
 
   const queueItem = useMemo(

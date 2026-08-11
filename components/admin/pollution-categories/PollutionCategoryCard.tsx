@@ -3,6 +3,10 @@
 import { PollutionCategoryIcon } from '@/components/admin/pollution-categories/PollutionCategoryIcon';
 import { getPollutionCategoryDisplay } from '@/lib/constants/pollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
+import {
+  getPollutionCategoryArchiveBlockedMessage,
+  isAdminCatalogInUse,
+} from '@/utils/adminCatalogGuards';
 import { ArchiveRestore, CircleOff, FileText, Pencil, Zap } from 'lucide-react';
 
 interface PollutionCategoryCardProps {
@@ -35,6 +39,8 @@ export function PollutionCategoryCard({
 }: PollutionCategoryCardProps) {
   const { descriptionVi, accent } = getPollutionCategoryDisplay(category);
   const archived = category.isArchived;
+  const archiveBlocked = !archived && isAdminCatalogInUse(category.reportCount);
+  const archiveBlockedMessage = getPollutionCategoryArchiveBlockedMessage(category.reportCount);
   const reportPct = Math.min(
     100,
     Math.max(
@@ -120,11 +126,17 @@ export function PollutionCategoryCard({
             </button>
             <button
               type="button"
-              disabled={archiveBusy}
+              disabled={archiveBusy || archiveBlocked}
               onClick={() => onArchiveToggle(category, !archived)}
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
-              title={archived ? 'Kích hoạt' : 'Ngưng'}
-              aria-label={archived ? `Kích hoạt ${category.nameVi}` : `Ngưng ${category.nameVi}`}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              title={archiveBlocked ? archiveBlockedMessage : archived ? 'Kích hoạt' : 'Ngưng'}
+              aria-label={
+                archiveBlocked
+                  ? archiveBlockedMessage
+                  : archived
+                    ? `Kích hoạt ${category.nameVi}`
+                    : `Ngưng ${category.nameVi}`
+              }
             >
               {archived ? <ArchiveRestore className="size-4" /> : <CircleOff className="size-4" />}
             </button>

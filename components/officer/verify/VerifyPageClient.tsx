@@ -63,6 +63,7 @@ import {
 } from '@/components/ui/table';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { locateReportInQueuePage, useReportQueue, useVerifyReport } from '@/hooks/useOfficer';
+import { useCanFetchProtected } from '@/hooks/useAuthSession';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
@@ -1053,7 +1054,10 @@ export function VerifyPageClient() {
     debouncedSearch,
   ]);
 
-  const { data, isPending, isFetching, isError, refetch } = useReportQueue(listParams);
+  const canFetchProtected = useCanFetchProtected();
+  const { data, isPending, isFetching, isError, refetch } = useReportQueue(listParams, {
+    enabled: canFetchProtected,
+  });
 
   useEffect(() => {
     pageRef.current = page;

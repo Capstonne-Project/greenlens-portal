@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useReportDetail, useReportProgress } from '@/hooks/useReport';
 import type {
@@ -43,7 +44,6 @@ import {
   ExternalLink,
   FilePlus2,
   ImageIcon,
-  Loader2,
   MapPin,
   Pencil,
   RefreshCw,
@@ -61,11 +61,7 @@ const ReportLocationMap = dynamic(
   () => import('@/components/officer/tracking/ReportLocationMap').then(m => m.ReportLocationMap),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex h-full min-h-56 items-center justify-center bg-muted/30 text-sm text-muted-foreground">
-        Đang tải bản đồ…
-      </div>
-    ),
+    loading: () => <Skeleton className="h-full min-h-56 w-full" aria-label="Đang tải bản đồ" />,
   }
 );
 
@@ -126,7 +122,8 @@ interface LifecycleStage {
     assignmentId: string;
     teamId: string;
     teamName: string;
-    subtitle?: string | null;
+    /** Plain string hoặc ReactNode (vd. tên company/leader semibold). */
+    subtitle?: ReactNode;
   }[];
   mediaLabel?: string;
   mediaEmptyHint?: string;
@@ -533,8 +530,8 @@ function LifecycleSpine({
                       </span>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-800">{item.teamName}</p>
-                        {item.subtitle?.trim() ? (
-                          <p className="mt-0.5 text-xs text-slate-500">{item.subtitle.trim()}</p>
+                        {item.subtitle ? (
+                          <p className="mt-0.5 text-xs text-slate-500">{item.subtitle}</p>
                         ) : null}
                       </div>
                     </li>
@@ -831,7 +828,7 @@ function TeamProgressRow({
                           {member.fullName}
                           {member.isLeader ? (
                             <span className="ml-1.5 text-[11px] font-semibold text-emerald-700">
-                              Leader
+                              Trưởng nhóm
                             </span>
                           ) : null}
                         </p>
@@ -898,13 +895,20 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
   const companyName =
     data.assignedCompany?.companyName?.trim() || assignment?.companyName?.trim() || '';
 
+  const leaderName = assignment?.teamLeaderName?.trim() || '';
+
   const assignItems = assignment
     ? [
         {
           assignmentId: assignment.assignmentId,
           teamId: assignment.teamId,
           teamName: assignment.teamName,
-          subtitle: companyName ? `Điều phối bởi công ty ${companyName}` : null,
+          subtitle: companyName ? (
+            <>
+              Điều phối bởi công ty{' '}
+              <span className="font-semibold text-slate-700">{companyName}</span>
+            </>
+          ) : null,
         },
       ]
     : [];
@@ -915,13 +919,19 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
           assignmentId: assignment.assignmentId,
           teamId: assignment.teamId,
           teamName: assignment.teamName,
-          subtitle: assignment.acceptedAt
-            ? assignment.teamLeaderName?.trim()
-              ? `Được nhận bởi ${assignment.teamLeaderName.trim()}`
-              : 'Đã nhận việc'
-            : assignment.status === 'Declined'
-              ? 'Đã từ chối'
-              : 'Chưa nhận việc',
+          subtitle: assignment.acceptedAt ? (
+            leaderName ? (
+              <>
+                Được nhận bởi <span className="font-semibold text-slate-700">{leaderName}</span>
+              </>
+            ) : (
+              'Đã nhận việc'
+            )
+          ) : assignment.status === 'Declined' ? (
+            'Đã từ chối'
+          ) : (
+            'Chưa nhận việc'
+          ),
         },
       ]
     : [];
@@ -1581,9 +1591,7 @@ function ReportInfoCard({
 
         <TabsContent value="map" className="mt-5 focus-visible:ring-0">
           {isDetailPending ? (
-            <div className="flex h-48 items-center justify-center rounded-xl bg-muted/40">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
+            <Skeleton className="h-48 w-full rounded-xl" aria-label="Đang tải bản đồ" />
           ) : hasCoords && mapLat != null && mapLng != null ? (
             <div>
               <div className="overflow-hidden rounded-xl bg-muted/40">
@@ -1754,6 +1762,67 @@ function OuterRailScrollbar({
   );
 }
 
+/** Skeleton layout mirrored to DetailShell split-pane (gallery / meta / tabs + lifecycle). */
+function LeoTrackingDetailSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <div
+      className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden px-4 pt-0 sm:px-6 lg:px-8"
+      aria-busy
+      aria-label="Đang tải chi tiết báo cáo"
+    >
+      <div className="-mx-4 -mt-1 mb-4 flex shrink-0 items-center gap-3 px-4 sm:-mx-6 sm:px-6 md:-mt-2 lg:-mx-8 lg:px-8">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 h-7 cursor-pointer px-2 text-sm hover:bg-muted"
+          onClick={onBack}
+        >
+          <ArrowLeft className="mr-1 size-3.5" />
+          Quay lại
+        </Button>
+      </div>
+
+      <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-10 sm:pb-14 lg:overflow-hidden lg:pb-0">
+        <div className="grid h-full min-h-0 w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-[6fr_1px_4fr] lg:gap-6">
+          <aside className="min-w-0 space-y-5 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:pb-8">
+            <Skeleton className="h-[min(42vh,360px)] w-full rounded-xl" />
+            <div className="space-y-3 pt-1">
+              <Skeleton className="h-7 w-56 max-w-full sm:h-8 sm:w-72" />
+              <Skeleton className="h-4 w-36 max-w-full" />
+              <Skeleton className="h-4 w-full max-w-md" />
+              <Skeleton className="h-4 w-48 max-w-full" />
+              <Skeleton className="h-8 w-40 max-w-full rounded-full" />
+            </div>
+            <div className="flex gap-6 border-b border-border pb-2.5 pt-2">
+              <Skeleton className="h-4 w-14" />
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-14" />
+            </div>
+            <div className="space-y-3 pt-1">
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-3 w-64 max-w-full" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+            </div>
+          </aside>
+
+          <div className="hidden bg-border lg:block" aria-hidden />
+
+          <div className="min-w-0 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-4 lg:pt-3 lg:pb-8">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailShell({
   data,
   reportId,
@@ -1886,11 +1955,7 @@ export function LeoTrackingReportDetail({ reportId, onBack }: LeoTrackingReportD
   const { data, isPending, isError, refetch, isFetching } = useReportProgress(reportId);
 
   if (isPending) {
-    return (
-      <div className="flex flex-1 items-center justify-center px-4 py-24 sm:px-6">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <LeoTrackingDetailSkeleton onBack={onBack} />;
   }
 
   if (isError || !data) {
