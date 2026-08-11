@@ -2,8 +2,13 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LeoTrackingReportDetail } from './LeoTrackingReportDetail';
+import {
+  goBackWithListSoftReload,
+  softReloadNotificationDestination,
+} from '@/utils/notificationNavigation';
 import { resolveSafeOfficerFrom } from '@/utils/officerNavigation';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +33,7 @@ const LeoTrackingPageClient = dynamic(
 export function TrackingPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [detailReportId, setDetailReportId] = useState<string | null>(null);
   const detailFromQuery = searchParams.get('reportId')?.trim() || null;
   const activeDetailReportId = detailFromQuery ?? detailReportId;
@@ -35,9 +41,17 @@ export function TrackingPageClient() {
   const handleBackFromDetail = () => {
     if (detailFromQuery) {
       const from = resolveSafeOfficerFrom(searchParams.get('from'));
-      router.replace(from ?? '/officer/tracking', { scroll: false });
+      goBackWithListSoftReload({
+        router,
+        queryClient,
+        from,
+        fallbackHref: '/officer/tracking',
+        method: 'replace',
+      });
       return;
     }
+    /** Detail mở in-place — soft-reload board rồi ẩn detail. */
+    void softReloadNotificationDestination(queryClient, '/officer/tracking');
     setDetailReportId(null);
   };
 
