@@ -3,6 +3,7 @@ import type {
   LeoMyReportItemDto,
   LeoMyReportsDataDto,
   LeoOfficePaginationDto,
+  LeoWardBoundaryDto,
   OfficeDetailDto,
   OfficeDto,
   OfficeListItemDto,
@@ -17,6 +18,7 @@ import type {
   LeoMyReportItem,
   LeoMyReportsData,
   LeoReportAssignmentStatus,
+  LeoWardBoundary,
   Office,
   OfficeDetail,
   OfficeListItem,
@@ -185,6 +187,14 @@ export function mapLeoMyReportsDataDto(data: LeoMyReportsDataDto): LeoMyReportsD
     wardName: data.wardName,
     items: (data.items ?? []).map(mapLeoMyReportItemDto),
     pagination: mapLeoPagination(data.pagination),
+  };
+}
+
+export function mapLeoWardBoundaryDto(dto: LeoWardBoundaryDto): LeoWardBoundary {
+  return {
+    wardCode: dto.wardCode,
+    wardName: dto.wardName,
+    boundaryUrl: dto.boundaryUrl ?? null,
   };
 }
 
