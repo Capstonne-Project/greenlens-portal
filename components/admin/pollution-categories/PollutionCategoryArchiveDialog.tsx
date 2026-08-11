@@ -2,6 +2,10 @@
 
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
+import {
+  getPollutionCategoryArchiveBlockedMessage,
+  isAdminCatalogInUse,
+} from '@/utils/adminCatalogGuards';
 import { Loader2 } from 'lucide-react';
 
 interface PollutionCategoryArchiveDialogProps {
@@ -21,6 +25,8 @@ export function PollutionCategoryArchiveDialog({
   onConfirm,
 }: PollutionCategoryArchiveDialogProps) {
   const deactivating = archive;
+  const archiveBlocked =
+    deactivating && category != null && isAdminCatalogInUse(category.reportCount);
 
   return (
     <OfficeDialogShell
@@ -32,7 +38,9 @@ export function PollutionCategoryArchiveDialog({
       {category && (
         <div className="space-y-5">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {deactivating ? (
+            {archiveBlocked ? (
+              getPollutionCategoryArchiveBlockedMessage(category.reportCount)
+            ) : deactivating ? (
               <>
                 Bạn có chắc muốn ngưng{' '}
                 <span className="font-semibold text-foreground">{category.nameVi}</span> (
@@ -55,21 +63,23 @@ export function PollutionCategoryArchiveDialog({
               disabled={busy}
               className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
             >
-              Hủy
+              {archiveBlocked ? 'Đóng' : 'Hủy'}
             </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={busy}
-              className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium text-white disabled:opacity-60 ${
-                deactivating
-                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                  : 'bg-emerald-700 hover:bg-emerald-800'
-              }`}
-            >
-              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              {deactivating ? 'Ngưng' : 'Kích hoạt'}
-            </button>
+            {!archiveBlocked ? (
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={busy}
+                className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium text-white disabled:opacity-60 ${
+                  deactivating
+                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                    : 'bg-emerald-700 hover:bg-emerald-800'
+                }`}
+              >
+                {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                {deactivating ? 'Ngưng' : 'Kích hoạt'}
+              </button>
+            ) : null}
           </div>
         </div>
       )}

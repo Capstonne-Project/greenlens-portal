@@ -14,7 +14,8 @@ import type {
   ToggleWasteTagInput,
   UpdateWasteTagInput,
 } from '@/lib/api/models/wasteTag';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ADMIN_WASTE_TAGS_LIST_FETCH_SIZE } from '@/lib/constants/adminWasteTags';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 export const wasteTagKeys = {
@@ -46,34 +47,45 @@ export function useCatalogWasteTags(enabled = true) {
 }
 
 export function useAdminWasteTagsList(params?: AdminWasteTagsParams) {
-  const isInactiveOnly = params?.isActive === false;
-
   return useQuery({
-    queryKey: isInactiveOnly ? wasteTagKeys.adminList(params) : wasteTagKeys.catalog(),
-    queryFn: () => (isInactiveOnly ? fetchAdminWasteTags(params) : fetchCatalogWasteTags()),
+    queryKey: wasteTagKeys.adminList(params),
+    queryFn: () => fetchAdminWasteTags(params),
     select: envelope => envelope.data,
-    staleTime: isInactiveOnly ? LIST_STALE_MS : CATALOG_STALE_MS,
+    staleTime: LIST_STALE_MS,
+    placeholderData: keepPreviousData,
   });
 }
 
-/** Gộp tag active (catalog) + inactive (admin) cho màn quản trị. */
+/** Gộp tag active + inactive (admin) cho màn quản trị. */
 export function useAdminWasteTags() {
-  const catalogQuery = useCatalogWasteTags();
-  const inactiveQuery = useAdminWasteTagsList({ isActive: false });
+  const activeQuery = useAdminWasteTagsList({
+    isActive: true,
+    page: 1,
+    pageSize: ADMIN_WASTE_TAGS_LIST_FETCH_SIZE,
+    sortBy: 'displayOrder',
+    sortDesc: false,
+  });
+  const inactiveQuery = useAdminWasteTagsList({
+    isActive: false,
+    page: 1,
+    pageSize: ADMIN_WASTE_TAGS_LIST_FETCH_SIZE,
+    sortBy: 'displayOrder',
+    sortDesc: false,
+  });
 
   const items = useMemo(() => {
-    const active = catalogQuery.data ?? [];
+    const active = activeQuery.data?.items ?? [];
     const inactive = inactiveQuery.data?.items ?? [];
     return sortWasteTags([...active, ...inactive]);
-  }, [catalogQuery.data, inactiveQuery.data]);
+  }, [activeQuery.data, inactiveQuery.data]);
 
   return {
     items,
-    isPending: catalogQuery.isPending || inactiveQuery.isPending,
-    isError: catalogQuery.isError || inactiveQuery.isError,
-    error: catalogQuery.error ?? inactiveQuery.error,
+    isPending: activeQuery.isPending || inactiveQuery.isPending,
+    isError: activeQuery.isError || inactiveQuery.isError,
+    error: activeQuery.error ?? inactiveQuery.error,
     refetch: () => {
-      void catalogQuery.refetch();
+      void activeQuery.refetch();
       void inactiveQuery.refetch();
     },
   };

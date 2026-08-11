@@ -4,20 +4,27 @@ import { WasteTagCatalogFlow } from '@/components/admin/waste-tags/WasteTagCatal
 import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import { WasteTagInactiveFlow } from '@/components/admin/waste-tags/WasteTagInactiveFlow';
 import { WasteTagLiveSearch } from '@/components/admin/waste-tags/WasteTagLiveSearch';
+import { AdminFilterStatusToggle } from '@/components/admin/shared/AdminFilterToolbar';
 import {
   WasteTagFormDialog,
   type WasteTagFormValues,
 } from '@/components/admin/waste-tags/WasteTagFormDialog';
 import { WasteTagToggleDialog } from '@/components/admin/waste-tags/WasteTagToggleDialog';
 import {
-  useCatalogWasteTags,
   useCreateWasteTag,
   useAdminWasteTagsList,
   useToggleWasteTag,
   useUpdateWasteTag,
 } from '@/hooks/useWasteTags';
-import { ADMIN_WASTE_TAGS_PAGE_SIZE } from '@/lib/constants/adminWasteTags';
+import {
+  ADMIN_WASTE_TAGS_LIST_FETCH_SIZE,
+  ADMIN_WASTE_TAGS_PAGE_SIZE,
+} from '@/lib/constants/adminWasteTags';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
+import {
+  getWasteTagDeactivateBlockedMessage,
+  isAdminCatalogInUse,
+} from '@/utils/adminCatalogGuards';
 import { getWasteTagMutationError } from '@/utils/wasteTagErrors';
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -58,10 +65,22 @@ export function AdminWasteTagsView() {
     isActive: boolean;
   } | null>(null);
 
-  const catalogQuery = useCatalogWasteTags(status === 'active');
-  const inactiveQuery = useAdminWasteTagsList({ isActive: false });
+  const activeQuery = useAdminWasteTagsList({
+    isActive: true,
+    page: 1,
+    pageSize: ADMIN_WASTE_TAGS_LIST_FETCH_SIZE,
+    sortBy: 'displayOrder',
+    sortDesc: false,
+  });
+  const inactiveQuery = useAdminWasteTagsList({
+    isActive: false,
+    page: 1,
+    pageSize: ADMIN_WASTE_TAGS_LIST_FETCH_SIZE,
+    sortBy: 'displayOrder',
+    sortDesc: false,
+  });
 
-  const activeTags = catalogQuery.data ?? EMPTY_TAGS;
+  const activeTags = activeQuery.data?.items ?? EMPTY_TAGS;
   const inactiveTags = inactiveQuery.data?.items ?? EMPTY_TAGS;
   const sourceTags = status === 'active' ? activeTags : inactiveTags;
 
@@ -69,14 +88,14 @@ export function AdminWasteTagsView() {
   const updateMutation = useUpdateWasteTag();
   const toggleMutation = useToggleWasteTag();
 
-  const isPending = status === 'active' ? catalogQuery.isPending : inactiveQuery.isPending;
-  const isError = status === 'active' ? catalogQuery.isError : inactiveQuery.isError;
-  const error = status === 'active' ? catalogQuery.error : inactiveQuery.error;
+  const isPending = status === 'active' ? activeQuery.isPending : inactiveQuery.isPending;
+  const isError = status === 'active' ? activeQuery.isError : inactiveQuery.isError;
+  const error = status === 'active' ? activeQuery.error : inactiveQuery.error;
 
   const refetch = useCallback(() => {
-    void catalogQuery.refetch();
+    void activeQuery.refetch();
     void inactiveQuery.refetch();
-  }, [catalogQuery, inactiveQuery]);
+  }, [activeQuery, inactiveQuery]);
 
   const setQuery = useCallback(
     (patch: Record<string, string | null>) => {
@@ -184,6 +203,10 @@ export function AdminWasteTagsView() {
   };
 
   const requestToggle = (tag: WasteTag, isActive: boolean) => {
+    if (!isActive && isAdminCatalogInUse(tag.reportCount)) {
+      toast.error(getWasteTagDeactivateBlockedMessage(tag.reportCount));
+      return;
+    }
     setToggleTarget({ tag, isActive });
   };
 
@@ -202,7 +225,7 @@ export function AdminWasteTagsView() {
           if (!isActive) handleStatusChange('inactive');
         },
         onError: err => {
-          toast.error(getWasteTagMutationError(err, 'Không thể đổi trạng thái.'));
+          toast.error(getWasteTagMutationError(err, 'Không thể đổi trạng thái.', tag.reportCount));
           setTogglingId(null);
         },
       }
@@ -249,64 +272,22 @@ export function AdminWasteTagsView() {
 
   return (
     <div className="w-full min-w-0">
-      <header className="mb-6 border-b border-border pb-6">
-        <p className="text-sm text-muted-foreground">
-          Thẻ rác thải
-          {catalogQuery.isPending && inactiveQuery.isPending ? (
-            ' · …'
-          ) : (
-            <>
-              {' '}
-              · {activeTags.length} đang dùng · {inactiveTags.length} đã tắt
-            </>
-          )}
-        </p>
-      </header>
-
       <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
           <WasteTagLiveSearch
-            key={status}
             value={searchQ}
             onChange={handleSearchChange}
-            resultCount={searchQ.trim() ? filteredItems.length : undefined}
-            totalCount={sourceTags.length}
             className="w-full sm:w-72"
           />
 
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Trạng thái</span>
-            <div className="flex h-10 rounded-lg border border-border bg-background p-1">
-              <button
-                type="button"
-                onClick={() => handleStatusChange('active')}
-                className={`rounded-md px-4 text-sm font-medium transition ${
-                  status === 'active'
-                    ? 'bg-emerald-700 text-white'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Đang dùng
-                {!catalogQuery.isPending ? (
-                  <span className="ml-1 tabular-nums opacity-90">{activeTags.length}</span>
-                ) : null}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStatusChange('inactive')}
-                className={`rounded-md px-4 text-sm font-medium transition ${
-                  status === 'inactive'
-                    ? 'bg-emerald-700 text-white'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Đã tắt
-                {!inactiveQuery.isPending ? (
-                  <span className="ml-1 tabular-nums opacity-90">{inactiveTags.length}</span>
-                ) : null}
-              </button>
-            </div>
-          </div>
+          <AdminFilterStatusToggle
+            isActive={status === 'active'}
+            inactiveLabel="Đã tắt"
+            onActive={() => handleStatusChange('active')}
+            onInactive={() => handleStatusChange('inactive')}
+            activeBadge={!activeQuery.isPending ? activeTags.length : undefined}
+            inactiveBadge={!inactiveQuery.isPending ? inactiveTags.length : undefined}
+          />
         </div>
 
         <button

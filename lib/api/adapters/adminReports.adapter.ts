@@ -17,7 +17,15 @@ import type {
   UpdateAdminReportStatusInput,
 } from '@/lib/api/models/adminReport';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
+import {
+  filterAdminReportItems,
+  hasAdminReportListFilters,
+  paginateAdminReportItems,
+} from '@/utils/adminReportFilters';
 import apiService from '@/lib/api/core';
+
+/** Lô tối đa fetch không filter rồi lọc phía FE. */
+const CLIENT_FILTER_BATCH_SIZE = 100;
 
 function buildQuery(params?: AdminReportsListParamsDto): Record<string, string | number> {
   const query: Record<string, string | number> = {};
@@ -31,15 +39,41 @@ function buildQuery(params?: AdminReportsListParamsDto): Record<string, string |
   return query;
 }
 
+async function fetchAdminReportsListRaw(
+  params?: AdminReportsListParamsDto
+): Promise<ApiEnvelope<AdminReportsListDataDto>> {
+  const res = await apiService.get<ApiEnvelope<AdminReportsListDataDto>>(
+    '/v1/admin/reports',
+    buildQuery(params)
+  );
+  return res.data;
+}
+
 export async function adaptAdminReportsList(
   params?: AdminReportsListParams
 ): Promise<ApiEnvelope<AdminReportsList>> {
-  const query = buildQuery(params as AdminReportsListParamsDto | undefined);
-  const res = await apiService.get<ApiEnvelope<AdminReportsListDataDto>>(
-    '/v1/admin/reports',
-    query
-  );
-  return mapApiEnvelope(res.data, mapAdminReportsListDataDto);
+  if (hasAdminReportListFilters(params)) {
+    const page = Math.max(1, params?.page ?? 1);
+    const pageSize = Math.max(1, params?.pageSize ?? 10);
+
+    const raw = await fetchAdminReportsListRaw({
+      page: 1,
+      pageSize: CLIENT_FILTER_BATCH_SIZE,
+    });
+    const mapped = mapAdminReportsListDataDto(raw.data);
+    const filtered = filterAdminReportItems(mapped.items, params ?? {});
+    const paged = paginateAdminReportItems(filtered, page, pageSize);
+
+    return {
+      code: raw.code,
+      message: raw.message,
+      status: raw.status,
+      data: paged,
+    };
+  }
+
+  const raw = await fetchAdminReportsListRaw(params as AdminReportsListParamsDto | undefined);
+  return mapApiEnvelope(raw, mapAdminReportsListDataDto);
 }
 
 export async function adaptAdminReportDetail(id: string): Promise<ApiEnvelope<AdminReportDetail>> {

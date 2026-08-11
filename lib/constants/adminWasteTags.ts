@@ -25,6 +25,9 @@ import {
 /** Số thẻ rác thải mỗi trang (lưới 3×3). */
 export const ADMIN_WASTE_TAGS_PAGE_SIZE = 9;
 
+/** PageSize khi fetch admin list — đủ cho lọc/phân trang client. */
+export const ADMIN_WASTE_TAGS_LIST_FETCH_SIZE = 500;
+
 /** Màu phẳng theo code — không gradient. */
 export const WASTE_TAG_DISPLAY: Record<string, { iconBg: string; iconFg: string; accent: string }> =
   {

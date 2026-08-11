@@ -15,7 +15,8 @@ export function getAdminPageTitle(pathname: string): string {
   if (pathname === '/admin/audit-logs') return 'Nhật ký kiểm toán';
   if (pathname.startsWith('/admin/audit-logs/')) return 'Chi tiết nhật ký';
   if (pathname === '/admin/spam-suspects') return 'Tài khoản nghi spam';
-  if (pathname === '/admin/gamification-configs') return 'Cấu hình điểm gamification';
+  if (pathname === '/admin/gamification-configs') return 'Cấu hình điểm thưởng';
+  if (pathname === '/admin/badges') return 'Huy hiệu thành tích';
   if (pathname === '/admin/blocked-words') return 'Từ cấm';
   if (pathname === '/admin/permissions') return 'Ma trận quyền';
   if (pathname === '/admin/notification-templates') return 'Mẫu thông báo';
