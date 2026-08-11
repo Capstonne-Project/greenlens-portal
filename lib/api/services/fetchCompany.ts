@@ -238,11 +238,18 @@ export async function addCompanyTeamMember(
   });
 }
 
+/**
+ * DELETE /v1/teams/company-teams/{teamId}/members/{userId}
+ * [CompanyManager] Cho CompanyStaff rời team; vẫn thuộc công ty.
+ */
 export async function removeCompanyTeamMember(
   teamId: string,
   userId: string
 ): Promise<ApiEnvelope<string>> {
-  return adaptRemoveCompanyTeamMember(teamId, userId);
+  if (!teamId.trim() || !userId.trim()) {
+    throw new Error('Thiếu teamId hoặc userId');
+  }
+  return adaptRemoveCompanyTeamMember(teamId.trim(), userId.trim());
 }
 
 /**
@@ -293,9 +300,15 @@ export async function archiveCompanyTeam(
   return adaptArchiveCompanyTeam(id, body);
 }
 
-/** DELETE /v1/teams/company-teams/{id} — xóa team công ty [CompanyManager]. */
-export async function deleteCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
-  return adaptDeleteCompanyTeam(id);
+/**
+ * DELETE /v1/teams/company-teams/{id}
+ * [CompanyManager] Soft delete team công ty.
+ */
+export async function deleteCompanyTeam(id: string): Promise<ApiEnvelope<string>> {
+  if (!id.trim()) {
+    throw new Error('Thiếu id đội');
+  }
+  return adaptDeleteCompanyTeam(id.trim());
 }
 
 /** GET /v1/companies/my/contract-history — lịch sử kỳ hợp đồng công ty CM. */
