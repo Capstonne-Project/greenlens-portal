@@ -32,7 +32,7 @@ export function AdminPermissionsView() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Ma trận quyền hệ thống (GET /v1/admin/permissions) — chỉ đọc.
+          Ma trận quyền hệ thống — chỉ xem, không chỉnh sửa.
         </p>
         <button
           type="button"

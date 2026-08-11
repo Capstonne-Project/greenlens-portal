@@ -189,7 +189,6 @@ export function AdminOfficesView() {
 
         <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:flex-wrap sm:items-end sm:px-5">
           <OfficeLiveSearch
-            key={provinceSearch}
             value={provinceSearch}
             onChange={handleProvinceSearch}
             matchHint={searchMatchHint}

@@ -87,7 +87,7 @@ export function AuditEntityIdPicker({
       <AuditSearchPicker
         inputId="audit-entity-id-picker"
         label="Entity đích"
-        placeholder="Chọn entity type trước"
+        placeholder="Chọn loại đối tượng trước"
         value=""
         onChange={() => undefined}
         options={[]}
@@ -147,7 +147,7 @@ export function AuditEntityIdPicker({
         <AuditGuidInput
           inputId="audit-entity-id-guid"
           label="Entity đích"
-          hint={`Loại ${entityType}: dán GUID từ trang quản trị tương ứng.`}
+          hint={`Loại ${entityType}: dán mã định danh từ trang quản trị tương ứng.`}
           value={entityId}
           onChange={onChange}
           onPageReset={onPageReset}
@@ -399,8 +399,8 @@ function AuditEntityNotificationTemplatePicker({
     <AuditSearchPicker
       inputId="audit-entity-template"
       label="Entity đích — NotificationTemplate"
-      hint="Chọn template thông báo."
-      placeholder="Tên template, key…"
+      hint="Chọn mẫu thông báo."
+      placeholder="Tên hoặc mã mẫu…"
       value={entityId}
       onChange={onChange}
       options={options}

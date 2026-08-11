@@ -86,7 +86,7 @@ export function AuditSearchPicker({
         <input
           id={inputId}
           disabled
-          placeholder="Chọn entity type trước"
+          placeholder="Chọn loại đối tượng trước"
           className={cn(fieldClass, 'cursor-not-allowed opacity-60')}
         />
         {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
