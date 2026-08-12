@@ -99,6 +99,8 @@ export interface ReportProgress {
   categoryName: string;
   address: string;
   wardCode: string;
+  latitude: number;
+  longitude: number;
   description: string;
   sla: ReportProgressSla;
   assignedCompany: ReportProgressAssignedCompany | null;

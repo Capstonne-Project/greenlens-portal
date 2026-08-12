@@ -3,7 +3,7 @@ import type { MediaType } from '@/lib/constants/mediaType';
 
 /**
  * GET /v1/reports/{id}/progress
- * Khớp Swagger (2026-08-10): assignment singular, assignedCompany, members;
+ * Khớp Swagger: assignment singular, assignedCompany, members, latitude/longitude;
  * bỏ summary / progressImages / images flat.
  */
 
@@ -100,6 +100,8 @@ export interface ReportProgressDataDto {
   categoryName: string;
   address: string;
   wardCode: string;
+  latitude: number;
+  longitude: number;
   description: string;
   sla: ReportProgressSlaDto;
   assignedCompany: ReportProgressAssignedCompanyDto | null;

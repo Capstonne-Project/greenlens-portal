@@ -57,7 +57,8 @@ export function TrackingPageClient() {
 
   /**
    * Giữ LeoTrackingPageClient mounted khi mở detail để filter/search/page
-   * không bị reset. Chỉ ẩn UI (không unmount). Clear filter = nút 「Xóa tất cả」.
+   * không bị reset. Chỉ ẩn UI + `queriesEnabled=false` để không gọi my/reports
+   * khi đang xem / reload detail (chỉ progress).
    */
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -69,7 +70,10 @@ export function TrackingPageClient() {
         aria-hidden={Boolean(activeDetailReportId)}
         {...(activeDetailReportId ? { inert: true } : {})}
       >
-        <LeoTrackingPageClient onOpenDetail={setDetailReportId} />
+        <LeoTrackingPageClient
+          onOpenDetail={setDetailReportId}
+          queriesEnabled={!activeDetailReportId}
+        />
       </div>
 
       {activeDetailReportId ? (

@@ -966,7 +966,7 @@ export function ReportsListClient() {
 
   return (
     <>
-      <header className="mb-6 shrink-0">
+      <header className="mb-6 shrink-0 px-2 md:px-6">
         <div className="border-b border-slate-200 pb-3">
           <div className="flex items-center gap-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
@@ -975,7 +975,7 @@ export function ReportsListClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Báo cáo</h1>
               <p className="text-xs font-normal text-slate-500">
-                Tra cứu báo cáo đã giải quyết, đã đóng hoặc đã từ chối
+                Tra cứu báo cáo đã đóng hoặc đã từ chối
               </p>
             </div>
           </div>
@@ -1055,7 +1055,7 @@ export function ReportsListClient() {
         onDraftChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
       />
 
-      <div className="-mx-6 flex flex-1 flex-col overflow-hidden bg-white">
+      <div className="flex flex-1 flex-col overflow-hidden bg-white">
         <div className="@container/verify-table min-h-0 flex-1 overflow-auto [scrollbar-gutter:stable]">
           <Table className="w-full table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-slate-100">

@@ -155,9 +155,8 @@ const ASSIGN_QUEUE_STATUSES = [
   'Rejected',
 ] as const satisfies readonly ReportQueueStatus[];
 
-/** Tra cứu `/officer/reports` — chỉ trạng thái kết thúc. */
+/** Tra cứu `/officer/reports` — Closed / Rejected (không gồm Resolved). */
 export const LOOKUP_QUEUE_STATUSES = [
-  'Resolved',
   'Closed',
   'Rejected',
 ] as const satisfies readonly ReportQueueStatus[];
@@ -166,7 +165,7 @@ export type LookupQueueStatus = (typeof LOOKUP_QUEUE_STATUSES)[number];
 
 type AssignReportQueueParams = Omit<ReportQueueParams, 'status'>;
 type LookupReportQueueParams = Omit<ReportQueueParams, 'status'> & {
-  /** `all` = gọi 3 status song song rồi gộp. */
+  /** `all` = gọi 2 status song song rồi gộp. */
   status?: LookupQueueStatus | 'all';
 };
 
@@ -367,8 +366,8 @@ export function useAssignReportQueue(
 }
 
 /**
- * Tra cứu báo cáo kết thúc — `Resolved` | `Closed` | `Rejected` từ GET /v1/reports/queue.
- * `status: 'all'` (mặc định): 3 request song song, merge `createdAt` Desc.
+ * Tra cứu báo cáo kết thúc — `Closed` | `Rejected` từ GET /v1/reports/queue.
+ * `status: 'all'` (mặc định): 2 request song song, merge `createdAt` Desc.
  * Một status cụ thể: một request (reuse cache `officerKeys.queueList`).
  */
 export function useLookupReportQueue(
@@ -380,7 +379,7 @@ export function useLookupReportQueue(
   const singleStatus = status !== 'all' ? status : null;
 
   const singleQuery = useReportQueue(
-    { ...rest, status: singleStatus ?? 'Resolved' },
+    { ...rest, status: singleStatus ?? 'Closed' },
     { enabled: enabled && Boolean(singleStatus) }
   );
 
