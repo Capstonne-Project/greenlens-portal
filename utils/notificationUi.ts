@@ -5,6 +5,7 @@ import { Droplets, FlaskConical, Trash2 } from 'lucide-react';
 
 /** Types ưu tiên hiển thị / cấu hình trên Company Manager dashboard. */
 export const COMPANY_NOTIFICATION_TYPES = [
+  'CompanyReportDispatched',
   'ReportUnassigned',
   'ReportOverdue',
   'SlaBreachWarning',
@@ -91,6 +92,10 @@ export function companyNotificationHref(
   const ref = item.referenceId?.trim();
 
   switch (item.type) {
+    case 'CompanyReportDispatched':
+      // referenceId = reportId → CompanyAssignReportDetailClient
+      if (ref) return `/company/assign/${encodeURIComponent(ref)}`;
+      return '/company/assign';
     case 'ReportUnassigned':
       return '/company/assign';
     case 'ContractExpiry':
@@ -146,6 +151,7 @@ export function officerNotificationHref(
       if (ref) return `/officer/community?eventId=${encodeURIComponent(ref)}`;
       return '/officer/community';
     case 'CleanupTaskAccepted':
+    case 'CleanupTaskDeclined':
     case 'CleanupTaskCompleted':
     case 'CleanupProgressUpdated':
     case 'CompanyTeamAssigned':

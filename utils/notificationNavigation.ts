@@ -91,6 +91,12 @@ function buildNotificationBackTarget(targetHref: string): string | null {
     return '/company/tracking';
   }
 
+  const companyAssignMatch = pathname.match(/^\/company\/assign\/([^/]+)/);
+  if (companyAssignMatch?.[1]) {
+    const id = decodeURIComponent(companyAssignMatch[1]);
+    return `/company/assign?highlightReportId=${encodeURIComponent(id)}`;
+  }
+
   return null;
 }
 
@@ -214,6 +220,13 @@ function invalidateDestination(queryClient: QueryClient, href: string): Promise<
 
   if (pathname.startsWith('/company/tracking') && reportId) {
     tasks.push(queryClient.invalidateQueries({ queryKey: companyKeys.assignmentDetail(reportId) }));
+  }
+
+  const companyAssignMatch = pathname.match(/^\/company\/assign\/([^/]+)/);
+  if (companyAssignMatch?.[1]) {
+    const id = decodeURIComponent(companyAssignMatch[1]);
+    tasks.push(queryClient.invalidateQueries({ queryKey: companyKeys.reportDetail(id) }));
+    tasks.push(queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'queue'] }));
   }
 
   return tasks;

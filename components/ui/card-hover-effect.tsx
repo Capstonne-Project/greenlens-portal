@@ -40,7 +40,9 @@ export function HoverEffect({ items, className, layoutId = 'hoverBackground' }: 
   return (
     <div className={cn('grid w-full gap-2', className)}>
       {items.map((item, idx) => {
-        const itemKey = item.key ?? item.link ?? `${item.title}-${idx}`;
+        // Luôn gắn idx — tránh crash khi consumer truyền key trùng (cùng reportId, nhiều assignment).
+        const baseKey = item.key ?? item.link ?? item.title;
+        const itemKey = `${baseKey}-${idx}`;
         const sharedClassName =
           'group relative block h-full min-w-0 w-full p-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
