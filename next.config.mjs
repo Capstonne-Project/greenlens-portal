@@ -28,6 +28,21 @@ const nextConfig = {
     ];
   },
 
+  async redirects() {
+    return [
+      {
+        source: '/company/queue',
+        destination: '/company/assign',
+        permanent: true,
+      },
+      {
+        source: '/company/assignments',
+        destination: '/company/tracking',
+        permanent: true,
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {

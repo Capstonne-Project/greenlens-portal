@@ -8,6 +8,7 @@ import type {
   OfficesListDataDto,
   OfficesListParamsDto,
   OfficeStaffListDataDto,
+  OfficeStaffLookupDataDto,
   RecruitOfficeStaffBodyDto,
   RecruitOfficeStaffDataDto,
   UpdateOfficeBodyDto,
@@ -18,6 +19,7 @@ import {
   mapOfficeDetailDto,
   mapOfficeDto,
   mapOfficeStaffListDataDto,
+  mapOfficeStaffLookupDataDto,
   mapOfficesListDataDto,
   mapRecruitOfficeStaffDataDto,
 } from '@/lib/api/mappers/office.mapper';
@@ -33,6 +35,7 @@ import type {
   OfficesListParams,
   OfficeStaffList,
   OfficeStaffListParams,
+  OfficeStaffLookupResult,
   RecruitOfficeStaffInput,
   RecruitOfficeStaffResult,
   UpdateOfficeInput,
@@ -174,4 +177,15 @@ export async function adaptFetchOfficeStaff(
     buildOfficeStaffQuery(params)
   );
   return mapApiEnvelope(res.data, mapOfficeStaffListDataDto);
+}
+
+/** GET /v1/offices/my/staff/lookup — tra cứu Citizen theo email (exact). */
+export async function adaptLookupOfficeStaff(
+  email: string
+): Promise<ApiEnvelope<OfficeStaffLookupResult>> {
+  const res = await apiService.get<ApiEnvelope<OfficeStaffLookupDataDto>>(
+    '/v1/offices/my/staff/lookup',
+    { email: email.trim() }
+  );
+  return mapApiEnvelope(res.data, mapOfficeStaffLookupDataDto);
 }

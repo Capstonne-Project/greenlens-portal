@@ -263,6 +263,20 @@ export interface OfficeStaffListParams {
   hasTeam?: boolean;
 }
 
+// ─── LEO — GET /v1/offices/my/staff/lookup ────────────────────────────────────
+
+/** GET /v1/offices/my/staff/lookup — preview Citizen trước khi tuyển. */
+export interface OfficeStaffLookupResult {
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+  role: string;
+  isRecruitEligible: boolean;
+  ineligibleReason: string | null;
+}
+
 // ─── LEO — POST /v1/offices/my/staff ──────────────────────────────────────────
 
 /** Vai trò đích khi tuyển công dân vào LocalOffice (form chỉ Cleaner | Inspector). */

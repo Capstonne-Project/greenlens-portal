@@ -6,9 +6,11 @@ import {
   adaptArchiveCompanyTeam,
   adaptDeleteCompanyTeam,
   adaptAssignCompanyTeam,
+  adaptReassignCompanyTeam,
   adaptCompanyAssignmentDetail,
   adaptCompanyAssignments,
   adaptCompanyQueue,
+  adaptCompanyReportDetail,
   adaptCompanyStaffList,
   adaptCompanyTeamsList,
   adaptCreateCompanyStaff,
@@ -39,6 +41,7 @@ import type {
   ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompaniesList,
   CompaniesListParams,
   CompanyAssignmentDetail,
@@ -79,6 +82,7 @@ export type {
   ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompaniesList,
   CompaniesListParams,
   CompanyAssignmentDetail,
@@ -238,11 +242,18 @@ export async function addCompanyTeamMember(
   });
 }
 
+/**
+ * DELETE /v1/teams/company-teams/{teamId}/members/{userId}
+ * [CompanyManager] Cho CompanyStaff rời team; vẫn thuộc công ty.
+ */
 export async function removeCompanyTeamMember(
   teamId: string,
   userId: string
 ): Promise<ApiEnvelope<string>> {
-  return adaptRemoveCompanyTeamMember(teamId, userId);
+  if (!teamId.trim() || !userId.trim()) {
+    throw new Error('Thiếu teamId hoặc userId');
+  }
+  return adaptRemoveCompanyTeamMember(teamId.trim(), userId.trim());
 }
 
 /**
@@ -293,9 +304,15 @@ export async function archiveCompanyTeam(
   return adaptArchiveCompanyTeam(id, body);
 }
 
-/** DELETE /v1/teams/company-teams/{id} — xóa team công ty [CompanyManager]. */
-export async function deleteCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
-  return adaptDeleteCompanyTeam(id);
+/**
+ * DELETE /v1/teams/company-teams/{id}
+ * [CompanyManager] Soft delete team công ty.
+ */
+export async function deleteCompanyTeam(id: string): Promise<ApiEnvelope<string>> {
+  if (!id.trim()) {
+    throw new Error('Thiếu id đội');
+  }
+  return adaptDeleteCompanyTeam(id.trim());
 }
 
 /** GET /v1/companies/my/contract-history — lịch sử kỳ hợp đồng công ty CM. */
@@ -331,6 +348,13 @@ export async function fetchCompanyAssignmentDetail(
   return adaptCompanyAssignmentDetail(reportId);
 }
 
+/** GET /v1/reports/company-reports/{reportId} — chi tiết báo cáo hàng đợi phân công [CompanyManager]. */
+export async function fetchCompanyReportDetail(
+  reportId: string
+): Promise<ApiEnvelope<CompanyAssignmentDetail>> {
+  return adaptCompanyReportDetail(reportId);
+}
+
 /**
  * POST /v1/reports/{id}/assign-company-team — [CompanyManager] phân công team công ty
  * (Verified → InProgress). Khác với `assignReport` (LEO → POST .../assign).
@@ -341,6 +365,17 @@ export async function assignCompanyTeam(
   options?: IdempotencyRequestOptions
 ): Promise<void> {
   return adaptAssignCompanyTeam(reportId, body, options);
+}
+
+/**
+ * PUT /v1/reports/{id}/reassign-company-team — [CompanyManager] phân công lại đội
+ * khi assignment `Declined` / `Assigned`. Body: oldTeamId, newTeamId, reason (≥20).
+ */
+export async function reassignCompanyTeam(
+  reportId: string,
+  body: ReassignCompanyTeamInput
+): Promise<void> {
+  return adaptReassignCompanyTeam(reportId, body);
 }
 
 const companyApi = {
@@ -372,7 +407,9 @@ const companyApi = {
   fetchCompanyQueue,
   fetchCompanyAssignments,
   fetchCompanyAssignmentDetail,
+  fetchCompanyReportDetail,
   assignCompanyTeam,
+  reassignCompanyTeam,
 };
 
 export default companyApi;

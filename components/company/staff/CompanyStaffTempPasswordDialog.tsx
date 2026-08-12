@@ -1,7 +1,9 @@
 'use client';
 
+import { SuccessDialog } from '@/components/common/SuccessDialog';
+import { Button } from '@/components/ui/button';
 import type { CreateCompanyStaffResult } from '@/lib/api/models/company';
-import { Check, Copy, X } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -18,9 +20,8 @@ export function CompanyStaffTempPasswordDialog({
 }: CompanyStaffTempPasswordDialogProps) {
   const [copied, setCopied] = useState(false);
 
-  if (!open || !result) return null;
-
   const handleCopy = async () => {
+    if (!result) return;
     try {
       await navigator.clipboard.writeText(result.tempPassword);
       setCopied(true);
@@ -31,74 +32,70 @@ export function CompanyStaffTempPasswordDialog({
     }
   };
 
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      setCopied(false);
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/50"
-        aria-label="Đóng"
-        onClick={onClose}
-      />
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="temp-password-title"
-        className="relative z-10 w-full max-w-md rounded-xl border border-amber-200 bg-card p-6 shadow-xl"
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 id="temp-password-title" className="text-lg font-semibold text-amber-900">
-              Mật khẩu tạm — chỉ hiển thị một lần
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Gửi thông tin đăng nhập cho <strong>{result.fullName}</strong> qua kênh bảo mật.
+    <SuccessDialog
+      open={open && Boolean(result)}
+      onOpenChange={handleOpenChange}
+      accent="emerald"
+      title="Tạo tài khoản thành công"
+      description={
+        <p className="text-balance">
+          Đã cấp tài khoản cho{' '}
+          <span className="font-semibold text-foreground">{result?.fullName}</span>. Mật khẩu tạm
+          chỉ hiện một lần — lần đăng nhập đầu phải đổi mật khẩu.
+        </p>
+      }
+      secondaryAction={{
+        label: copied ? 'Đã sao chép' : 'Sao chép mật khẩu',
+        onClick: () => void handleCopy(),
+      }}
+      primaryAction={{
+        label: 'Đóng',
+        onClick: () => handleOpenChange(false),
+      }}
+    >
+      {result ? (
+        <div className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm">
+          <div className="space-y-1 border-b border-border px-4 py-3">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Email
             </p>
+            <p className="break-all text-sm font-medium text-foreground">{result.email}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-            aria-label="Đóng"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
 
-        <dl className="space-y-3 rounded-lg border border-border bg-muted/30 p-4 text-sm">
-          <div>
-            <dt className="text-muted-foreground">Email</dt>
-            <dd className="font-medium">{result.email}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Mật khẩu tạm</dt>
-            <dd className="mt-1 flex items-center gap-2">
-              <code className="flex-1 rounded-md bg-background px-3 py-2 font-mono text-base font-semibold tracking-wide">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Mật khẩu tạm
+              </p>
+              <p className="truncate font-mono text-base font-semibold tracking-wide text-foreground">
                 {result.tempPassword}
-              </code>
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted"
-                aria-label="Sao chép mật khẩu"
-              >
-                {copied ? (
-                  <Check className="size-4 text-emerald-700" aria-hidden />
-                ) : (
-                  <Copy className="size-4" aria-hidden />
-                )}
-              </button>
-            </dd>
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-9 shrink-0"
+              onClick={() => void handleCopy()}
+              aria-label={copied ? 'Đã sao chép mật khẩu' : 'Sao chép mật khẩu'}
+            >
+              {copied ? (
+                <Check className="size-4 text-emerald-600" aria-hidden />
+              ) : (
+                <Copy className="size-4" aria-hidden />
+              )}
+            </Button>
           </div>
-        </dl>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 w-full rounded-lg bg-emerald-700 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
-        >
-          Đã ghi lại, đóng
-        </button>
-      </div>
-    </div>
+        </div>
+      ) : null}
+    </SuccessDialog>
   );
 }

@@ -1,4 +1,4 @@
-export default function CompanyQueueLoading() {
+export default function CompanyAssignLoading() {
   return (
     <div className="space-y-6">
       <div className="h-28 animate-pulse rounded-2xl bg-emerald-100/60" />

@@ -23,11 +23,12 @@ export interface SuccessDialogProps {
   secondaryAction: SuccessDialogAction;
   /** Nút đặc bên phải (vd. Xem chi tiết). */
   primaryAction: SuccessDialogAction;
-  /**
-   * Accent palette cho header / check / CTA chính.
+  /** Accent palette cho header / check / CTA chính.
    * `'teal'` (mặc định) dùng mọi nơi; `'emerald'` cho màn verify.
    */
   accent?: 'teal' | 'emerald';
+  /** Nội dung bổ sung dưới mô tả (vd. khối hiển thị mật khẩu tạm). */
+  children?: ReactNode;
   className?: string;
 }
 
@@ -67,6 +68,7 @@ export function SuccessDialog({
   secondaryAction,
   primaryAction,
   accent = 'teal',
+  children,
   className,
 }: SuccessDialogProps) {
   const styles = accentStyles[accent];
@@ -130,10 +132,12 @@ export function SuccessDialog({
           <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
             {title}
           </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            {description}
+          <DialogDescription asChild>
+            <div className="text-sm leading-relaxed text-muted-foreground">{description}</div>
           </DialogDescription>
         </div>
+
+        {children ? <div className="px-6 pt-3">{children}</div> : null}
 
         <div className="grid grid-cols-2 gap-3 px-6 pt-4 pb-6">
           <Button

@@ -4,6 +4,7 @@ import {
   adaptFetchLeoMyReports,
   adaptFetchLeoWardBoundary,
   adaptFetchOfficeStaff,
+  adaptLookupOfficeStaff,
   adaptOfficeDetail,
   adaptOfficesList,
   adaptRecruitOfficeStaff,
@@ -21,6 +22,7 @@ import type {
   OfficesListParams,
   OfficeStaffList,
   OfficeStaffListParams,
+  OfficeStaffLookupResult,
   RecruitOfficeStaffInput,
   RecruitOfficeStaffResult,
   UpdateOfficeInput,
@@ -45,6 +47,7 @@ export type {
   OfficesListParams,
   OfficeStaffList,
   OfficeStaffListParams,
+  OfficeStaffLookupResult,
   RecruitOfficeStaffInput,
   RecruitOfficeStaffResult,
   UpdateOfficeInput,
@@ -87,6 +90,13 @@ export async function fetchOfficeStaff(
   return adaptFetchOfficeStaff(params);
 }
 
+/** GET /v1/offices/my/staff/lookup — tra cứu Citizen theo email (exact). */
+export async function lookupOfficeStaff(
+  email: string
+): Promise<ApiEnvelope<OfficeStaffLookupResult>> {
+  return adaptLookupOfficeStaff(email);
+}
+
 /** POST /v1/offices/my/staff — LEO tuyển Citizen vào LocalOffice + đội. */
 export async function recruitOfficeStaff(
   body: RecruitOfficeStaffInput
@@ -107,6 +117,7 @@ export default {
   assignOfficeOfficer,
   fetchLeoMyReports,
   fetchOfficeStaff,
+  lookupOfficeStaff,
   recruitOfficeStaff,
   fetchLeoWardBoundary,
 };

@@ -39,35 +39,65 @@ export function isSameNotificationDestination(
 }
 
 /**
- * Detail → list hub (để `from=` không kẹt ở detail trung gian).
- * Khi đang đứng đúng list/hub thì giữ filter hiện tại.
+ * List/hub thuộc về destination detail (+ highlight row khi list hỗ trợ).
+ *
+ * Dùng khi mở detail từ noti: `from=` = hub của module đích,
+ * KHÔNG phải trang đang đứng (tránh tracking → verify detail → Quay lại về tracking).
+ *
+ * Ví dụ:
+ * - `/officer/verify/{id}` → `/officer/verify?highlight={id}`
+ * - `/officer/assign/{id}` → `/officer/assign?highlightReportId={id}`
+ * - `/officer/tracking?reportId=` → `/officer/tracking`
  */
-function buildNotificationFromPath(pathname: string, search: string): string | null {
-  if (/^\/officer\/verify\/[^/]+/.test(pathname)) return '/officer/verify';
-  if (/^\/officer\/assign\/[^/]+/.test(pathname)) return '/officer/assign';
-  if (/^\/officer\/duplicates\/[^/]+/.test(pathname)) return '/officer/duplicates';
-  if (/^\/officer\/recurrence\/[^/]+/.test(pathname)) return '/officer/recurrence';
-  if (/^\/officer\/inspections\/[^/]+/.test(pathname)) {
-    return '/officer/recurrence?tab=inspections';
-  }
-  if (/^\/officer\/reports\/[^/]+/.test(pathname)) return '/officer/reports';
-  if (/^\/officer\/reopen\/[^/]+/.test(pathname)) return '/officer/reopen';
+function buildNotificationBackTarget(targetHref: string): string | null {
+  const url = new URL(targetHref, 'http://local.invalid');
+  const { pathname } = url;
 
-  if (!pathname.startsWith('/officer/') && pathname !== '/officer') return null;
-
-  const url = toUrl(pathname, search);
-  url.searchParams.delete('from');
-  url.searchParams.delete('_r');
-  /** Detail overlay trên cùng route — back về list thuần. */
-  if (pathname.startsWith('/officer/tracking')) {
-    url.searchParams.delete('reportId');
-  }
-  if (pathname.startsWith('/officer/community')) {
-    url.searchParams.delete('eventId');
+  const verifyMatch = pathname.match(/^\/officer\/verify\/([^/]+)/);
+  if (verifyMatch?.[1]) {
+    const id = decodeURIComponent(verifyMatch[1]);
+    return `/officer/verify?highlight=${encodeURIComponent(id)}`;
   }
 
-  const qs = url.searchParams.toString();
-  return qs ? `${pathname}?${qs}` : pathname;
+  const assignMatch = pathname.match(/^\/officer\/assign\/([^/]+)/);
+  if (assignMatch?.[1]) {
+    const id = decodeURIComponent(assignMatch[1]);
+    return `/officer/assign?highlightReportId=${encodeURIComponent(id)}`;
+  }
+
+  const dupMatch = pathname.match(/^\/officer\/duplicates\/([^/]+)/);
+  if (dupMatch?.[1]) return '/officer/duplicates';
+
+  const recurrenceMatch = pathname.match(/^\/officer\/recurrence\/([^/]+)/);
+  if (recurrenceMatch?.[1]) return '/officer/recurrence';
+
+  const inspectionMatch = pathname.match(/^\/officer\/inspections\/([^/]+)/);
+  if (inspectionMatch?.[1]) return '/officer/recurrence?tab=inspections';
+
+  const reportsMatch = pathname.match(/^\/officer\/reports\/([^/]+)/);
+  if (reportsMatch?.[1]) return '/officer/reports';
+
+  const reopenMatch = pathname.match(/^\/officer\/reopen\/([^/]+)/);
+  if (reopenMatch?.[1]) return '/officer/reopen';
+
+  /** Overlay detail trên cùng route list. */
+  if (pathname.startsWith('/officer/tracking') && url.searchParams.get('reportId')?.trim()) {
+    return '/officer/tracking';
+  }
+  if (pathname.startsWith('/officer/community') && url.searchParams.get('eventId')?.trim()) {
+    return '/officer/community';
+  }
+  if (pathname.startsWith('/company/tracking') && url.searchParams.get('reportId')?.trim()) {
+    return '/company/tracking';
+  }
+
+  const companyAssignMatch = pathname.match(/^\/company\/assign\/([^/]+)/);
+  if (companyAssignMatch?.[1]) {
+    const id = decodeURIComponent(companyAssignMatch[1]);
+    return `/company/assign?highlightReportId=${encodeURIComponent(id)}`;
+  }
+
+  return null;
 }
 
 /** Invalidate list/queue theo pathname đang đứng hoặc đích noti. */
@@ -100,9 +130,9 @@ function invalidateListsForPath(queryClient: QueryClient, pathname: string): Pro
   } else if (pathname.startsWith('/officer/workforce')) {
     inv(teamKeys.all);
     inv(leoOfficesKeys.myStaff());
-  } else if (pathname.startsWith('/company/queue')) {
+  } else if (pathname.startsWith('/company/assign')) {
     inv(companyKeys.all);
-  } else if (pathname.startsWith('/company/assignments')) {
+  } else if (pathname.startsWith('/company/tracking')) {
     inv(companyKeys.all);
   }
 
@@ -188,8 +218,15 @@ function invalidateDestination(queryClient: QueryClient, href: string): Promise<
     tasks.push(queryClient.invalidateQueries({ queryKey: communityCleanupKeys.queueStats() }));
   }
 
-  if (pathname.startsWith('/company/assignments') && reportId) {
+  if (pathname.startsWith('/company/tracking') && reportId) {
     tasks.push(queryClient.invalidateQueries({ queryKey: companyKeys.assignmentDetail(reportId) }));
+  }
+
+  const companyAssignMatch = pathname.match(/^\/company\/assign\/([^/]+)/);
+  if (companyAssignMatch?.[1]) {
+    const id = decodeURIComponent(companyAssignMatch[1]);
+    tasks.push(queryClient.invalidateQueries({ queryKey: companyKeys.reportDetail(id) }));
+    tasks.push(queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'queue'] }));
   }
 
   return tasks;
@@ -213,7 +250,8 @@ export async function softReloadNotificationDestination(
 
 /**
  * Click noti:
- * - Gắn `from=` (list/hub đang đứng) để Quay lại đúng chỗ
+ * - Gắn `from=` = hub module của **destination** (+ highlight) — Quay lại đúng trang chính detail
+ * - Không gắn `from=` theo trang đang đứng (tránh nhảy về tracking/assign khi mở verify)
  * - Invalidate list module hiện tại + đích → remount/back tự soft-refetch bảng
  * - Cùng đích → chỉ soft reload (không push trùng)
  * - Không `location.reload()` / F5
@@ -234,8 +272,9 @@ export function navigateFromNotification(options: {
     return;
   }
 
-  const from = buildNotificationFromPath(pathname, search);
-  const nextHref = from && href.startsWith('/officer/') ? withOfficerFromQuery(href, from) : href;
+  const backTarget = buildNotificationBackTarget(href);
+  const nextHref =
+    backTarget && href.startsWith('/officer/') ? withOfficerFromQuery(href, backTarget) : href;
 
   /**
    * Fire-and-forget invalidate (không chờ network) rồi push ngay.

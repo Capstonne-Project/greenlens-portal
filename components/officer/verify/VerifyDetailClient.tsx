@@ -1854,11 +1854,6 @@ export function VerifyDetailClient({
                 categories={categories}
                 catsLoading={catsLoading}
               />
-
-              {detailMode === 'tracking' && (
-                // <ReportAssignmentPanel detail={detail} onGoToAssign={handleAssignNow} />
-                <div>ReportAssignmentPanel</div>
-              )}
             </div>
 
             {/* Right — sticky: AI insight above action card */}

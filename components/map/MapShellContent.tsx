@@ -9,7 +9,7 @@ type MapShellContentProps = {
 };
 
 /**
- * Floating content panel over `#f7f7f7` canvas (Prody-style):
+ * Floating content panel over `bg-app-canvas` (Prody-style):
  * - Thin 1px border on all sides
  * - Soft ambient shadow
  * - Stronger soft shadow on the left edge (casts right) so that edge reads darker/thicker
@@ -20,10 +20,10 @@ export function MapShellContent({ children, variant = 'map' }: MapShellContentPr
   }
 
   return (
-    <div className="flex min-w-0 flex-1 overflow-hidden py-2 pr-2">
+    <div className="app-shell-gutter">
       <div
         className={cn(
-          'flex h-full w-full min-w-0 flex-1 flex-col overflow-auto rounded-2xl bg-[#fffdfc] p-2 md:p-6',
+          'flex h-full w-full min-w-0 flex-1 flex-col overflow-auto rounded-2xl bg-app-panel p-2 md:p-6',
           '',
           'border-l-2',
           // Left edge emphasis via shadow (not thicker stroke) — matches sample

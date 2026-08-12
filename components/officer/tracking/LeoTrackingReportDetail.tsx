@@ -1,5 +1,6 @@
 'use client';
 
+import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
 import {
   ClickableReportImage,
   ReportImagePreviewDialog,
@@ -7,7 +8,6 @@ import {
   type ReportPreviewHandler,
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
-import { ReassignTeamDialog } from '@/components/officer/tracking/ReassignTeamDialog';
 import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,10 +18,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useReportDetail, useReportProgress } from '@/hooks/useReport';
+import { useReportProgress } from '@/hooks/useReport';
 import type {
   ReportProgress,
   ReportProgressAssignment,
@@ -29,6 +37,10 @@ import type {
   ReportProgressStatusHistory,
 } from '@/lib/api/models/reportProgress';
 import type { ReportStatus } from '@/lib/api/models/report';
+import {
+  REPORT_SEVERITY_BADGE_CLASSES,
+  REPORT_SEVERITY_LABEL_VI,
+} from '@/lib/constants/reportActions';
 import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
@@ -45,10 +57,13 @@ import {
   FilePlus2,
   ImageIcon,
   MapPin,
+  MessageSquareWarning,
   Pencil,
   RefreshCw,
   RotateCcw,
+  UserPlus,
   Users,
+  X,
   XCircle,
   type LucideIcon,
 } from 'lucide-react';
@@ -117,6 +132,8 @@ interface LifecycleStage {
   label: string;
   at: string | null;
   meta?: string | null;
+  /** Highlight meta (vd. đội từ chối). */
+  metaTone?: 'default' | 'danger';
   /** Step phân công / nhận việc: avatar + tên đội + dòng phụ (điều phối / thời gian). */
   assignmentItems?: {
     assignmentId: string;
@@ -146,6 +163,18 @@ function formatDateTime(iso: string | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+/** Bỏ placeholder wire / chuỗi rỗng từ declineReason. */
+function usefulReason(reason?: string | null): string | null {
+  const value = reason?.trim();
+  if (!value || value === 'string' || value === '[ADMIN] string') return null;
+  return value;
+}
+
+/** Bỏ (0,0) / NaN — placeholder Swagger hoặc thiếu GPS. */
+function hasProgressCoords(lat: number, lng: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
 }
 
 /** Chỉ giờ:phút — caption dưới ảnh progress update. */
@@ -510,7 +539,12 @@ function LifecycleSpine({
               </div>
 
               {stage.meta ? (
-                <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-slate-500">
+                <p
+                  className={cn(
+                    'mt-1.5 max-w-lg text-sm leading-relaxed',
+                    stage.metaTone === 'danger' ? 'font-medium text-red-600' : 'text-slate-500'
+                  )}
+                >
                   {stage.meta}
                 </p>
               ) : null}
@@ -690,18 +724,9 @@ const ASSIGNMENT_STATUS_BADGE: Record<string, string> = {
   Declined: 'bg-red-50 text-red-700 ring-red-200/80',
 };
 
-/** Hàng đội — avatar + tên + trưởng nhóm · progress / phân công lại · chevron members. */
-function TeamProgressRow({
-  assignment,
-  reportId,
-  reportCode,
-}: {
-  assignment: ReportProgressAssignment;
-  reportId: string;
-  reportCode: string;
-}) {
+/** Hàng đội — avatar + tên + trưởng nhóm · progress · chevron members. */
+function TeamProgressRow({ assignment }: { assignment: ReportProgressAssignment }) {
   const [expanded, setExpanded] = useState(false);
-  const [reassignOpen, setReassignOpen] = useState(false);
   const isDeclined = assignment.status === 'Declined';
   const statusLabel = ASSIGNMENT_STATUS_LABEL[assignment.status] ?? assignment.status;
 
@@ -770,18 +795,6 @@ function TeamProgressRow({
             <ChevronDown className="size-4 text-slate-400" aria-hidden />
           </motion.span>
         </button>
-
-        {isDeclined ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="shrink-0 cursor-pointer border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-            onClick={() => setReassignOpen(true)}
-          >
-            Phân công lại
-          </Button>
-        ) : null}
       </div>
 
       <AnimatePresence initial={false}>
@@ -844,18 +857,6 @@ function TeamProgressRow({
           </motion.div>
         ) : null}
       </AnimatePresence>
-
-      <ReassignTeamDialog
-        open={reassignOpen}
-        onClose={() => setReassignOpen(false)}
-        reportId={reportId}
-        reportCode={reportCode}
-        oldTeam={{
-          teamId: assignment.teamId,
-          teamName: assignment.teamName,
-          teamType: assignment.teamType,
-        }}
-      />
     </li>
   );
 }
@@ -891,11 +892,16 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
   const firstAssignedAt = assignment?.assignedAt ?? null;
   const firstAcceptedAt = assignment?.acceptedAt ?? null;
   const anyAccepted = Boolean(assignment?.acceptedAt);
+  const isDeclined = assignment?.status === 'Declined';
+  /** Đội công ty DVMT vs đội dọn dẹp phường (LEO). */
+  const isCompanyTeamPath = Boolean(data.assignedCompany) || Boolean(assignment?.isCompanyTeam);
 
   const companyName =
     data.assignedCompany?.companyName?.trim() || assignment?.companyName?.trim() || '';
 
   const leaderName = assignment?.teamLeaderName?.trim() || '';
+  const teamName = assignment?.teamName?.trim() || '';
+  const declineReasonText = usefulReason(assignment?.declineReason);
 
   const assignItems = assignment
     ? [
@@ -927,14 +933,52 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
             ) : (
               'Đã nhận việc'
             )
-          ) : assignment.status === 'Declined' ? (
-            'Đã từ chối'
+          ) : isDeclined ? (
+            <span className="text-red-600">
+              {isCompanyTeamPath ? (
+                <>
+                  Đội công ty
+                  {companyName ? (
+                    <>
+                      {' '}
+                      <span className="font-semibold">{companyName}</span>
+                    </>
+                  ) : null}{' '}
+                  đã từ chối task
+                </>
+              ) : (
+                <>Đội dọn dẹp của phường đã từ chối task</>
+              )}
+              {declineReasonText ? (
+                <span className="mt-1 block text-red-700/90">
+                  Ghi chú: <span className="italic">&ldquo;{declineReasonText}&rdquo;</span>
+                </span>
+              ) : null}
+            </span>
           ) : (
             'Chưa nhận việc'
           ),
         },
       ]
     : [];
+
+  /** Meta step «Đội nhận việc» — Declined: gợi ý xem lý do ở tab Tiến độ (không nhét full reason vào spine). */
+  let acceptedMeta: string | null = null;
+  if (hasAssignment && !anyAccepted) {
+    if (isDeclined) {
+      if (isCompanyTeamPath) {
+        acceptedMeta = companyName
+          ? `Đội ${teamName || 'công ty'} của công ty ${companyName} đã từ chối nhận việc. Xem lý do ở tab Tiến độ.`
+          : `Đội ${teamName || 'công ty'} đã từ chối nhận việc. Xem lý do ở tab Tiến độ.`;
+      } else {
+        acceptedMeta = teamName
+          ? `Đội dọn dẹp phường «${teamName}» đã từ chối nhận việc. Xem lý do ở tab Tiến độ.`
+          : 'Đội dọn dẹp của phường đã từ chối nhận việc. Xem lý do ở tab Tiến độ.';
+      }
+    } else {
+      acceptedMeta = 'Chưa có đội nào nhận việc.';
+    }
+  }
 
   const progressUpdates: ProgressUpdateStageItem[] = (assignment?.progressUpdates ?? [])
     .map(u => ({
@@ -966,7 +1010,8 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
       step: 2,
       label: 'Đội nhận việc',
       at: nullIso(firstAcceptedAt),
-      meta: !hasAssignment ? null : !anyAccepted ? 'Chưa có đội nào nhận việc.' : null,
+      meta: acceptedMeta,
+      metaTone: isDeclined ? 'danger' : 'default',
       assignmentItems: hasAssignment ? acceptItems : undefined,
       state: stateFor(statusRank('Assigned'), {
         forceDone: anyAccepted,
@@ -1404,21 +1449,14 @@ function SubmissionGallery({
 
 function ReportInfoCard({
   data,
-  mapLat,
-  mapLng,
-  hasCoords,
-  isDetailPending,
-  googleMapsUrl,
   onPreview,
 }: {
   data: ReportProgress;
-  mapLat: number | undefined;
-  mapLng: number | undefined;
-  hasCoords: boolean;
-  isDetailPending: boolean;
-  googleMapsUrl: string | null;
   onPreview: ReportPreviewHandler;
 }) {
+  const [declineDrawerOpen, setDeclineDrawerOpen] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
+
   const submissionImages = data.media.submissionImages;
   const statusBadge =
     REPORT_STATUS_BADGE_CLASSES[data.status] ?? 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80';
@@ -1427,8 +1465,22 @@ function ReportInfoCard({
   const resolveDueAt = data.sla.resolveDueAt;
   const slaBreached = !isMergedDuplicate && Boolean(resolveDueAt) && data.sla.isBreached;
 
+  const assignment = data.assignment;
+  /**
+   * LEO chỉ xử lý từ chối / phân công lại khi có `assignment` (đội LEO).
+   * Có `assignedCompany` → task thuộc công ty DVMT — CM xử lý, không hiện CTA.
+   */
+  const showDeclineCta =
+    Boolean(assignment) && assignment?.status === 'Declined' && !data.assignedCompany;
+  const declineReason = usefulReason(assignment?.declineReason);
+
   const assignedCompanyName =
     data.assignedCompany?.companyName?.trim() || data.assignment?.companyName?.trim() || '';
+
+  const mapLat = data.latitude;
+  const mapLng = data.longitude;
+  const hasCoords = hasProgressCoords(mapLat, mapLng);
+  const googleMapsUrl = hasCoords ? `https://www.google.com/maps?q=${mapLat},${mapLng}` : null;
 
   const teamTooltipItems = useMemo(() => {
     const a = data.assignment;
@@ -1453,9 +1505,25 @@ function ReportInfoCard({
       <SubmissionGallery images={submissionImages} address={data.address} onPreview={onPreview} />
 
       <div className="pt-5">
-        <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
-          {data.categoryName || 'Báo cáo môi trường'}
-        </h1>
+        <div className="flex min-w-0 items-start gap-1.5">
+          <h1 className="min-w-0 text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
+            {data.categoryName || 'Báo cáo môi trường'}
+          </h1>
+          {data.severity ? (
+            <span
+              className={cn(
+                '-mt-1 inline-flex shrink-0 rounded-full px-1.5 py-px text-[10px] font-semibold leading-4 ring-1 ring-inset',
+                REPORT_SEVERITY_BADGE_CLASSES[data.severity] ??
+                  'bg-zinc-100 text-zinc-600 ring-zinc-200/80'
+              )}
+            >
+              {REPORT_SEVERITY_LABEL_VI[data.severity] ?? data.severity}
+            </span>
+          ) : null}
+        </div>
+        {data.code ? (
+          <p className="mt-1 font-mono text-xs text-muted-foreground">{data.code}</p>
+        ) : null}
 
         <div className="mt-5 space-y-4">
           <MetaRow icon={CircleDot} label="Trạng thái">
@@ -1557,30 +1625,48 @@ function ReportInfoCard({
         </TabsList>
 
         <TabsContent value="progress" className="mt-5 focus-visible:ring-0">
-          <div className="mb-4 min-w-0">
-            <p className="text-sm font-semibold text-foreground">Tiến độ đội phụ trách</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {assignedCompanyName ? (
-                <>
-                  Tiến độ và trạng thái xử lý của đội được phân công{' '}
-                  <span className="font-semibold text-foreground/80">
-                    bởi công ty {assignedCompanyName}
-                  </span>
-                </>
-              ) : (
-                'Tiến độ và trạng thái xử lý của đội được phân công'
-              )}
-            </p>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Tiến độ đội phụ trách</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {assignedCompanyName ? (
+                  <>
+                    Tiến độ và trạng thái xử lý của đội được phân công{' '}
+                    <span className="font-semibold text-foreground/80">
+                      bởi công ty {assignedCompanyName}
+                    </span>
+                  </>
+                ) : (
+                  'Tiến độ và trạng thái xử lý của đội được phân công'
+                )}
+              </p>
+            </div>
+            {showDeclineCta ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeclineDrawerOpen(true)}
+                className={cn(
+                  'h-8 shrink-0 cursor-pointer gap-1.5 border-red-200 bg-red-50 px-2.5',
+                  'text-[0.8125rem] font-semibold text-red-700',
+                  'transition-colors duration-200',
+                  'hover:border-red-300 hover:bg-red-100 hover:text-red-800',
+                  'focus-visible:ring-2 focus-visible:ring-red-400/40'
+                )}
+                aria-haspopup="dialog"
+                aria-expanded={declineDrawerOpen}
+              >
+                <MessageSquareWarning className="size-3.5" aria-hidden />
+                Lý do từ chối
+              </Button>
+            ) : null}
           </div>
           {!data.assignment ? (
             <p className="py-4 text-sm text-muted-foreground">Chưa có đội được phân công.</p>
           ) : (
             <ul className="divide-y divide-border/50">
-              <TeamProgressRow
-                assignment={data.assignment}
-                reportId={data.reportId}
-                reportCode={data.code}
-              />
+              <TeamProgressRow assignment={data.assignment} />
             </ul>
           )}
         </TabsContent>
@@ -1590,9 +1676,7 @@ function ReportInfoCard({
         </TabsContent>
 
         <TabsContent value="map" className="mt-5 focus-visible:ring-0">
-          {isDetailPending ? (
-            <Skeleton className="h-48 w-full rounded-xl" aria-label="Đang tải bản đồ" />
-          ) : hasCoords && mapLat != null && mapLng != null ? (
+          {hasCoords && googleMapsUrl ? (
             <div>
               <div className="overflow-hidden rounded-xl bg-muted/40">
                 <ReportLocationMap latitude={mapLat} longitude={mapLng} className="h-52 w-full" />
@@ -1600,20 +1684,20 @@ function ReportInfoCard({
               {data.address ? (
                 <p className="mt-2.5 flex items-start gap-1.5 text-sm leading-snug text-foreground/85">
                   <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                  <span className="min-w-0 whitespace-pre-wrap break-words">{data.address}</span>
+                  <span className="min-w-0 whitespace-pre-wrap wrap-break-word">
+                    {data.address}
+                  </span>
                 </p>
               ) : null}
-              {googleMapsUrl ? (
-                <a
-                  href={googleMapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand tabular-nums hover:underline"
-                >
-                  <ExternalLink className="size-3" aria-hidden />
-                  {mapLat.toFixed(5)}, {mapLng.toFixed(5)}
-                </a>
-              ) : null}
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-brand tabular-nums hover:underline"
+              >
+                <ExternalLink className="size-3" aria-hidden />
+                Mở Google Maps · {mapLat.toFixed(5)}, {mapLng.toFixed(5)}
+              </a>
             </div>
           ) : (
             <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl bg-muted/40 px-4 text-center">
@@ -1624,7 +1708,9 @@ function ReportInfoCard({
                       className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
                       aria-hidden
                     />
-                    <span className="min-w-0 whitespace-pre-wrap break-words">{data.address}</span>
+                    <span className="min-w-0 whitespace-pre-wrap wrap-break-word">
+                      {data.address}
+                    </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Chưa có tọa độ để hiển thị bản đồ.
@@ -1642,7 +1728,169 @@ function ReportInfoCard({
           )}
         </TabsContent>
       </Tabs>
+
+      {showDeclineCta && assignment ? (
+        <>
+          <DeclineReasonDrawer
+            open={declineDrawerOpen}
+            onOpenChange={setDeclineDrawerOpen}
+            assignment={assignment}
+            declineReason={declineReason}
+            onReassign={() => {
+              setDeclineDrawerOpen(false);
+              setReassignOpen(true);
+            }}
+          />
+          <LeoAssignDialog
+            open={reassignOpen}
+            onClose={() => setReassignOpen(false)}
+            reportIds={[data.reportId]}
+            reportCode={data.code}
+            mode="reassign"
+            oldTeam={{
+              teamId: assignment.teamId,
+              teamName: assignment.teamName,
+              teamType: assignment.teamType,
+            }}
+          />
+        </>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * Drawer — LEO xem lý do đội từ chối trước khi phân công lại (parity company).
+ * Chỉ dùng khi progress có `assignment` Declined và không có `assignedCompany`.
+ */
+function DeclineReasonDrawer({
+  open,
+  onOpenChange,
+  assignment,
+  declineReason,
+  onReassign,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  assignment: ReportProgressAssignment;
+  declineReason: string | null;
+  onReassign: () => void;
+}) {
+  const teamName = assignment.teamName?.trim() || '—';
+  const leader = assignment.teamLeaderName?.trim() || '—';
+  const assignedBy = assignment.assignedByName?.trim() || null;
+  const assignedAt = assignment.assignedAt?.trim() || null;
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent className="flex h-full max-h-none w-full max-w-md flex-col border-l border-slate-200 bg-[#fffdfc]">
+        <DrawerHeader className="space-y-0 border-b border-slate-200 px-0 py-0 text-left">
+          <div className="flex items-start justify-between gap-3 bg-linear-to-br from-red-50 via-red-50/60 to-transparent px-5 pb-4 pt-5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 ring-1 ring-red-200/80"
+                  aria-hidden
+                >
+                  <MessageSquareWarning className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <DrawerTitle className="text-base font-bold tracking-tight text-slate-900">
+                    Lý do từ chối
+                  </DrawerTitle>
+                  <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                    Đội đã từ chối task — xem trước khi phân công lại
+                  </p>
+                </div>
+              </div>
+            </div>
+            <DrawerClose asChild>
+              <button
+                type="button"
+                aria-label="Đóng"
+                className="cursor-pointer rounded-full p-1.5 text-slate-400 transition-colors duration-200 hover:bg-white/80 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40"
+              >
+                <X className="size-4" />
+              </button>
+            </DrawerClose>
+          </div>
+        </DrawerHeader>
+
+        <div className="scrollbar-smooth min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          <section>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Đội phụ trách
+            </p>
+            <div className="mt-2.5 flex items-center gap-3">
+              <span
+                className={cn(
+                  'flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white',
+                  hashColor(assignment.teamId)
+                )}
+                aria-hidden
+              >
+                {getInitials(teamName)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">{teamName}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500">Trưởng nhóm: {leader}</p>
+              </div>
+            </div>
+          </section>
+
+          <section role="note" aria-label="Nội dung lý do từ chối">
+            <div className="flex items-center gap-2">
+              <XCircle className="size-4 shrink-0 text-red-600" aria-hidden />
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                Nội dung từ chối
+              </p>
+            </div>
+            <blockquote className="mt-3 border-l-2 border-red-300 pl-3">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800">
+                {declineReason || 'Không có lý do được ghi nhận.'}
+              </p>
+            </blockquote>
+          </section>
+
+          {(assignedBy || assignedAt) && (
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {assignedBy ? (
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Phân công bởi
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium text-slate-800">{assignedBy}</p>
+                </div>
+              ) : null}
+              {assignedAt ? (
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Thời điểm phân công
+                  </p>
+                  <p className="mt-1 text-sm font-medium tabular-nums text-slate-800">
+                    {formatDateTime(assignedAt)}
+                  </p>
+                </div>
+              ) : null}
+            </section>
+          )}
+        </div>
+
+        <DrawerFooter className="gap-2 border-t border-slate-200 bg-white px-5 py-4">
+          <p className="text-xs leading-snug text-slate-500">
+            Phân công lại sẽ chọn đội mới cho báo cáo này.
+          </p>
+          <Button
+            type="button"
+            className="h-11 cursor-pointer bg-emerald-600 text-white transition-colors duration-200 hover:bg-emerald-700"
+            onClick={onReassign}
+          >
+            <UserPlus className="mr-1.5 size-4" aria-hidden />
+            Phân công lại
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -1823,15 +2071,7 @@ function LeoTrackingDetailSkeleton({ onBack }: { onBack: () => void }) {
   );
 }
 
-function DetailShell({
-  data,
-  reportId,
-  onBack,
-}: {
-  data: ReportProgress;
-  reportId: string;
-  onBack: () => void;
-}) {
+function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => void }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   /** Desktop: pane đang tương tác — quyết định hiện rail scrollbar mép phải. */
   const [activePane, setActivePane] = useState<'left' | 'right'>('right');
@@ -1839,16 +2079,6 @@ function DetailShell({
   const rightScrollRef = useRef<HTMLDivElement>(null);
 
   const lifecycleStages = useMemo(() => buildTrackingStages(data), [data]);
-
-  const { data: reportDetail, isPending: isDetailPending } = useReportDetail(reportId);
-  const latitude = reportDetail?.latitude;
-  const longitude = reportDetail?.longitude;
-  const hasCoords =
-    typeof latitude === 'number' &&
-    typeof longitude === 'number' &&
-    Number.isFinite(latitude) &&
-    Number.isFinite(longitude);
-  const googleMapsUrl = hasCoords ? `https://www.google.com/maps?q=${latitude},${longitude}` : null;
 
   const allImages = useMemo((): ReportPreviewImage[] => {
     const map = (items: ReportProgressImage[], label: string) =>
@@ -1914,15 +2144,7 @@ function DetailShell({
             onWheel={() => setActivePane('left')}
             className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:pb-8 lg:scrollbar-hide"
           >
-            <ReportInfoCard
-              data={data}
-              mapLat={latitude}
-              mapLng={longitude}
-              hasCoords={hasCoords}
-              isDetailPending={isDetailPending}
-              googleMapsUrl={googleMapsUrl}
-              onPreview={handlePreview}
-            />
+            <ReportInfoCard data={data} onPreview={handlePreview} />
           </aside>
 
           <div className="hidden bg-border lg:block" aria-hidden />
@@ -1976,5 +2198,5 @@ export function LeoTrackingReportDetail({ reportId, onBack }: LeoTrackingReportD
     );
   }
 
-  return <DetailShell data={data} reportId={reportId} onBack={onBack} />;
+  return <DetailShell data={data} onBack={onBack} />;
 }

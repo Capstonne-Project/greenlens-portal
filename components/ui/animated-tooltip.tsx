@@ -21,6 +21,13 @@ export type AnimatedTooltipProps = {
   /** Avatar size classes — mặc định khớp officer card (`size-7`). */
   avatarClassName?: string;
   className?: string;
+  /**
+   * Chỉ hiện N avatar đầu; phần còn lại thành chip `+N`.
+   * Không set = hiện tất cả.
+   */
+  maxVisible?: number;
+  /** Prefixed onto overflow chip tooltip (vd. teamName). */
+  groupLabel?: string;
 };
 
 type TooltipBubbleProps = {
@@ -45,18 +52,24 @@ function TooltipBubble({
 }: TooltipBubbleProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.6 }}
+      initial={{ opacity: 0, y: 10, scale: 0.96 }}
       animate={{
         opacity: 1,
         y: 0,
         scale: 1,
         transition: {
           type: 'spring',
-          stiffness: 260,
-          damping: 10,
+          stiffness: 140,
+          damping: 22,
+          mass: 0.9,
         },
       }}
-      exit={{ opacity: 0, y: 20, scale: 0.6 }}
+      exit={{
+        opacity: 0,
+        y: 6,
+        scale: 0.97,
+        transition: { duration: 0.2, ease: 'easeOut' },
+      }}
       style={{
         translateX,
         rotate,
@@ -74,7 +87,7 @@ function TooltipBubble({
       <div className="absolute -bottom-px left-6 z-30 h-px w-[40%] bg-linear-to-r from-transparent via-sky-500 to-transparent" />
       <div className="relative z-30 text-xs font-bold text-white">{name}</div>
       {designation ? (
-        <div className={cn('text-[10px] text-white/90', wrap && 'mt-0.5 leading-snug')}>
+        <div className={cn('mt-0.5 whitespace-pre-line text-[10px] leading-snug text-white/90')}>
           {designation}
         </div>
       ) : null}
@@ -83,11 +96,11 @@ function TooltipBubble({
 }
 
 function useTooltipMotion() {
-  const springConfig = { stiffness: 100, damping: 15 };
+  const springConfig = { stiffness: 80, damping: 22, mass: 0.85 };
   const x = useMotionValue(0);
   const animationFrameRef = useRef<number | null>(null);
-  const rotate = useSpring(useTransform(x, [-100, 100], [-45, 45]), springConfig);
-  const translateX = useSpring(useTransform(x, [-100, 100], [-50, 50]), springConfig);
+  const rotate = useSpring(useTransform(x, [-100, 100], [-12, 12]), springConfig);
+  const translateX = useSpring(useTransform(x, [-100, 100], [-20, 20]), springConfig);
 
   const handleMouseMove = (event: MouseEvent<HTMLElement>) => {
     // Capture before rAF — React nullifies event.currentTarget after the sync handler.
@@ -200,10 +213,25 @@ export function AnimatedTooltip({
   items,
   avatarClassName = 'h-7 w-7',
   className,
+  maxVisible,
+  groupLabel,
 }: AnimatedTooltipProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [anchor, setAnchor] = useState({ top: 0, left: 0 });
   const { rotate, translateX, handleMouseMove } = useTooltipMotion();
+
+  const limit =
+    typeof maxVisible === 'number' && Number.isFinite(maxVisible) && maxVisible >= 0
+      ? Math.floor(maxVisible)
+      : items.length;
+  const visibleItems = items.slice(0, limit);
+  const overflowItems = items.slice(limit);
+  const overflowCount = overflowItems.length;
+  const overflowDesignation = overflowItems
+    .map(item => item.designation?.trim() || item.name)
+    .filter(Boolean)
+    .join('\n');
+  const overflowTitle = groupLabel?.trim() || `+${overflowCount} thành viên`;
 
   const updateAnchor = (el: HTMLElement) => {
     const rect = el.getBoundingClientRect();
@@ -211,10 +239,10 @@ export function AnimatedTooltip({
   };
 
   return (
-    <div className={cn('flex flex-row items-center', className)}>
-      {items.map(item => (
+    <div className={cn('flex min-w-0 flex-row items-center', className)}>
+      {visibleItems.map(item => (
         <div
-          className="group relative -mr-2"
+          className="group relative -mr-2 shrink-0"
           key={item.id}
           onMouseEnter={e => {
             updateAnchor(e.currentTarget);
@@ -242,7 +270,7 @@ export function AnimatedTooltip({
               height={28}
               width={28}
               src={item.image}
-              alt={item.name}
+              alt={item.designation || item.name}
               className={cn(
                 'relative m-0 rounded-full border-2 border-white object-cover object-top p-0 transition duration-500 group-hover:z-30 group-hover:scale-105',
                 avatarClassName
@@ -256,13 +284,48 @@ export function AnimatedTooltip({
                 avatarClassName,
                 item.fallbackClassName ?? 'bg-muted text-foreground'
               )}
-              aria-label={item.name}
+              aria-label={item.designation || item.name}
             >
               {item.initials ?? item.name.slice(0, 2).toUpperCase()}
             </span>
           )}
         </div>
       ))}
+
+      {overflowCount > 0 ? (
+        <div
+          className="group relative -mr-2 shrink-0"
+          onMouseEnter={e => {
+            updateAnchor(e.currentTarget);
+            setHoveredIndex(-1);
+          }}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          <AnimatePresence>
+            {hoveredIndex === -1 ? (
+              <TooltipBubble
+                name={overflowTitle}
+                designation={overflowDesignation}
+                translateX={translateX}
+                rotate={rotate}
+                wrap
+                className="pointer-events-none fixed z-100 -translate-y-full"
+                style={{ top: anchor.top, left: anchor.left }}
+              />
+            ) : null}
+          </AnimatePresence>
+          <span
+            onMouseMove={handleMouseMove}
+            className={cn(
+              'relative m-0 flex items-center justify-center rounded-full border-2 border-white bg-slate-200 p-0 text-[9px] font-semibold text-slate-700 transition duration-500 group-hover:z-30 group-hover:scale-105',
+              avatarClassName
+            )}
+            aria-label={`Còn ${overflowCount} thành viên`}
+          >
+            +{overflowCount}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

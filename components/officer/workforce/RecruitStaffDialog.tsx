@@ -1,7 +1,7 @@
 'use client';
 
 import { getInitials, TYPE_LABEL } from '@/components/officer/workforce/teamTab/teamTab.shared';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,17 +22,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useRecruitOfficeStaff } from '@/hooks/useLeoOffices';
-import { useTeamsList } from '@/hooks/useTeams';
-import type { RecruitOfficeStaffInput, RecruitStaffTargetRole } from '@/lib/api/models/office';
+import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { LOOKUP_SPINNER_MIN_MS, useMinimumPending } from '@/hooks/useMinimumPending';
+import { useOfficeStaffLookup, useRecruitOfficeStaff } from '@/hooks/useLeoOffices';
+import { useTeamDetail, useTeamsList } from '@/hooks/useTeams';
+import type {
+  OfficeStaffLookupResult,
+  RecruitOfficeStaffInput,
+  RecruitStaffTargetRole,
+} from '@/lib/api/models/office';
 import type { TeamListItem, TeamType } from '@/lib/api/models/team';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
 import { faUser } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { Leaf, Loader2, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -68,6 +74,21 @@ const recruitStaffSchema = z.object({
 type RecruitStaffFormValues = z.infer<typeof recruitStaffSchema>;
 
 const RECRUIT_TEAM_LIST_PARAMS = { page: 1, pageSize: 10 } as const;
+
+const EMAIL_LOOKUP_SCHEMA = z.string().trim().email();
+
+/** Spinner GreenLens — lá trong vòng quay xanh (thay Octocat GitHub). */
+function GreenLensLookupSpinner({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn('relative inline-flex size-5 shrink-0 items-center justify-center', className)}
+      aria-hidden
+    >
+      <span className="absolute inset-0 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
+      <Leaf className="size-2.5 text-emerald-600" strokeWidth={2.5} />
+    </span>
+  );
+}
 
 /** BE `currentStatus` → nhãn VI ngắn — parity CreateInspectionReportDialog. */
 function teamStatusLabelVi(currentStatus: string): string {
@@ -138,6 +159,55 @@ function TeamSelectRow({
   );
 }
 
+function LookupResultRow({
+  user,
+  onInvite,
+}: {
+  user: OfficeStaffLookupResult;
+  onInvite: (user: OfficeStaffLookupResult) => void;
+}) {
+  const eligible = user.isRecruitEligible;
+  const displayName = user.fullName?.trim() || user.email;
+  const initials = getInitials(displayName) || 'U';
+
+  return (
+    <button
+      type="button"
+      disabled={!eligible}
+      onMouseDown={e => e.preventDefault()}
+      onClick={() => {
+        if (eligible) onInvite(user);
+      }}
+      className={cn(
+        'flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors',
+        eligible
+          ? 'cursor-pointer hover:bg-muted/80 focus-visible:bg-muted/80 focus-visible:outline-none'
+          : 'cursor-not-allowed opacity-60'
+      )}
+    >
+      <Avatar className="size-9 shrink-0">
+        {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
+        <AvatarFallback className="bg-emerald-100 text-xs font-semibold text-emerald-800">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+      <span className="min-w-0 flex-1 leading-snug">
+        <span className="block truncate text-sm font-semibold text-foreground">{displayName}</span>
+        <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="min-w-0 truncate">{user.email}</span>
+          <span aria-hidden>·</span>
+          <span className={cn('shrink-0', eligible ? 'text-emerald-700' : 'text-muted-foreground')}>
+            {eligible ? 'Mời tham gia' : 'Không đủ điều kiện'}
+          </span>
+        </span>
+        {!eligible && user.ineligibleReason ? (
+          <span className="mt-1 block text-[11px] text-amber-700">{user.ineligibleReason}</span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
 interface RecruitStaffDialogProps {
   open: boolean;
   onClose: () => void;
@@ -150,6 +220,9 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
     enabled: open,
   });
   const teams = teamsData?.items ?? [];
+
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [lookupPicked, setLookupPicked] = useState(false);
 
   const {
     register,
@@ -169,13 +242,44 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
     },
   });
 
+  const emailRegister = register('email');
+  const emailValue = watch('email');
+  const debouncedEmail = useDebouncedValue(emailValue?.trim() ?? '', SEARCH_DEBOUNCE_MS);
+  const isLookupEmailValid = EMAIL_LOOKUP_SCHEMA.safeParse(debouncedEmail).success;
+
+  const lookupQuery = useOfficeStaffLookup(debouncedEmail, {
+    enabled: open && isLookupEmailValid && !lookupPicked,
+  });
+
+  /** Spinner giữ tối thiểu LOOKUP_SPINNER_MIN_MS — BE nhanh vẫn thấy được đang tìm. */
+  const showLookupSpinner = useMinimumPending(
+    lookupQuery.isFetching && isLookupEmailValid && !lookupPicked,
+    LOOKUP_SPINNER_MIN_MS
+  );
+
   const selectedTeamId = watch('teamId');
-  const hasTeam = Boolean(selectedTeamId?.trim());
+  const trimmedTeamId = selectedTeamId?.trim() || '';
+  const hasTeam = Boolean(trimmedTeamId);
   const selectedTeam = useMemo(
     () => teams.find(t => t.id === selectedTeamId) ?? null,
     [teams, selectedTeamId]
   );
+  /** GET /v1/teams/{id} — kiểm tra members[].isLeader khi đã chọn đội. */
+  const { data: selectedTeamDetail, isPending: teamDetailLoading } = useTeamDetail(
+    open && trimmedTeamId ? trimmedTeamId : null
+  );
+  const teamHasLeader = useMemo(
+    () => (selectedTeamDetail?.members ?? []).some(m => m.isLeader),
+    [selectedTeamDetail?.members]
+  );
   const isBusy = recruitMutation.isPending;
+
+  const showLookupMenu =
+    emailFocused &&
+    isLookupEmailValid &&
+    !lookupPicked &&
+    !showLookupSpinner &&
+    (lookupQuery.isSuccess || lookupQuery.isError);
 
   useEffect(() => {
     if (!open) {
@@ -185,8 +289,22 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
         teamId: '',
         isLeader: false,
       });
+      setEmailFocused(false);
+      setLookupPicked(false);
     }
   }, [open, reset]);
+
+  useEffect(() => {
+    if (teamHasLeader || !hasTeam) {
+      setValue('isLeader', false);
+    }
+  }, [teamHasLeader, hasTeam, setValue]);
+
+  const handlePickLookup = (user: OfficeStaffLookupResult) => {
+    setLookupPicked(true);
+    setEmailFocused(false);
+    setValue('email', user.email, { shouldValidate: true, shouldDirty: true });
+  };
 
   const onSubmit = handleSubmit(async values => {
     const teamId = values.teamId?.trim() || null;
@@ -194,7 +312,7 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
       email: values.email.trim(),
       targetRole: values.targetRole,
       teamId,
-      isLeader: teamId ? Boolean(values.isLeader) : false,
+      isLeader: teamId ? (teamHasLeader ? false : Boolean(values.isLeader)) : false,
     };
 
     try {
@@ -220,7 +338,7 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
       }}
     >
       <DialogContent
-        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        className="gap-0 overflow-visible p-0 sm:max-w-md"
         onInteractOutside={e => {
           if (isBusy) e.preventDefault();
         }}
@@ -228,8 +346,8 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
           if (isBusy) e.preventDefault();
         }}
       >
-        <form onSubmit={onSubmit} className="flex flex-col">
-          <div className="space-y-4 p-6 pb-8 md:p-8 md:pb-10">
+        <form onSubmit={onSubmit} className="flex flex-col overflow-visible">
+          <div className="space-y-4 overflow-visible p-6 pb-8 md:p-8 md:pb-10">
             <DialogHeader className="pr-8 text-left">
               <DialogTitle className="flex items-center gap-2.5">
                 <FontAwesomeIcon
@@ -245,20 +363,65 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
             <FieldGroup>
               <Field>
                 <div className="space-y-1">
-                  <Label htmlFor="recruit-email">Email công dân</Label>
+                  <Label htmlFor="recruit-email">Tìm theo email công dân</Label>
                   {!errors.email ? (
                     <FieldDescription>
-                      Chỉ tài khoản Citizen chưa thuộc văn phòng khác mới được tuyển
+                      Nhập email chính xác để xem trước rồi mời tham gia
                     </FieldDescription>
                   ) : null}
                 </div>
-                <Input
-                  id="recruit-email"
-                  type="email"
-                  placeholder="vd: nguyenvana@example.com"
-                  autoFocus
-                  {...register('email')}
-                />
+                <div className="relative">
+                  <div className="relative">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <Input
+                      id="recruit-email"
+                      type="email"
+                      autoComplete="off"
+                      placeholder="Tìm người dùng"
+                      autoFocus
+                      className="pl-9 pr-10"
+                      {...emailRegister}
+                      onFocus={() => {
+                        setEmailFocused(true);
+                      }}
+                      onBlur={e => {
+                        emailRegister.onBlur(e);
+                        // Delay để click dropdown kịp fire trước khi đóng.
+                        window.setTimeout(() => setEmailFocused(false), 120);
+                      }}
+                      onChange={e => {
+                        setLookupPicked(false);
+                        void emailRegister.onChange(e);
+                      }}
+                    />
+                    {showLookupSpinner ? (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <GreenLensLookupSpinner />
+                        <span className="sr-only">Đang tìm…</span>
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {showLookupMenu ? (
+                    <div
+                      role="listbox"
+                      aria-label="Kết quả tìm kiếm"
+                      className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md"
+                    >
+                      {lookupQuery.isError ? (
+                        <div className="px-3 py-3 text-sm text-muted-foreground">
+                          Không tìm thấy tài khoản khớp với{' '}
+                          <span className="font-medium text-foreground/80">{debouncedEmail}</span>
+                        </div>
+                      ) : lookupQuery.data ? (
+                        <LookupResultRow user={lookupQuery.data} onInvite={handlePickLookup} />
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
                 <FieldError>{errors.email?.message}</FieldError>
               </Field>
 
@@ -302,7 +465,8 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                       onValueChange={value => {
                         const nextTeamId = value === NO_TEAM_VALUE ? '' : value;
                         field.onChange(nextTeamId);
-                        if (!nextTeamId) setValue('isLeader', false);
+                        // Reset; useTeamDetail sẽ quyết định có disable Trưởng nhóm sau.
+                        setValue('isLeader', false);
                       }}
                       disabled={teamsLoading}
                     >
@@ -366,14 +530,19 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                 control={control}
                 render={({ field }) => (
                   <Field orientation="horizontal">
-                    <Label htmlFor="recruit-is-leader" className="font-normal">
-                      Trưởng nhóm
-                    </Label>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <Label htmlFor="recruit-is-leader" className="font-normal">
+                        Trưởng nhóm
+                      </Label>
+                      {teamHasLeader ? (
+                        <FieldDescription>Đội đã có trưởng nhóm</FieldDescription>
+                      ) : null}
+                    </div>
                     <Switch
                       id="recruit-is-leader"
-                      checked={Boolean(field.value)}
+                      checked={teamHasLeader ? false : Boolean(field.value)}
                       onCheckedChange={field.onChange}
-                      disabled={!hasTeam}
+                      disabled={!hasTeam || teamDetailLoading || teamHasLeader}
                     />
                   </Field>
                 )}

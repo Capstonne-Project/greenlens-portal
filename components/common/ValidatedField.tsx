@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import {
   formatTextLimitCounter,
+  getTextCount,
   getTextLimitStatus,
   textLimitHint,
   type TextCountMode,
@@ -38,9 +39,18 @@ function useLiveTextValidation(
 ) {
   const { minLength = 0, maxLength, countMode = 'chars', error } = opts;
   const status = getTextLimitStatus(value, { min: minLength, max: maxLength, mode: countMode });
-  const liveHint = textLimitHint(value, { min: minLength, max: maxLength, mode: countMode });
+  const isEmpty = getTextCount(value, countMode) === 0;
+
+  /**
+   * Enterprise UX: ô trống chưa nhập = pristine.
+   * Không báo minLength / viền đỏ cho đến khi user đã gõ (hoặc form truyền `error` sau submit).
+   */
+  const enforceLiveLimits = !isEmpty || Boolean(error);
+  const liveHint = enforceLiveLimits
+    ? textLimitHint(value, { min: minLength, max: maxLength, mode: countMode })
+    : null;
   const message = error ?? liveHint;
-  const invalid = Boolean(error) || status !== 'ok';
+  const invalid = Boolean(error) || (enforceLiveLimits && status !== 'ok');
 
   return { status, message, invalid };
 }

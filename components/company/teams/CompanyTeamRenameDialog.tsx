@@ -12,7 +12,12 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 const schema = z.object({
-  name: z.string().min(1, 'Vui lòng nhập tên đội').max(120, 'Tối đa 120 ký tự').trim(),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Vui lòng nhập tên đội')
+    .min(3, 'Tên đội phải có ít nhất 3 ký tự')
+    .max(100, 'Tên đội không được quá 100 ký tự'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -96,8 +101,8 @@ export function CompanyTeamRenameDialog({ open, team, onClose }: CompanyTeamRena
               type="text"
               {...register('name')}
               value={watch('name')}
-              minLength={1}
-              maxLength={120}
+              minLength={3}
+              maxLength={100}
               error={errors.name?.message}
             />
           </div>

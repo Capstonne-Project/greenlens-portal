@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidatedInput } from '@/components/common/ValidatedField';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,7 +12,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -26,18 +26,21 @@ import { useAddTeamMember, useCreateTeam, useTeamDetail } from '@/hooks/useTeams
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { faUserGroup } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, Crown, Loader2, Trash2, UserPlus, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useEffect, useMemo, useState } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import {
   addMemberSchema,
   buildAddMemberStaffParams,
   createTeamSchema,
   getInitials,
   PAGE_SIZE,
+  TEAM_NAME_MAX,
+  TEAM_NAME_MIN,
   teamTypeToStaffRole,
   TYPE_DOT,
   TYPE_LABEL,
@@ -61,13 +64,21 @@ export function CreateTeamDialog({
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    control,
+    formState: { errors, isSubmitted, touchedFields, dirtyFields },
   } = useForm<CreateTeamFormValues>({
+    ...REALTIME_FORM_OPTIONS,
     resolver: zodResolver(createTeamSchema),
     defaultValues: { name: '' },
   });
 
   const isBusy = createTeamMutation.isPending;
+  const nameValue = useWatch({ control, name: 'name', defaultValue: '' }) ?? '';
+  /** Chỉ hiện lỗi Zod sau khi đã tương tác hoặc submit — không đỏ khi vừa mở dialog. */
+  const nameError =
+    errors.name && (touchedFields.name || dirtyFields.name || isSubmitted)
+      ? errors.name.message
+      : undefined;
 
   const closeDialog = () => {
     reset({ name: '' });
@@ -134,13 +145,17 @@ export function CreateTeamDialog({
               <Field>
                 <Label htmlFor="create-team-name">Tên đội</Label>
                 <FieldDescription>Ví dụ: Đội dọn dẹp khu vực A</FieldDescription>
-                <Input
+                <ValidatedInput
                   id="create-team-name"
                   placeholder="Nhập tên đội"
                   disabled={isBusy}
                   {...register('name')}
+                  value={nameValue}
+                  minLength={TEAM_NAME_MIN}
+                  maxLength={TEAM_NAME_MAX}
+                  error={nameError}
+                  className="h-9 rounded-md"
                 />
-                <FieldError>{errors.name?.message}</FieldError>
               </Field>
             </FieldGroup>
           </div>
@@ -205,15 +220,31 @@ export function AddMemberDialog({
   });
   const staffOptions = staffData?.items ?? [];
 
+  /** GET /v1/teams/{id} — members[].isLeader */
+  const { data: teamDetail, isPending: teamDetailLoading } = useTeamDetail(
+    open && teamId ? teamId : null
+  );
+  const hasLeader = useMemo(
+    () => (teamDetail?.members ?? []).some(m => m.isLeader),
+    [teamDetail?.members]
+  );
+
   const {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<AddMemberFormValues>({
     resolver: zodResolver(addMemberSchema),
     defaultValues: { userId: '', isLeader: false },
   });
+
+  useEffect(() => {
+    if (hasLeader) {
+      setValue('isLeader', false);
+    }
+  }, [hasLeader, setValue]);
 
   const closeDialog = () => {
     setStaffSelectOpen(false);
@@ -225,7 +256,7 @@ export function AddMemberDialog({
     try {
       const res = await addMemberMutation.mutateAsync({
         teamId,
-        body: { userId: values.userId, isLeader: values.isLeader },
+        body: { userId: values.userId, isLeader: hasLeader ? false : values.isLeader },
       });
       toastApiSuccess(res, 'Đã thêm thành viên vào đội.');
       closeDialog();
@@ -238,6 +269,7 @@ export function AddMemberDialog({
   const staffSelectDisabled = !staffRole || staffError;
   const staffListEmpty =
     staffSelectOpen && staffFetched && !staffLoading && staffOptions.length === 0;
+  const leaderSwitchDisabled = formBusy || teamDetailLoading || hasLeader;
 
   return (
     <Dialog
@@ -382,14 +414,19 @@ export function AddMemberDialog({
                 control={control}
                 render={({ field }) => (
                   <Field orientation="horizontal">
-                    <Label htmlFor="add-member-leader" className="font-normal">
-                      Trưởng nhóm
-                    </Label>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <Label htmlFor="add-member-leader" className="font-normal">
+                        Trưởng nhóm
+                      </Label>
+                      {hasLeader ? (
+                        <FieldDescription>Đội đã có trưởng nhóm</FieldDescription>
+                      ) : null}
+                    </div>
                     <Switch
                       id="add-member-leader"
-                      checked={field.value}
+                      checked={hasLeader ? false : field.value}
                       onCheckedChange={field.onChange}
-                      disabled={formBusy}
+                      disabled={leaderSwitchDisabled}
                     />
                   </Field>
                 )}

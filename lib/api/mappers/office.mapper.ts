@@ -11,6 +11,7 @@ import type {
   OfficeTeamDto,
   OfficeStaffItemDto,
   OfficeStaffListDataDto,
+  OfficeStaffLookupDataDto,
   RecruitOfficeStaffDataDto,
 } from '@/lib/api/dto/office.dto';
 import type {
@@ -24,6 +25,7 @@ import type {
   OfficeListItem,
   OfficesList,
   OfficeStaffList,
+  OfficeStaffLookupResult,
   OfficeStaffMember,
   OfficeStaffRoleFilter,
   OfficeTeam,
@@ -252,5 +254,20 @@ export function mapRecruitOfficeStaffDataDto(
     localOfficeId: data.localOfficeId,
     teamId: data.teamId ?? null,
     teamMemberId: data.teamMemberId ?? null,
+  };
+}
+
+export function mapOfficeStaffLookupDataDto(
+  data: OfficeStaffLookupDataDto
+): OfficeStaffLookupResult {
+  return {
+    userId: data.userId,
+    email: data.email,
+    fullName: data.fullName,
+    phoneNumber: data.phoneNumber ?? null,
+    avatarUrl: data.avatarUrl ?? null,
+    role: data.role,
+    isRecruitEligible: Boolean(data.isRecruitEligible),
+    ineligibleReason: data.ineligibleReason?.trim() || null,
   };
 }

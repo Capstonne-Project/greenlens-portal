@@ -513,7 +513,7 @@ export function CompanyUpcomingDeadlines({
             {urgentCount > 0 ? ` · ${urgentCount} gấp (<24h)` : ''}
           </p>
           <Link
-            href="/company/assignments"
+            href="/company/tracking"
             className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-emerald-800 hover:underline"
           >
             Xem tất cả
@@ -528,7 +528,7 @@ export function CompanyUpcomingDeadlines({
         <ul className="space-y-1.5">
           {rows.map((row, idx) => {
             const detailHref = row.reportId
-              ? `/company/assignments?reportId=${encodeURIComponent(row.reportId)}`
+              ? `/company/tracking?reportId=${encodeURIComponent(row.reportId)}`
               : null;
             const remainingHours =
               typeof row.remainingHours === 'number' && Number.isFinite(row.remainingHours)
@@ -594,10 +594,7 @@ export function CompanyUpcomingDeadlines({
       {allRows.length > rows.length ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           +{allRows.length - rows.length} deadline khác ·{' '}
-          <Link
-            href="/company/assignments"
-            className="font-medium text-emerald-800 hover:underline"
-          >
+          <Link href="/company/tracking" className="font-medium text-emerald-800 hover:underline">
             mở Phân công
           </Link>
         </p>
@@ -621,7 +618,7 @@ export function CompanyRecentActivities({
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-[10px] text-muted-foreground">{allItems.length} sự kiện gần đây</p>
           <Link
-            href="/company/assignments"
+            href="/company/tracking"
             className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-emerald-800 hover:underline"
           >
             Xem tất cả
@@ -658,10 +655,7 @@ export function CompanyRecentActivities({
       {allItems.length > list.length ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           +{allItems.length - list.length} sự kiện khác ·{' '}
-          <Link
-            href="/company/assignments"
-            className="font-medium text-emerald-800 hover:underline"
-          >
+          <Link href="/company/tracking" className="font-medium text-emerald-800 hover:underline">
             mở Phân công
           </Link>
         </p>

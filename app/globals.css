@@ -75,6 +75,10 @@
   --color-brand-dark: #325528;
   --color-brand-foreground: #ffffff;
 
+  /* App shell — sidebar + gutters (officer / admin / company) */
+  --color-app-canvas: #f7f7f7;
+  --color-app-panel: #fffdfc;
+
   /* Background images */
   --background-image-gradient-radial: radial-gradient(var(--tw-gradient-stops));
   --background-image-gradient-conic: conic-gradient(
@@ -296,6 +300,23 @@
 
 @utility text-balance {
   text-wrap: balance;
+}
+
+/* Full-viewport shell canvas — matches AppSidebar rail (`bg-app-canvas`) */
+@utility app-canvas {
+  background-color: var(--color-app-canvas);
+}
+
+/* Right pane gutter around floating content panel (officer / admin / company) */
+@utility app-shell-gutter {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+  background-color: var(--color-app-canvas);
+  padding-block: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 /* Hide browser-native password reveal (Edge/Chrome ms-reveal, WebKit credentials)

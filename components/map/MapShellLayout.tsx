@@ -13,8 +13,8 @@ type MapShellLayoutProps = {
 
 /**
  * Shell:
- * - Canvas `#f7f7f7` full viewport (sidebar + gutters around content).
- * - Content panel `#fffdfc` overlays with inset + rounded border (depth).
+ * - Canvas `app-canvas` / `bg-app-canvas` full viewport (sidebar + gutters around content).
+ * - Content panel `bg-app-panel` overlays with inset + rounded border (depth).
  * Map route: full-bleed map, sidebar overlay only.
  */
 export function MapShellLayout({ config, children }: MapShellLayoutProps) {

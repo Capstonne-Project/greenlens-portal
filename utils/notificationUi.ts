@@ -5,6 +5,7 @@ import { Droplets, FlaskConical, Trash2 } from 'lucide-react';
 
 /** Types ưu tiên hiển thị / cấu hình trên Company Manager dashboard. */
 export const COMPANY_NOTIFICATION_TYPES = [
+  'CompanyReportDispatched',
   'ReportUnassigned',
   'ReportOverdue',
   'SlaBreachWarning',
@@ -91,18 +92,22 @@ export function companyNotificationHref(
   const ref = item.referenceId?.trim();
 
   switch (item.type) {
+    case 'CompanyReportDispatched':
+      // referenceId = reportId → CompanyAssignReportDetailClient
+      if (ref) return `/company/assign/${encodeURIComponent(ref)}`;
+      return '/company/assign';
     case 'ReportUnassigned':
-      return '/company/queue';
+      return '/company/assign';
     case 'ContractExpiry':
       return '/company/contract-history';
     case 'ReportStatusChanged':
     case 'ReportOverdue':
     case 'ReportAutoClosed':
     case 'SlaBreachWarning':
-      if (ref) return `/company/assignments?tab=detail&reportId=${encodeURIComponent(ref)}`;
-      return '/company/assignments';
+      if (ref) return `/company/tracking?reportId=${encodeURIComponent(ref)}`;
+      return '/company/tracking';
     default:
-      if (ref) return `/company/assignments?tab=detail&reportId=${encodeURIComponent(ref)}`;
+      if (ref) return `/company/tracking?reportId=${encodeURIComponent(ref)}`;
       return '/company/notifications';
   }
 }
@@ -146,6 +151,7 @@ export function officerNotificationHref(
       if (ref) return `/officer/community?eventId=${encodeURIComponent(ref)}`;
       return '/officer/community';
     case 'CleanupTaskAccepted':
+    case 'CleanupTaskDeclined':
     case 'CleanupTaskCompleted':
     case 'CleanupProgressUpdated':
     case 'CompanyTeamAssigned':

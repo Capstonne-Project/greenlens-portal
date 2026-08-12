@@ -573,9 +573,14 @@ function SkeletonList() {
 
 interface LeoTrackingPageClientProps {
   onOpenDetail: (id: string) => void;
+  /** false khi đang mở detail — tránh gọi my/reports / catalog song song với progress. */
+  queriesEnabled?: boolean;
 }
 
-export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientProps) {
+export function LeoTrackingPageClient({
+  onOpenDetail,
+  queriesEnabled = true,
+}: LeoTrackingPageClientProps) {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<LeoViewMode>('board');
   const [search, setSearch] = useState('');
@@ -635,21 +640,24 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     setPage(1);
   };
 
-  const { data: catalogCategories = [] } = useCatalogPollutionCategories();
+  const { data: catalogCategories = [] } = useCatalogPollutionCategories(queriesEnabled);
 
-  const { data, isLoading, isError } = useLeoMyReports({
-    page,
-    pageSize,
-    sortBy: 'createdAt',
-    sortDesc: true,
-    search: debouncedSearch || undefined,
-    status: 'InProgress',
-    categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
-    severity: severityFilter === 'all' ? undefined : severityFilter,
-    assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
-    fromDate: dateRange.fromDate,
-    toDate: dateRange.toDate,
-  });
+  const { data, isLoading, isError } = useLeoMyReports(
+    {
+      page,
+      pageSize,
+      sortBy: 'createdAt',
+      sortDesc: true,
+      search: debouncedSearch || undefined,
+      status: 'InProgress',
+      categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
+      severity: severityFilter === 'all' ? undefined : severityFilter,
+      assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
+      fromDate: dateRange.fromDate,
+      toDate: dateRange.toDate,
+    },
+    { enabled: queriesEnabled }
+  );
 
   const items = useMemo(() => data?.items ?? EMPTY_LEO_ITEMS, [data?.items]);
 

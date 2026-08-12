@@ -14,6 +14,7 @@ export type NotificationType =
   | 'CleanupProgressUpdated'
   | 'CleanupTaskAssigned'
   | 'CleanupTaskAccepted'
+  | 'CleanupTaskDeclined'
   | 'CleanupTaskCompleted'
   | 'NearbyReport'
   | 'PenaltyIssued'

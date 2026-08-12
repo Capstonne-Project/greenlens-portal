@@ -227,3 +227,15 @@ export interface RecruitOfficeStaffDataDto {
   teamId: string | null;
   teamMemberId: string | null;
 }
+
+/** GET /v1/offices/my/staff/lookup — tra cứu Citizen theo email (exact). */
+export interface OfficeStaffLookupDataDto {
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string | null;
+  avatarUrl?: string | null;
+  role: string;
+  isRecruitEligible: boolean;
+  ineligibleReason?: string | null;
+}
