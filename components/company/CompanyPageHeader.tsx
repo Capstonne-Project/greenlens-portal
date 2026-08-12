@@ -11,10 +11,13 @@ export function CompanyPageHeader() {
   /** Detail immersive — chỉ gallery/meta/tabs + lifecycle (parity LEO detail). */
   const isTrackingDetail =
     pathname === '/company/tracking' && Boolean(searchParams.get('reportId')?.trim());
+  const isReportsDetail =
+    pathname === '/company/reports' && Boolean(searchParams.get('reportId')?.trim());
+  const isAssignDetail = /^\/company\/assign\/[^/]+$/.test(pathname);
   /** Workforce có header riêng kiểu LEO Đội ngũ. */
   const isWorkforce = pathname === '/company/workforce';
 
-  if (isTrackingDetail || isWorkforce) {
+  if (isTrackingDetail || isReportsDetail || isAssignDetail || isWorkforce) {
     return null;
   }
 

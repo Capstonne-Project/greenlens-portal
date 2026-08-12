@@ -9,6 +9,7 @@ import {
   Building2,
   ChartLine,
   ClipboardList,
+  FileText,
   FlaskConical,
   LayoutDashboard,
   Scroll,
@@ -46,6 +47,11 @@ export const companyPageMeta: Record<string, CompanyPageMeta> = {
     title: 'Theo dõi xử lý',
     description: 'Theo dõi tiến độ và trạng thái các báo cáo đã được phân công đội xử lý.',
     icon: ChartLine,
+  },
+  '/company/reports': {
+    title: 'Báo cáo',
+    description: 'Tra cứu và quản lý các báo cáo đã đóng hoặc đã từ chối.',
+    icon: FileText,
   },
   '/company/workforce': {
     title: 'Đội ngũ',
@@ -109,6 +115,10 @@ export function getCompanyPageMeta(pathname: string): CompanyPageMeta {
 
   if (pathname.startsWith('/company/tracking')) {
     return companyPageMeta['/company/tracking']!;
+  }
+
+  if (pathname.startsWith('/company/reports')) {
+    return companyPageMeta['/company/reports']!;
   }
 
   if (

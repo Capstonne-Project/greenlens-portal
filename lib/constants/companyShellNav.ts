@@ -7,6 +7,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
   faChartLine,
   faClipboardList,
+  faFileLines,
   faGaugeHigh,
   faGear,
   faScroll,
@@ -21,17 +22,21 @@ function item(id: string, label: string, href: string, icon: IconDefinition): Ma
   return { id, label, href, icon };
 }
 
+/** Gắn section label tĩnh lên item (render phía trên item trong AppSidebar). */
+function withSection(item: MapShellNavItem, sectionLabel: string): MapShellNavItem {
+  return { ...item, sectionLabel };
+}
+
 /** Sidebar Company — route/label parity với CompanySidebarNav. */
 export function getCompanyShellNavConfig(): MapShellNavConfig {
   const mainNav: MapShellNavItem[] = [
-    // Vận hành
-    item('dashboard', 'Tổng quan', '/company', faGaugeHigh),
+    withSection(item('dashboard', 'Tổng quan', '/company', faGaugeHigh), 'Tổng quan'),
     item('assign', 'Phân công', '/company/assign', faClipboardList),
     item('tracking', 'Theo dõi xử lý', '/company/tracking', faChartLine),
-    // Nguồn lực
-    item('workforce', 'Đội ngũ', '/company/workforce', faUsers),
+    withSection(item('reports', 'Báo cáo', '/company/reports', faFileLines), 'Tra cứu'),
+    withSection(item('workforce', 'Đội ngũ', '/company/workforce', faUsers), 'Quản lý'),
     item('contract-history', 'Lịch sử hợp đồng', '/company/contract-history', faScroll),
-    item('account', 'Tài khoản', '/company/settings/account', faUser),
+    withSection(item('account', 'Tài khoản', '/company/settings/account', faUser), 'Tài khoản'),
   ];
 
   return {
