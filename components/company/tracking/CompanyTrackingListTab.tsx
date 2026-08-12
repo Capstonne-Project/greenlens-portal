@@ -793,7 +793,17 @@ export function CompanyTrackingListTab({ onSelectReport }: CompanyTrackingListTa
     sortDesc: true,
   });
 
-  const items = useMemo(() => data?.items ?? EMPTY_ITEMS, [data?.items]);
+  const apiItems = useMemo(() => data?.items ?? EMPTY_ITEMS, [data?.items]);
+  const items = useMemo(
+    () =>
+      apiItems.filter(item => {
+        const normalized = normalizeReportStatus(item.report.status);
+        if (normalized !== 'InProgress' && normalized !== 'Resolved') return false;
+        if (reportStatusFilter === 'all') return true;
+        return normalized === reportStatusFilter;
+      }),
+    [apiItems, reportStatusFilter]
+  );
   const thumbnailMap = useCompanyAssignmentThumbnails(items);
 
   const totalPages = Math.max(1, data?.pagination.totalPages ?? 1);
@@ -815,177 +825,179 @@ export function CompanyTrackingListTab({ onSelectReport }: CompanyTrackingListTa
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex shrink-0 flex-wrap items-center gap-2 py-3 sm:gap-3">
-          <div className="flex items-center gap-2">
-            <div className="relative w-72 max-w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={search}
-                onChange={e => handleSearchChange(e.target.value)}
-                placeholder="Tìm mã báo cáo, địa chỉ..."
-                className={cn(
-                  'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
-                  isSearchPending && 'pr-8'
-                )}
-                aria-label="Tìm mã báo cáo, địa chỉ"
-              />
-              {isSearchPending ? (
-                <Loader2
-                  className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
-                  aria-hidden
+        <div className="flex shrink-0 items-center gap-2 py-3 sm:gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="relative w-72 max-w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={search}
+                  onChange={e => handleSearchChange(e.target.value)}
+                  placeholder="Tìm mã báo cáo, địa chỉ..."
+                  className={cn(
+                    'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
+                    isSearchPending && 'pr-8'
+                  )}
+                  aria-label="Tìm mã báo cáo, địa chỉ"
                 />
-              ) : null}
-            </div>
+                {isSearchPending ? (
+                  <Loader2
+                    className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
 
-            <CompanyTrackingDateRangePicker value={dateRange} onChange={handleDateRangeChange} />
+              <CompanyTrackingDateRangePicker value={dateRange} onChange={handleDateRangeChange} />
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                    {reportStatusFilterLabel}
+                    <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => handleReportStatusChange('all')}
+                    className={reportStatusFilter === 'all' ? 'font-medium text-brand' : ''}
+                  >
+                    Trạng thái báo cáo
+                  </DropdownMenuItem>
+                  {COMPANY_TRACKING_REPORT_STATUSES.map(status => (
+                    <DropdownMenuItem
+                      key={status}
+                      onClick={() => handleReportStatusChange(status)}
+                      className={reportStatusFilter === status ? 'font-medium text-brand' : ''}
+                    >
+                      {reportStatusLabelVi(status)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
-                  {reportStatusFilterLabel}
+                  {categoryFilterLabel}
+                  <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuItem
+                  onClick={() => handleCategoryChange('all')}
+                  className={categoryFilter === 'all' ? 'font-medium text-brand' : ''}
+                >
+                  Loại ô nhiễm
+                </DropdownMenuItem>
+                {catalogCategories.map(cat => (
+                  <DropdownMenuItem
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={categoryFilter === cat.id ? 'font-medium text-brand' : ''}
+                  >
+                    {cat.nameVi}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                  {severityFilterLabel}
+                  <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-44">
+                <DropdownMenuItem
+                  onClick={() => handleSeverityChange('all')}
+                  className={severityFilter === 'all' ? 'font-medium text-brand' : ''}
+                >
+                  Mức độ
+                </DropdownMenuItem>
+                {COMPANY_SEVERITIES.map(level => (
+                  <DropdownMenuItem
+                    key={level}
+                    onClick={() => handleSeverityChange(level)}
+                    className={severityFilter === level ? 'font-medium text-brand' : ''}
+                  >
+                    {SEVERITY_LABEL[level]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                  {teamFilterLabel}
+                  <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuItem
+                  onClick={() => handleTeamIdChange('all')}
+                  className={teamIdFilter === 'all' ? 'font-medium text-brand' : ''}
+                >
+                  Đội
+                </DropdownMenuItem>
+                {teamOptions.map(team => (
+                  <DropdownMenuItem
+                    key={team.id}
+                    onClick={() => handleTeamIdChange(team.id)}
+                    className={teamIdFilter === team.id ? 'font-medium text-brand' : ''}
+                  >
+                    {team.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                  {assignmentFilterLabel}
                   <ChevronDown className="size-3.5 opacity-60" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
                 <DropdownMenuItem
-                  onClick={() => handleReportStatusChange('all')}
-                  className={reportStatusFilter === 'all' ? 'font-medium text-brand' : ''}
+                  onClick={() => handleAssignmentStatusChange('all')}
+                  className={assignmentStatusFilter === 'all' ? 'font-medium text-brand' : ''}
                 >
-                  Trạng thái báo cáo
+                  Trạng thái đội
                 </DropdownMenuItem>
-                {COMPANY_TRACKING_REPORT_STATUSES.map(status => (
+                {COMPANY_ASSIGNMENT_STATUSES.map(status => (
                   <DropdownMenuItem
                     key={status}
-                    onClick={() => handleReportStatusChange(status)}
-                    className={reportStatusFilter === status ? 'font-medium text-brand' : ''}
+                    onClick={() => handleAssignmentStatusChange(status)}
+                    className={assignmentStatusFilter === status ? 'font-medium text-brand' : ''}
                   >
-                    {reportStatusLabelVi(status)}
+                    {assignmentStatusLabel(status)}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className={cn(
+                  'cursor-pointer shrink-0 text-[0.8125rem] font-medium text-slate-500',
+                  'transition-[font-weight,color]',
+                  'hover:font-bold hover:text-slate-800',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-1'
+                )}
+              >
+                Xóa tất cả
+              </button>
+            ) : null}
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
-                {categoryFilterLabel}
-                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuItem
-                onClick={() => handleCategoryChange('all')}
-                className={categoryFilter === 'all' ? 'font-medium text-brand' : ''}
-              >
-                Loại ô nhiễm
-              </DropdownMenuItem>
-              {catalogCategories.map(cat => (
-                <DropdownMenuItem
-                  key={cat.id}
-                  onClick={() => handleCategoryChange(cat.id)}
-                  className={categoryFilter === cat.id ? 'font-medium text-brand' : ''}
-                >
-                  {cat.nameVi}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
-                {severityFilterLabel}
-                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44">
-              <DropdownMenuItem
-                onClick={() => handleSeverityChange('all')}
-                className={severityFilter === 'all' ? 'font-medium text-brand' : ''}
-              >
-                Mức độ
-              </DropdownMenuItem>
-              {COMPANY_SEVERITIES.map(level => (
-                <DropdownMenuItem
-                  key={level}
-                  onClick={() => handleSeverityChange(level)}
-                  className={severityFilter === level ? 'font-medium text-brand' : ''}
-                >
-                  {SEVERITY_LABEL[level]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
-                {teamFilterLabel}
-                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuItem
-                onClick={() => handleTeamIdChange('all')}
-                className={teamIdFilter === 'all' ? 'font-medium text-brand' : ''}
-              >
-                Đội
-              </DropdownMenuItem>
-              {teamOptions.map(team => (
-                <DropdownMenuItem
-                  key={team.id}
-                  onClick={() => handleTeamIdChange(team.id)}
-                  className={teamIdFilter === team.id ? 'font-medium text-brand' : ''}
-                >
-                  {team.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
-                {assignmentFilterLabel}
-                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem
-                onClick={() => handleAssignmentStatusChange('all')}
-                className={assignmentStatusFilter === 'all' ? 'font-medium text-brand' : ''}
-              >
-                Trạng thái đội
-              </DropdownMenuItem>
-              {COMPANY_ASSIGNMENT_STATUSES.map(status => (
-                <DropdownMenuItem
-                  key={status}
-                  onClick={() => handleAssignmentStatusChange(status)}
-                  className={assignmentStatusFilter === status ? 'font-medium text-brand' : ''}
-                >
-                  {assignmentStatusLabel(status)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {hasActiveFilters ? (
-            <button
-              type="button"
-              onClick={handleClearAllFilters}
-              className={cn(
-                'cursor-pointer shrink-0 text-[0.8125rem] font-medium text-slate-500',
-                'transition-[font-weight,color]',
-                'hover:font-bold hover:text-slate-800',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-1'
-              )}
-            >
-              Xóa tất cả
-            </button>
-          ) : null}
-
-          <div className="ml-auto">
+          <div className="shrink-0 self-start">
             <CompanyViewToggle viewMode={viewMode} onViewModeChange={handleViewModeChange} />
           </div>
         </div>
@@ -1018,7 +1030,8 @@ export function CompanyTrackingListTab({ onSelectReport }: CompanyTrackingListTa
                     .join(' · ');
                   const thumbnailUrls = collectThumbnailUrls(item, thumbnailMap);
                   return {
-                    key: item.report.reportId,
+                    // assignmentId — 1 report có thể có nhiều assignment (reassign / Declined)
+                    key: item.assignmentId || `${item.report.reportId}-${index}`,
                     title,
                     description,
                     onClick: () => onSelectReport(item.report.reportId),
@@ -1042,9 +1055,9 @@ export function CompanyTrackingListTab({ onSelectReport }: CompanyTrackingListTa
             </div>
           ) : (
             <section className="flex flex-col gap-2">
-              {items.map(item => (
+              {items.map((item, index) => (
                 <ProjectListRow
-                  key={item.report.reportId}
+                  key={item.assignmentId || `${item.report.reportId}-${index}`}
                   item={item}
                   thumbnailUrls={collectThumbnailUrls(item, thumbnailMap)}
                   onOpen={() => onSelectReport(item.report.reportId)}
