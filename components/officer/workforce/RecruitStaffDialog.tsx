@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { LOOKUP_SPINNER_MIN_MS, useMinimumPending } from '@/hooks/useMinimumPending';
 import { useOfficeStaffLookup, useRecruitOfficeStaff } from '@/hooks/useLeoOffices';
 import { useTeamDetail, useTeamsList } from '@/hooks/useTeams';
 import type {
@@ -250,6 +251,12 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
     enabled: open && isLookupEmailValid && !lookupPicked,
   });
 
+  /** Spinner giữ tối thiểu LOOKUP_SPINNER_MIN_MS — BE nhanh vẫn thấy được đang tìm. */
+  const showLookupSpinner = useMinimumPending(
+    lookupQuery.isFetching && isLookupEmailValid && !lookupPicked,
+    LOOKUP_SPINNER_MIN_MS
+  );
+
   const selectedTeamId = watch('teamId');
   const trimmedTeamId = selectedTeamId?.trim() || '';
   const hasTeam = Boolean(trimmedTeamId);
@@ -271,7 +278,8 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
     emailFocused &&
     isLookupEmailValid &&
     !lookupPicked &&
-    (lookupQuery.isFetching || lookupQuery.isSuccess || lookupQuery.isError);
+    !showLookupSpinner &&
+    (lookupQuery.isSuccess || lookupQuery.isError);
 
   useEffect(() => {
     if (!open) {
@@ -389,7 +397,7 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                         void emailRegister.onChange(e);
                       }}
                     />
-                    {lookupQuery.isFetching && isLookupEmailValid && !lookupPicked ? (
+                    {showLookupSpinner ? (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2">
                         <GreenLensLookupSpinner />
                         <span className="sr-only">Đang tìm…</span>
@@ -403,14 +411,10 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                       aria-label="Kết quả tìm kiếm"
                       className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md"
                     >
-                      {lookupQuery.isFetching ? (
-                        <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
-                          <GreenLensLookupSpinner />
-                          Đang tìm trên GreenLens…
-                        </div>
-                      ) : lookupQuery.isError ? (
-                        <div className="px-3 py-3 text-xs text-muted-foreground">
-                          Không tìm thấy email
+                      {lookupQuery.isError ? (
+                        <div className="px-3 py-3 text-sm text-muted-foreground">
+                          Không tìm thấy tài khoản khớp với{' '}
+                          <span className="font-medium text-foreground/80">{debouncedEmail}</span>
                         </div>
                       ) : lookupQuery.data ? (
                         <LookupResultRow user={lookupQuery.data} onInvite={handlePickLookup} />
