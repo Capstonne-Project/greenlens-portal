@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Map, {
   Marker,
@@ -15,22 +14,8 @@ import { Loader2, MapPin, Search, X } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { getMapStyle } from '@/lib/map/mapStyle';
 import { cn } from '@/lib/utils';
-
-/** Cùng style OSM raster (free, không cần API key) dùng ở MapLibreView. */
-const OSM_LIGHT_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
-      maxzoom: 19,
-    },
-  },
-  layers: [{ id: 'osm-raster', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22 }],
-};
 
 interface NominatimResult {
   place_id: number;
@@ -173,7 +158,8 @@ export function MeetingPointMapPicker({
         <Map
           ref={mapRef}
           initialViewState={{ longitude, latitude, zoom: 15 }}
-          mapStyle={OSM_LIGHT_STYLE}
+          mapStyle={getMapStyle()}
+          projection={{ type: 'globe' }}
           attributionControl={false}
           style={{ width: '100%', height: '100%' }}
           onClick={handleMapClick}

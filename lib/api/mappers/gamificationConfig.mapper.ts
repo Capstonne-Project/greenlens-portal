@@ -1,4 +1,7 @@
-import type { GamificationConfigDto } from '@/lib/api/dto/gamificationConfig.dto';
+import type {
+  GamificationConfigDto,
+  GamificationConfigListDataDto,
+} from '@/lib/api/dto/gamificationConfig.dto';
 import type { GamificationConfig } from '@/lib/api/models/gamificationConfig';
 
 export function mapGamificationConfigDto(dto: GamificationConfigDto): GamificationConfig {
@@ -13,8 +16,13 @@ export function mapGamificationConfigDto(dto: GamificationConfigDto): Gamificati
   };
 }
 
-export function mapGamificationConfigListDto(
-  items: GamificationConfigDto[] | null | undefined
+/** Hỗ trợ BE mới `{ items }` và legacy mảng trực tiếp. */
+export function mapGamificationConfigListDataDto(
+  data: GamificationConfigListDataDto | GamificationConfigDto[] | null | undefined
 ): GamificationConfig[] {
-  return (items ?? []).map(mapGamificationConfigDto);
+  if (Array.isArray(data)) {
+    return data.map(mapGamificationConfigDto);
+  }
+  const items = data?.items;
+  return Array.isArray(items) ? items.map(mapGamificationConfigDto) : [];
 }

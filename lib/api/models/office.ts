@@ -172,6 +172,19 @@ export interface LeoMyReportsData {
   pagination: PaginationMeta;
 }
 
+// ─── LEO — GET /v1/offices/my/ward-boundary ───────────────────────────────────
+
+/**
+ * `data` envelope của GET /v1/offices/my/ward-boundary.
+ * `boundaryUrl` trỏ tới 1 FeatureCollection GeoJSON CHỨA NHIỀU WARD (gộp theo vùng để giảm
+ * số file trên CDN) — phải fetch rồi filter `features` theo `properties.code === wardCode`.
+ */
+export interface LeoWardBoundary {
+  wardCode: string;
+  wardName: string;
+  boundaryUrl: string | null;
+}
+
 /**
  * Gợi ý sort phổ biến (Swagger `sortBy` là string tự do).
  * `code, status, severity, priority, createdAt, assignmentCount`

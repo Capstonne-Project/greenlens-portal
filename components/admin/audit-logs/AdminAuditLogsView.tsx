@@ -176,8 +176,8 @@ export function AdminAuditLogsView() {
     <div className="w-full min-w-0 space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Nhật ký kiểm toán bất biến (BR-ADM-010), chỉ đọc — truy vết ai làm gì, trên entity nào,
-          lúc nào.
+          Nhật ký kiểm toán chỉ đọc — truy vết ai thực hiện hành động gì, trên đối tượng nào và thời
+          điểm nào.
         </p>
         <button
           type="button"
@@ -232,7 +232,7 @@ export function AdminAuditLogsView() {
 
           <div className="space-y-2">
             <label htmlFor="audit-entity-filter" className="text-sm font-medium">
-              Entity type
+              Loại đối tượng
             </label>
             <Select
               value={entityType || 'all'}
@@ -245,10 +245,10 @@ export function AdminAuditLogsView() {
               }}
             >
               <SelectTrigger id="audit-entity-filter" className="h-10 w-full rounded-lg">
-                <SelectValue placeholder="Tất cả entity" />
+                <SelectValue placeholder="Tất cả loại" />
               </SelectTrigger>
               <SelectContent position="popper" sideOffset={4}>
-                <SelectItem value="all">Tất cả entity</SelectItem>
+                <SelectItem value="all">Tất cả loại</SelectItem>
                 {AUDIT_ENTITY_TYPES.map(type => (
                   <SelectItem key={type} value={type}>
                     {type}

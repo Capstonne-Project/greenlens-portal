@@ -93,9 +93,9 @@ export function TeamDetailDialog({ open, teamId, onClose }: TeamDetailDialogProp
             {data.members.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border p-8 text-center">
                 <UserRound className="mx-auto mb-2 size-8 text-muted-foreground/50" />
-                <p className="text-sm font-medium">Team chưa có thành viên</p>
+                <p className="text-sm font-medium">Nhóm chưa có thành viên</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Khi API phân công thành viên sẵn sàng, danh sách sẽ hiển thị tại đây.
+                  Chưa có thành viên được phân công trong nhóm này.
                 </p>
               </div>
             ) : (

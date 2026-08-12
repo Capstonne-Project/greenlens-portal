@@ -102,11 +102,11 @@ export function AdminUserDetailDialog({
           toast.success(
             resolveApiToastMessage(
               env.data?.message ?? env.message,
-              'Đã khóa gamification cho người dùng.'
+              'Đã khóa điểm thưởng cho người dùng.'
             )
           );
         },
-        onError: err => toast.error(getAdminUserMutationError(err, 'Không thể khóa gamification.')),
+        onError: err => toast.error(getAdminUserMutationError(err, 'Không thể khóa điểm thưởng.')),
       }
     );
   };
@@ -245,7 +245,7 @@ export function AdminUserDetailDialog({
                   ) : (
                     <Trophy className="size-4" aria-hidden />
                   )}
-                  Khóa gamification
+                  Khóa điểm thưởng
                 </button>
               ) : null}
               <button

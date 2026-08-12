@@ -1,5 +1,5 @@
-import type { ProvinceDto, WardDto } from '@/lib/api/dto/location.dto';
-import type { Province, Ward } from '@/lib/api/models/location';
+import type { ProvinceDto, WardBoundaryDto, WardDto } from '@/lib/api/dto/location.dto';
+import type { Province, Ward, WardBoundary } from '@/lib/api/models/location';
 
 export function mapProvinceDto(dto: ProvinceDto): Province {
   return {
@@ -14,6 +14,13 @@ export function mapWardDto(dto: WardDto): Ward {
     code: dto.code.trim(),
     name: dto.name,
     unitAbbreviation: dto.unitAbbreviation ?? null,
+    boundaryUrl: dto.boundaryUrl ?? null,
+  };
+}
+
+export function mapWardBoundaryDto(dto: WardBoundaryDto): WardBoundary {
+  return {
+    wardCode: dto.wardCode.trim(),
     boundaryUrl: dto.boundaryUrl ?? null,
   };
 }

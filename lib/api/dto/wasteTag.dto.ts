@@ -22,6 +22,7 @@ export interface WasteTagItemDto {
   description?: string | null;
   displayOrder: number;
   isActive?: boolean;
+  reportCount?: number;
 }
 
 export interface WasteTagListDataDto {

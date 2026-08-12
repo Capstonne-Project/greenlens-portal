@@ -94,8 +94,8 @@ export function AdminSpamSuspectsView() {
     <div className="w-full min-w-0 space-y-6">
       <header className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
-          Dashboard heuristic: gửi &gt;{SPAM_SUSPECT_DEFAULTS.minReportsPerHour}/giờ, từ chối &gt;
-          {SPAM_SUSPECT_DEFAULTS.minRejected7Days}/7 ngày, AI gắn cờ ≥
+          Phát hiện tài khoản có dấu hiệu spam: gửi &gt;{SPAM_SUSPECT_DEFAULTS.minReportsPerHour}
+          /giờ, từ chối &gt;{SPAM_SUSPECT_DEFAULTS.minRejected7Days}/7 ngày, AI gắn cờ ≥
           {SPAM_SUSPECT_DEFAULTS.minAiFlagged}. Chỉ xem — không khóa tài khoản từ màn này.
         </p>
       </header>
@@ -112,7 +112,7 @@ export function AdminSpamSuspectsView() {
       <section className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-950">
           <Filter className="size-4 text-emerald-700" aria-hidden />
-          Ngưỡng heuristic
+          Ngưỡng phát hiện
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto] xl:items-end">
@@ -257,7 +257,7 @@ export function AdminSpamSuspectsView() {
                       <SaveIcon size={32} className="opacity-30" />
                       <span>Không có tài khoản nghi spam</span>
                       <span className="text-xs">
-                        Thử giảm ngưỡng heuristic nếu cần quét rộng hơn.
+                        Thử giảm ngưỡng phát hiện nếu cần quét rộng hơn.
                       </span>
                     </div>
                   </TableCell>

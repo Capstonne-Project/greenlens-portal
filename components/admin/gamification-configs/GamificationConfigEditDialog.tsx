@@ -63,7 +63,7 @@ export function GamificationConfigEditDialog({ open, config, busy, onClose, onSu
   return (
     <OfficeDialogShell
       open={open && Boolean(config)}
-      title="Cập nhật điểm gamification"
+      title="Cập nhật điểm thưởng"
       titleId="gamification-config-edit-title"
       onClose={onClose}
     >

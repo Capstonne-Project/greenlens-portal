@@ -23,9 +23,9 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 const STEPS = [
-  { id: 1, title: 'Tạo ủy ban (Sở)', desc: 'Department cấp tỉnh/TP' },
-  { id: 2, title: 'Tạo phòng (Office)', desc: 'Văn phòng cấp phường/xã' },
-  { id: 3, title: 'Gán cán bộ LEO', desc: 'Nâng role & phụ trách phòng' },
+  { id: 1, title: 'Tạo ủy ban (Sở)', desc: 'Đơn vị quản lý cấp tỉnh/thành phố' },
+  { id: 2, title: 'Tạo phòng', desc: 'Văn phòng cấp phường/xã' },
+  { id: 3, title: 'Gán cán bộ phụ trách', desc: 'Phân công cán bộ quản lý phòng' },
 ] as const;
 
 export function OrganizationOnboardingView() {
@@ -174,8 +174,8 @@ export function OrganizationOnboardingView() {
     <div className="w-full min-w-0 space-y-8">
       <div>
         <p className="text-sm text-muted-foreground">
-          Onboard tổ chức: tạo <strong>ủy ban</strong> (Sở TNMT tỉnh) → <strong>phòng</strong> (cấp
-          phường) → gán <strong>LEO</strong> phụ trách.
+          Thiết lập tổ chức: tạo <strong>ủy ban</strong> (Sở TNMT tỉnh) → <strong>phòng</strong>{' '}
+          (cấp phường) → gán <strong>cán bộ phụ trách</strong>.
         </p>
       </div>
 
@@ -215,9 +215,9 @@ export function OrganizationOnboardingView() {
 
       {step === 1 && (
         <section className="rounded-card border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Bước 1 — Tạo ủy ban (Department)</h2>
+          <h2 className="text-lg font-semibold">Bước 1 — Tạo ủy ban</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Mỗi tỉnh/TP chỉ có một department. API: POST /v1/departments
+            Mỗi tỉnh/thành phố chỉ có một ủy ban quản lý.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
@@ -265,10 +265,9 @@ export function OrganizationOnboardingView() {
 
       {step === 2 && department && (
         <section className="rounded-card border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Bước 2 — Tạo phòng (Office)</h2>
+          <h2 className="text-lg font-semibold">Bước 2 — Tạo phòng</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ủy ban: <strong>{department.name}</strong> (mã tỉnh {department.provinceCode}). API:
-            POST /v1/offices
+            Ủy ban: <strong>{department.name}</strong> (mã tỉnh {department.provinceCode}).
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
@@ -324,10 +323,10 @@ export function OrganizationOnboardingView() {
 
       {step === 3 && office && (
         <section className="rounded-card border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Bước 3 — Gán cán bộ LEO</h2>
+          <h2 className="text-lg font-semibold">Bước 3 — Gán cán bộ phụ trách</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Phòng: <strong>{office.name}</strong> · Mã phường {office.wardCode}. Đổi role PUT
-            /v1/admin/users/&#123;id&#125;/role · Gán PUT /v1/offices/&#123;id&#125;/officer
+            Phòng: <strong>{office.name}</strong> · Mã phường {office.wardCode}. Chọn cán bộ và gán
+            phụ trách phòng này.
           </p>
 
           <div className="mt-6 space-y-4">

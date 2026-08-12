@@ -77,7 +77,9 @@ export function AdminMapSummaryPanel({
       <div className="space-y-2">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Tóm tắt viewport</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Verified trở lên trong khung nhìn</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Đã xác minh trở lên trong khung nhìn
+          </p>
         </div>
         <div className="flex w-fit rounded-lg border border-border bg-muted/30 p-0.5">
           {DAY_OPTIONS.map(option => (

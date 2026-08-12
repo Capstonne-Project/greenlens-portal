@@ -2,10 +2,12 @@
 
 import {
   fetchLeoMyReports,
+  fetchLeoWardBoundary,
   fetchOfficeStaff,
   lookupOfficeStaff,
   recruitOfficeStaff,
 } from '@/lib/api/services/fetchOffice';
+import { extractApiErrorCode } from '@/lib/api/core';
 import type {
   LeoMyReportsData,
   LeoMyReportsParams,
@@ -30,6 +32,7 @@ export const leoOfficesKeys = {
   myStaff: () => [...leoOfficesKeys.all, 'my-staff'] as const,
   staffList: (params: OfficeStaffListParams) => [...leoOfficesKeys.myStaff(), params] as const,
   staffLookup: (email: string) => [...leoOfficesKeys.myStaff(), 'lookup', email] as const,
+  wardBoundary: () => [...leoOfficesKeys.all, 'ward-boundary'] as const,
 };
 
 const LIST_STALE_MS = 3 * 60 * 1000;
@@ -139,6 +142,24 @@ export function useOfficeStaffLookup(email: string, options?: { enabled?: boolea
     staleTime: LOOKUP_STALE_MS,
     retry: false,
     enabled: (options?.enabled ?? true) && Boolean(trimmed),
+  });
+}
+
+/**
+ * GET /v1/offices/my/ward-boundary — ranh giới phường LEO đang quản lý (suy từ JWT).
+ * 404 `OFFICE_NOT_FOUND` (LEO chưa được gán office) không retry — coi như "chưa có boundary".
+ */
+export function useLeoWardBoundary(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: leoOfficesKeys.wardBoundary(),
+    queryFn: () => fetchLeoWardBoundary(),
+    select: envelope => envelope.data,
+    staleTime: 30 * 60 * 1000,
+    enabled: options?.enabled ?? true,
+    retry: (failureCount, error) => {
+      if (extractApiErrorCode(error) === 'OFFICE_NOT_FOUND') return false;
+      return failureCount < 1;
+    },
   });
 }
 

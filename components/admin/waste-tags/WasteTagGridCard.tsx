@@ -3,6 +3,10 @@
 import { WasteTagIcon } from '@/components/admin/waste-tags/WasteTagIcon';
 import { getWasteTagDisplay } from '@/lib/constants/adminWasteTags';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
+import {
+  getWasteTagDeactivateBlockedMessage,
+  isAdminCatalogInUse,
+} from '@/utils/adminCatalogGuards';
 import { ArchiveRestore, Pencil, PowerOff } from 'lucide-react';
 
 interface WasteTagGridCardProps {
@@ -25,6 +29,8 @@ export function WasteTagGridCard({
   onToggle,
 }: WasteTagGridCardProps) {
   const { accent } = getWasteTagDisplay(tag.code);
+  const deactivateBlocked = !inactive && isAdminCatalogInUse(tag.reportCount);
+  const deactivateBlockedMessage = getWasteTagDeactivateBlockedMessage(tag.reportCount);
 
   return (
     <article
@@ -54,6 +60,9 @@ export function WasteTagGridCard({
               {tag.description}
             </p>
           ) : null}
+          <p className="mt-2 text-[11px] font-medium tabular-nums text-zinc-500">
+            {tag.reportCount.toLocaleString('vi-VN')} báo cáo
+          </p>
         </button>
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
@@ -70,11 +79,17 @@ export function WasteTagGridCard({
             </button>
             <button
               type="button"
-              disabled={toggleBusy}
+              disabled={toggleBusy || deactivateBlocked}
               onClick={() => onToggle(tag)}
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
-              title={inactive ? 'Bật lại' : 'Tắt'}
-              aria-label={inactive ? `Bật lại ${tag.nameVi}` : `Tắt ${tag.nameVi}`}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              title={deactivateBlocked ? deactivateBlockedMessage : inactive ? 'Bật lại' : 'Tắt'}
+              aria-label={
+                deactivateBlocked
+                  ? deactivateBlockedMessage
+                  : inactive
+                    ? `Bật lại ${tag.nameVi}`
+                    : `Tắt ${tag.nameVi}`
+              }
             >
               {inactive ? <ArchiveRestore className="size-4" /> : <PowerOff className="size-4" />}
             </button>

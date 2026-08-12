@@ -1,29 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Map, { Marker, NavigationControl, type MapRef } from 'react-map-gl/maplibre';
 import { MapPin } from 'lucide-react';
 
 import { COMPARE_MAP_FRAME_HEIGHT } from '@/components/officer/verify/compareMapFrame';
+import { getMapStyle } from '@/lib/map/mapStyle';
 import { cn } from '@/lib/utils';
 
 export { COMPARE_MAP_FRAME_HEIGHT };
-
-const OSM_LIGHT_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
-      maxzoom: 19,
-    },
-  },
-  layers: [{ id: 'osm-raster', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22 }],
-};
 
 export type CompareMapPin = {
   latitude: number;
@@ -98,7 +84,8 @@ export function CompareReportsMap({
       <div className={cn('min-w-0', COMPARE_MAP_FRAME_HEIGHT)}>
         <Map
           ref={mapRef}
-          mapStyle={OSM_LIGHT_STYLE}
+          mapStyle={getMapStyle()}
+          projection={{ type: 'globe' }}
           initialViewState={{
             longitude: initial.longitude,
             latitude: initial.latitude,

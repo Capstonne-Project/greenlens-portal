@@ -15,6 +15,7 @@ export function mapWasteTagCatalogItemDto(dto: WasteTagCatalogItemDto): WasteTag
     description: dto.description?.trim() ? dto.description.trim() : null,
     displayOrder: dto.displayOrder,
     isActive: true,
+    reportCount: 0,
   };
 }
 
@@ -34,6 +35,7 @@ export function mapWasteTagDto(dto: WasteTagItemDto): WasteTag {
     description: dto.description?.trim() ? dto.description.trim() : null,
     displayOrder: dto.displayOrder,
     isActive: dto.isActive ?? true,
+    reportCount: typeof dto.reportCount === 'number' ? dto.reportCount : 0,
   };
 }
 
