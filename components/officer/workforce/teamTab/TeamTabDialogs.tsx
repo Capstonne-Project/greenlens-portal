@@ -65,7 +65,7 @@ export function CreateTeamDialog({
     handleSubmit,
     reset,
     control,
-    formState: { errors },
+    formState: { errors, isSubmitted, touchedFields, dirtyFields },
   } = useForm<CreateTeamFormValues>({
     ...REALTIME_FORM_OPTIONS,
     resolver: zodResolver(createTeamSchema),
@@ -74,6 +74,11 @@ export function CreateTeamDialog({
 
   const isBusy = createTeamMutation.isPending;
   const nameValue = useWatch({ control, name: 'name', defaultValue: '' }) ?? '';
+  /** Chỉ hiện lỗi Zod sau khi đã tương tác hoặc submit — không đỏ khi vừa mở dialog. */
+  const nameError =
+    errors.name && (touchedFields.name || dirtyFields.name || isSubmitted)
+      ? errors.name.message
+      : undefined;
 
   const closeDialog = () => {
     reset({ name: '' });
@@ -148,7 +153,7 @@ export function CreateTeamDialog({
                   value={nameValue}
                   minLength={TEAM_NAME_MIN}
                   maxLength={TEAM_NAME_MAX}
-                  error={errors.name?.message}
+                  error={nameError}
                   className="h-9 rounded-md"
                 />
               </Field>
