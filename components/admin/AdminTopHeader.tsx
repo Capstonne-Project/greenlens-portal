@@ -25,7 +25,7 @@ export function AdminTopHeader() {
   const nextLocaleLabel = locale === 'vi' ? 'EN' : 'VN';
 
   return (
-    <header className="shrink-0 border-b border-[#e8e8e8] bg-[#fffdfc] pb-2">
+    <header className="shrink-0 border-b border-[#e8e8e8] bg-app-panel pb-2">
       <div className="flex h-14 items-center justify-between gap-4 md:h-16">
         <HeaderBrand title={title} meta={isWasteTagsTab ? <WasteTagsHeaderStats /> : null} />
 
