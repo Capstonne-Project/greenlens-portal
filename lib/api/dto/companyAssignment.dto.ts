@@ -233,7 +233,8 @@ export interface CompanyAssignmentWasteTagDto {
 }
 
 /**
- * Wire DTO — GET /v1/reports/company-assignments/{reportId} `data`.
+ * Wire DTO — GET `/v1/reports/company-assignments/{reportId}` và
+ * GET `/v1/reports/company-reports/{reportId}` (cùng shape `data`).
  * Swagger: singular `assignment` (+ acceptedAt), citizenMedia, media.before/after,
  * assignmentHistory, canReassign, priorityScore.
  * Legacy fields (`summary`, `teamAssignments`, `images`/…) kept optional for mapper fallback.

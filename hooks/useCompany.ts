@@ -5,6 +5,7 @@ import {
   addCompanyTeamMember,
   assignCompanyStaffTeam,
   assignCompanyTeam,
+  reassignCompanyTeam,
   createCompany,
   createCompanyStaff,
   createCompanyTeam,
@@ -16,6 +17,7 @@ import {
   fetchCompanyContractHistory,
   fetchCompanyDetail,
   fetchCompanyQueue,
+  fetchCompanyReportDetail,
   fetchCompanyServiceAreas,
   fetchCompanyStaff,
   fetchCompanyTeams,
@@ -36,6 +38,7 @@ import type {
   ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompaniesListParams,
   CompanyAssignmentDetail,
   CompanyAssignmentListItem,
@@ -240,6 +243,8 @@ export const companyKeys = {
   assignmentsDashboard: () => [...companyKeys.all, 'assignments', 'dashboard'] as const,
   assignmentDetail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'detail', reportId] as const,
+  /** GET /v1/reports/company-reports/{reportId} — assign queue detail. */
+  reportDetail: (reportId: string) => [...companyKeys.all, 'reports', 'detail', reportId] as const,
   assignmentThumbnail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'thumbnail', reportId] as const,
   contractHistory: () => [...companyKeys.all, 'contract-history'] as const,
@@ -394,6 +399,21 @@ export function useCompanyAssignmentDetail(reportId: string | null) {
     queryKey: companyKeys.assignmentDetail(reportId ?? ''),
     queryFn: async () => {
       const envelope = await fetchCompanyAssignmentDetail(reportId!);
+      return mergeAssignmentDetailWithListImages(envelope.data, queryClient, reportId ?? '');
+    },
+    enabled: Boolean(reportId),
+    staleTime: 60 * 1000,
+  });
+}
+
+/** GET /v1/reports/company-reports/{reportId} — chi tiết hàng đợi phân công. */
+export function useCompanyReportDetail(reportId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: companyKeys.reportDetail(reportId ?? ''),
+    queryFn: async () => {
+      const envelope = await fetchCompanyReportDetail(reportId!);
       return mergeAssignmentDetailWithListImages(envelope.data, queryClient, reportId ?? '');
     },
     enabled: Boolean(reportId),
@@ -612,6 +632,23 @@ export function useAssignCompanyTeam() {
       );
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'queue'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'assignments'] });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'reports', 'detail'] });
+    },
+  });
+}
+
+/**
+ * Company Manager — PUT /v1/reports/{id}/reassign-company-team
+ * Body: { oldTeamId, newTeamId, reason } (reason ≥ 20). Assignment Declined/Assigned.
+ */
+export function useReassignCompanyTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: ReassignCompanyTeamInput }) =>
+      reassignCompanyTeam(reportId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'assignments'] });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'reports', 'detail'] });
     },
   });
 }

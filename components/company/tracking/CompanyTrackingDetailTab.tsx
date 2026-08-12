@@ -10,10 +10,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { ImageZoomPane } from '@/components/ui/image-zoom-pane';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CompanyAssignTeamDialog } from '@/components/company/assign/CompanyAssignTeamDialog';
 import { useCompanyAssignmentDetail } from '@/hooks/useCompany';
 import type {
   CompanyAssignmentDetail,
@@ -52,10 +61,12 @@ import {
   FilePlus2,
   ImageIcon,
   MapPin,
+  MessageSquareWarning,
   Pencil,
   RefreshCw,
   RotateCcw,
   Users,
+  UserPlus,
   X,
   XCircle,
   type LucideIcon,
@@ -105,6 +116,8 @@ interface LifecycleStage {
   label: string;
   at: string | null;
   meta?: string | null;
+  /** Highlight meta (vd. đội từ chối). */
+  metaTone?: 'default' | 'danger';
   assignmentItems?: {
     assignmentId: string;
     teamId: string;
@@ -643,7 +656,12 @@ function LifecycleSpine({
               </div>
 
               {stage.meta ? (
-                <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-slate-500">
+                <p
+                  className={cn(
+                    'mt-1.5 max-w-lg text-sm leading-relaxed',
+                    stage.metaTone === 'danger' ? 'font-medium text-red-600' : 'text-slate-500'
+                  )}
+                >
                   {stage.meta}
                 </p>
               ) : null}
@@ -854,6 +872,8 @@ function buildCompanyLifecycleStages(data: CompanyAssignmentDetail): LifecycleSt
     };
   });
 
+  const anyDeclined = assignments.some(t => t.status === 'Declined');
+
   const acceptItems = assignments.map(team => {
     const accepted = nullIso(team.acceptedAt);
     const leader =
@@ -872,12 +892,20 @@ function buildCompanyLifecycleStages(data: CompanyAssignmentDetail): LifecycleSt
           'Đã nhận việc'
         )
       ) : team.status === 'Declined' ? (
-        'Đã từ chối'
+        <span className="text-red-600">Đội đã từ chối task</span>
       ) : (
         'Chưa nhận việc'
       ),
     };
   });
+
+  /** Meta step «Đội nhận việc» — Declined: không dùng «Chưa có đội nào nhận việc»; lý do xem tab Tiến độ. */
+  let acceptedMeta: string | null = null;
+  if (hasTeams && !anyAccepted) {
+    acceptedMeta = anyDeclined
+      ? 'Đội đã từ chối nhận việc. Xem lý do ở tab Tiến độ.'
+      : 'Chưa có đội nào nhận việc.';
+  }
 
   const progressUpdates: ProgressUpdateStageItem[] = assignments
     .flatMap(a =>
@@ -911,7 +939,8 @@ function buildCompanyLifecycleStages(data: CompanyAssignmentDetail): LifecycleSt
       step: 2,
       label: 'Đội nhận việc',
       at: firstAcceptedAt,
-      meta: !hasTeams ? null : !anyAccepted ? 'Chưa có đội nào nhận việc.' : null,
+      meta: acceptedMeta,
+      metaTone: anyDeclined && !anyAccepted ? 'danger' : 'default',
       assignmentItems: hasTeams ? acceptItems : undefined,
       state: anyAccepted ? 'done' : hasTeams ? 'current' : 'pending',
     },
@@ -1463,6 +1492,11 @@ function ReportInfoCard({
   data: CompanyAssignmentDetail;
   onPreview: PreviewHandler;
 }) {
+  const [declineDrawerOpen, setDeclineDrawerOpen] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const assignment = data.assignment;
+  const isDeclined = assignment?.status === 'Declined';
+  const declineReason = usefulReason(assignment?.declineReason);
   const status = normalizeReportStatus(data.status) as ReportStatus;
   const statusBadge =
     REPORT_STATUS_BADGE_CLASSES[status] ?? 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80';
@@ -1599,23 +1633,45 @@ function ReportInfoCard({
         </TabsList>
 
         <TabsContent value="progress" className="mt-5 focus-visible:ring-0">
-          <div className="mb-4 min-w-0">
-            <p className="text-sm font-semibold text-foreground">Tiến độ đội phụ trách</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {data.assignment?.assignedByName?.trim() ||
-              data.teamAssignments[0]?.assignedByName?.trim() ? (
-                <>
-                  Tiến độ và trạng thái xử lý của đội được phân công{' '}
-                  <span className="font-semibold text-foreground/80">
-                    bởi{' '}
-                    {data.assignment?.assignedByName?.trim() ||
-                      data.teamAssignments[0]?.assignedByName?.trim()}
-                  </span>
-                </>
-              ) : (
-                'Tiến độ và trạng thái xử lý của đội được phân công'
-              )}
-            </p>
+          <div className="mb-4 flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Tiến độ đội phụ trách</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {data.assignment?.assignedByName?.trim() ||
+                data.teamAssignments[0]?.assignedByName?.trim() ? (
+                  <>
+                    Tiến độ và trạng thái xử lý của đội được phân công{' '}
+                    <span className="font-semibold text-foreground/80">
+                      bởi quản lý{' '}
+                      {data.assignment?.assignedByName?.trim() ||
+                        data.teamAssignments[0]?.assignedByName?.trim()}
+                    </span>
+                  </>
+                ) : (
+                  'Tiến độ và trạng thái xử lý của đội được phân công'
+                )}
+              </p>
+            </div>
+            {isDeclined ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeclineDrawerOpen(true)}
+                className={cn(
+                  'h-8 shrink-0 cursor-pointer gap-1.5 border-red-200 bg-red-50 px-2.5',
+                  'text-[0.8125rem] font-semibold text-red-700',
+                  'transition-colors duration-200',
+                  'hover:border-red-300 hover:bg-red-100 hover:text-red-800',
+                  'focus-visible:ring-2 focus-visible:ring-red-400/40'
+                )}
+                aria-haspopup="dialog"
+                aria-expanded={declineDrawerOpen}
+              >
+                <MessageSquareWarning className="size-3.5" aria-hidden />
+                Lý do từ chối
+              </Button>
+            ) : null}
           </div>
           {data.teamAssignments.length === 0 ? (
             <p className="py-4 text-sm text-muted-foreground">Chưa có đội được phân công.</p>
@@ -1682,7 +1738,167 @@ function ReportInfoCard({
           )}
         </TabsContent>
       </Tabs>
+
+      <DeclineReasonDrawer
+        open={declineDrawerOpen}
+        onOpenChange={setDeclineDrawerOpen}
+        assignment={assignment}
+        declineReason={declineReason}
+        onReassign={() => {
+          setDeclineDrawerOpen(false);
+          setReassignOpen(true);
+        }}
+      />
+
+      <CompanyAssignTeamDialog
+        open={reassignOpen}
+        reportId={data.reportId}
+        reportCode={data.code}
+        mode="reassign"
+        oldTeamId={assignment?.teamId ?? null}
+        oldTeamName={assignment?.teamName ?? null}
+        onClose={() => setReassignOpen(false)}
+        onSuccess={() => setReassignOpen(false)}
+      />
     </div>
+  );
+}
+
+/**
+ * Drawer — manager xem lý do đội từ chối task trước khi phân công lại.
+ * Bố cục: trạng thái → đội → memo lý do → meta → CTA.
+ */
+function DeclineReasonDrawer({
+  open,
+  onOpenChange,
+  assignment,
+  declineReason,
+  onReassign,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  assignment: CompanyAssignmentTeamDetail | null;
+  declineReason: string | null;
+  onReassign: () => void;
+}) {
+  const teamName = assignment?.teamName?.trim() || '—';
+  const leader = assignment ? teamLeaderName(assignment) : '—';
+  const assignedBy = assignment?.assignedByName?.trim() || null;
+  const assignedAt = assignment ? nullIso(assignment.assignedAt) : null;
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent className="flex h-full max-h-none w-full max-w-md flex-col border-l border-slate-200 bg-[#fffdfc]">
+        <DrawerHeader className="space-y-0 border-b border-slate-200 px-0 py-0 text-left">
+          <div className="flex items-start justify-between gap-3 bg-gradient-to-br from-red-50 via-red-50/60 to-transparent px-5 pb-4 pt-5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 ring-1 ring-red-200/80"
+                  aria-hidden
+                >
+                  <MessageSquareWarning className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <DrawerTitle className="text-base font-bold tracking-tight text-slate-900">
+                    Lý do từ chối
+                  </DrawerTitle>
+                  <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                    Đội đã từ chối task — xem trước khi phân công lại
+                  </p>
+                </div>
+              </div>
+            </div>
+            <DrawerClose asChild>
+              <button
+                type="button"
+                aria-label="Đóng"
+                className="cursor-pointer rounded-full p-1.5 text-slate-400 transition-colors duration-200 hover:bg-white/80 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40"
+              >
+                <X className="size-4" />
+              </button>
+            </DrawerClose>
+          </div>
+        </DrawerHeader>
+
+        <div className="scrollbar-smooth min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          {/* Đội phụ trách */}
+          <section>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              Đội phụ trách
+            </p>
+            <div className="mt-2.5 flex items-center gap-3">
+              <span
+                className={cn(
+                  'flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white',
+                  hashColor(assignment?.teamId ?? teamName)
+                )}
+                aria-hidden
+              >
+                {getInitials(teamName)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">{teamName}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500">Trưởng nhóm: {leader}</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Memo lý do — nội dung chính quản lý cần đọc */}
+          <section role="note" aria-label="Nội dung lý do từ chối">
+            <div className="flex items-center gap-2">
+              <XCircle className="size-4 shrink-0 text-red-600" aria-hidden />
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                Nội dung từ chối
+              </p>
+            </div>
+            <blockquote className="mt-3 border-l-2 border-red-300 pl-3">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-800">
+                {declineReason || 'Không có lý do được ghi nhận.'}
+              </p>
+            </blockquote>
+          </section>
+
+          {/* Meta phân công */}
+          {(assignedBy || assignedAt) && (
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {assignedBy ? (
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Phân công bởi
+                  </p>
+                  <p className="mt-1 truncate text-sm font-medium text-slate-800">{assignedBy}</p>
+                </div>
+              ) : null}
+              {assignedAt ? (
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Thời điểm phân công
+                  </p>
+                  <p className="mt-1 text-sm font-medium tabular-nums text-slate-800">
+                    {formatCompanyDateTime(assignedAt)}
+                  </p>
+                </div>
+              ) : null}
+            </section>
+          )}
+        </div>
+
+        <DrawerFooter className="gap-2 border-t border-slate-200 bg-white px-5 py-4">
+          <p className="text-xs leading-snug text-slate-500">
+            Phân công lại sẽ chọn đội mới cho báo cáo này.
+          </p>
+          <Button
+            type="button"
+            className="h-11 cursor-pointer bg-emerald-600 text-white transition-colors duration-200 hover:bg-emerald-700"
+            onClick={onReassign}
+          >
+            <UserPlus className="mr-1.5 size-4" aria-hidden />
+            Phân công lại
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

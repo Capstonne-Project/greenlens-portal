@@ -17,6 +17,7 @@ import { mapCompanyQueueListDto } from '@/lib/api/mappers/companyQueue.mapper';
 import type {
   AddCompanyTeamMemberInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompanyAssignmentDetail,
   CompanyAssignmentsList,
   CompanyAssignmentsParams,
@@ -289,6 +290,21 @@ export async function adaptCompanyAssignmentDetail(
   };
 }
 
+/** GET /v1/reports/company-reports/{reportId} — chi tiết báo cáo [CompanyManager] (assign queue). */
+export async function adaptCompanyReportDetail(
+  reportId: string
+): Promise<ApiEnvelope<CompanyAssignmentDetail>> {
+  const res = await apiService.get<ApiEnvelope<CompanyAssignmentDetailDto>>(
+    `/v1/reports/company-reports/${reportId}`
+  );
+  const envelope = res.data;
+  if (!envelope.data) return envelope as ApiEnvelope<CompanyAssignmentDetail>;
+  return {
+    ...envelope,
+    data: mapCompanyAssignmentDetailDto(envelope.data),
+  };
+}
+
 /**
  * POST /v1/reports/{id}/assign-company-team — [CompanyManager] gán team công ty.
  * Không dùng POST /v1/reports/{id}/assign (đó là LEO gán community team).
@@ -311,4 +327,20 @@ export async function adaptAssignCompanyTeam(
       mergeIdempotencyConfig(key, options?.config)
     );
   });
+}
+
+/**
+ * PUT /v1/reports/{id}/reassign-company-team — [CompanyManager] chuyển giao đội
+ * khi assignment `Declined` hoặc `Assigned` (chưa nhận). Report vẫn `InProgress`.
+ */
+export async function adaptReassignCompanyTeam(
+  reportId: string,
+  body: ReassignCompanyTeamInput
+): Promise<void> {
+  const payload: ReassignCompanyTeamInput = {
+    oldTeamId: body.oldTeamId,
+    newTeamId: body.newTeamId,
+    reason: body.reason.trim(),
+  };
+  await apiService.put(`/v1/reports/${reportId}/reassign-company-team`, payload);
 }

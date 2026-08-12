@@ -32,7 +32,8 @@ export type IdempotencyEndpointId =
   | 'IDM-19'
   | 'IDM-20'
   | 'IDM-21'
-  | 'IDM-22';
+  | 'IDM-22'
+  | 'IDM-23';
 
 export type IdempotencyEndpointEntry = {
   id: IdempotencyEndpointId;
@@ -249,6 +250,16 @@ export const IDEMPOTENCY_ENDPOINTS: readonly IdempotencyEndpointEntry[] = [
     webImplemented: true,
     mobileTarget: false,
     note: 'adaptAssignCompanyTeam — CompanyAssignTeamDialog',
+  },
+  {
+    id: 'IDM-23',
+    method: 'PUT',
+    path: '/reports/{id}/reassign-company-team',
+    actor: 'CompanyManager',
+    priority: 'P1',
+    webImplemented: false,
+    mobileTarget: false,
+    note: 'Swagger PUT { oldTeamId, newTeamId, reason } — no Idempotency-Key; adaptReassignCompanyTeam',
   },
   {
     id: 'IDM-22',

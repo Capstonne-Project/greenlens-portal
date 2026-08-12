@@ -6,9 +6,11 @@ import {
   adaptArchiveCompanyTeam,
   adaptDeleteCompanyTeam,
   adaptAssignCompanyTeam,
+  adaptReassignCompanyTeam,
   adaptCompanyAssignmentDetail,
   adaptCompanyAssignments,
   adaptCompanyQueue,
+  adaptCompanyReportDetail,
   adaptCompanyStaffList,
   adaptCompanyTeamsList,
   adaptCreateCompanyStaff,
@@ -39,6 +41,7 @@ import type {
   ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompaniesList,
   CompaniesListParams,
   CompanyAssignmentDetail,
@@ -79,6 +82,7 @@ export type {
   ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompaniesList,
   CompaniesListParams,
   CompanyAssignmentDetail,
@@ -344,6 +348,13 @@ export async function fetchCompanyAssignmentDetail(
   return adaptCompanyAssignmentDetail(reportId);
 }
 
+/** GET /v1/reports/company-reports/{reportId} — chi tiết báo cáo hàng đợi phân công [CompanyManager]. */
+export async function fetchCompanyReportDetail(
+  reportId: string
+): Promise<ApiEnvelope<CompanyAssignmentDetail>> {
+  return adaptCompanyReportDetail(reportId);
+}
+
 /**
  * POST /v1/reports/{id}/assign-company-team — [CompanyManager] phân công team công ty
  * (Verified → InProgress). Khác với `assignReport` (LEO → POST .../assign).
@@ -354,6 +365,17 @@ export async function assignCompanyTeam(
   options?: IdempotencyRequestOptions
 ): Promise<void> {
   return adaptAssignCompanyTeam(reportId, body, options);
+}
+
+/**
+ * PUT /v1/reports/{id}/reassign-company-team — [CompanyManager] phân công lại đội
+ * khi assignment `Declined` / `Assigned`. Body: oldTeamId, newTeamId, reason (≥20).
+ */
+export async function reassignCompanyTeam(
+  reportId: string,
+  body: ReassignCompanyTeamInput
+): Promise<void> {
+  return adaptReassignCompanyTeam(reportId, body);
 }
 
 const companyApi = {
@@ -385,7 +407,9 @@ const companyApi = {
   fetchCompanyQueue,
   fetchCompanyAssignments,
   fetchCompanyAssignmentDetail,
+  fetchCompanyReportDetail,
   assignCompanyTeam,
+  reassignCompanyTeam,
 };
 
 export default companyApi;

@@ -423,6 +423,16 @@ export interface AssignCompanyTeamInput {
   teams: { teamId: string; note?: string }[];
 }
 
+/**
+ * Body PUT /v1/reports/{id}/reassign-company-team — [CompanyManager]
+ * phân công lại sau Declined / Assigned (chưa nhận). `reason` ≥ 20 ký tự.
+ */
+export interface ReassignCompanyTeamInput {
+  oldTeamId: string;
+  newTeamId: string;
+  reason: string;
+}
+
 /** Assignment status — task phân công cho đội (Swagger company-assignments). */
 export type CompanyAssignmentStatus =
   | 'Assigned'
@@ -645,7 +655,8 @@ export interface CompanyAssignmentWasteTag {
 }
 
 /**
- * GET /v1/reports/company-assignments/{reportId} — FE model.
+ * GET `/v1/reports/company-assignments/{reportId}` và
+ * GET `/v1/reports/company-reports/{reportId}` — FE model (cùng shape).
  *
  * Wire fields (1:1 from Swagger): reportId…wasteTags, citizenMedia, assignment, media.before/after,
  * assignmentHistory, canReassign, priorityScore, sla.

@@ -41,10 +41,17 @@ import type { ReportSeverity } from '@/lib/api/models/report';
 import { Check, ChevronDown, Copy, ImageIcon, Loader2, Search, UserPlus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 const REPORT_PAGE_SIZE = 8;
+
+/** GET /v1/reports/company-queue — mặc định: mới điều phối lên trước (dispatchedAt desc). */
+const COMPANY_QUEUE_DEFAULT_SORT = {
+  sortBy: 'dispatchedAt' as const,
+  sortDesc: true,
+};
 
 const FILTER_WIDTH_OPEN = '14rem';
 const FILTER_MOTION = { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const };
@@ -870,9 +877,18 @@ function CheckItem({
 
 /**
  * Phân công báo cáo company — GET /v1/reports/company-queue.
+ * pageSize=8, sort dispatchedAt desc (mới nhất trước).
  * UI chrome = AssignReportsTab; hành động = mở CompanyAssignTeamDialog.
  */
 export function CompanyAssignView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightReportId = searchParams.get('highlightReportId');
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const consumedHighlightRef = useRef<string | null>(null);
+  const [highlightFading, setHighlightFading] = useState(false);
+  const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null);
+
   const yearOnlyDefaults = getPresetDateInputs('all');
 
   const [page, setPage] = useState(1);
@@ -929,20 +945,28 @@ export function CompanyAssignView() {
     resetPageAndSelection();
   };
 
-  /** API nhận 1 severity — truyền khi chọn đúng 1 mức; multi-select giữ client filter. */
-  const apiSeverity = severityFilters.length === 1 ? severityFilters[0] : undefined;
-  const dateParams = getDateRange(datePreset, customFrom, customTo);
+  /**
+   * Query params khớp Swagger GET /v1/reports/company-queue:
+   * page, pageSize, search, severity, categoryId, fromDate, toDate (dispatchedAt), sortBy, sortDesc.
+   * wardCode: có trên API — chưa expose UI (CM thường scoped theo công ty).
+   * severity multi-select: BE chỉ nhận 1 giá trị → lọc client khi chọn >1.
+   */
+  const queueParams = useMemo(() => {
+    const apiSeverity = severityFilters.length === 1 ? severityFilters[0] : undefined;
+    const dateParams = getDateRange(datePreset, customFrom, customTo);
 
-  const { data, isPending, isFetching, isError, refetch } = useCompanyQueue({
-    page,
-    pageSize: REPORT_PAGE_SIZE,
-    ...(debouncedSearch ? { search: debouncedSearch } : {}),
-    ...(apiSeverity ? { severity: apiSeverity } : {}),
-    ...(categoryId ? { categoryId } : {}),
-    ...dateParams,
-    sortBy: 'priorityScore',
-    sortDesc: true,
-  });
+    return {
+      page,
+      pageSize: REPORT_PAGE_SIZE,
+      ...COMPANY_QUEUE_DEFAULT_SORT,
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(apiSeverity ? { severity: apiSeverity } : {}),
+      ...(categoryId ? { categoryId } : {}),
+      ...dateParams,
+    };
+  }, [page, debouncedSearch, severityFilters, categoryId, datePreset, customFrom, customTo]);
+
+  const { data, isPending, isFetching, isError, refetch } = useCompanyQueue(queueParams);
   const { data: catalogCategories = [] } = useCatalogPollutionCategories();
 
   const pagination = data?.pagination;
@@ -956,6 +980,26 @@ export function CompanyAssignView() {
     if (severityFilters.length <= 1) return rows;
     return rows.filter(r => severityFilters.includes(r.severity as ReportSeverity));
   }, [data?.items, severityFilters]);
+
+  const triggerHighlight = (el: HTMLTableRowElement, id: string) => {
+    if (consumedHighlightRef.current === id) return;
+    consumedHighlightRef.current = id;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => setHighlightFading(true), 3000);
+  };
+
+  /** Deep-link từ detail back — highlight + tick checkbox (parity officer assign). */
+  if (!highlightReportId && appliedHighlightId !== null) {
+    setAppliedHighlightId(null);
+  } else if (
+    highlightReportId &&
+    appliedHighlightId !== highlightReportId &&
+    filtered.some(r => r.id === highlightReportId)
+  ) {
+    setAppliedHighlightId(highlightReportId);
+    setSelected(new Set([highlightReportId]));
+    setHighlightFading(false);
+  }
 
   const allChecked = filtered.length > 0 && selected.size === filtered.length;
   const indeterminate = selected.size > 0 && selected.size < filtered.length;
@@ -1185,69 +1229,91 @@ export function CompanyAssignView() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map(report => (
-                      <TableRow
-                        key={report.id}
-                        className={cn(
-                          ROW_BORDER,
-                          'transition-colors duration-700 hover:bg-sky-50/40',
-                          selected.has(report.id) && 'bg-sky-50/60'
-                        )}
-                      >
-                        {TABLE_COLS.map(col => {
-                          if (col.key === 'select') {
-                            return (
-                              <TableCell
-                                key={col.key}
-                                className={cn(tableCellPad(col.key), 'align-middle', col.className)}
-                              >
-                                <Checkbox
-                                  checked={selected.has(report.id)}
-                                  onCheckedChange={() =>
-                                    setSelected(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(report.id)) next.delete(report.id);
-                                      else next.add(report.id);
-                                      return next;
-                                    })
-                                  }
-                                  className="shrink-0"
-                                />
-                              </TableCell>
-                            );
-                          }
+                    filtered.map(report => {
+                      const isHighlighted = report.id === highlightReportId && !highlightFading;
 
-                          if (col.key === 'actions') {
+                      return (
+                        <TableRow
+                          key={report.id}
+                          ref={el => {
+                            if (el) {
+                              rowRefs.current.set(report.id, el);
+                              if (report.id === highlightReportId) {
+                                triggerHighlight(el, report.id);
+                              }
+                            } else {
+                              rowRefs.current.delete(report.id);
+                            }
+                          }}
+                          onClick={() => router.push(`/company/assign/${report.id}`)}
+                          className={cn(
+                            ROW_BORDER,
+                            'cursor-pointer transition-colors duration-700 hover:bg-sky-50/40',
+                            isHighlighted && 'bg-emerald-50',
+                            !isHighlighted && selected.has(report.id) && 'bg-sky-50/60'
+                          )}
+                        >
+                          {TABLE_COLS.map(col => {
+                            if (col.key === 'select') {
+                              return (
+                                <TableCell
+                                  key={col.key}
+                                  className={cn(
+                                    tableCellPad(col.key),
+                                    'align-middle',
+                                    col.className
+                                  )}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <Checkbox
+                                    checked={selected.has(report.id)}
+                                    onCheckedChange={() =>
+                                      setSelected(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(report.id)) next.delete(report.id);
+                                        else next.add(report.id);
+                                        return next;
+                                      })
+                                    }
+                                    className="shrink-0"
+                                  />
+                                </TableCell>
+                              );
+                            }
+
+                            if (col.key === 'actions') {
+                              return (
+                                <TableCell
+                                  key={col.key}
+                                  className={cn(
+                                    tableCellPad(col.key),
+                                    'min-w-0 overflow-hidden align-middle',
+                                    col.className
+                                  )}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <AssignActionChip onClick={() => setAssignTarget(report)} />
+                                </TableCell>
+                              );
+                            }
+
                             return (
                               <TableCell
                                 key={col.key}
                                 className={cn(
                                   tableCellPad(col.key),
                                   'min-w-0 overflow-hidden align-middle',
+                                  col.key !== 'code' && 'max-w-0',
                                   col.className
                                 )}
                               >
-                                <AssignActionChip onClick={() => setAssignTarget(report)} />
+                                {renderDataCell(col.key, report)}
                               </TableCell>
                             );
-                          }
-
-                          return (
-                            <TableCell
-                              key={col.key}
-                              className={cn(
-                                tableCellPad(col.key),
-                                'min-w-0 overflow-hidden align-middle',
-                                col.key !== 'code' && 'max-w-0',
-                                col.className
-                              )}
-                            >
-                              {renderDataCell(col.key, report)}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))
+                          })}
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
