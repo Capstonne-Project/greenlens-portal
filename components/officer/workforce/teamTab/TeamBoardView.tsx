@@ -28,11 +28,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
-import {
-  WorkforceExportCsvButton,
-  WorkforceViewModeSwitch,
-  type WorkforceViewMode,
-} from '../WorkforceToolbarActions';
+import { WorkforceViewModeSwitch, type WorkforceViewMode } from '../WorkforceToolbarActions';
 import { RemoveMemberConfirmDialog } from './TeamTabDialogs';
 import {
   AVAILABLE_LABEL,
@@ -521,8 +517,6 @@ export function BoardView({
             onAvailableChange={onAvailableChange}
           />
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <WorkforceExportCsvButton />
-            <span className="h-5 w-px shrink-0 bg-slate-200" aria-hidden />
             <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
           </div>
         </div>

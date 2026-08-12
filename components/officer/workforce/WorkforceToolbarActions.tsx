@@ -1,8 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { FileOutput, LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List } from 'lucide-react';
 
 export type WorkforceViewMode = 'board' | 'list';
 
@@ -41,21 +40,5 @@ export function WorkforceViewModeSwitch({
         <List className="size-4" aria-hidden />
       </button>
     </div>
-  );
-}
-
-/** Export CSV — UI hardcode, chưa gắn API. */
-export function WorkforceExportCsvButton() {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="h-8 shrink-0 cursor-pointer gap-1.5 border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-none hover:bg-slate-50"
-      onClick={() => undefined}
-    >
-      <FileOutput className="size-3.5" aria-hidden />
-      Export to csv
-    </Button>
   );
 }

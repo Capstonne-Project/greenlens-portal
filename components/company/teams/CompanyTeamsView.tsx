@@ -53,7 +53,6 @@ import {
   Building2,
   ChevronDown,
   Crown,
-  FileOutput,
   Loader2,
   MoreHorizontal,
   Pencil,
@@ -576,17 +575,6 @@ export function CompanyTeamsView({
           </DropdownMenu>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 shrink-0 cursor-pointer gap-1.5 border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-none hover:bg-slate-50 sm:px-3"
-              onClick={() => undefined}
-            >
-              <FileOutput className="size-3.5" aria-hidden />
-              Export to csv
-            </Button>
-            <span className="hidden h-5 w-px shrink-0 bg-slate-200 sm:block" aria-hidden />
             <Button
               type="button"
               size="sm"

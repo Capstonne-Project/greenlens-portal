@@ -16,7 +16,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { MovingBorderButton } from '@/components/ui/moving-border';
 import { PaginationSimple } from '@/components/ui/pagination';
-import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -40,7 +39,6 @@ import {
   Briefcase,
   CalendarDays,
   ChevronDown,
-  FileOutput,
   Loader2,
   Mail,
   MoreHorizontal,
@@ -551,17 +549,6 @@ export function CompanyStaffView({ enabled = true }: { enabled?: boolean }) {
           </DropdownMenu>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 shrink-0 cursor-pointer gap-1.5 border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-none hover:bg-slate-50"
-              onClick={() => undefined}
-            >
-              <FileOutput className="size-3.5" aria-hidden />
-              Export to csv
-            </Button>
-            <Separator orientation="vertical" className="mx-0.5 h-6 shrink-0 bg-slate-300" />
             <MovingBorderButton
               type="button"
               onClick={() => setCreateOpen(true)}
