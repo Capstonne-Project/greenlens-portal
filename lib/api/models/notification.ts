@@ -12,6 +12,8 @@ export type NotificationType =
   | 'SlaInspectionBreached'
   | 'CleanupProgressStale'
   | 'CleanupProgressUpdated'
+  | 'InspectionProgressUpdated'
+  | 'InspectionTaskCompleted'
   | 'CleanupTaskAssigned'
   | 'CleanupTaskAccepted'
   | 'CleanupTaskDeclined'

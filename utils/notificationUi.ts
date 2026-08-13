@@ -119,6 +119,10 @@ export function officerNotificationHref(
   const ref = item.referenceId?.trim();
 
   switch (item.type) {
+    case 'ReopenReviewNeeded':
+      // referenceId = reportId → ReopenDetailClient (/officer/reopen/[id])
+      if (ref) return `/officer/reopen/${encodeURIComponent(ref)}`;
+      return '/officer/reopen';
     case 'ReportVerificationNeeded':
     case 'SlaBreachWarning':
     case 'ReportStatusChanged':
@@ -126,7 +130,6 @@ export function officerNotificationHref(
     case 'ReportAutoClosed':
     case 'ReportUnassigned':
     case 'DuplicateReviewNeeded':
-    case 'ReopenReviewNeeded':
     case 'ReopenRequestDecided':
     case 'NewComment':
     case 'NearbyReport':
@@ -156,8 +159,13 @@ export function officerNotificationHref(
     case 'CleanupProgressUpdated':
     case 'CompanyTeamAssigned':
       // referenceId = reportId → LeoTrackingReportDetail
-      if (ref) return `/officer/tracking?reportId=${encodeURIComponent(ref)}`;
+      if (ref) return `/officer/tracking/${encodeURIComponent(ref)}`;
       return '/officer/tracking';
+    case 'InspectionProgressUpdated':
+    case 'InspectionTaskCompleted':
+      // referenceId = inspectionId → InspectionDetailClient
+      if (ref) return `/officer/inspections/${encodeURIComponent(ref)}`;
+      return '/officer/recurrence?tab=inspections';
     default:
       if (ref) return `/officer/verify/${encodeURIComponent(ref)}`;
       return '/officer/dashboard';
