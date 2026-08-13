@@ -41,7 +41,7 @@ import type {
 } from '@/lib/api/services/fetchReport';
 import type { DuplicateCandidatesParams } from '@/lib/api/models/duplicateCandidate';
 import type { InspectionOfficerQueueParams } from '@/lib/api/models/inspectionReport';
-import type { ReportQueueData, ReportQueueParams } from '@/lib/api/models/reportQueue';
+import type { ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type { ViolationRecurrenceCandidatesParams } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
@@ -49,12 +49,10 @@ import { reportKeys } from '@/hooks/useReport';
 import {
   keepPreviousData,
   useMutation,
-  useQueries,
   useQuery,
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
-import { useMemo } from 'react';
 
 type IdempotentVars<TBody> = {
   reportId: string;
@@ -81,8 +79,9 @@ function stableSearchKey(search: string | undefined): string | undefined {
 
 /** Tách `search` khỏi key; phần còn lại serializable an toàn hơn. */
 function queueListKeyParts(params: ReportQueueParams) {
-  const { search, ...safe } = params;
-  return [safe, stableSearchKey(search)] as const;
+  const { search, status, ...safe } = params;
+  const statusKey = status == null ? null : Array.isArray(status) ? [...status].sort() : status;
+  return [{ ...safe, status: statusKey }, stableSearchKey(search)] as const;
 }
 
 export const officerKeys = {
@@ -149,10 +148,14 @@ const LIST_STALE_MS = 3 * 60 * 1000;
 /** Chi tiết inspection có thể bị Inspector đổi status ở app mobile bất kỳ lúc nào — cần stale ngắn hơn query dạng list. */
 const INSPECTION_DETAIL_STALE_MS = 15 * 1000;
 
-/** Tab Phân công — BE chỉ nhận một `status`/request nên gọi song song rồi gộp. */
-const ASSIGN_QUEUE_STATUSES = [
+/**
+ * Tab Phân công — GET /v1/reports/queue multi-status:
+ * `?status=Verified&status=Reopened` (sau duyệt mở lại vẫn vào hàng đợi phân công).
+ * Không gồm `Rejected` — từ chối không vào hàng đợi phân công.
+ */
+export const ASSIGN_QUEUE_STATUSES = [
   'Verified',
-  'Rejected',
+  'Reopened',
 ] as const satisfies readonly ReportQueueStatus[];
 
 /** Tra cứu `/officer/reports` — Closed / Rejected (không gồm Resolved). */
@@ -165,7 +168,7 @@ export type LookupQueueStatus = (typeof LOOKUP_QUEUE_STATUSES)[number];
 
 type AssignReportQueueParams = Omit<ReportQueueParams, 'status'>;
 type LookupReportQueueParams = Omit<ReportQueueParams, 'status'> & {
-  /** `all` = gọi 2 status song song rồi gộp. */
+  /** `all` = multi Closed+Rejected một request; hoặc 1 status. */
   status?: LookupQueueStatus | 'all';
 };
 
@@ -313,61 +316,22 @@ export async function locateReportInQueuePage(
 }
 
 /**
- * Phân công — gộp báo cáo `Verified` + `Rejected` từ GET /v1/reports/queue.
- * Gọi 2 request song song, merge và sort `createdAt` mới nhất trước (khớp BE sortDir Desc).
+ * Phân công — GET /v1/reports/queue với multi-status `Verified` + `Reopened`
+ * (`?status=Verified&status=Reopened`). Pagination lấy trực tiếp từ BE.
  */
 export function useAssignReportQueue(
   params: AssignReportQueueParams,
   options?: { enabled?: boolean }
 ) {
-  const enabled = options?.enabled ?? true;
-
-  const queries = useQueries({
-    queries: ASSIGN_QUEUE_STATUSES.map(status => ({
-      queryKey: officerKeys.queueList({ ...params, status }),
-      queryFn: () => fetchReportQueue({ ...params, status }),
-      staleTime: LIST_STALE_MS,
-      placeholderData: keepPreviousData,
-      enabled,
-    })),
-  });
-
-  const data = useMemo((): ReportQueueData | undefined => {
-    const payloads = queries.map(q => q.data?.data).filter(Boolean) as ReportQueueData[];
-    if (payloads.length === 0) return undefined;
-
-    const items = payloads
-      .flatMap(p => p.items)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-    const totalItems = payloads.reduce((sum, p) => sum + p.pagination.totalItems, 0);
-    const totalPages = Math.max(1, ...payloads.map(p => p.pagination.totalPages));
-    const page = params.page ?? 1;
-
-    return {
-      items,
-      pagination: {
-        page,
-        pageSize: params.pageSize ?? 10,
-        totalItems,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
-    };
-  }, [queries, params.page, params.pageSize]);
-
-  return {
-    data,
-    isPending: queries.some(q => q.isPending),
-    isFetching: queries.some(q => q.isFetching),
-    isError: queries.some(q => q.isError),
-  };
+  return useReportQueue(
+    { ...params, status: ASSIGN_QUEUE_STATUSES },
+    { enabled: options?.enabled ?? true }
+  );
 }
 
 /**
  * Tra cứu báo cáo kết thúc — `Closed` | `Rejected` từ GET /v1/reports/queue.
- * `status: 'all'` (mặc định): 2 request song song, merge `createdAt` Desc.
+ * `status: 'all'` (mặc định): multi `?status=Closed&status=Rejected`.
  * Một status cụ thể: một request (reuse cache `officerKeys.queueList`).
  */
 export function useLookupReportQueue(
@@ -383,41 +347,10 @@ export function useLookupReportQueue(
     { enabled: enabled && Boolean(singleStatus) }
   );
 
-  const multiQueries = useQueries({
-    queries: LOOKUP_QUEUE_STATUSES.map(queueStatus => ({
-      queryKey: officerKeys.queueList({ ...rest, status: queueStatus }),
-      queryFn: () => fetchReportQueue({ ...rest, status: queueStatus }),
-      staleTime: LIST_STALE_MS,
-      placeholderData: keepPreviousData,
-      enabled: enabled && !singleStatus,
-    })),
-  });
-
-  const multiData = useMemo((): ReportQueueData | undefined => {
-    if (singleStatus) return undefined;
-    const payloads = multiQueries.map(q => q.data?.data).filter(Boolean) as ReportQueueData[];
-    if (payloads.length === 0) return undefined;
-
-    const items = payloads
-      .flatMap(p => p.items)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-    const totalItems = payloads.reduce((sum, p) => sum + p.pagination.totalItems, 0);
-    const totalPages = Math.max(1, ...payloads.map(p => p.pagination.totalPages));
-    const page = rest.page ?? 1;
-
-    return {
-      items,
-      pagination: {
-        page,
-        pageSize: rest.pageSize ?? 10,
-        totalItems,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
-    };
-  }, [multiQueries, rest.page, rest.pageSize, singleStatus]);
+  const multiQuery = useReportQueue(
+    { ...rest, status: LOOKUP_QUEUE_STATUSES },
+    { enabled: enabled && !singleStatus }
+  );
 
   if (singleStatus) {
     return {
@@ -430,13 +363,11 @@ export function useLookupReportQueue(
   }
 
   return {
-    data: multiData,
-    isPending: multiQueries.some(q => q.isPending),
-    isFetching: multiQueries.some(q => q.isFetching),
-    isError: multiQueries.some(q => q.isError),
-    refetch: () => {
-      for (const q of multiQueries) void q.refetch();
-    },
+    data: multiQuery.data,
+    isPending: multiQuery.isPending,
+    isFetching: multiQuery.isFetching,
+    isError: multiQuery.isError,
+    refetch: () => void multiQuery.refetch(),
   };
 }
 

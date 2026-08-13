@@ -52,7 +52,11 @@ export type ReportQueueSortDir = 'Asc' | 'Desc';
 export interface ReportQueueParams {
   page?: number;
   pageSize?: number;
-  status?: ReportQueueStatus;
+  /**
+   * Filter status — BE hỗ trợ multi: `?status=Verified&status=Reopened`.
+   * Truyền 1 giá trị hoặc mảng.
+   */
+  status?: ReportQueueStatus | readonly ReportQueueStatus[];
   severity?: ReportSeverity;
   categoryId?: string;
   wardCode?: string;

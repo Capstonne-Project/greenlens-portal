@@ -254,6 +254,7 @@ export function mapRecruitOfficeStaffDataDto(
     localOfficeId: data.localOfficeId,
     teamId: data.teamId ?? null,
     teamMemberId: data.teamMemberId ?? null,
+    isLeader: Boolean(data.isLeader),
   };
 }
 

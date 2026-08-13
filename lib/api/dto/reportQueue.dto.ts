@@ -59,7 +59,8 @@ export type ReportQueueSortDirDto = 'Asc' | 'Desc';
 export interface ReportQueueParamsDto {
   page?: number;
   pageSize?: number;
-  status?: ReportQueueStatusDto;
+  /** Multi: `?status=Submitted&status=Verified` */
+  status?: ReportQueueStatusDto | readonly ReportQueueStatusDto[];
   severity?: ReportSeverityDto;
   categoryId?: string;
   wardCode?: string;
