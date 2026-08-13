@@ -29,6 +29,7 @@ import { toastApiError } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, FileText, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -43,8 +44,13 @@ const INSPECTION_TEAM_PARAMS = {
 const FORM_HINT =
   'Chỉ cần chọn đội thanh tra để lập hồ sơ. Thông tin đối tượng vi phạm có thể để trống và bổ sung sau khi khảo sát hiện trường.';
 
-const SUCCESS_HINT =
-  'Hồ sơ tạo ra ở trạng thái nháp. Đội thanh tra được gán sẽ nhận việc trên ứng dụng Mobile để khảo sát và cập nhật kết quả.';
+const SUCCESS_DESCRIPTION = (
+  <div className="mx-auto max-w-82 space-y-2 text-brand">
+    <p className="font-medium">Hồ sơ được tạo ở trạng thái nháp.</p>
+    <p>Đội thanh tra được gán sẽ nhận việc trên ứng dụng Mobile.</p>
+    <p>Họ khảo sát hiện trường và cập nhật kết quả.</p>
+  </div>
+);
 
 const inspectionFormSchema = z.object({
   assignedTeamId: z.string().trim().min(1, 'Vui lòng chọn đội thanh tra'),
@@ -112,8 +118,6 @@ interface CreateInspectionReportDialogProps {
   onOpenChange: (open: boolean) => void;
   reportId: string;
   /** Navigate sau — hiện chỉ đóng dialog (chưa có route). */
-  onGoDashboard?: () => void;
-  /** Navigate sau — hiện chỉ đóng dialog (chưa có route). */
   onViewDetail?: (payload: { reportId: string; inspectionId: string }) => void;
 }
 
@@ -121,9 +125,9 @@ export function CreateInspectionReportDialog({
   open,
   onOpenChange,
   reportId,
-  onGoDashboard,
   onViewDetail,
 }: CreateInspectionReportDialogProps) {
+  const router = useRouter();
   const [successOpen, setSuccessOpen] = useState(false);
   const [createdInspectionId, setCreatedInspectionId] = useState('');
 
@@ -358,12 +362,15 @@ export function CreateInspectionReportDialog({
           if (!next) finishFlow();
         }}
         title="Thành công"
-        description={SUCCESS_HINT}
+        description={SUCCESS_DESCRIPTION}
         secondaryAction={{
-          label: 'Trở về dashboard',
+          label: 'Danh sách hồ sơ',
           onClick: () => {
-            onGoDashboard?.();
+            const id = createdInspectionId.trim();
             finishFlow();
+            const params = new URLSearchParams({ tab: 'inspections' });
+            if (id) params.set('highlight', id);
+            router.push(`/officer/recurrence?${params.toString()}`);
           },
         }}
         primaryAction={{

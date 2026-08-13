@@ -47,7 +47,7 @@ export function isSameNotificationDestination(
  * Ví dụ:
  * - `/officer/verify/{id}` → `/officer/verify?highlight={id}`
  * - `/officer/assign/{id}` → `/officer/assign?highlightReportId={id}`
- * - `/officer/tracking?reportId=` → `/officer/tracking`
+ * - `/officer/tracking/[id]` → `/officer/tracking`
  */
 function buildNotificationBackTarget(targetHref: string): string | null {
   const url = new URL(targetHref, 'http://local.invalid');
@@ -72,7 +72,10 @@ function buildNotificationBackTarget(targetHref: string): string | null {
   if (recurrenceMatch?.[1]) return '/officer/recurrence';
 
   const inspectionMatch = pathname.match(/^\/officer\/inspections\/([^/]+)/);
-  if (inspectionMatch?.[1]) return '/officer/recurrence?tab=inspections';
+  if (inspectionMatch?.[1]) {
+    const id = decodeURIComponent(inspectionMatch[1]);
+    return `/officer/recurrence?tab=inspections&highlight=${encodeURIComponent(id)}`;
+  }
 
   const reportsMatch = pathname.match(/^\/officer\/reports\/([^/]+)/);
   if (reportsMatch?.[1]) return '/officer/reports';
@@ -80,10 +83,10 @@ function buildNotificationBackTarget(targetHref: string): string | null {
   const reopenMatch = pathname.match(/^\/officer\/reopen\/([^/]+)/);
   if (reopenMatch?.[1]) return '/officer/reopen';
 
+  const trackingMatch = pathname.match(/^\/officer\/tracking\/([^/]+)/);
+  if (trackingMatch?.[1]) return '/officer/tracking';
+
   /** Overlay detail trên cùng route list. */
-  if (pathname.startsWith('/officer/tracking') && url.searchParams.get('reportId')?.trim()) {
-    return '/officer/tracking';
-  }
   if (pathname.startsWith('/officer/community') && url.searchParams.get('eventId')?.trim()) {
     return '/officer/community';
   }
@@ -204,7 +207,13 @@ function invalidateDestination(queryClient: QueryClient, href: string): Promise<
     tasks.push(queryClient.invalidateQueries({ queryKey: officerKeys.reopenRequests() }));
   }
 
-  if (pathname.startsWith('/officer/tracking') && reportId) {
+  const trackingDetailMatch = pathname.match(/^\/officer\/tracking\/([^/]+)/);
+  if (trackingDetailMatch?.[1]) {
+    const id = decodeURIComponent(trackingDetailMatch[1]);
+    tasks.push(queryClient.invalidateQueries({ queryKey: reportKeys.progress(id) }));
+    tasks.push(queryClient.invalidateQueries({ queryKey: reportKeys.detail(id) }));
+    tasks.push(queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() }));
+  } else if (pathname.startsWith('/officer/tracking') && reportId) {
     tasks.push(queryClient.invalidateQueries({ queryKey: reportKeys.progress(reportId) }));
     tasks.push(queryClient.invalidateQueries({ queryKey: reportKeys.detail(reportId) }));
     tasks.push(queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() }));

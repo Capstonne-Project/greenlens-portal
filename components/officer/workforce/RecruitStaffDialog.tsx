@@ -312,7 +312,10 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
       email: values.email.trim(),
       targetRole: values.targetRole,
       teamId,
-      isLeader: teamId ? (teamHasLeader ? false : Boolean(values.isLeader)) : false,
+      // isLeader optional — chỉ gửi khi chọn đội và đội chưa có trưởng nhóm.
+      ...(teamId && !teamHasLeader && values.isLeader != null
+        ? { isLeader: Boolean(values.isLeader) }
+        : {}),
     };
 
     try {
@@ -320,8 +323,8 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
       toastApiSuccess(
         res,
         teamId
-          ? `Đã thêm ${res.data.fullName || values.email} vào đội xử lý.`
-          : `Đã thêm ${res.data.fullName || values.email} vào văn phòng.`
+          ? `Đã gửi lời mời ${res.data.fullName || values.email} vào đội xử lý.`
+          : `Đã gửi lời mời ${res.data.fullName || values.email} vào văn phòng.`
       );
       onRecruited?.();
       onClose();
@@ -357,7 +360,9 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                 />
                 Thêm thành viên
               </DialogTitle>
-              <DialogDescription>Tuyển công dân vào văn phòng và đội xử lý</DialogDescription>
+              <DialogDescription>
+                Gửi lời mời công dân vào văn phòng (có thể gán đội). Lời mời hiệu lực 7 ngày.
+              </DialogDescription>
             </DialogHeader>
 
             <FieldGroup>

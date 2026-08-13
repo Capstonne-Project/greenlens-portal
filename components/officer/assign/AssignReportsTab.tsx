@@ -24,10 +24,15 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useAssignReportQueue } from '@/hooks/useOfficer';
+import {
+  locateReportInQueuePage,
+  useAssignReportQueue,
+  ASSIGN_QUEUE_STATUSES,
+} from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Check,
   ChevronDown,
@@ -41,7 +46,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
@@ -49,6 +54,9 @@ import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constant
 import type { ReportSeverity } from '@/lib/api/models/report';
 
 const REPORT_PAGE_SIZE = 8;
+
+/** Deep-link locate — cùng multi-status Verified + Reopened với list phân công. */
+const ASSIGN_HIGHLIGHT_LOCATE_STATUSES = ASSIGN_QUEUE_STATUSES;
 
 /** Filter panel width when open; collapse animates to 0 then unmounts. */
 const FILTER_WIDTH_OPEN = '14rem';
@@ -875,10 +883,11 @@ interface AssignReportsTabProps {
 }
 
 /**
- * Tab phân công — báo cáo Verified + Rejected từ GET /v1/reports/queue.
+ * Tab phân công — báo cáo Verified + Reopened (multi-status GET /v1/reports/queue).
  */
 export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignReportsTabProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const yearOnlyDefaults = getPresetDateInputs('all');
 
   const [page, setPage] = useState(1);
@@ -996,6 +1005,97 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     setSelected(new Set([highlightReportId]));
     setHighlightFading(false);
   }
+
+  /**
+   * Deep-link `?highlightReportId=` — locate trang chứa báo cáo (ưu tiên Reopened)
+   * rồi setPage để row hiện và highlight ngay.
+   */
+  const locateStartedForRef = useRef<string | null>(null);
+  const deepLinkTargetPageRef = useRef<number | null>(null);
+  const pageRef = useRef(page);
+  const isFetchingRef = useRef(isFetching);
+
+  useEffect(() => {
+    pageRef.current = page;
+    isFetchingRef.current = isFetching;
+  }, [page, isFetching]);
+
+  useEffect(() => {
+    if (!highlightReportId) {
+      locateStartedForRef.current = null;
+      deepLinkTargetPageRef.current = null;
+      return;
+    }
+    if (isPending) return;
+
+    if (filtered.some(r => r.id === highlightReportId)) {
+      deepLinkTargetPageRef.current = null;
+      locateStartedForRef.current = highlightReportId;
+      return;
+    }
+
+    if (deepLinkTargetPageRef.current != null) {
+      if (page !== deepLinkTargetPageRef.current || isFetching) return;
+      deepLinkTargetPageRef.current = null;
+      return;
+    }
+
+    if (locateStartedForRef.current === highlightReportId) return;
+    locateStartedForRef.current = highlightReportId;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        let foundPage: number | null = null;
+        foundPage = await locateReportInQueuePage(queryClient, highlightReportId, {
+          pageSize: REPORT_PAGE_SIZE,
+          status: ASSIGN_HIGHLIGHT_LOCATE_STATUSES,
+          sortBy: 'CreatedAt',
+          sortDir: 'Desc',
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
+          ...getDateRange(datePreset, customFrom, customTo),
+          ...(categoryId ? { categoryId } : {}),
+        });
+        if (cancelled) return;
+
+        if (foundPage == null) return;
+
+        if (foundPage === pageRef.current) {
+          if (isFetchingRef.current) {
+            locateStartedForRef.current = null;
+          }
+          return;
+        }
+
+        deepLinkTargetPageRef.current = foundPage;
+        setPage(foundPage);
+      } catch {
+        if (!cancelled) locateStartedForRef.current = null;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (
+        deepLinkTargetPageRef.current == null &&
+        locateStartedForRef.current === highlightReportId
+      ) {
+        locateStartedForRef.current = null;
+      }
+    };
+  }, [
+    highlightReportId,
+    filtered,
+    isPending,
+    isFetching,
+    page,
+    queryClient,
+    debouncedSearch,
+    datePreset,
+    customFrom,
+    customTo,
+    categoryId,
+  ]);
 
   const hasRejectedSelected = useMemo(
     () => [...selected].some(id => filtered.find(r => r.id === id)?.status === 'Rejected'),

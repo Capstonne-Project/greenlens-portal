@@ -11,7 +11,7 @@ import { ReassignTeamDialog } from '@/components/officer/tracking/ReassignTeamDi
 import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useReportDetail, useReportProgress } from '@/hooks/useReport';
+import { useReportProgress } from '@/hooks/useReport';
 import { useTeamDetail } from '@/hooks/useTeams';
 import type {
   ReportProgress,
@@ -92,6 +92,17 @@ interface MediaStageImage {
   uploadedAt?: string;
 }
 
+/** Một lần cập nhật tiến độ (từ assignment.progressUpdates). */
+interface ProgressUpdateStageItem {
+  id: string;
+  progressPercent: number;
+  progressNote: string | null;
+  updatedAt: string;
+  updatedByName: string;
+  teamName: string;
+  images: MediaStageImage[];
+}
+
 /**
  * Một mốc trên cột phải. `media` gắn minh chứng vào đúng giai đoạn sinh ra nó;
  * caption từng ảnh dùng `uploadedAt` (API progress không có mô tả text riêng).
@@ -102,17 +113,22 @@ interface LifecycleStage {
   label: string;
   at: string | null;
   meta?: string | null;
+  /** Highlight meta (vd. đội từ chối). */
+  metaTone?: 'default' | 'danger';
   /** Step phân công / nhận việc: avatar + tên đội + dòng phụ (điều phối / thời gian). */
   assignmentItems?: {
     assignmentId: string;
     teamId: string;
     teamName: string;
-    subtitle?: string | null;
+    /** Plain string hoặc ReactNode (vd. tên company/leader semibold). */
+    subtitle?: ReactNode;
   }[];
   mediaLabel?: string;
   mediaEmptyHint?: string;
   images?: MediaStageImage[];
-  /** Ghi chú hiển thị dưới ảnh (step Cập nhật tiến độ). */
+  /** Step Cập nhật tiến độ — nhiều lần update (không dùng media.progressImages). */
+  progressUpdates?: ProgressUpdateStageItem[];
+  /** Ghi chú hiển thị dưới ảnh (step khác). */
   noteBelowMedia?: string | null;
   state: LifecycleState;
 }
@@ -130,10 +146,33 @@ function formatDateTime(iso: string | null | undefined): string {
   });
 }
 
+/** Chỉ giờ:phút — caption dưới ảnh progress update. */
+function formatTimeOnly(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function nullIso(iso: string | null | undefined): string | null {
   if (!iso?.trim()) return null;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : iso;
+}
+
+/** Bỏ placeholder wire / chuỗi rỗng từ declineReason. */
+function usefulReason(reason?: string | null): string | null {
+  const value = reason?.trim();
+  if (!value || value === 'string' || value === '[ADMIN] string') return null;
+  return value;
+}
+
+/** Bỏ (0,0) / NaN — placeholder Swagger hoặc thiếu GPS. */
+function hasProgressCoords(lat: number, lng: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
 }
 
 function formatSlaRemaining(hours: number): string {
@@ -362,6 +401,8 @@ function LifecycleSpine({
   stages: LifecycleStage[];
   onPreview: ReportPreviewHandler;
 }) {
+  const [progressOpen, setProgressOpen] = useState(true);
+
   const currentKey =
     stages.find(s => s.state === 'current')?.key ??
     stages.find(s => s.state === 'pending')?.key ??
@@ -376,6 +417,9 @@ function LifecycleSpine({
         const isCurrent = stage.key === currentKey;
         const hasMedia = stage.mediaLabel != null;
         const images = stage.images ?? [];
+        const isProgressStep = stage.key === 'progress';
+        const progressCollapsed = isProgressStep && !progressOpen;
+        const progressCount = stage.progressUpdates?.length ?? 0;
 
         return (
           <li key={stage.key} className="relative flex gap-4 pb-7 last:pb-0">
@@ -413,35 +457,75 @@ function LifecycleSpine({
             </div>
 
             <div className="min-w-0 flex-1 pt-1">
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <h3
-                    className={cn(
-                      'text-sm font-semibold',
-                      isDone || isCurrent ? 'text-slate-900' : 'text-slate-400'
-                    )}
-                  >
-                    {stage.label}
-                  </h3>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                  {isProgressStep ? (
+                    <button
+                      type="button"
+                      onClick={() => setProgressOpen(v => !v)}
+                      aria-expanded={progressOpen}
+                      className={cn(
+                        'inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-md text-left',
+                        'transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
+                      )}
+                    >
+                      <h3
+                        className={cn(
+                          'text-sm font-semibold',
+                          isDone || isCurrent ? 'text-slate-900' : 'text-slate-400'
+                        )}
+                      >
+                        {stage.label}
+                      </h3>
+                      <motion.span
+                        animate={{ rotate: progressOpen ? 180 : 0 }}
+                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        className="inline-flex"
+                      >
+                        <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
+                      </motion.span>
+                      {!progressOpen && progressCount > 0 ? (
+                        <span className="text-[11px] font-medium tabular-nums text-slate-400">
+                          ({progressCount})
+                        </span>
+                      ) : null}
+                    </button>
+                  ) : (
+                    <h3
+                      className={cn(
+                        'text-sm font-semibold',
+                        isDone || isCurrent ? 'text-slate-900' : 'text-slate-400'
+                      )}
+                    >
+                      {stage.label}
+                    </h3>
+                  )}
                   {isCurrent ? (
                     <span className="inline-flex rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
                       Hiện tại
                     </span>
                   ) : null}
                 </div>
-                <span className="shrink-0 text-right text-xs tabular-nums text-slate-500">
-                  {stage.at ? (
-                    formatDateTime(stage.at)
-                  ) : isDone ? (
-                    '—'
-                  ) : (
-                    <span className="italic text-slate-400">Chưa thực hiện</span>
-                  )}
-                </span>
+                {stage.key !== 'progress' ? (
+                  <span className="shrink-0 text-right text-xs tabular-nums text-slate-500">
+                    {stage.at ? (
+                      formatDateTime(stage.at)
+                    ) : isDone ? (
+                      '—'
+                    ) : (
+                      <span className="italic text-slate-400">Chưa thực hiện</span>
+                    )}
+                  </span>
+                ) : null}
               </div>
 
               {stage.meta ? (
-                <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-slate-500">
+                <p
+                  className={cn(
+                    'mt-1.5 max-w-lg text-sm leading-relaxed',
+                    stage.metaTone === 'danger' ? 'font-medium text-red-600' : 'text-slate-500'
+                  )}
+                >
                   {stage.meta}
                 </p>
               ) : null}
@@ -461,8 +545,8 @@ function LifecycleSpine({
                       </span>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-800">{item.teamName}</p>
-                        {item.subtitle?.trim() ? (
-                          <p className="mt-0.5 text-xs text-slate-500">{item.subtitle.trim()}</p>
+                        {item.subtitle ? (
+                          <p className="mt-0.5 text-xs text-slate-500">{item.subtitle}</p>
                         ) : null}
                       </div>
                     </li>
@@ -470,7 +554,101 @@ function LifecycleSpine({
                 </ul>
               ) : null}
 
-              {hasMedia ? (
+              {stage.progressUpdates ? (
+                <AnimatePresence initial={false}>
+                  {!progressCollapsed ? (
+                    <motion.div
+                      key={`${stage.key}-progress`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-2.5">
+                        {stage.progressUpdates.length === 0 ? (
+                          <p className="text-sm text-slate-400 italic">
+                            {stage.mediaEmptyHint ?? 'Chưa có cập nhật tiến độ.'}
+                          </p>
+                        ) : (
+                          <ul className="mt-1 flex flex-col gap-10">
+                            {stage.progressUpdates.map(update => {
+                              const percent = Math.max(
+                                0,
+                                Math.min(100, Math.round(update.progressPercent))
+                              );
+                              return (
+                                <li key={update.id} className="space-y-2 py-1">
+                                  <div className="space-y-1">
+                                    <div className="flex items-baseline justify-between gap-2">
+                                      <p className="text-sm font-semibold text-slate-800">
+                                        Tiến độ{' '}
+                                        <span className="tabular-nums text-emerald-700">
+                                          {percent}%
+                                        </span>
+                                      </p>
+                                      <span className="shrink-0 text-[11px] tabular-nums text-slate-500">
+                                        {formatDateTime(update.updatedAt)}
+                                      </span>
+                                    </div>
+                                    {update.updatedByName?.trim() ? (
+                                      <p className="text-xs text-slate-500">
+                                        Được cập nhật bởi {update.updatedByName.trim()}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  {update.images.length > 0 ? (
+                                    <ul className="flex flex-wrap gap-2 pt-0.5">
+                                      {update.images.map(img => (
+                                        <li
+                                          key={`${update.id}-${img.url}-${img.uploadedAt}`}
+                                          className="w-20 sm:w-24"
+                                        >
+                                          <ClickableReportImage
+                                            url={img.url}
+                                            label={`Tiến độ ${percent}%`}
+                                            uploadedAt={img.uploadedAt}
+                                            onPreview={onPreview}
+                                            showTimestamp={false}
+                                            className="aspect-square w-full rounded-lg"
+                                          />
+                                          {img.uploadedAt ? (
+                                            <p className="mt-1 text-center text-[11px] leading-snug text-slate-500 tabular-nums">
+                                              {formatTimeOnly(img.uploadedAt)}
+                                            </p>
+                                          ) : null}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : null}
+                                  {update.progressNote?.trim() ? (
+                                    <p
+                                      className={cn(
+                                        'relative max-w-lg rounded-r-md py-1.5 pl-3 pr-2',
+                                        'bg-emerald-50/60 text-sm leading-relaxed text-slate-600',
+                                        'whitespace-pre-wrap wrap-break-word'
+                                      )}
+                                    >
+                                      <span
+                                        className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-emerald-400/70"
+                                        aria-hidden
+                                      />
+                                      <span className="font-semibold text-slate-700">
+                                        Ghi chú:{' '}
+                                      </span>
+                                      {update.progressNote.trim()}
+                                    </p>
+                                  ) : null}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              ) : hasMedia ? (
                 <div className="mt-2.5">
                   <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                     {stage.mediaLabel}
@@ -739,6 +917,17 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
   const firstAssignedAt = assignment?.assignedAt ?? null;
   const firstAcceptedAt = assignment?.acceptedAt ?? null;
   const anyAccepted = Boolean(assignment?.acceptedAt);
+  const isDeclined = assignment?.status === 'Declined';
+  /** Đội công ty DVMT vs đội dọn dẹp phường (LEO). */
+  const isCompanyTeamPath = Boolean(data.assignedCompany) || Boolean(assignment?.isCompanyTeam);
+
+  const companyName =
+    data.assignedCompany?.companyName?.trim() || assignment?.companyName?.trim() || '';
+
+  const leaderName = assignment?.teamLeaderName?.trim() || '';
+  const teamName = assignment?.teamName?.trim() || '';
+  const assignedByName = assignment?.assignedByName?.trim() || '';
+  const declineReasonText = usefulReason(assignment?.declineReason);
 
   const assignItems = assignment
     ? [
@@ -746,9 +935,16 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
           assignmentId: assignment.assignmentId,
           teamId: assignment.teamId,
           teamName: assignment.teamName,
-          subtitle: assignment.assignedByName?.trim()
-            ? `Điều phối bởi ${assignment.assignedByName.trim()}`
-            : null,
+          subtitle: companyName ? (
+            <>
+              Điều phối bởi công ty{' '}
+              <span className="font-semibold text-slate-700">{companyName}</span>
+            </>
+          ) : assignedByName ? (
+            <>
+              Điều phối bởi <span className="font-semibold text-slate-700">{assignedByName}</span>
+            </>
+          ) : null,
         },
       ]
     : [];
@@ -759,25 +955,73 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
           assignmentId: assignment.assignmentId,
           teamId: assignment.teamId,
           teamName: assignment.teamName,
-          subtitle: assignment.acceptedAt
-            ? assignment.teamLeaderName?.trim()
-              ? `Được nhận bởi ${assignment.teamLeaderName.trim()}`
-              : 'Đã nhận việc'
-            : assignment.status === 'Declined'
-              ? 'Đã từ chối'
-              : 'Chưa nhận việc',
+          subtitle: assignment.acceptedAt ? (
+            leaderName ? (
+              <>
+                Được nhận bởi <span className="font-semibold text-slate-700">{leaderName}</span>
+                {isCompanyTeamPath ? null : ' (trưởng nhóm)'}
+              </>
+            ) : (
+              'Đã nhận việc'
+            )
+          ) : isDeclined ? (
+            <span className="text-red-600">
+              {isCompanyTeamPath ? (
+                <>
+                  Đội công ty
+                  {companyName ? (
+                    <>
+                      {' '}
+                      <span className="font-semibold">{companyName}</span>
+                    </>
+                  ) : null}{' '}
+                  đã từ chối task
+                </>
+              ) : (
+                <>Đội dọn dẹp của phường đã từ chối task</>
+              )}
+              {declineReasonText ? (
+                <span className="mt-1 block text-red-700/90">
+                  Ghi chú: <span className="italic">&ldquo;{declineReasonText}&rdquo;</span>
+                </span>
+              ) : null}
+            </span>
+          ) : (
+            'Chưa nhận việc'
+          ),
         },
       ]
     : [];
 
-  const progressImages = assignment?.progressUpdates.flatMap(u => u.images) ?? [];
-  const progressNotes = (assignment?.progressUpdates ?? [])
-    .map(u => u.progressNote?.trim())
-    .filter((n): n is string => Boolean(n));
-  const latestProgressAt =
-    progressImages.length > 0
-      ? latestUploadedAt(progressImages)
-      : (assignment?.progressUpdatedAt ?? null);
+  /** Meta step «Đội nhận việc» — Declined: gợi ý xem lý do ở tab Tiến độ (không nhét full reason vào spine). */
+  let acceptedMeta: string | null = null;
+  if (hasAssignment && !anyAccepted) {
+    if (isDeclined) {
+      if (isCompanyTeamPath) {
+        acceptedMeta = companyName
+          ? `Đội ${teamName || 'công ty'} của công ty ${companyName} đã từ chối nhận việc. Xem lý do ở tab Tiến độ.`
+          : `Đội ${teamName || 'công ty'} đã từ chối nhận việc. Xem lý do ở tab Tiến độ.`;
+      } else {
+        acceptedMeta = teamName
+          ? `Đội dọn dẹp phường «${teamName}» đã từ chối nhận việc. Xem lý do ở tab Tiến độ.`
+          : 'Đội dọn dẹp của phường đã từ chối nhận việc. Xem lý do ở tab Tiến độ.';
+      }
+    } else {
+      acceptedMeta = 'Chưa có đội nào nhận việc.';
+    }
+  }
+
+  const progressUpdates: ProgressUpdateStageItem[] = (assignment?.progressUpdates ?? [])
+    .map(u => ({
+      id: u.id,
+      progressPercent: u.progressPercent,
+      progressNote: u.progressNote,
+      updatedAt: u.updatedAt,
+      updatedByName: u.updatedByName,
+      teamName: assignment?.teamName ?? '',
+      images: u.images.map(img => ({ url: img.url, uploadedAt: img.uploadedAt })),
+    }))
+    .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
 
   const stages: LifecycleStage[] = [
     {
@@ -797,7 +1041,8 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
       step: 2,
       label: 'Đội nhận việc',
       at: nullIso(firstAcceptedAt),
-      meta: !hasAssignment ? null : !anyAccepted ? 'Chưa có đội nào nhận việc.' : null,
+      meta: acceptedMeta,
+      metaTone: isDeclined ? 'danger' : 'default',
       assignmentItems: hasAssignment ? acceptItems : undefined,
       state: stateFor(statusRank('Assigned'), {
         forceDone: anyAccepted,
@@ -823,13 +1068,12 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
       key: 'progress',
       step: 4,
       label: 'Cập nhật tiến độ',
-      at: nullIso(latestProgressAt),
-      noteBelowMedia: progressNotes.length > 0 ? progressNotes.join('\n') : null,
-      mediaLabel: 'Ảnh tiến độ',
-      mediaEmptyHint: 'Chưa có ảnh cập nhật từ các đội.',
-      images: progressImages,
+      at: null,
+      mediaLabel: 'Cập nhật tiến độ',
+      mediaEmptyHint: 'Chưa có cập nhật tiến độ từ các đội.',
+      progressUpdates,
       state:
-        progressImages.length > 0
+        progressUpdates.length > 0
           ? 'done'
           : stateFor(statusRank('InProgress'), {
               forceCurrent: status === 'InProgress',
@@ -1090,21 +1334,11 @@ function ActivityTimeline({ items }: { items: ReportProgressStatusHistory[] }) {
   );
 }
 
-function ReportInfoCard({
-  data,
-  mapLat,
-  mapLng,
-  hasCoords,
-  isDetailPending,
-  googleMapsUrl,
-}: {
-  data: ReportProgress;
-  mapLat: number | undefined;
-  mapLng: number | undefined;
-  hasCoords: boolean;
-  isDetailPending: boolean;
-  googleMapsUrl: string | null;
-}) {
+function ReportInfoCard({ data }: { data: ReportProgress }) {
+  const mapLat = data.latitude;
+  const mapLng = data.longitude;
+  const hasCoords = hasProgressCoords(mapLat, mapLng);
+  const googleMapsUrl = hasCoords ? `https://www.google.com/maps?q=${mapLat},${mapLng}` : null;
   const heroUrl =
     data.media.submissionImages[0]?.url ??
     data.media.beforeImages[0]?.url ??
@@ -1117,6 +1351,10 @@ function ReportInfoCard({
   const isMergedDuplicate = data.status === 'Duplicate';
   const resolveDueAt = data.sla.resolveDueAt;
   const slaBreached = !isMergedDuplicate && Boolean(resolveDueAt) && data.sla.isBreached;
+
+  const assignedCompanyName =
+    data.assignedCompany?.companyName?.trim() || data.assignment?.companyName?.trim() || '';
+  const assignedByName = data.assignment?.assignedByName?.trim() || '';
 
   const teamTooltipItems = useMemo(() => {
     const a = data.assignment;
@@ -1260,7 +1498,21 @@ function ReportInfoCard({
           <div className="mb-4 min-w-0">
             <p className="text-sm font-semibold text-foreground">Tiến độ các đội</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Tiến độ và trạng thái xử lý của từng đội
+              {assignedCompanyName ? (
+                <>
+                  Tiến độ và trạng thái xử lý của đội được phân công{' '}
+                  <span className="font-semibold text-foreground/80">
+                    bởi công ty {assignedCompanyName}
+                  </span>
+                </>
+              ) : assignedByName ? (
+                <>
+                  Tiến độ và trạng thái xử lý của đội được phân công bởi{' '}
+                  <span className="font-semibold text-foreground/80">{assignedByName}</span>
+                </>
+              ) : (
+                'Tiến độ và trạng thái xử lý của đội được phân công'
+              )}
             </p>
           </div>
           {!data.assignment ? (
@@ -1281,11 +1533,7 @@ function ReportInfoCard({
         </TabsContent>
 
         <TabsContent value="map" className="mt-5 focus-visible:ring-0">
-          {isDetailPending ? (
-            <div className="flex h-48 items-center justify-center rounded-xl bg-muted/40">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : hasCoords && mapLat != null && mapLng != null ? (
+          {hasCoords ? (
             <div>
               <div className="overflow-hidden rounded-xl bg-muted/40">
                 <ReportLocationMap latitude={mapLat} longitude={mapLng} className="h-52 w-full" />
@@ -1455,15 +1703,7 @@ function OuterRailScrollbar({
   );
 }
 
-function DetailShell({
-  data,
-  reportId,
-  onBack,
-}: {
-  data: ReportProgress;
-  reportId: string;
-  onBack: () => void;
-}) {
+function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => void }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   /** Desktop: pane đang tương tác — quyết định hiện rail scrollbar mép phải. */
   const [activePane, setActivePane] = useState<'left' | 'right'>('right');
@@ -1471,16 +1711,6 @@ function DetailShell({
   const rightScrollRef = useRef<HTMLDivElement>(null);
 
   const lifecycleStages = useMemo(() => buildTrackingStages(data), [data]);
-
-  const { data: reportDetail, isPending: isDetailPending } = useReportDetail(reportId);
-  const latitude = reportDetail?.latitude;
-  const longitude = reportDetail?.longitude;
-  const hasCoords =
-    typeof latitude === 'number' &&
-    typeof longitude === 'number' &&
-    Number.isFinite(latitude) &&
-    Number.isFinite(longitude);
-  const googleMapsUrl = hasCoords ? `https://www.google.com/maps?q=${latitude},${longitude}` : null;
 
   const allImages = useMemo((): ReportPreviewImage[] => {
     const map = (items: ReportProgressImage[], label: string) =>
@@ -1543,14 +1773,7 @@ function DetailShell({
             onWheel={() => setActivePane('left')}
             className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:pb-8 lg:scrollbar-hide"
           >
-            <ReportInfoCard
-              data={data}
-              mapLat={latitude}
-              mapLng={longitude}
-              hasCoords={hasCoords}
-              isDetailPending={isDetailPending}
-              googleMapsUrl={googleMapsUrl}
-            />
+            <ReportInfoCard data={data} />
           </aside>
 
           <div className="hidden bg-border lg:block" aria-hidden />
@@ -1582,7 +1805,7 @@ function DetailShell({
 /**
  * Chi tiết báo cáo tra cứu (`/officer/reports/[id]`).
  * UI đồng bộ Leo tracking progress — file riêng để URL browser có `/id`.
- * Data: GET /v1/reports/{id}/progress (+ detail lat/lng).
+ * Data: GET /v1/reports/{id}/progress.
  */
 export function ReportsReportDetailClient({ reportId, onBack }: ReportsReportDetailClientProps) {
   const { data, isPending, isError, refetch, isFetching } = useReportProgress(reportId);
@@ -1613,5 +1836,5 @@ export function ReportsReportDetailClient({ reportId, onBack }: ReportsReportDet
     );
   }
 
-  return <DetailShell data={data} reportId={reportId} onBack={onBack} />;
+  return <DetailShell data={data} onBack={onBack} />;
 }

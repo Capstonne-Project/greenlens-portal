@@ -13,7 +13,8 @@ type AssignReportDetailClientProps = {
 
 /**
  * Chi tiết báo cáo trong ngữ cảnh Phân công — URL `/officer/assign/[id]`.
- * Reuse UI + logic `VerifyDetailClient`; back về `?from=` hoặc danh sách assign + highlight.
+ * Reuse UI + logic `VerifyDetailClient` (shell responsive `DETAIL_PAGE_SHELL`);
+ * back về `?from=` hoặc danh sách assign + highlight.
  * Soft-reload list khi quay lại (noti / deep-link) — không F5 browser.
  */
 export function AssignReportDetailClient({ id }: AssignReportDetailClientProps) {

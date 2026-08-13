@@ -19,7 +19,11 @@ import { Input } from '@/components/ui/input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useLeoMyReports } from '@/hooks/useLeoOffices';
+import {
+  LEO_TRACKING_REPORT_STATUSES,
+  useLeoTrackingReports,
+  type LeoTrackingReportStatus,
+} from '@/hooks/useLeoOffices';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type {
   LeoMyReportAssignment,
@@ -586,6 +590,7 @@ export function LeoTrackingPageClient({
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | LeoMyReportsSeverity>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | LeoTrackingReportStatus>('all');
   const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<
     'all' | LeoReportAssignmentStatus
   >('all');
@@ -613,6 +618,10 @@ export function LeoTrackingPageClient({
     setCategoryFilter(value);
     setPage(1);
   };
+  const handleStatusChange = (value: 'all' | LeoTrackingReportStatus) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
   const handleAssignmentStatusChange = (value: 'all' | LeoReportAssignmentStatus) => {
     setAssignmentStatusFilter(value);
     setPage(1);
@@ -629,6 +638,7 @@ export function LeoTrackingPageClient({
     Boolean(dateRange.fromDate || dateRange.toDate) ||
     categoryFilter !== 'all' ||
     severityFilter !== 'all' ||
+    statusFilter !== 'all' ||
     assignmentStatusFilter !== 'all';
 
   const handleClearAllFilters = () => {
@@ -636,20 +646,22 @@ export function LeoTrackingPageClient({
     setDateRange({ preset: 'all' });
     setCategoryFilter('all');
     setSeverityFilter('all');
+    setStatusFilter('all');
     setAssignmentStatusFilter('all');
     setPage(1);
   };
 
   const { data: catalogCategories = [] } = useCatalogPollutionCategories(queriesEnabled);
 
-  const { data, isLoading, isError } = useLeoMyReports(
+  const { data, isLoading, isError } = useLeoTrackingReports(
     {
       page,
       pageSize,
       sortBy: 'createdAt',
       sortDesc: true,
       search: debouncedSearch || undefined,
-      status: 'InProgress',
+      /** `all` → multi `?status=InProgress&status=Resolved`; filter cụ thể → 1 status. */
+      status: statusFilter,
       categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
       severity: severityFilter === 'all' ? undefined : severityFilter,
       assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
@@ -669,10 +681,17 @@ export function LeoTrackingPageClient({
       ? 'Loại ô nhiễm'
       : (catalogCategories.find(cat => cat.id === categoryFilter)?.nameVi ?? 'Loại ô nhiễm');
   const severityFilterLabel = severityFilter === 'all' ? 'Mức độ' : SEVERITY_LABEL[severityFilter];
+  const statusFilterLabel =
+    statusFilter === 'all' ? 'Trạng thái' : reportStatusLabelVi(statusFilter);
   const assignmentFilterLabel =
     assignmentStatusFilter === 'all'
       ? 'Trạng thái đội'
       : ASSIGNMENT_STATUS_LABEL[assignmentStatusFilter];
+
+  const emptyStateMessage =
+    statusFilter === 'all'
+      ? 'Không có báo cáo đang xử lý hoặc đã giải quyết.'
+      : `Không có báo cáo ở trạng thái ${reportStatusLabelVi(statusFilter)}.`;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -773,6 +792,32 @@ export function LeoTrackingPageClient({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                {statusFilterLabel}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleStatusChange('all')}
+                className={statusFilter === 'all' ? 'font-medium text-brand' : ''}
+              >
+                Trạng thái
+              </DropdownMenuItem>
+              {LEO_TRACKING_REPORT_STATUSES.map(status => (
+                <DropdownMenuItem
+                  key={status}
+                  onClick={() => handleStatusChange(status)}
+                  className={statusFilter === status ? 'font-medium text-brand' : ''}
+                >
+                  {reportStatusLabelVi(status)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
                 {assignmentFilterLabel}
                 <ChevronDown className="size-3.5 opacity-60" aria-hidden />
               </Button>
@@ -827,13 +872,7 @@ export function LeoTrackingPageClient({
             ) : items.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <SaveIcon size={32} className="opacity-30" />
-                <p>
-                  Không có báo cáo ở trạng thái{' '}
-                  <span className="font-medium text-foreground">
-                    {reportStatusLabelVi('InProgress')}
-                  </span>
-                  .
-                </p>
+                <p>{emptyStateMessage}</p>
               </div>
             ) : (
               <HoverEffect
@@ -863,13 +902,7 @@ export function LeoTrackingPageClient({
           ) : items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
               <SaveIcon size={32} className="opacity-30" />
-              <p>
-                Không có báo cáo ở trạng thái{' '}
-                <span className="font-medium text-foreground">
-                  {reportStatusLabelVi('InProgress')}
-                </span>
-                .
-              </p>
+              <p>{emptyStateMessage}</p>
             </div>
           ) : (
             <section className="flex flex-col gap-2">

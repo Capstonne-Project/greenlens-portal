@@ -86,6 +86,7 @@ export const LEO_MY_REPORTS_STATUSES = [
   'Verified',
   'InProgress',
   'Resolved',
+  'Reopened',
   'Closed',
   'Rejected',
   'Duplicate',
@@ -203,7 +204,11 @@ export interface LeoMyReportsParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  status?: LeoMyReportsStatus;
+  /**
+   * Filter status — BE hỗ trợ multi: `?status=InProgress&status=Resolved`.
+   * Truyền 1 giá trị hoặc mảng.
+   */
+  status?: LeoMyReportsStatus | readonly LeoMyReportsStatus[];
   categoryId?: string;
   severity?: LeoMyReportsSeverity;
   assignmentStatus?: LeoReportAssignmentStatus;
@@ -287,11 +292,11 @@ export interface RecruitOfficeStaffInput {
   targetRole: RecruitStaffTargetRole;
   /** Null khi tuyển vào văn phòng mà chưa gán đội. */
   teamId?: string | null;
-  /** `false` khi `teamId` null; có đội thì theo toggle trưởng nhóm. */
+  /** Optional — chỉ gửi lên BE khi có đội và caller set. */
   isLeader?: boolean;
 }
 
-/** POST /v1/offices/my/staff — kết quả tuyển nhân sự. */
+/** POST /v1/offices/my/staff — kết quả tuyển nhân sự (lời mời / staff). */
 export interface RecruitOfficeStaffResult {
   userId: string;
   email: string;
@@ -300,4 +305,5 @@ export interface RecruitOfficeStaffResult {
   localOfficeId: string;
   teamId: string | null;
   teamMemberId: string | null;
+  isLeader: boolean;
 }

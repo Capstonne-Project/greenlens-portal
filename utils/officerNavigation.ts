@@ -17,3 +17,9 @@ export function withOfficerFromQuery(href: string, fromPath: string): string {
   const sep = href.includes('?') ? '&' : '?';
   return `${href}${sep}from=${encodeURIComponent(from)}`;
 }
+
+/** Chi tiết theo dõi xử lý — `/officer/tracking/{id}` (+ `from` nếu có). */
+export function officerTrackingDetailHref(reportId: string, fromPath?: string | null): string {
+  const href = `/officer/tracking/${encodeURIComponent(reportId)}`;
+  return fromPath ? withOfficerFromQuery(href, fromPath) : href;
+}

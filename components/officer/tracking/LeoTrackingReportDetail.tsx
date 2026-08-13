@@ -901,6 +901,7 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
 
   const leaderName = assignment?.teamLeaderName?.trim() || '';
   const teamName = assignment?.teamName?.trim() || '';
+  const assignedByName = assignment?.assignedByName?.trim() || '';
   const declineReasonText = usefulReason(assignment?.declineReason);
 
   const assignItems = assignment
@@ -913,6 +914,10 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
             <>
               Điều phối bởi công ty{' '}
               <span className="font-semibold text-slate-700">{companyName}</span>
+            </>
+          ) : assignedByName ? (
+            <>
+              Điều phối bởi <span className="font-semibold text-slate-700">{assignedByName}</span>
             </>
           ) : null,
         },
@@ -929,6 +934,7 @@ function buildTrackingStages(data: ReportProgress): LifecycleStage[] {
             leaderName ? (
               <>
                 Được nhận bởi <span className="font-semibold text-slate-700">{leaderName}</span>
+                {isCompanyTeamPath ? null : ' (trưởng nhóm)'}
               </>
             ) : (
               'Đã nhận việc'
@@ -1476,6 +1482,7 @@ function ReportInfoCard({
 
   const assignedCompanyName =
     data.assignedCompany?.companyName?.trim() || data.assignment?.companyName?.trim() || '';
+  const assignedByName = data.assignment?.assignedByName?.trim() || '';
 
   const mapLat = data.latitude;
   const mapLng = data.longitude;
@@ -1635,6 +1642,11 @@ function ReportInfoCard({
                     <span className="font-semibold text-foreground/80">
                       bởi công ty {assignedCompanyName}
                     </span>
+                  </>
+                ) : assignedByName ? (
+                  <>
+                    Tiến độ và trạng thái xử lý của đội được phân công bởi{' '}
+                    <span className="font-semibold text-foreground/80">{assignedByName}</span>
                   </>
                 ) : (
                   'Tiến độ và trạng thái xử lý của đội được phân công'

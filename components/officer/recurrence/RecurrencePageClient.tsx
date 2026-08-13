@@ -1,9 +1,17 @@
 'use client';
 
-import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Check,
   ChevronDown,
@@ -38,6 +46,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Drawer,
   DrawerClose,
@@ -92,8 +101,13 @@ import {
 } from '@/lib/constants/reportStatus';
 import { violationLevelLabelVi } from '@/lib/constants/violationLevel';
 import { cn } from '@/lib/utils';
+import { withOfficerFromQuery } from '@/utils/officerNavigation';
 
 const RECURRENCE_PAGE_SIZE = 10;
+
+/** Highlight hàng sau khi quay lại list — giữ ngắn rồi fade (khớp duration-700). */
+const HIGHLIGHT_HOLD_MS = 1600;
+const HIGHLIGHT_CLEAR_MS = 2300;
 
 /** Deep-link về list tái phát khi back từ tracking detail. */
 const RECURRENCE_LIST_PATH = '/officer/recurrence';
@@ -176,6 +190,35 @@ const CELL_META =
   'block min-w-0 truncate text-[10px] tabular-nums leading-snug @[44rem]/rec-table:text-xs';
 const HEAD_LABEL =
   'block min-w-0 truncate text-[0.625rem] font-semibold uppercase tracking-wide text-slate-500 @[44rem]/rec-table:text-[0.6875rem]';
+
+/** Header cột — tooltip shadcn chỉ khi bị truncate (ellipsis). */
+function TruncatedHeadLabel({ label }: { label: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setTruncated(el.scrollWidth > el.clientWidth + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [label]);
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip open={truncated ? undefined : false}>
+        <TooltipTrigger asChild>
+          <span ref={ref} className={cn(HEAD_LABEL, 'cursor-pointer')}>
+            {label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 const THUMB_SIZE = 'size-9 @[44rem]/rec-table:size-10';
 const THUMB_SQUARE = cn(
@@ -1153,10 +1196,7 @@ function PriorClosedReportCell({
         Báo cáo đã đóng
       </p>
       <Link
-        href={`/officer/tracking?${new URLSearchParams({
-          reportId: prior.id,
-          from: RECURRENCE_LIST_PATH,
-        }).toString()}`}
+        href={withOfficerFromQuery(`/officer/reports/${prior.id}`, RECURRENCE_LIST_PATH)}
         title={prior.code}
         onClick={e => e.stopPropagation()}
         className={cn(
@@ -1553,10 +1593,14 @@ function RecurrenceCandidateRows({
   row,
   rowIndex,
   onOpenDetail,
+  isHighlighted = false,
+  rowRef,
 }: {
   row: ViolationRecurrenceCandidateItem;
   rowIndex: number;
   onOpenDetail: (row: ViolationRecurrenceCandidateItem) => void;
+  isHighlighted?: boolean;
+  rowRef?: (el: HTMLTableRowElement | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -1573,9 +1617,11 @@ function RecurrenceCandidateRows({
   return (
     <Fragment>
       <TableRow
+        ref={rowRef}
         className={cn(
-          'cursor-pointer transition-colors hover:bg-orange-50/40',
-          expanded ? 'border-b-0' : ROW_BORDER
+          'cursor-pointer transition-colors duration-700 hover:bg-orange-50/40',
+          expanded ? 'border-b-0' : ROW_BORDER,
+          isHighlighted && 'bg-emerald-50'
         )}
         onClick={() => onOpenDetail(row)}
       >
@@ -1640,6 +1686,8 @@ type RecurrencePageClientProps = {
 
 export function RecurrencePageClient({ embedded = false }: RecurrencePageClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -1647,6 +1695,16 @@ export function RecurrencePageClient({ embedded = false }: RecurrencePageClientP
   const [toolbarDatePreset, setToolbarDatePreset] = useState<DatePreset>('all');
   const [applied, setApplied] = useState<AppliedFilters>(() => clearedFilters());
   const [draft, setDraft] = useState<AppliedFilters>(() => clearedFilters());
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [highlightFading, setHighlightFading] = useState(false);
+  const [latchedUrlHighlight, setLatchedUrlHighlight] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+  /** Deep-link `/officer/recurrence?highlight={reportId}` — không lấy highlight của tab hồ sơ xử phạt. */
+  const urlHighlight =
+    searchParams.get('tab') === 'inspections'
+      ? null
+      : searchParams.get('highlight')?.trim() || null;
 
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS, () => {
     setPage(1);
@@ -1700,6 +1758,57 @@ export function RecurrencePageClient({ embedded = false }: RecurrencePageClientP
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const pagination = data?.pagination;
+
+  /** Bỏ `?highlight=` khỏi URL — không setState (eslint react-hooks/set-state-in-effect). */
+  useEffect(() => {
+    if (!urlHighlight) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('highlight');
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [urlHighlight, searchParams, router, pathname]);
+
+  /** Tự tắt highlight — không phụ thuộc items/URL (tránh cleanup giết timer). */
+  useEffect(() => {
+    if (!highlightedId) return;
+    const fadeTimer = window.setTimeout(() => setHighlightFading(true), HIGHLIGHT_HOLD_MS);
+    const clearTimer = window.setTimeout(() => {
+      setLatchedUrlHighlight(null);
+      setHighlightedId(null);
+      setHighlightFading(false);
+    }, HIGHLIGHT_CLEAR_MS);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [highlightedId]);
+
+  useEffect(() => {
+    if (!highlightedId || highlightFading) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = rowRefs.current.get(highlightedId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      attempts += 1;
+      if (attempts < 24) requestAnimationFrame(tryScroll);
+    };
+    tryScroll();
+    return () => {
+      cancelled = true;
+    };
+  }, [highlightedId, items, highlightFading]);
+
+  if (urlHighlight && urlHighlight !== latchedUrlHighlight) {
+    setLatchedUrlHighlight(urlHighlight);
+    setHighlightedId(urlHighlight);
+    setHighlightFading(false);
+  }
 
   const handleFilterOpenChange = (open: boolean) => {
     if (open) {
@@ -1874,7 +1983,9 @@ export function RecurrencePageClient({ embedded = false }: RecurrencePageClientP
                       col.className
                     )}
                   >
-                    {col.label ? (
+                    {col.key === 'daysSince' && col.label ? (
+                      <TruncatedHeadLabel label={col.label} />
+                    ) : col.label ? (
                       <span className={HEAD_LABEL} title={col.label}>
                         {col.label}
                       </span>
@@ -1923,6 +2034,11 @@ export function RecurrencePageClient({ embedded = false }: RecurrencePageClientP
                     row={row}
                     rowIndex={rowIndex}
                     onOpenDetail={openDetail}
+                    isHighlighted={row.id === highlightedId && !highlightFading}
+                    rowRef={el => {
+                      if (el) rowRefs.current.set(row.id, el);
+                      else rowRefs.current.delete(row.id);
+                    }}
                   />
                 ))
               )}

@@ -9,26 +9,22 @@ import {
 } from '@/lib/api/services/fetchOffice';
 import { extractApiErrorCode } from '@/lib/api/core';
 import type {
-  LeoMyReportsData,
   LeoMyReportsParams,
   LeoMyReportsStatus,
   OfficeStaffListParams,
   RecruitOfficeStaffInput,
 } from '@/lib/api/models/office';
 import { teamKeys } from '@/hooks/useTeams';
-import {
-  keepPreviousData,
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const leoOfficesKeys = {
   all: ['officer', 'leo'] as const,
   myReports: () => [...leoOfficesKeys.all, 'my-reports'] as const,
-  reportsList: (params: LeoMyReportsParams) => [...leoOfficesKeys.myReports(), params] as const,
+  reportsList: (params: LeoMyReportsParams) => {
+    const { status, ...rest } = params;
+    const statusKey = status == null ? null : Array.isArray(status) ? [...status].sort() : status;
+    return [...leoOfficesKeys.myReports(), { ...rest, status: statusKey }] as const;
+  },
   myStaff: () => [...leoOfficesKeys.all, 'my-staff'] as const,
   staffList: (params: OfficeStaffListParams) => [...leoOfficesKeys.myStaff(), params] as const,
   staffLookup: (email: string) => [...leoOfficesKeys.myStaff(), 'lookup', email] as const,
@@ -38,11 +34,48 @@ export const leoOfficesKeys = {
 const LIST_STALE_MS = 3 * 60 * 1000;
 const LOOKUP_STALE_MS = 60 * 1000;
 
-/** Trạng thái tab Phân công — BE chỉ nhận một `status`/request nên gọi song song rồi gộp. */
+/**
+ * Tab Phân công — GET /v1/offices/my/reports multi-status:
+ * `?status=Verified&status=Rejected`.
+ */
 const ASSIGN_REPORT_STATUSES = [
   'Verified',
   'Rejected',
 ] as const satisfies readonly LeoMyReportsStatus[];
+
+/**
+ * Tab Theo dõi — multi-status `InProgress` + `Resolved`
+ * (`?status=InProgress&status=Resolved`).
+ */
+export const LEO_TRACKING_REPORT_STATUSES = [
+  'InProgress',
+  'Resolved',
+] as const satisfies readonly LeoMyReportsStatus[];
+
+export type LeoTrackingReportStatus = (typeof LEO_TRACKING_REPORT_STATUSES)[number];
+
+/** Tra cứu `/officer/reports` — Rejected / Closed trên GET /v1/offices/my/reports. */
+export const LEO_LOOKUP_REPORT_STATUSES = [
+  'Rejected',
+  'Closed',
+] as const satisfies readonly LeoMyReportsStatus[];
+
+export type LeoLookupReportStatus = (typeof LEO_LOOKUP_REPORT_STATUSES)[number];
+
+type LeoAssignReportsParams = Omit<LeoMyReportsParams, 'status'>;
+
+type LeoTrackingReportsParams = Omit<LeoMyReportsParams, 'status'> & {
+  /** `all` = multi InProgress+Resolved một request; hoặc 1 status. */
+  status?: LeoTrackingReportStatus | 'all';
+};
+
+type LeoLookupReportsParams = Omit<LeoMyReportsParams, 'status'> & {
+  /**
+   * `all` (mặc định) = multi `?status=Rejected&status=Closed`.
+   * Hoặc 1 status / mảng status cụ thể.
+   */
+  status?: LeoLookupReportStatus | 'all' | readonly LeoLookupReportStatus[];
+};
 
 /**
  * GET /v1/offices/my/reports — LEO màn theo dõi báo cáo trong LocalOffice.
@@ -59,60 +92,81 @@ export function useLeoMyReports(params: LeoMyReportsParams, options?: { enabled?
   });
 }
 
-type LeoAssignReportsParams = Omit<LeoMyReportsParams, 'status'>;
-
 /**
- * Phân công LEO — gộp báo cáo `Verified` + `Rejected` trong một danh sách.
- * Gọi 2 request song song (mỗi status một request), merge và sort `createdAt` mới nhất.
+ * Phân công LEO — GET /v1/offices/my/reports multi-status
+ * ?status=Verified&status=Rejected. Pagination lấy trực tiếp từ BE.
  */
 export function useLeoAssignReports(
   params: LeoAssignReportsParams,
   options?: { enabled?: boolean }
 ) {
-  const enabled = options?.enabled ?? true;
-
-  const queries = useQueries({
-    queries: ASSIGN_REPORT_STATUSES.map(status => ({
-      queryKey: leoOfficesKeys.reportsList({ ...params, status }),
-      queryFn: () => fetchLeoMyReports({ ...params, status }),
-      staleTime: LIST_STALE_MS,
-      placeholderData: keepPreviousData,
-      enabled,
-    })),
-  });
-
-  const data = useMemo((): LeoMyReportsData | undefined => {
-    const payloads = queries.map(q => q.data?.data).filter(Boolean) as LeoMyReportsData[];
-    if (payloads.length === 0) return undefined;
-
-    const base = payloads[0];
-    const items = payloads
-      .flatMap(p => p.items)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    const totalItems = payloads.reduce((sum, p) => sum + p.pagination.totalItems, 0);
-    const totalPages = Math.max(1, ...payloads.map(p => p.pagination.totalPages));
-    const page = params.page ?? 1;
-
-    return {
-      ...base,
-      items,
-      pagination: {
-        page,
-        pageSize: params.pageSize ?? 10,
-        totalItems,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
-    };
-  }, [queries, params.page, params.pageSize]);
+  const query = useLeoMyReports(
+    { ...params, status: ASSIGN_REPORT_STATUSES },
+    { enabled: options?.enabled ?? true }
+  );
 
   return {
-    data,
-    isPending: queries.some(q => q.isPending),
-    isError: queries.some(q => q.isError),
+    data: query.data,
+    isPending: query.isPending,
+    isError: query.isError,
   };
+}
+
+/**
+ * Theo dõi LEO — InProgress + Resolved.
+ * `status: 'all'` (mặc định): multi `?status=InProgress&status=Resolved`.
+ * Status cụ thể: một request (reuse cache leoOfficesKeys.reportsList).
+ */
+export function useLeoTrackingReports(
+  params: LeoTrackingReportsParams,
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled ?? true;
+  const { status = 'all', ...rest } = params;
+  const singleStatus = status !== 'all' ? status : null;
+
+  const singleQuery = useLeoMyReports(
+    { ...rest, status: singleStatus ?? 'InProgress' },
+    { enabled: enabled && Boolean(singleStatus) }
+  );
+
+  const multiQuery = useLeoMyReports(
+    { ...rest, status: LEO_TRACKING_REPORT_STATUSES },
+    { enabled: enabled && !singleStatus }
+  );
+
+  if (singleStatus) {
+    const isPending = singleQuery.isPending;
+    return {
+      data: singleQuery.data,
+      isLoading: isPending,
+      isPending,
+      isError: singleQuery.isError,
+    };
+  }
+
+  const isPending = multiQuery.isPending;
+  return {
+    data: multiQuery.data,
+    isLoading: isPending,
+    isPending,
+    isError: multiQuery.isError,
+  };
+}
+
+/**
+ * Tra cứu báo cáo kết thúc — `Rejected` + `Closed` từ GET /v1/offices/my/reports.
+ * `status: 'all'` (mặc định): multi `?status=Rejected&status=Closed`.
+ * Status cụ thể: một request.
+ */
+export function useLeoLookupReports(
+  params: LeoLookupReportsParams,
+  options?: { enabled?: boolean }
+) {
+  const { status = 'all', ...rest } = params;
+  const resolvedStatus = status === 'all' || status == null ? LEO_LOOKUP_REPORT_STATUSES : status;
+
+  return useLeoMyReports({ ...rest, status: resolvedStatus }, options);
 }
 
 /**

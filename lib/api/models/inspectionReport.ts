@@ -186,6 +186,7 @@ export interface InspectionDetail {
   payments: InspectionPayment[];
   acceptedAt: string | null;
   acceptedByUserId: string | null;
+  acceptedByUserName: string | null;
   arrivalConfirmedAt: string | null;
   arrivalLatitude: number | null;
   arrivalLongitude: number | null;

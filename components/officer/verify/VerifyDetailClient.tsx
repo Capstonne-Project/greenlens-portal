@@ -232,8 +232,20 @@ const INFO_ICON_CLASS =
 /** Icon section title — stroke xanh, căn giữa theo dòng tiêu đề. */
 const SECTION_ICON_CLASS = 'size-5 shrink-0 text-emerald-600';
 
-/** Horizontal inset — HeaderStrip, Gallery, content cột phải/trái đồng bộ. */
-const DETAIL_PAGE_X_PAD = 'px-14 xl:px-24';
+/**
+ * Officer verify/assign detail shell — fluid inset mọi breakpoint, cap width trên màn lớn.
+ * Không dùng px cố định lớn (px-28) từ mobile: sidebar officer chỉ ~60px, content phải đọc được
+ * từ 360px → laptop 1366 → 1920/ultrawide.
+ */
+const DETAIL_PAGE_SHELL =
+  'mx-auto w-full max-w-[90rem] px-12 sm:px-16 md:px-20 lg:px-24 xl:px-28 2xl:px-36 min-[1920px]:px-44';
+
+/** 2 cột khi panel đủ rộng (~1200px viewport với rail 60px); dưới đó stack. */
+const DETAIL_BODY_GRID =
+  'grid grid-cols-1 gap-5 min-[1200px]:grid-cols-[minmax(0,1fr)_minmax(17.5rem,20rem)] min-[1200px]:gap-6 2xl:grid-cols-[minmax(0,1fr)_22.5rem] 2xl:gap-8';
+
+const DETAIL_ASIDE =
+  'flex flex-col gap-4 min-[1200px]:sticky min-[1200px]:top-19 min-[1200px]:self-start';
 
 function InfoField({
   icon: Icon,
@@ -573,8 +585,8 @@ function HeaderStrip({
   isSuspectedViolationRecurrence?: boolean;
 }) {
   return (
-    <CardTitle className="flex min-w-0 items-start justify-between gap-3 text-2xl font-bold tracking-tight">
-      <span className="min-w-0 flex-1">
+    <CardTitle className="flex min-w-0 items-start justify-between gap-2 text-lg font-bold tracking-tight sm:gap-3 sm:text-xl xl:text-2xl">
+      <span className="min-w-0 flex-1 wrap-break-word">
         Báo cáo{' '}
         <span className="relative inline-block align-baseline pr-6">
           {pendingCategoryName}
@@ -617,7 +629,9 @@ function HeaderStrip({
           ) : null}
         </span>
       </span>
-      <span className="shrink-0 pt-0.5 text-xs font-medium text-slate-400">#{detail.code}</span>
+      <span className="shrink-0 pt-0.5 font-mono text-[11px] font-medium text-slate-400 sm:text-xs">
+        #{detail.code}
+      </span>
     </CardTitle>
   );
 }
@@ -726,17 +740,17 @@ function Gallery({
 
   return (
     <>
-      <div className="relative h-[min(62vh,520px)] w-full overflow-hidden rounded-xl bg-white">
+      <div className="relative h-[min(48vh,280px)] w-full overflow-hidden rounded-xl bg-white sm:h-[min(52vh,380px)] md:h-[min(56vh,460px)] xl:h-[min(62vh,520px)]">
         {suspiciousBadge}
         <LayoutGrid cards={cards} variant="hero5" className="h-full gap-1 p-0" />
       </div>
 
       <Dialog open={showAll} onOpenChange={setShowAll}>
-        <DialogContent className="flex h-[92vh] max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
+        <DialogContent className="flex h-dvh max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:h-[92vh] sm:rounded-xl">
           <DialogDescription className="sr-only">
             Hộp thoại xem tất cả hình ảnh báo cáo theo dạng lưới.
           </DialogDescription>
-          <DialogHeader className="shrink-0 space-y-0 border-b px-12 py-4 text-center">
+          <DialogHeader className="shrink-0 space-y-0 border-b px-4 py-3 text-center sm:px-8 sm:py-4 md:px-12">
             <DialogTitle className="truncate text-center text-sm font-semibold tracking-tight text-foreground md:text-base">
               {address || 'Hình ảnh báo cáo'}
             </DialogTitle>
@@ -806,18 +820,20 @@ function LocationCard({
     'h-auto w-full rounded-none border-x-0 border-t-0 border-b border-foreground/40 bg-transparent px-0 py-1 text-lg font-medium text-foreground shadow-none focus:border-emerald-500 focus:ring-0 data-[state=open]:border-emerald-500';
 
   return (
-    <div>
+    <div className="@container/verify-info">
       <Card className="rounded-none border-0 border-t border-border bg-transparent shadow-none">
-        <CardHeader className="space-y-0 p-0 pt-10">
+        <CardHeader className="space-y-0 p-0 pt-6 sm:pt-8 xl:pt-10">
           <div className="flex gap-2.5">
             <span className="inline-flex h-7 shrink-0 items-center" aria-hidden>
               <ClipboardList className={SECTION_ICON_CLASS} />
             </span>
-            <CardTitle className="text-xl leading-7">Thông tin báo cáo ô nhiễm</CardTitle>
+            <CardTitle className="text-lg leading-7 sm:text-xl">
+              Thông tin báo cáo ô nhiễm
+            </CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="p-0 pt-7 pb-6">
-          <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+        <CardContent className="p-0 pt-5 pb-6 sm:pt-7">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-6 @lg/verify-info:grid-cols-2">
             {/* Hàng 1: Loại | Trạng thái — DOM order giữ responsive stack 1 cột */}
             <InfoField icon={Tag} label="Loại ô nhiễm">
               {canEditFields ? (
@@ -878,7 +894,7 @@ function LocationCard({
             </InfoField>
 
             {/* Hàng 3: Thẻ rác thải full width */}
-            <div className="min-w-0 sm:col-span-2">
+            <div className="min-w-0 @lg/verify-info:col-span-2">
               <InfoField icon={Tag} label="Thẻ rác thải">
                 <WasteTagPicker
                   attachedTags={detail.wasteTags}
@@ -904,7 +920,7 @@ function LocationCard({
 
             {/* Hàng 5: Mô tả — cùng gap-y-6 với Điểm ưu tiên (không Separator my-4) */}
             {detail.description ? (
-              <div className="min-w-0 sm:col-span-2">
+              <div className="min-w-0 @lg/verify-info:col-span-2">
                 <InfoField icon={AlignLeft} label="Mô tả">
                   <ExpandableDescription key={detail.description} text={detail.description} />
                 </InfoField>
@@ -915,14 +931,18 @@ function LocationCard({
       </Card>
 
       <Card className="rounded-none border-0 border-t border-border bg-transparent shadow-none">
-        <CardHeader className="space-y-0 p-0 pt-10">
+        <CardHeader className="space-y-0 p-0 pt-6 sm:pt-8 xl:pt-10">
           <div className="flex gap-2.5">
             <span className="inline-flex h-7 shrink-0 items-center" aria-hidden>
               <MapPin className={SECTION_ICON_CLASS} />
             </span>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-xl leading-7">Nơi {pendingCategoryName}</CardTitle>
-              <CardDescription className="mt-1.5 text-base">{detail.address}</CardDescription>
+              <CardTitle className="text-lg leading-7 sm:text-xl">
+                Nơi {pendingCategoryName}
+              </CardTitle>
+              <CardDescription className="mt-1.5 text-sm sm:text-base">
+                {detail.address}
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -931,12 +951,10 @@ function LocationCard({
             <iframe
               key={mapType}
               title="map"
-              width="100%"
-              height="470"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               src={`https://maps.google.com/maps?q=${detail.latitude},${detail.longitude}&z=15&t=${mapType}&output=embed`}
-              className="block"
+              className="block h-52 w-full sm:h-72 lg:h-96 xl:h-[470px]"
             />
             <div className="absolute right-3 top-3">
               <DropdownMenu>
@@ -1041,7 +1059,7 @@ function AiInsightCard({
         <Field orientation="horizontal" className="items-start justify-between gap-3">
           <Label className="pt-1 text-base font-normal text-muted-foreground">Gợi ý thẻ rác</Label>
           {aiSuggestedNames.length > 0 ? (
-            <div className="flex max-w-[65%] flex-wrap justify-end gap-1.5">
+            <div className="flex min-w-0 max-w-[min(100%,16rem)] flex-wrap justify-end gap-1.5 sm:max-w-[65%]">
               {aiSuggestedNames.map((name, index) => (
                 <Badge
                   key={`${name}-${index}`}
@@ -1066,7 +1084,7 @@ function AiInsightCard({
         <Field orientation="horizontal" className="items-start justify-between gap-3">
           <Label className="pt-1 text-base font-normal text-muted-foreground">Thẻ rác thải</Label>
           {wasteTags.length > 0 ? (
-            <div className="flex max-w-[65%] flex-wrap justify-end gap-1.5">
+            <div className="flex min-w-0 max-w-[min(100%,16rem)] flex-wrap justify-end gap-1.5 sm:max-w-[65%]">
               {wasteTags.map(tag => (
                 <Badge
                   key={tag.id}
@@ -1167,7 +1185,7 @@ function SlaActionCard({
         <Alert className="rounded-none border-x-0 border-t-0 border-orange-200 bg-orange-50 text-orange-900">
           <History className="size-4 text-orange-600" />
           <AlertDescription className="font-medium">
-            Nghi ô nhiễm tái diễn — kiểm tra báo cáo Closed trước đó trước khi xác minh.
+            Nghi ô nhiễm tái diễn — kiểm tra báo cáo đã đóng trước đó trước khi xác minh.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -1207,26 +1225,32 @@ function SlaActionCard({
 
         <Card className="mb-5 border-border bg-muted/30 shadow-none">
           <CardContent className="space-y-2 p-3 text-sm">
-            <Field orientation="horizontal" className="items-center justify-between">
-              <Label className="flex items-center gap-2 font-normal text-muted-foreground">
-                <Calendar className="size-3.5" />
+            <Field orientation="horizontal" className="items-start justify-between gap-2">
+              <Label className="flex min-w-0 items-center gap-2 font-normal text-muted-foreground">
+                <Calendar className="size-3.5 shrink-0" />
                 Báo cáo lúc
               </Label>
-              <span className="font-medium text-foreground">{startFull}</span>
+              <span className="min-w-0 text-right font-medium wrap-break-word text-foreground">
+                {startFull}
+              </span>
             </Field>
-            <Field orientation="horizontal" className="items-center justify-between">
-              <Label className="flex items-center gap-2 font-normal text-muted-foreground">
-                <Calendar className="size-3.5" />
+            <Field orientation="horizontal" className="items-start justify-between gap-2">
+              <Label className="flex min-w-0 items-center gap-2 font-normal text-muted-foreground">
+                <Calendar className="size-3.5 shrink-0" />
                 Hạn chót
               </Label>
-              <span className="font-medium text-foreground">{endFull}</span>
+              <span className="min-w-0 text-right font-medium wrap-break-word text-foreground">
+                {endFull}
+              </span>
             </Field>
-            <Field orientation="horizontal" className="items-center justify-between">
-              <Label className="flex items-center gap-2 font-normal text-muted-foreground">
-                <Hourglass className="size-3.5" />
+            <Field orientation="horizontal" className="items-start justify-between gap-2">
+              <Label className="flex min-w-0 items-center gap-2 font-normal text-muted-foreground">
+                <Hourglass className="size-3.5 shrink-0" />
                 Tổng thời gian
               </Label>
-              <span className="font-medium text-foreground">{totalHours} giờ</span>
+              <span className="min-w-0 text-right font-medium text-foreground">
+                {totalHours} giờ
+              </span>
             </Field>
           </CardContent>
         </Card>
@@ -1644,11 +1668,11 @@ export function VerifyDetailClient({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className={cn(DETAIL_PAGE_SHELL, 'space-y-4 pb-6')}>
         <div className="h-9 w-40 animate-pulse rounded bg-muted" />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
+        <div className={DETAIL_BODY_GRID}>
           <div className="space-y-4">
-            <Card className="h-72 animate-pulse shadow-none" />
+            <Card className="h-52 animate-pulse shadow-none sm:h-72" />
             <Card className="h-64 animate-pulse shadow-none" />
           </div>
           <div className="space-y-4">
@@ -1662,7 +1686,7 @@ export function VerifyDetailClient({
 
   if (isError || !detail) {
     return (
-      <div className="space-y-4">
+      <div className={cn(DETAIL_PAGE_SHELL, 'space-y-4 pb-6')}>
         <BackLink onBack={onBack} reportId={id} />
         <Alert variant="destructive">
           <AlertTriangle className="size-4" />
@@ -1791,10 +1815,10 @@ export function VerifyDetailClient({
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn(DETAIL_PAGE_SHELL, 'space-y-4 pb-6 sm:pb-8')}>
       <BackLink onBack={onBack} reportId={detail.id} />
 
-      <div className={cn(DETAIL_PAGE_X_PAD, 'space-y-4')}>
+      <div className="space-y-4">
         <HeaderStrip
           detail={detail}
           pendingCategoryName={pendingCategoryName}
@@ -1803,7 +1827,7 @@ export function VerifyDetailClient({
         />
 
         {/* Gallery → nội dung bên dưới */}
-        <div className="space-y-16">
+        <div className="space-y-8 md:space-y-12 2xl:space-y-16">
           <Gallery
             media={detail.media}
             address={detail.address}
@@ -1812,33 +1836,32 @@ export function VerifyDetailClient({
             suspiciousReasons={detail.suspiciousReasons}
           />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
+          <div className={DETAIL_BODY_GRID}>
             {/* Left — scrollable content */}
-            <div className="min-w-0 space-y-8">
+            <div className="min-w-0 space-y-6 xl:space-y-8">
               {/* Title block */}
-              <div className="pt-2 pb-2">
-                <CardTitle className="text-2xl font-semibold leading-8 tracking-tight">
+              <div className="pt-1 pb-1 sm:pt-2 sm:pb-2">
+                <CardTitle className="text-xl font-semibold leading-snug tracking-tight sm:text-2xl sm:leading-8">
                   Được báo cáo bởi {detail.reporterName?.trim() || 'Ẩn danh'}
                 </CardTitle>
-                <CardDescription className="mt-1.5 text-base leading-normal">
-                  <MapPin
-                    className="mr-1.5 inline size-3.5 shrink-0 text-red-500 align-[-0.125em]"
-                    aria-hidden
-                  />
-                  {detail.address}
-                  <span
-                    className="mx-1.5 inline-block size-1 shrink-0 rounded-full bg-foreground align-middle"
-                    aria-hidden
-                  />
-                  <time dateTime={detail.createdAt}>
-                    {new Date(detail.createdAt).toLocaleString('vi-VN', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </time>
+                <CardDescription className="mt-1.5 text-sm leading-normal sm:text-base">
+                  <span className="inline-flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-1">
+                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-red-500" aria-hidden />
+                    <span className="min-w-0 wrap-break-word">{detail.address}</span>
+                    <span
+                      className="mt-1.5 hidden size-1 shrink-0 rounded-full bg-foreground sm:inline-block"
+                      aria-hidden
+                    />
+                    <time className="w-full tabular-nums sm:w-auto" dateTime={detail.createdAt}>
+                      {new Date(detail.createdAt).toLocaleString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </time>
+                  </span>
                 </CardDescription>
               </div>
 
@@ -1856,8 +1879,8 @@ export function VerifyDetailClient({
               />
             </div>
 
-            {/* Right — sticky: AI insight above action card */}
-            <div className="flex flex-col gap-4 lg:sticky lg:top-19 lg:self-start">
+            {/* Right — sticky on wide desktop only */}
+            <div className={DETAIL_ASIDE}>
               <AiInsightCard detail={detail} isPossibleDuplicate={isPossibleDuplicate} />
               <ActionCard
                 detail={detail}

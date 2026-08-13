@@ -143,7 +143,7 @@ const NAV_ITEMS = {
   },
   recurrence: {
     id: 'recurrence',
-    label: 'Sau xử lý',
+    label: 'Tái diễn',
     href: '/officer/recurrence',
     icon: History,
   },
@@ -245,7 +245,7 @@ export function isMapShellRoute(pathname: string): boolean {
 export function getActiveNavId(pathname: string, config: MapShellNavConfig): string | null {
   const path = pathname.split('?')[0] ?? pathname;
 
-  // Detail/list legacy hồ sơ xử phạt → highlight hub 「Sau xử lý」
+  // Detail/list legacy hồ sơ xử phạt → highlight hub 「Tái diễn」
   if (path === '/officer/inspections' || path.startsWith('/officer/inspections/')) {
     const hub = config.mainNav.find(item => item.id === 'recurrence');
     if (hub) return hub.id;

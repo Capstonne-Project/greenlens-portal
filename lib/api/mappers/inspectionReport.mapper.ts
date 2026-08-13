@@ -172,6 +172,7 @@ export function mapInspectionDetailDto(dto: InspectionDetailDto): InspectionDeta
     payments: (dto.payments ?? []).map(mapInspectionPaymentDto),
     acceptedAt: trimOrNull(dto.acceptedAt),
     acceptedByUserId: trimOrNull(dto.acceptedByUserId),
+    acceptedByUserName: trimOrNull(dto.acceptedByUserName ?? dto.acceptedByName),
     arrivalConfirmedAt: trimOrNull(dto.arrivalConfirmedAt),
     arrivalLatitude: toNullableNumber(dto.arrivalLatitude),
     arrivalLongitude: toNullableNumber(dto.arrivalLongitude),
