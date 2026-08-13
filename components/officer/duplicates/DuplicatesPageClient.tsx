@@ -81,6 +81,7 @@ import {
   type ReportQueueStatus,
 } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { officerTrackingDetailHref } from '@/utils/officerNavigation';
 
 const DUPLICATES_PAGE_SIZE = 5;
 
@@ -1020,10 +1021,7 @@ function PrimaryReportCell({ primary }: { primary: DuplicateCandidateItem['prima
         Báo cáo gốc
       </p>
       <Link
-        href={`/officer/tracking?${new URLSearchParams({
-          reportId: primary.id,
-          from: DUPLICATES_LIST_PATH,
-        }).toString()}`}
+        href={officerTrackingDetailHref(primary.id, DUPLICATES_LIST_PATH)}
         title={primary.code}
         onClick={e => e.stopPropagation()}
         className={cn(
