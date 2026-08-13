@@ -55,6 +55,22 @@ export interface ReportPendingReopenRequestDto {
   evidenceMedia: ReportMediaDto[];
 }
 
+/** GET /v1/reports/{id} — `data.reopenHistory[]` (newest first). */
+export interface ReportReopenHistoryItemDto {
+  requestId: string;
+  reason: string;
+  /** Pending | Approved | Rejected — keep as string; FE can narrow. */
+  status: string;
+  requestedAt: string;
+  requestedById: string;
+  requestedByName?: string | null;
+  reviewedAt?: string | null;
+  reviewedById?: string | null;
+  reviewedByName?: string | null;
+  rejectionReason?: string | null;
+  evidenceMedia?: ReportMediaDto[];
+}
+
 /** GET /v1/reports/{id} — `data.mergedReports[]` */
 export interface ReportMergedChildDto {
   id: string;
@@ -118,6 +134,7 @@ export interface ReportDetailDto {
   hasCurrentUserRated?: boolean;
   hasPendingReopenRequest?: boolean;
   pendingReopenRequest?: ReportPendingReopenRequestDto | null;
+  reopenHistory?: ReportReopenHistoryItemDto[] | null;
   mergedIntoPrimaryReportId?: string | null;
   mergedIntoPrimaryReportCode?: string | null;
   mergedReports?: ReportMergedChildDto[] | null;
