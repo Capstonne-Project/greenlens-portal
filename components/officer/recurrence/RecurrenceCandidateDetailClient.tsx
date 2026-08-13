@@ -3,7 +3,6 @@
 import { CreateInspectionReportDialog } from '@/components/officer/recurrence/CreateInspectionReportDialog';
 import {
   useReportImagePreview,
-  type ReportPreviewHandler,
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
 import { Button } from '@/components/ui/button';
@@ -23,10 +22,19 @@ import {
 import type { ReportStatus } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
-import { withOfficerFromQuery } from '@/utils/officerNavigation';
+import { withOfficerFromQuery, officerTrackingDetailHref } from '@/utils/officerNavigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, Copy, FileText, ImageIcon, MapPinned } from 'lucide-react';
-import { motion } from 'motion/react';
+import {
+  ArrowLeft,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  FileText,
+  ImageIcon,
+  MapPinned,
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -60,19 +68,10 @@ function formatShortDate(iso: string | null | undefined): string {
   });
 }
 
-function formatCoords(lat: number | null | undefined, lng: number | null | undefined): string {
-  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return '—';
-  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-}
-
 function formatMeters(meters: number): string {
   const rounded = Math.round(meters);
   if (rounded < 1000) return `${rounded} m`;
   return `${Math.round(rounded / 1000)} km`;
-}
-
-function googleMapsUrl(lat: number, lng: number): string {
-  return `https://www.google.com/maps?q=${lat},${lng}`;
 }
 
 /**
@@ -81,10 +80,7 @@ function googleMapsUrl(lat: number, lng: number): string {
  */
 function resolveReportDetailHref(reportId: string, status: ReportStatus, fromPath: string): string {
   if (status === 'InProgress') {
-    return `/officer/tracking?${new URLSearchParams({
-      reportId,
-      from: fromPath,
-    }).toString()}`;
+    return officerTrackingDetailHref(reportId, fromPath);
   }
   if (status === 'Verified') {
     return withOfficerFromQuery(`/officer/assign/${reportId}`, fromPath);
@@ -93,14 +89,40 @@ function resolveReportDetailHref(reportId: string, status: ReportStatus, fromPat
   return withOfficerFromQuery(`/officer/reports/${reportId}`, fromPath);
 }
 
-function toPreviewImages(media: ViolationRecurrenceMedia[], code: string): ReportPreviewImage[] {
+function toGalleryImages(
+  media: ViolationRecurrenceMedia[],
+  code: string
+): (ReportPreviewImage & { type: string })[] {
   return media
     .filter(m => m.url || m.thumbnailUrl)
     .map((m, i) => ({
       url: m.url || m.thumbnailUrl,
       label: `${code} · ảnh ${i + 1}`,
       uploadedAt: m.uploadedAt,
+      type: m.type?.trim() ?? '',
     }));
+}
+
+/** Nhãn VI cho `media[].type` — khớp `lib/constants/mediaType.ts`. */
+function mediaTypeLabelVi(type: string): string {
+  switch (type) {
+    case 'Image':
+      return 'Ảnh từ người dân';
+    case 'Video':
+      return 'Video';
+    case 'Before':
+      return 'Ảnh trước xử lý';
+    case 'Progress':
+      return 'Ảnh đang xử lý';
+    case 'After':
+      return 'Ảnh sau xử lý';
+    case 'Inspection':
+      return 'Thanh tra';
+    case 'ReopenEvidence':
+      return 'Minh chứng mở lại';
+    default:
+      return type;
+  }
 }
 
 async function copyText(value: string, successMessage: string) {
@@ -149,69 +171,6 @@ function CopyIconButton({
         <Copy className="size-3" aria-hidden />
       )}
     </button>
-  );
-}
-
-function CoordsLink({
-  lat,
-  lng,
-}: {
-  lat: number | null | undefined;
-  lng: number | null | undefined;
-}) {
-  const label = formatCoords(lat, lng);
-  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
-    return <span className="tabular-nums text-slate-500">{label}</span>;
-  }
-  return (
-    <a
-      href={googleMapsUrl(lat, lng)}
-      target="_blank"
-      rel="noopener noreferrer"
-      title="Mở vị trí trên Google Maps"
-      className={cn(
-        'font-mono text-xs tabular-nums text-slate-700 underline-offset-2 transition-colors hover:text-brand hover:underline sm:text-sm',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
-      )}
-    >
-      {label}
-    </a>
-  );
-}
-
-/** Thẻ tọa độ dưới map — 1 role / 1 code / 1 lat-lng. */
-function CoordCard({
-  tone,
-  roleLabel,
-  code,
-  lat,
-  lng,
-}: {
-  tone: 'suspect' | 'prior';
-  roleLabel: string;
-  code: string;
-  lat: number;
-  lng: number;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span
-          className={cn(
-            'size-2 shrink-0 rounded-full',
-            tone === 'suspect' ? 'bg-amber-500' : 'bg-brand'
-          )}
-          aria-hidden
-        />
-        <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          {roleLabel}
-        </span>
-        <span className="truncate text-[11px] font-semibold tabular-nums text-slate-700">
-          #{code}
-        </span>
-      </div>
-      <CoordsLink lat={lat} lng={lng} />
-    </div>
   );
 }
 
@@ -279,89 +238,208 @@ function SidePanelHeader({
   );
 }
 
+const CAROUSEL_EASE = [0.22, 1, 0.36, 1] as const;
+const CAROUSEL_DURATION = 0.42;
+
 /**
- * Section ảnh như layout detail trước đó —
- * ảnh lớn (hero) + stack ảnh phụ; nghi tái phát: hero bên phải.
+ * Gallery 4:3 — cùng layout ảnh `FeaturedEvidenceGallery` (ReopenDetailClient).
+ * Ảnh ngang fill; ảnh dọc object-contain + blur hai bên.
  */
-function MediaStrip({
+function FeaturedEvidenceGallery({
   media,
   code,
-  onPreview,
-  heroSide,
+  latitude,
+  longitude,
+  emptyLabel = 'Không có ảnh minh chứng',
+  showTypeBadge = false,
 }: {
   media: ViolationRecurrenceMedia[];
   code: string;
-  onPreview: ReportPreviewHandler;
-  /** Nghi tái phát: ảnh lớn bên phải · Đã đóng: ảnh lớn bên trái */
-  heroSide: 'left' | 'right';
+  latitude?: number;
+  longitude?: number;
+  emptyLabel?: string;
+  /** Badge `type` góc phải trên ảnh chính — chỉ Báo cáo đã đóng. */
+  showTypeBadge?: boolean;
 }) {
-  const images = toPreviewImages(media, code);
-  if (!images.length) {
+  const galleryItems = toGalleryImages(media, code);
+  const images: ReportPreviewImage[] = galleryItems.map(({ url, label, uploadedAt, type }) => {
+    const typeLabel = showTypeBadge ? mediaTypeLabelVi(type) : '';
+    return {
+      url,
+      label,
+      uploadedAt,
+      ...(typeLabel ? { typeLabel } : {}),
+    };
+  });
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+
+  const mapLocation = useMemo(() => {
+    if (
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      (latitude === 0 && longitude === 0)
+    ) {
+      return null;
+    }
+    return { latitude, longitude };
+  }, [latitude, longitude]);
+
+  const { setPreviewIndex, previewDialog } = useReportImagePreview(images, {
+    mapLocation,
+  });
+
+  if (images.length === 0) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-lg bg-slate-100 text-slate-400 ring-1 ring-slate-200/80 sm:h-56">
-        <ImageIcon className="size-8" aria-hidden />
+      <div className="mx-auto flex aspect-4/3 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
+        <ImageIcon className="size-6 text-slate-400" aria-hidden />
+        <span>{emptyLabel}</span>
       </div>
     );
   }
 
-  const hero = images[0]!;
-  const rest = images.slice(1);
+  const safeIndex = Math.min(activeIndex, images.length - 1);
+  const featured = images[safeIndex]!;
+  const featuredTypeLabel = mediaTypeLabelVi(galleryItems[safeIndex]?.type ?? '');
+  const hasPrev = safeIndex > 0;
+  const hasNext = safeIndex < images.length - 1;
 
-  const heroButton = (
-    <button
-      type="button"
-      className={cn(
-        'relative min-h-0 min-w-0 self-stretch overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80',
-        rest.length > 0 ? 'flex-[1.75]' : 'w-full flex-1'
-      )}
-      onClick={() => onPreview(hero)}
-      aria-label={`Xem ảnh ${code}`}
-    >
-      <Image
-        src={hero.url}
-        alt={hero.label}
-        fill
-        className="object-cover"
-        sizes="(max-width:768px) 70vw, 30vw"
-        unoptimized
-        priority={false}
-      />
-    </button>
-  );
+  const goTo = (next: number) => {
+    if (next === safeIndex || next < 0 || next >= images.length) return;
+    setDirection(next > safeIndex ? 1 : -1);
+    setActiveIndex(next);
+  };
 
-  if (rest.length === 0) {
-    return <div className="flex h-48 sm:h-56">{heroButton}</div>;
-  }
-
-  const stack = (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 self-stretch">
-      {rest.map((img, i) => (
-        <button
-          key={`${img.url}-${i}`}
-          type="button"
-          className="relative min-h-0 w-full flex-1 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80"
-          onClick={() => onPreview(img)}
-          aria-label={img.label}
-        >
-          <Image src={img.url} alt="" fill className="object-cover" sizes="120px" unoptimized />
-        </button>
-      ))}
-    </div>
-  );
+  const openLightbox = () => {
+    setPreviewIndex(safeIndex);
+  };
 
   return (
-    <div className="flex h-48 gap-1.5 sm:h-56">
-      {heroSide === 'left' ? (
-        <>
-          {heroButton}
-          {stack}
-        </>
-      ) : (
-        <>
-          {stack}
-          {heroButton}
-        </>
-      )}
+    <div className="w-full space-y-2">
+      <div className="relative aspect-4/3 w-full overflow-hidden rounded-lg bg-muted">
+        <AnimatePresence initial={false} custom={direction}>
+          <motion.div
+            key={featured.url}
+            custom={direction}
+            variants={{
+              enter: (dir: number) => ({ x: dir >= 0 ? '28%' : '-28%', opacity: 0 }),
+              center: { x: 0, opacity: 1 },
+              exit: (dir: number) => ({ x: dir >= 0 ? '-28%' : '28%', opacity: 0 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: CAROUSEL_DURATION, ease: CAROUSEL_EASE }}
+            className="absolute inset-0"
+          >
+            {/* Pillarbox: ảnh cover + blur lấp phần thiếu; ảnh gốc contain ở trên */}
+            <div className="pointer-events-none absolute -inset-[18%]" aria-hidden>
+              <Image
+                src={featured.url}
+                alt=""
+                fill
+                unoptimized
+                className="scale-110 object-cover blur-3xl"
+                sizes="(max-width: 768px) 50vw, 28vw"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={openLightbox}
+              className="absolute inset-0 z-10 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/50"
+              aria-label={`Phóng to ${featured.label}`}
+            >
+              <Image
+                src={featured.url}
+                alt={featured.label}
+                fill
+                unoptimized
+                className="object-contain"
+                sizes="(max-width: 768px) 50vw, 28vw"
+              />
+            </button>
+          </motion.div>
+        </AnimatePresence>
+
+        {showTypeBadge && featuredTypeLabel ? (
+          <span className="pointer-events-none absolute right-2 top-2 z-20 rounded-md bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm">
+            {featuredTypeLabel}
+          </span>
+        ) : null}
+
+        {hasPrev ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute left-2 top-1/2 z-20 size-7 -translate-y-1/2 rounded-md bg-white/95 text-slate-700 shadow-md hover:bg-white"
+            onClick={e => {
+              e.stopPropagation();
+              goTo(safeIndex - 1);
+            }}
+            aria-label="Ảnh trước"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+        ) : null}
+
+        {hasNext ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute right-2 top-1/2 z-20 size-7 -translate-y-1/2 rounded-md bg-white/95 text-slate-700 shadow-md hover:bg-white"
+            onClick={e => {
+              e.stopPropagation();
+              goTo(safeIndex + 1);
+            }}
+            aria-label="Ảnh sau"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        ) : null}
+
+        <span className="pointer-events-none absolute bottom-2 right-2 z-20 rounded bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
+          {safeIndex + 1} / {images.length}
+        </span>
+      </div>
+
+      {images.length > 1 ? (
+        <ul className="flex gap-1.5 overflow-x-auto overflow-y-visible py-1.5">
+          {images.map((img, index) => {
+            const isActive = index === safeIndex;
+            return (
+              <li key={`${img.url}-${index}`} className="shrink-0 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => goTo(index)}
+                  aria-label={`Chọn ${img.label}`}
+                  aria-pressed={isActive}
+                  className={cn(
+                    'relative block size-10 cursor-pointer overflow-hidden rounded-md bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 sm:size-12',
+                    isActive
+                      ? 'ring-2 ring-slate-900 ring-offset-1'
+                      : 'ring-1 ring-border hover:ring-slate-400'
+                  )}
+                >
+                  <Image
+                    src={img.url}
+                    alt=""
+                    fill
+                    unoptimized
+                    className="object-cover"
+                    sizes="48px"
+                  />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {previewDialog}
     </div>
   );
 }
@@ -431,17 +509,12 @@ type RecurrenceCompareField = {
   render: (side: ViolationRecurrenceReport) => ReactNode;
 };
 
-/** Field so sánh — tọa độ chuyển xuống section map. */
+/** Thứ tự khớp dialog xác minh: địa chỉ → thời điểm → loại → mức độ → thanh tra. */
 const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
   {
     key: 'address',
     label: 'Địa chỉ',
     render: d => d.address?.trim() || '—',
-  },
-  {
-    key: 'category',
-    label: 'Loại ô nhiễm',
-    render: d => d.categoryName?.trim() || d.categoryCode || '—',
   },
   {
     key: 'createdAt',
@@ -454,19 +527,24 @@ const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
     render: d => formatShortDate(d.closedAt),
   },
   {
+    key: 'category',
+    label: 'Loại ô nhiễm',
+    render: d => d.categoryName?.trim() || d.categoryCode || '—',
+  },
+  {
     key: 'severity',
     label: 'Mức độ',
     render: d => <SeverityPill severity={d.severity} />,
   },
   {
+    key: 'inspection',
+    label: 'Đã thanh tra',
+    render: d => (d.hadPriorInspection ? 'Có' : 'Không'),
+  },
+  {
     key: 'description',
     label: 'Mô tả',
     render: d => d.description?.trim() || '—',
-  },
-  {
-    key: 'inspection',
-    label: 'Đã thanh tra trước',
-    render: d => (d.hadPriorInspection ? 'Có' : 'Không'),
   },
 ];
 
@@ -477,7 +555,7 @@ function CompareDetailSkeleton() {
       <div className="flex shrink-0 items-stretch gap-2 sm:gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <Skeleton className="h-5 w-36" />
-          <Skeleton className="h-48 w-full rounded-lg sm:h-56" />
+          <Skeleton className="aspect-4/3 w-full rounded-lg" />
         </div>
         <div
           className="mx-1 flex w-10 shrink-0 items-center justify-center sm:mx-2 sm:w-14"
@@ -487,7 +565,7 @@ function CompareDetailSkeleton() {
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <Skeleton className="h-5 w-36" />
-          <Skeleton className="h-48 w-full rounded-lg sm:h-56" />
+          <Skeleton className="aspect-4/3 w-full rounded-lg" />
         </div>
       </div>
 
@@ -513,27 +591,21 @@ function CompareDetailSkeleton() {
       <div className="space-y-2.5">
         <Skeleton className="h-4 w-40" />
         <Skeleton className={cn('w-full rounded-xl', COMPARE_MAP_FRAME_HEIGHT)} />
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Skeleton className="h-16 w-full rounded-lg" />
-          <Skeleton className="h-16 w-full rounded-lg" />
-        </div>
       </div>
     </div>
   );
 }
 
 /**
- * Body so sánh — MediaStrip + LinkPulse + bảng field (dialog style).
+ * Body so sánh — gallery 4:3 + LinkPulse + bảng field (dialog style).
  * Badge + #code nằm trên ảnh như layout trước.
  */
 function RecurrenceCompareBody({
   comparison,
   fromPath,
-  onPreview,
 }: {
   comparison: ViolationRecurrenceComparison;
   fromPath: string;
-  onPreview: ReportPreviewHandler;
 }) {
   const { currentReport: current, priorClosedReport: prior } = comparison;
   const { distanceMeters } = comparison;
@@ -553,11 +625,11 @@ function RecurrenceCompareBody({
             roleTone="suspect"
             fromPath={fromPath}
           />
-          <MediaStrip
+          <FeaturedEvidenceGallery
             media={current.media}
             code={current.code}
-            onPreview={onPreview}
-            heroSide="right"
+            latitude={current.latitude}
+            longitude={current.longitude}
           />
         </div>
         <LinkPulse tall />
@@ -568,7 +640,13 @@ function RecurrenceCompareBody({
             roleTone="prior"
             fromPath={fromPath}
           />
-          <MediaStrip media={prior.media} code={prior.code} onPreview={onPreview} heroSide="left" />
+          <FeaturedEvidenceGallery
+            media={prior.media}
+            code={prior.code}
+            latitude={prior.latitude}
+            longitude={prior.longitude}
+            showTypeBadge
+          />
         </div>
       </div>
 
@@ -642,22 +720,6 @@ function RecurrenceCompareBody({
             },
           ]}
         />
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <CoordCard
-            tone="suspect"
-            roleLabel="Nghi tái diễn"
-            code={current.code}
-            lat={current.latitude}
-            lng={current.longitude}
-          />
-          <CoordCard
-            tone="prior"
-            roleLabel="Báo cáo đã đóng"
-            code={prior.code}
-            lat={prior.latitude}
-            lng={prior.longitude}
-          />
-        </div>
       </section>
     </motion.div>
   );
@@ -674,16 +736,6 @@ export function RecurrenceCandidateDetailClient() {
   const { data, isPending, isError, isFetching, refetch } =
     useViolationRecurrenceComparison(reportId);
 
-  const allPreviewImages = useMemo(() => {
-    if (!data) return [];
-    return [
-      ...toPreviewImages(data.currentReport.media, data.currentReport.code),
-      ...toPreviewImages(data.priorClosedReport.media, data.priorClosedReport.code),
-    ];
-  }, [data]);
-
-  const { openPreview, previewDialog } = useReportImagePreview(allPreviewImages);
-
   return (
     <div className="flex flex-1 flex-col px-4 pb-8 sm:px-6 lg:px-8 xl:px-10">
       <header className="mb-4 space-y-3 border-b border-slate-200 pb-3">
@@ -698,7 +750,9 @@ export function RecurrenceCandidateDetailClient() {
                 router,
                 queryClient,
                 from: null,
-                fallbackHref: RECURRENCE_LIST_PATH,
+                fallbackHref: reportId
+                  ? `${RECURRENCE_LIST_PATH}?${new URLSearchParams({ highlight: reportId }).toString()}`
+                  : RECURRENCE_LIST_PATH,
               })
             }
           >
@@ -745,10 +799,8 @@ export function RecurrenceCandidateDetailClient() {
           </button>
         </div>
       ) : (
-        <RecurrenceCompareBody comparison={data} fromPath={fromPath} onPreview={openPreview} />
+        <RecurrenceCompareBody comparison={data} fromPath={fromPath} />
       )}
-
-      {previewDialog}
 
       {reportId ? (
         <CreateInspectionReportDialog

@@ -1,8 +1,8 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   Check,
@@ -64,6 +64,10 @@ import {
 import { cn } from '@/lib/utils';
 
 const INSPECTIONS_PAGE_SIZE = 8;
+
+/** Highlight hàng sau khi quay lại list — giữ ngắn rồi fade (khớp duration-700). */
+const HIGHLIGHT_HOLD_MS = 1600;
+const HIGHLIGHT_CLEAR_MS = 2300;
 
 const INSPECTION_TEAM_FILTER_PARAMS = {
   page: 1,
@@ -996,6 +1000,8 @@ type InspectionsPageClientProps = {
 
 export function InspectionsPageClient({ embedded = false }: InspectionsPageClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -1004,6 +1010,16 @@ export function InspectionsPageClient({ embedded = false }: InspectionsPageClien
 
   const [applied, setApplied] = useState<AppliedFilters>(() => clearedFilters());
   const [draft, setDraft] = useState<AppliedFilters>(() => clearedFilters());
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [highlightFading, setHighlightFading] = useState(false);
+  const [latchedUrlHighlight, setLatchedUrlHighlight] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+  /** Deep-link `/officer/recurrence?tab=inspections&highlight={inspectionId}` */
+  const urlHighlight =
+    searchParams.get('tab') === 'inspections'
+      ? searchParams.get('highlight')?.trim() || null
+      : null;
 
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS, () => {
     setPage(1);
@@ -1055,6 +1071,57 @@ export function InspectionsPageClient({ embedded = false }: InspectionsPageClien
 
   const items = data?.items ?? [];
   const pagination = data?.pagination;
+
+  /** Bỏ `?highlight=` khỏi URL — không setState (eslint react-hooks/set-state-in-effect). */
+  useEffect(() => {
+    if (!urlHighlight) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('highlight');
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [urlHighlight, searchParams, router, pathname]);
+
+  /** Tự tắt highlight — không phụ thuộc items/URL (tránh cleanup giết timer). */
+  useEffect(() => {
+    if (!highlightedId) return;
+    const fadeTimer = window.setTimeout(() => setHighlightFading(true), HIGHLIGHT_HOLD_MS);
+    const clearTimer = window.setTimeout(() => {
+      setLatchedUrlHighlight(null);
+      setHighlightedId(null);
+      setHighlightFading(false);
+    }, HIGHLIGHT_CLEAR_MS);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [highlightedId]);
+
+  useEffect(() => {
+    if (!highlightedId || highlightFading) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = rowRefs.current.get(highlightedId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      attempts += 1;
+      if (attempts < 24) requestAnimationFrame(tryScroll);
+    };
+    tryScroll();
+    return () => {
+      cancelled = true;
+    };
+  }, [highlightedId, items, highlightFading]);
+
+  if (urlHighlight && urlHighlight !== latchedUrlHighlight) {
+    setLatchedUrlHighlight(urlHighlight);
+    setHighlightedId(urlHighlight);
+    setHighlightFading(false);
+  }
 
   const handleFilterOpenChange = (open: boolean) => {
     if (open) {
@@ -1256,35 +1323,44 @@ export function InspectionsPageClient({ embedded = false }: InspectionsPageClien
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map(row => (
-                  <TableRow
-                    key={row.id}
-                    className={cn(
-                      ROW_BORDER,
-                      'cursor-pointer border-b transition-colors hover:bg-sky-50/40'
-                    )}
-                    onClick={() => router.push(`/officer/inspections/${row.id}`)}
-                  >
-                    {COLUMN_DEFS.map(col => (
-                      <TableCell
-                        key={col.key}
-                        className={cn(
-                          tableCellPad(col.key, 'body'),
-                          'align-middle',
-                          col.key !== 'actions' && 'min-w-0 overflow-hidden',
-                          col.className
-                        )}
-                        onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
-                      >
-                        {col.key === 'actions' ? (
-                          <InspectionRowActions row={row} />
-                        ) : (
-                          renderInspectionCell(col.key, row)
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                items.map(row => {
+                  const isHighlighted = row.id === highlightedId && !highlightFading;
+
+                  return (
+                    <TableRow
+                      key={row.id}
+                      ref={el => {
+                        if (el) rowRefs.current.set(row.id, el);
+                        else rowRefs.current.delete(row.id);
+                      }}
+                      className={cn(
+                        ROW_BORDER,
+                        'cursor-pointer border-b transition-colors duration-700 hover:bg-sky-50/40',
+                        isHighlighted && 'bg-emerald-50'
+                      )}
+                      onClick={() => router.push(`/officer/inspections/${row.id}`)}
+                    >
+                      {COLUMN_DEFS.map(col => (
+                        <TableCell
+                          key={col.key}
+                          className={cn(
+                            tableCellPad(col.key, 'body'),
+                            'align-middle',
+                            col.key !== 'actions' && 'min-w-0 overflow-hidden',
+                            col.className
+                          )}
+                          onClick={col.key === 'actions' ? e => e.stopPropagation() : undefined}
+                        >
+                          {col.key === 'actions' ? (
+                            <InspectionRowActions row={row} />
+                          ) : (
+                            renderInspectionCell(col.key, row)
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { PostProcessingHubClient } from '@/components/officer/recurrence/PostProcessingHubClient';
 
 export const metadata: Metadata = {
-  title: 'Sau xử lý',
+  title: 'Tái diễn',
 };
 
 function PostProcessingFallback() {
