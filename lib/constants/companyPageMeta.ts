@@ -40,7 +40,8 @@ export const companyPageMeta: Record<string, CompanyPageMeta> = {
   },
   '/company/assign': {
     title: 'Phân công',
-    description: 'Báo cáo Verified đã được LEO chuyển đến công ty — chọn đội để bắt đầu xử lý.',
+    description:
+      'Các báo cáo đã xác minh được cán bộ chuyển đến công ty. Chọn đội để bắt đầu xử lý.',
     icon: ClipboardList,
   },
   '/company/tracking': {

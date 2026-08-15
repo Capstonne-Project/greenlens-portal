@@ -20,7 +20,7 @@ export function CompanyAppShell({ children }: { children: React.ReactNode }) {
   const isReports = pathname === '/company/reports';
   const isTracking = pathname === '/company/tracking';
   const isWorkforce = pathname === '/company/workforce';
-  const fillViewport = isAssign || isReports || isTracking || isWorkforce;
+  const fillViewport = isOverview || isAssign || isReports || isTracking || isWorkforce;
   const companyNavConfig = getCompanyShellNavConfig();
 
   return (
@@ -46,11 +46,8 @@ export function CompanyAppShell({ children }: { children: React.ReactNode }) {
             className={cn(
               'min-h-0 min-w-0 flex-1 overscroll-contain',
               fillViewport && 'flex flex-col overflow-hidden',
-              /** List table header must reach panel edges (parity Verify `-mx-6`). */
               isReports && '-mx-2 md:-mx-6',
-              isOverview
-                ? 'overflow-x-hidden overflow-y-auto overscroll-contain pt-2 md:pt-3 lg:overflow-hidden'
-                : !fillViewport && 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5'
+              !fillViewport && 'overflow-x-hidden overflow-y-auto pt-4 md:pt-5'
             )}
           >
             {children}
