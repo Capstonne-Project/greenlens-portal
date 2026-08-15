@@ -115,6 +115,13 @@ export const LEO_REPORT_ASSIGNMENT_STATUSES = [
   'Escalated',
 ] as const satisfies readonly LeoReportAssignmentStatus[];
 
+/** Công ty được điều phối trên item GET /v1/offices/my/reports. */
+export interface LeoMyReportAssignedCompany {
+  companyId: string;
+  companyName: string;
+  dispatchedAt: string;
+}
+
 /** Một assignment trong `LeoMyReportItem.assignments[]`. */
 export interface LeoMyReportAssignment {
   assignmentId: string;
@@ -160,6 +167,7 @@ export interface LeoMyReportItem {
   slaResolveDueAt: string | null;
   /** Thumbnail URLs for report media; empty when BE omits the field. */
   thumbnails: string[];
+  assignedCompany: LeoMyReportAssignedCompany | null;
   assignments: LeoMyReportAssignment[];
 }
 
