@@ -1,4 +1,5 @@
 import type {
+  LeoMyReportAssignedCompanyDto,
   LeoMyReportAssignmentDto,
   LeoMyReportItemDto,
   LeoMyReportsDataDto,
@@ -15,6 +16,7 @@ import type {
   RecruitOfficeStaffDataDto,
 } from '@/lib/api/dto/office.dto';
 import type {
+  LeoMyReportAssignedCompany,
   LeoMyReportAssignment,
   LeoMyReportItem,
   LeoMyReportsData,
@@ -121,6 +123,17 @@ function mapAssignmentStatus(value: string | undefined): LeoReportAssignmentStat
   return 'Assigned';
 }
 
+function mapLeoMyReportAssignedCompanyDto(
+  dto: LeoMyReportAssignedCompanyDto | null | undefined
+): LeoMyReportAssignedCompany | null {
+  if (!dto?.companyId) return null;
+  return {
+    companyId: dto.companyId,
+    companyName: dto.companyName,
+    dispatchedAt: dto.dispatchedAt,
+  };
+}
+
 function mapLeoMyReportAssignmentDto(dto: LeoMyReportAssignmentDto): LeoMyReportAssignment {
   return {
     assignmentId: dto.assignmentId,
@@ -166,6 +179,7 @@ function mapLeoMyReportItemDto(dto: LeoMyReportItemDto): LeoMyReportItem {
     closedAt: dto.closedAt ?? null,
     slaResolveDueAt: dto.slaResolveDueAt ?? null,
     thumbnails: dto.thumbnails ?? [],
+    assignedCompany: mapLeoMyReportAssignedCompanyDto(dto.assignedCompany),
     assignments: (dto.assignments ?? []).map(mapLeoMyReportAssignmentDto),
   };
 }

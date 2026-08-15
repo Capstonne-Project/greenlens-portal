@@ -268,6 +268,9 @@ function resolveTypeDescription(type: string): string {
     SlaInspectionBreached: 'Nhận cảnh báo khi báo cáo vượt cam kết kiểm tra.',
     CleanupProgressStale: 'Thông báo khi tiến độ xử lý từ đội cleanup bị chậm hoặc đứng yên.',
     CleanupTaskAssigned: 'Thông báo khi có nhiệm vụ cleanup mới được gán.',
+    CleanupProgressUpdated: 'Thông báo khi đội cập nhật tiến độ xử lý báo cáo.',
+    CleanupBeforeImagesUploaded:
+      'Thông báo khi đội tải ảnh hiện trạng (before) lên nhiệm vụ đang theo dõi.',
     ContractExpired: 'Thông báo khi hợp đồng đã hết hạn.',
     ContractExpiryWarning: 'Thông báo nhắc trước khi hợp đồng sắp hết hạn.',
     CompanyReportDispatched: 'Thông báo khi báo cáo được chuyển giao cho doanh nghiệp xử lý.',
@@ -359,6 +362,8 @@ function renderPreferenceIcon(type: string): React.ReactNode {
     StaffInvitationDeclined: UserRoundPlus,
     CleanupProgressStale: FileWarning,
     CleanupTaskAssigned: ClipboardCheck,
+    CleanupProgressUpdated: TrendingUp,
+    CleanupBeforeImagesUploaded: TrendingUp,
     CommunityCleanupOpened: Users,
     CommunityCleanupLeaderAssigned: UserRoundPlus,
     CommunityCleanupStarted: PlayCircle,

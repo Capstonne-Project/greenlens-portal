@@ -108,6 +108,13 @@ export interface LeoMyReportAssignmentDto {
   progressUpdatedAt?: string | null;
 }
 
+/** GET /v1/offices/my/reports — items[].assignedCompany */
+export interface LeoMyReportAssignedCompanyDto {
+  companyId: string;
+  companyName: string;
+  dispatchedAt: string;
+}
+
 /** GET /v1/offices/my/reports — item */
 export interface LeoMyReportItemDto {
   id: string;
@@ -136,6 +143,7 @@ export interface LeoMyReportItemDto {
   slaResolveDueAt?: string | null;
   /** Thumbnail URLs for report media (Swagger: string[]). */
   thumbnails?: string[];
+  assignedCompany?: LeoMyReportAssignedCompanyDto | null;
   assignments: LeoMyReportAssignmentDto[];
 }
 

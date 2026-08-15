@@ -45,6 +45,7 @@ interface OverviewAlertsCardProps {
   isError?: boolean;
   error?: Error | null;
   onRetry?: () => void;
+  className?: string;
 }
 
 export function OverviewAlertsCard({
@@ -52,11 +53,17 @@ export function OverviewAlertsCard({
   isError = false,
   error = null,
   onRetry,
+  className,
 }: OverviewAlertsCardProps) {
   const list = alerts ?? [];
 
   return (
-    <article className="flex h-full min-h-0 flex-col rounded-card border border-border bg-card p-3 shadow-sm">
+    <article
+      className={cn(
+        'flex h-full min-h-0 flex-col rounded-card border border-border bg-card p-3 shadow-sm',
+        className
+      )}
+    >
       <header className="mb-2 flex shrink-0 items-center gap-2">
         <AlertTriangle className="size-3.5 text-amber-600" aria-hidden />
         <div>

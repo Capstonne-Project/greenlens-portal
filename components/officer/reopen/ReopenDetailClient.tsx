@@ -661,8 +661,8 @@ function RejectReopenDialog({
             Từ chối yêu cầu mở lại
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            Vui lòng nhập lý do từ chối tối thiểu 20 ký tự (BR-REP-022). Báo cáo giữ nguyên trạng
-            thái hiện tại; người gửi có thể xem lý do từ chối.
+            Vui lòng nhập lý do từ chối tối thiểu 20 ký tự. Báo cáo giữ nguyên trạng thái hiện tại;
+            người gửi có thể xem lý do từ chối.
           </DialogDescription>
         </DialogHeader>
 

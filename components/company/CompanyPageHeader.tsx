@@ -1,6 +1,5 @@
 'use client';
 
-import { CompanyOverviewHeaderBar } from '@/components/company/overview/CompanyOverviewHeaderBar';
 import { getCompanyPageMeta } from '@/lib/constants/companyPageMeta';
 import { usePathname, useSearchParams } from 'next/navigation';
 
@@ -17,18 +16,8 @@ export function CompanyPageHeader() {
   /** Workforce có header riêng kiểu LEO Đội ngũ. */
   const isWorkforce = pathname === '/company/workforce';
 
-  if (isTrackingDetail || isReportsDetail || isAssignDetail || isWorkforce) {
+  if (isOverview || isTrackingDetail || isReportsDetail || isAssignDetail || isWorkforce) {
     return null;
-  }
-
-  if (isOverview) {
-    return (
-      <header className="mb-3 shrink-0">
-        <div className="border-b border-slate-200 pb-3">
-          <CompanyOverviewHeaderBar />
-        </div>
-      </header>
-    );
   }
 
   const { title, description, icon: Icon } = getCompanyPageMeta(pathname);

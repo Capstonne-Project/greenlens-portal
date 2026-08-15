@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { faCalendar } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  Building2,
   ChevronDown,
   Clock,
   ImageIcon,
@@ -313,6 +314,8 @@ function ProjectCard({
   const progress = Math.max(0, Math.min(100, Math.round(item.overallProgressPercent ?? 0)));
   const title = item.categoryName;
   const meta = item.address?.trim() || item.code;
+  const description = item.description?.trim() ?? '';
+  const assignedCompanyName = item.assignedCompany?.companyName?.trim() ?? '';
   const slaDateLabel = formatSlaDate(item.slaResolveDueAt);
   const slaDeadline = getDeadlineInfo(item.slaResolveDueAt);
   const slaTooltipDesignation = item.slaResolveDueAt
@@ -343,6 +346,15 @@ function ProjectCard({
           alt={item.code}
           eagerFirstImage={eagerFirstImage}
         />
+        {assignedCompanyName ? (
+          <span
+            className="absolute left-2 top-2 inline-flex items-center gap-0.5 rounded-full bg-emerald-600/95 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-sm backdrop-blur-sm"
+            title={`Công ty nhận task: ${assignedCompanyName}`}
+          >
+            <Building2 className="size-2.5 shrink-0" aria-hidden />
+            Công ty
+          </span>
+        ) : null}
         <span
           className={cn(
             'absolute right-2 top-2 inline-flex max-w-[76%] items-center truncate rounded-full px-2 py-0.5 text-[9px] font-semibold shadow-sm backdrop-blur-sm',
@@ -357,7 +369,7 @@ function ProjectCard({
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
         <div className="min-w-0">
           <div
-            className="mb-0.5 mt-0.5 flex items-center gap-1.5 py-0"
+            className="mb-0.5 mt-0.5 flex items-center gap-1.5 pb-1.5 pt-0"
             title={`Mức độ: ${SEVERITY_LABEL[item.severity]}`}
           >
             <span
@@ -382,6 +394,14 @@ function ProjectCard({
           <CardDescription className="mt-1 line-clamp-1 text-[10px]" title={meta}>
             {meta}
           </CardDescription>
+          {description ? (
+            <p
+              className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground"
+              title={`Mô tả: ${description}`}
+            >
+              <span className="font-medium text-foreground/70">Mô tả:</span> {description}
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-0.5">
@@ -458,6 +478,8 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
   const progress = Math.max(0, Math.min(100, Math.round(item.overallProgressPercent ?? 0)));
   const deadline = getDeadlineInfo(item.slaResolveDueAt);
   const title = item.address?.trim() || item.code;
+  const description = item.description?.trim() ?? '';
+  const assignedCompanyName = item.assignedCompany?.companyName?.trim() ?? '';
   const thumb = (item.thumbnails ?? []).find(Boolean);
   const visibleTeams = item.assignments.slice(0, 3);
   const extraTeams = Math.max(0, item.assignments.length - visibleTeams.length);
@@ -476,6 +498,14 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
             <ImageIcon className="size-4 opacity-40" aria-hidden />
           </div>
         )}
+        {assignedCompanyName ? (
+          <span
+            className="absolute left-0.5 top-0.5 inline-flex items-center rounded bg-emerald-600/95 p-0.5 text-white shadow-sm"
+            title={`Công ty nhận task: ${assignedCompanyName}`}
+          >
+            <Building2 className="size-2.5" aria-hidden />
+          </span>
+        ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
@@ -493,6 +523,11 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
           <span className="mx-1 text-border">·</span>
           <span className="font-mono">#{item.code}</span>
         </p>
+        {description ? (
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground" title={description}>
+            {description}
+          </p>
+        ) : null}
       </div>
 
       <span

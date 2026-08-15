@@ -32,6 +32,7 @@ interface CompanyActiveAssignmentsPanelProps {
   totalItems?: number;
   isPending?: boolean;
   isError?: boolean;
+  className?: string;
 }
 
 export function CompanyActiveAssignmentsPanel({
@@ -39,6 +40,7 @@ export function CompanyActiveAssignmentsPanel({
   totalItems = 0,
   isPending,
   isError,
+  className,
 }: CompanyActiveAssignmentsPanelProps) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -60,7 +62,12 @@ export function CompanyActiveAssignmentsPanel({
   }, [allItems, now]);
 
   return (
-    <article className="flex shrink-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2.5 shadow-sm sm:p-3">
+    <article
+      className={cn(
+        'flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2.5 shadow-sm sm:p-3',
+        className
+      )}
+    >
       <header className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-xs font-semibold text-foreground sm:text-sm">

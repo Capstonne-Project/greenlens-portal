@@ -20,6 +20,8 @@ type MapShellLayoutProps = {
 export function MapShellLayout({ config, children }: MapShellLayoutProps) {
   const pathname = usePathname();
   const isMapRoute = pathname === '/officer/map' || pathname.startsWith('/officer/map/');
+  const isDashboardRoute =
+    pathname === '/officer/dashboard' || pathname.startsWith('/officer/dashboard/');
 
   if (isMapRoute) {
     return (
@@ -35,7 +37,13 @@ export function MapShellLayout({ config, children }: MapShellLayoutProps) {
   return (
     <div className="app-canvas flex h-screen w-screen flex-col overflow-hidden font-sans md:flex-row">
       <AppSidebar config={config} />
-      <MapShellContent variant="panel">{children}</MapShellContent>
+      <MapShellContent
+        variant="panel"
+        overflow={isDashboardRoute ? 'hidden' : 'auto'}
+        panelTone={isDashboardRoute ? 'deo-overview' : 'default'}
+      >
+        {children}
+      </MapShellContent>
     </div>
   );
 }

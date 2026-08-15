@@ -19,6 +19,8 @@ export interface ReportQueueItem {
   wardCode: string;
   priorityScore: number;
   createdAt: string;
+  /** Thời điểm xác minh; null nếu chưa verify. */
+  verifiedAt: string | null;
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
   /** Thumbnail ảnh đầu tiên của báo cáo (có thể null nếu chưa có media). */
@@ -45,7 +47,8 @@ export type ReportQueueSortBy =
   | 'CreatedAt'
   | 'Severity'
   | 'SlaVerifyDueAt'
-  | 'SlaResolveDueAt';
+  | 'SlaResolveDueAt'
+  | 'VerifiedAt';
 
 export type ReportQueueSortDir = 'Asc' | 'Desc';
 
@@ -63,6 +66,9 @@ export interface ReportQueueParams {
   fromDate?: string;
   toDate?: string;
   slaBreached?: boolean;
+  isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
+  hasPendingReopenRequest?: boolean;
   search?: string;
   sortBy?: ReportQueueSortBy;
   sortDir?: ReportQueueSortDir;
