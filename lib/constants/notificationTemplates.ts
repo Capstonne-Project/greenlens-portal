@@ -19,6 +19,8 @@ export const NOTIFICATION_TEMPLATE_TYPES = [
   'SlaResolutionBreached',
   'SlaInspectionBreached',
   'CleanupProgressStale',
+  'CleanupProgressUpdated',
+  'CleanupBeforeImagesUploaded',
   'CleanupTaskAssigned',
   'NearbyReport',
   'NewComment',
@@ -44,6 +46,7 @@ export const NOTIFICATION_TEMPLATE_TYPES = [
   'CommunityCleanupVerified',
   'CommunityCleanupCheckInReminder',
   'BadgeProgressNear',
+  'CompanyManagerAccountCreated',
 ] as const;
 
 export type NotificationTemplateType = (typeof NOTIFICATION_TEMPLATE_TYPES)[number];
@@ -57,6 +60,8 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   SlaResolutionBreached: 'SLA xử lý vi phạm',
   SlaInspectionBreached: 'SLA kiểm tra vi phạm',
   CleanupProgressStale: 'Tiến độ cleanup chậm',
+  CleanupProgressUpdated: 'Cập nhật tiến độ cleanup',
+  CleanupBeforeImagesUploaded: 'Đội đã tải ảnh hiện trạng (before)',
   CleanupTaskAssigned: 'Có task cleanup mới',
   CleanupTaskAccepted: 'Đội đã nhận task cleanup',
   CleanupTaskDeclined: 'Đội từ chối task cleanup',
@@ -91,6 +96,7 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   CommunityCleanupVerified: 'Dọn cộng đồng đã hoàn thành',
   CommunityCleanupCheckInReminder: 'Nhắc check-in dọn cộng đồng',
   BadgeProgressNear: 'Sắp đạt huy hiệu',
+  CompanyManagerAccountCreated: 'Tài khoản quản lý công ty đã tạo',
 };
 
 export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 8;

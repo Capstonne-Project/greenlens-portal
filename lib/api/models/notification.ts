@@ -12,6 +12,7 @@ export type NotificationType =
   | 'SlaInspectionBreached'
   | 'CleanupProgressStale'
   | 'CleanupProgressUpdated'
+  | 'CleanupBeforeImagesUploaded'
   | 'InspectionProgressUpdated'
   | 'InspectionTaskCompleted'
   | 'CleanupTaskAssigned'
@@ -44,6 +45,7 @@ export type NotificationType =
   | 'CommunityCleanupVerified'
   | 'CommunityCleanupCheckInReminder'
   | 'BadgeProgressNear'
+  | 'CompanyManagerAccountCreated'
   | string;
 
 export interface NotificationItem {

@@ -12,6 +12,7 @@ export const COMPANY_NOTIFICATION_TYPES = [
   'ReportStatusChanged',
   'ContractExpiry',
   'ReportAutoClosed',
+  'CompanyManagerAccountCreated',
 ] as const;
 
 export type CompanyNotificationType = (typeof COMPANY_NOTIFICATION_TYPES)[number];
@@ -76,6 +77,8 @@ export function adminNotificationHref(
       return '/admin/penalty-frameworks';
     case 'ContractExpiry':
       return '/admin/departments';
+    case 'CompanyManagerAccountCreated':
+      return '/admin/settings/account';
     case 'BadgeEarned':
     case 'LevelUp':
       return '/admin/gamification-configs';
@@ -92,6 +95,8 @@ export function companyNotificationHref(
   const ref = item.referenceId?.trim();
 
   switch (item.type) {
+    case 'CompanyManagerAccountCreated':
+      return '/company/settings/account';
     case 'CompanyReportDispatched':
       // referenceId = reportId → CompanyAssignReportDetailClient
       if (ref) return `/company/assign/${encodeURIComponent(ref)}`;
@@ -104,6 +109,8 @@ export function companyNotificationHref(
     case 'ReportOverdue':
     case 'ReportAutoClosed':
     case 'SlaBreachWarning':
+    case 'CleanupBeforeImagesUploaded':
+    case 'CleanupProgressUpdated':
       if (ref) return `/company/tracking?reportId=${encodeURIComponent(ref)}`;
       return '/company/tracking';
     default:
@@ -141,6 +148,8 @@ export function officerNotificationHref(
     case 'LevelUp':
     case 'BadgeProgressNear':
       return '/officer/dashboard';
+    case 'CompanyManagerAccountCreated':
+      return '/officer/settings/account';
     case 'StaffInvitationAccepted':
       return '/officer/workforce?tab=members';
     case 'CommunityCleanupStarted':
@@ -157,6 +166,7 @@ export function officerNotificationHref(
     case 'CleanupTaskDeclined':
     case 'CleanupTaskCompleted':
     case 'CleanupProgressUpdated':
+    case 'CleanupBeforeImagesUploaded':
     case 'CompanyTeamAssigned':
       // referenceId = reportId → LeoTrackingReportDetail
       if (ref) return `/officer/tracking/${encodeURIComponent(ref)}`;
