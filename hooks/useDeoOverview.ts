@@ -32,6 +32,7 @@ import type {
   DeoResolutionDistributionItem,
 } from '@/lib/api/services/fetchDeoDashboard';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import type { DeoDashboardTab } from '@/lib/store/deoOverviewUiStore';
 import { useQueries } from '@tanstack/react-query';
 
 export type DeoOverviewDateRangeKey = {
@@ -92,17 +93,36 @@ function toDateRangeParams(
   };
 }
 
+export type UseDeoOverviewOptions = {
+  /** Lazy-load tab-specific queries; overview tab loads first-screen APIs only. */
+  activeTab?: DeoDashboardTab;
+  /**
+   * Date range riêng cho GET /report-trend (filter trên card Xu hướng).
+   * Nếu bỏ trống → dùng `params` chung với KPI/status.
+   */
+  trendDateParams?: DeoDashboardDateRangeParams;
+};
+
 /**
- * DEO dashboard — parallel fetch of exactly 12 `/v1/dashboard/deo/*` endpoints.
- * Unwraps each `ApiEnvelope` to `.data`.
+ * DEO dashboard — parallel fetch of `/v1/dashboard/deo/*` endpoints.
+ * Queries are gated by `activeTab` so inactive tabs do not hit the network until opened.
  */
 export function useDeoOverview(
   params?: DeoDashboardDateRangeParams,
-  groupBy: DeoReportTrendGroupBy = 'Day'
+  groupBy: DeoReportTrendGroupBy = 'Day',
+  options?: UseDeoOverviewOptions
 ) {
   const canFetch = useCanFetchProtected();
+  const activeTab = options?.activeTab ?? 'overview';
   const rangeKey = normalizeDateRangeKey(params);
   const dateParams = toDateRangeParams(rangeKey);
+  const trendRangeKey = normalizeDateRangeKey(options?.trendDateParams ?? params);
+  const trendDateParams = toDateRangeParams(trendRangeKey);
+
+  const enableOverview = canFetch && activeTab === 'overview';
+  const enableReports = canFetch && activeTab === 'reports';
+  const enablePerformance = canFetch && activeTab === 'performance';
+  const enableMap = canFetch && activeTab === 'map';
 
   const [
     overviewQuery,
@@ -124,77 +144,77 @@ export function useDeoOverview(
         queryFn: () => fetchDeoDashboardOverview(dateParams),
         select: (envelope: ApiEnvelope<DeoDashboardOverview>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enableOverview,
       },
       {
         queryKey: deoOverviewKeys.alerts(),
         queryFn: () => fetchDeoDashboardAlerts(),
         select: (envelope: ApiEnvelope<DeoDashboardAlert[]>) => envelope.data,
         staleTime: ALERTS_STALE_MS,
-        enabled: canFetch,
+        enabled: enableOverview,
       },
       {
         queryKey: deoOverviewKeys.reportStatus(rangeKey),
         queryFn: () => fetchDeoDashboardReportStatus(dateParams),
         select: (envelope: ApiEnvelope<DeoReportStatusItem[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enableOverview,
       },
       {
-        queryKey: deoOverviewKeys.reportTrend(rangeKey, groupBy),
-        queryFn: () => fetchDeoDashboardReportTrend({ ...dateParams, groupBy }),
+        queryKey: deoOverviewKeys.reportTrend(trendRangeKey, groupBy),
+        queryFn: () => fetchDeoDashboardReportTrend({ ...trendDateParams, groupBy }),
         select: (envelope: ApiEnvelope<DeoReportTrendPoint[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enableOverview,
       },
       {
         queryKey: deoOverviewKeys.pollutionAnalytics(rangeKey),
         queryFn: () => fetchDeoDashboardPollutionAnalytics(dateParams),
         select: (envelope: ApiEnvelope<DeoPollutionAnalyticsItem[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enableReports,
       },
       {
         queryKey: deoOverviewKeys.reportFunnel(rangeKey),
         queryFn: () => fetchDeoDashboardReportFunnel(dateParams),
         select: (envelope: ApiEnvelope<DeoReportFunnelStage[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enableReports,
       },
       {
         queryKey: deoOverviewKeys.geographic(rangeKey),
         queryFn: () => fetchDeoDashboardGeographic(dateParams),
         select: (envelope: ApiEnvelope<DeoGeographicData>) => envelope.data,
         staleTime: GEOGRAPHIC_STALE_MS,
-        enabled: canFetch,
+        enabled: enableMap,
       },
       {
         queryKey: deoOverviewKeys.queueAging(),
         queryFn: () => fetchDeoDashboardQueueAging(),
         select: (envelope: ApiEnvelope<DeoQueueAgingItem[]>) => envelope.data,
         staleTime: QUEUE_AGING_STALE_MS,
-        enabled: canFetch,
+        enabled: enableReports,
       },
       {
         queryKey: deoOverviewKeys.resolutionDistribution(rangeKey),
         queryFn: () => fetchDeoDashboardResolutionDistribution(dateParams),
         select: (envelope: ApiEnvelope<DeoResolutionDistributionItem[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enableReports,
       },
       {
         queryKey: deoOverviewKeys.companyPerformance(rangeKey),
         queryFn: () => fetchDeoDashboardCompanyPerformance(dateParams),
         select: (envelope: ApiEnvelope<DeoCompanyPerformanceItem[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enablePerformance,
       },
       {
         queryKey: deoOverviewKeys.officerPerformance(rangeKey),
         queryFn: () => fetchDeoDashboardOfficerPerformance(dateParams),
         select: (envelope: ApiEnvelope<DeoOfficerPerformanceItem[]>) => envelope.data,
         staleTime: DASHBOARD_STALE_MS,
-        enabled: canFetch,
+        enabled: enablePerformance,
       },
       {
         queryKey: deoOverviewKeys.recentActivities(
@@ -208,29 +228,61 @@ export function useDeoOverview(
           }),
         select: (envelope: ApiEnvelope<DeoRecentActivityItem[]>) => envelope.data,
         staleTime: RECENT_ACTIVITIES_STALE_MS,
-        enabled: canFetch,
+        enabled: enableOverview,
       },
     ],
   });
 
-  const queries = [
-    overviewQuery,
-    alertsQuery,
-    reportStatusQuery,
-    reportTrendQuery,
-    pollutionAnalyticsQuery,
-    reportFunnelQuery,
-    geographicQuery,
-    queueAgingQuery,
-    resolutionDistributionQuery,
-    companyPerformanceQuery,
-    officerPerformanceQuery,
-    recentActivitiesQuery,
-  ] as const;
+  const activeQueries =
+    activeTab === 'overview'
+      ? ([
+          overviewQuery,
+          alertsQuery,
+          reportStatusQuery,
+          reportTrendQuery,
+          recentActivitiesQuery,
+        ] as const)
+      : activeTab === 'reports'
+        ? ([
+            pollutionAnalyticsQuery,
+            reportFunnelQuery,
+            queueAgingQuery,
+            resolutionDistributionQuery,
+          ] as const)
+        : activeTab === 'performance'
+          ? ([companyPerformanceQuery, officerPerformanceQuery] as const)
+          : ([geographicQuery] as const);
 
   const refetch = () => {
-    void Promise.all(queries.map(q => q.refetch()));
+    void Promise.all(activeQueries.map(q => q.refetch()));
   };
+
+  const primaryPending =
+    activeTab === 'overview'
+      ? overviewQuery.isPending
+      : activeTab === 'reports'
+        ? reportFunnelQuery.isPending
+        : activeTab === 'performance'
+          ? companyPerformanceQuery.isPending
+          : geographicQuery.isPending;
+
+  const primaryError =
+    activeTab === 'overview'
+      ? overviewQuery.isError
+      : activeTab === 'reports'
+        ? reportFunnelQuery.isError
+        : activeTab === 'performance'
+          ? companyPerformanceQuery.isError
+          : geographicQuery.isError;
+
+  const primaryErrorObj =
+    activeTab === 'overview'
+      ? overviewQuery.error
+      : activeTab === 'reports'
+        ? reportFunnelQuery.error
+        : activeTab === 'performance'
+          ? companyPerformanceQuery.error
+          : geographicQuery.error;
 
   return {
     overview: overviewQuery.data,
@@ -245,11 +297,11 @@ export function useDeoOverview(
     companyPerformance: companyPerformanceQuery.data,
     officerPerformance: officerPerformanceQuery.data,
     recentActivities: recentActivitiesQuery.data,
-    updatedAtMs: Math.max(0, ...queries.map(q => q.dataUpdatedAt)),
-    isPending: !canFetch || overviewQuery.isPending,
-    isFetching: queries.some(q => q.isFetching),
-    isError: overviewQuery.isError,
-    error: overviewQuery.error ?? null,
+    updatedAtMs: Math.max(0, ...activeQueries.map(q => q.dataUpdatedAt)),
+    isPending: !canFetch || primaryPending,
+    isFetching: activeQueries.some(q => q.isFetching),
+    isError: primaryError,
+    error: primaryErrorObj ?? null,
     alertsError: alertsQuery.error ?? null,
     isAlertsError: alertsQuery.isError,
     refetch,

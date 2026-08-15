@@ -47,6 +47,15 @@ export interface DeoDashboardOverview {
   officerCount: number;
   slaComplianceRate: number;
   averageResolutionHours: number;
+  /**
+   * % thay đổi so với cùng metric tuần trước (WoW).
+   * BE hiện CHƯA có — optional để FE sẵn sàng khi bổ sung trên GET /overview.
+   * null/undefined → KPI badge hiện "—".
+   */
+  totalReportsChangePercentWoW?: number | null;
+  pendingReportsChangePercentWoW?: number | null;
+  resolvedReportsChangePercentWoW?: number | null;
+  slaComplianceRateChangePercentWoW?: number | null;
 }
 
 /** Documented severities; `| string` keeps unknown BE values type-safe. */
@@ -149,6 +158,15 @@ interface DeoDashboardOverviewRaw {
   leoCount?: number;
   slaComplianceRate?: number;
   averageResolutionHours?: number;
+  /** WoW % — aliases chấp nhận khi BE bổ sung */
+  totalReportsChangePercentWoW?: number;
+  totalReportsWowPercent?: number;
+  pendingReportsChangePercentWoW?: number;
+  pendingReportsWowPercent?: number;
+  resolvedReportsChangePercentWoW?: number;
+  resolvedReportsWowPercent?: number;
+  slaComplianceRateChangePercentWoW?: number;
+  slaComplianceRateWowPercent?: number;
 }
 
 interface DeoReportTrendPointRaw {
@@ -201,6 +219,10 @@ function buildRecentActivitiesQuery(
   return Object.keys(query).length > 0 ? query : undefined;
 }
 
+function asOptionalNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 function normalizeOverview(raw: DeoDashboardOverviewRaw | null | undefined): DeoDashboardOverview {
   const data = raw ?? {};
   return {
@@ -213,6 +235,18 @@ function normalizeOverview(raw: DeoDashboardOverviewRaw | null | undefined): Deo
     officerCount: asNumber(data.officerCount ?? data.activeOfficers ?? data.leoCount),
     slaComplianceRate: asNumber(data.slaComplianceRate),
     averageResolutionHours: asNumber(data.averageResolutionHours),
+    totalReportsChangePercentWoW: asOptionalNumber(
+      data.totalReportsChangePercentWoW ?? data.totalReportsWowPercent
+    ),
+    pendingReportsChangePercentWoW: asOptionalNumber(
+      data.pendingReportsChangePercentWoW ?? data.pendingReportsWowPercent
+    ),
+    resolvedReportsChangePercentWoW: asOptionalNumber(
+      data.resolvedReportsChangePercentWoW ?? data.resolvedReportsWowPercent
+    ),
+    slaComplianceRateChangePercentWoW: asOptionalNumber(
+      data.slaComplianceRateChangePercentWoW ?? data.slaComplianceRateWowPercent
+    ),
   };
 }
 
@@ -262,7 +296,12 @@ export async function fetchDeoDashboardReportStatus(
   return envelopeWith(res.data, unwrapList(res.data.data));
 }
 
-/** GET /v1/dashboard/deo/report-trend */
+/** GET /v1/dashboard/deo/report-trend
+ * Params: from, to, groupBy (Day|Week|Month).
+ * Overview: filter 1/2/3/6 Tháng → from/to thật; FE luôn vẽ đủ 12 tháng, merge data vào tháng có điểm.
+ * Tooltip: created (mới) + resolved (đã giải quyết).
+ * Wishlist: periodChangeCount, periodChangePercent, averageCreatedPerPeriod.
+ */
 export async function fetchDeoDashboardReportTrend(
   params?: DeoDashboardTrendParams
 ): Promise<ApiEnvelope<DeoReportTrendPoint[]>> {
