@@ -30,6 +30,7 @@ export interface ViolationRecurrenceReportDto {
   hadPriorInspection: boolean;
   priorInspectionId: string | null;
   priorInspectionFinalStatus: string | null;
+  hasInspection: boolean;
 }
 
 /** GET /v1/reports/{id}/violation-recurrence-comparison — `data` */
@@ -38,6 +39,7 @@ export interface ViolationRecurrenceComparisonDto {
   priorClosedReport: ViolationRecurrenceReportDto;
   daysSincePriorClosed: number;
   distanceMeters: number;
+  hasInspection: boolean;
 }
 
 /** GET /v1/reports/{id}/violation-recurrence-comparison — envelope */

@@ -44,6 +44,7 @@ export function useCreateCommunityCleanup() {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+      queryClient.invalidateQueries({ queryKey: communityCleanupKeys.all });
     },
   });
 }

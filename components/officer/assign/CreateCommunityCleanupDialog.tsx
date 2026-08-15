@@ -26,6 +26,7 @@ import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { CalendarClock, ClipboardList, HeartHandshake, Loader2, MapPin, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState, type UIEvent } from 'react';
 
 export interface CreateCommunityCleanupDialogProps {
@@ -35,7 +36,7 @@ export interface CreateCommunityCleanupDialogProps {
   reportCode: string;
   reportLatitude: number;
   reportLongitude: number;
-  onCreated?: () => void;
+  onCreated?: (eventId: string) => void;
 }
 
 const DEFAULT_MAX_PARTICIPANTS = 50;
@@ -157,6 +158,7 @@ export function CreateCommunityCleanupDialog({
 }: CreateCommunityCleanupDialogProps) {
   const createMutation = useCreateCommunityCleanup();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -252,7 +254,7 @@ export function CreateCommunityCleanupDialog({
     if (!canSubmit || !leaderUserId || !startsAt) return;
 
     try {
-      await createMutation.mutateAsync({
+      const envelope = await createMutation.mutateAsync({
         reportId,
         body: {
           title: title.trim(),
@@ -267,9 +269,14 @@ export function CreateCommunityCleanupDialog({
           meetingLongitude: meetingLng,
         },
       });
+      const eventId = envelope.data?.id?.trim();
       toastApiSuccess(null, `Đã mở chương trình dọn cộng đồng cho báo cáo ${reportCode}.`);
-      onCreated?.();
+      if (eventId) onCreated?.(eventId);
+      else onCreated?.('');
       handleClose();
+      if (eventId) {
+        router.push(`/officer/community?eventId=${encodeURIComponent(eventId)}`);
+      }
     } catch (err) {
       toastApiError(err, 'Không thể mở chương trình dọn cộng đồng. Vui lòng thử lại.');
     }

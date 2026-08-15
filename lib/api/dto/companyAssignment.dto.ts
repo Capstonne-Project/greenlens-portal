@@ -233,11 +233,16 @@ export interface CompanyAssignmentWasteTagDto {
 }
 
 /**
- * Wire DTO — GET `/v1/reports/company-assignments/{reportId}` và
- * GET `/v1/reports/company-reports/{reportId}` (cùng shape `data`).
- * Swagger: singular `assignment` (+ acceptedAt), citizenMedia, media.before/after,
- * assignmentHistory, canReassign, priorityScore.
- * Legacy fields (`summary`, `teamAssignments`, `images`/…) kept optional for mapper fallback.
+ * Wire DTO — chi tiết Company Manager.
+ *
+ * Canonical assign-queue (Swagger 2026-08):
+ *   GET `/v1/reports/company-reports/{reportId}`
+ * Tracking progress (cùng shape `data`):
+ *   GET `/v1/reports/company-assignments/{reportId}`
+ *
+ * Fields: reportId…wasteTags, sla, citizenMedia, media.before/after,
+ * assignment (+ progressUpdates[].images), assignmentHistory, canReassign, timeline.
+ * Legacy (`summary`, `teamAssignments`, `images`/…) optional — mapper fallback.
  */
 export interface CompanyAssignmentDetailDto {
   reportId: string;
