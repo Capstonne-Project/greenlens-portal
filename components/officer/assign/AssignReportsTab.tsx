@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
@@ -57,6 +57,12 @@ const REPORT_PAGE_SIZE = 8;
 
 /** Deep-link locate — cùng multi-status Verified + Reopened với list phân công. */
 const ASSIGN_HIGHLIGHT_LOCATE_STATUSES = ASSIGN_QUEUE_STATUSES;
+
+/** GET /v1/reports/queue — sort server-side theo `verifiedAt` desc. */
+const ASSIGN_QUEUE_SORT = {
+  sortBy: 'VerifiedAt' as const,
+  sortDir: 'Desc' as const,
+};
 
 /** Filter panel width when open; collapse animates to 0 then unmounts. */
 const FILTER_WIDTH_OPEN = '14rem';
@@ -193,7 +199,7 @@ function EllipsisTooltip({
 /**
  * Widths as % of table. `code` = identity (thumb + id/code/category).
  * Header identity = "Báo cáo" (không dùng "Mã báo cáo"). Không cột điểm ưu tiên.
- * Thứ tự: địa chỉ → mức độ → ngày tạo → trạng thái → SLA.
+ * Thứ tự: địa chỉ → mức độ → ngày xác minh → trạng thái → SLA.
  */
 const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
   {
@@ -213,7 +219,7 @@ const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
     className: 'w-[16%] min-w-0 max-w-0',
   },
   { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
-  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.verified, className: 'w-[10%] min-w-0' },
   { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
   { key: 'verifySla', label: REPORT_QUEUE_COLUMN_LABEL.verifySla, className: 'w-[9%] min-w-0' },
   { key: 'resolveSla', label: REPORT_QUEUE_COLUMN_LABEL.resolveSla, className: 'w-[8%] min-w-0' },
@@ -721,7 +727,7 @@ function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
     case 'severity':
       return <SeverityText severity={row.severity} />;
     case 'created':
-      return <CreatedCell iso={row.createdAt} />;
+      return <CreatedCell iso={row.verifiedAt || row.createdAt} />;
     case 'status':
       return <StatusBadge status={row.status} />;
     case 'verifySla':
@@ -944,10 +950,13 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   };
 
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const highlightReportId = searchParams.get('highlightReportId');
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const [highlightFading, setHighlightFading] = useState(false);
   const consumedHighlightRef = useRef<string | null>(null);
+  /** After a successful assign, do not re-tick from leftover `?highlightReportId=`. */
+  const [suppressHighlightSelect, setSuppressHighlightSelect] = useState(false);
   /** Track highlight đã apply — state thay vì update ref lúc render (eslint react-hooks/refs). */
   const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null);
 
@@ -955,8 +964,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     () => ({
       page,
       pageSize: REPORT_PAGE_SIZE,
-      sortBy: 'CreatedAt' as const,
-      sortDir: 'Desc' as const,
+      ...ASSIGN_QUEUE_SORT,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...getDateRange(datePreset, customFrom, customTo),
       ...(categoryId ? { categoryId } : {}),
@@ -996,13 +1004,16 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
    */
   if (!highlightReportId && appliedHighlightId !== null) {
     setAppliedHighlightId(null);
+    setSuppressHighlightSelect(false);
   } else if (
     highlightReportId &&
     appliedHighlightId !== highlightReportId &&
     filtered.some(r => r.id === highlightReportId)
   ) {
     setAppliedHighlightId(highlightReportId);
-    setSelected(new Set([highlightReportId]));
+    if (!suppressHighlightSelect) {
+      setSelected(new Set([highlightReportId]));
+    }
     setHighlightFading(false);
   }
 
@@ -1050,8 +1061,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
         foundPage = await locateReportInQueuePage(queryClient, highlightReportId, {
           pageSize: REPORT_PAGE_SIZE,
           status: ASSIGN_HIGHLIGHT_LOCATE_STATUSES,
-          sortBy: 'CreatedAt',
-          sortDir: 'Desc',
+          ...ASSIGN_QUEUE_SORT,
           ...(debouncedSearch ? { search: debouncedSearch } : {}),
           ...getDateRange(datePreset, customFrom, customTo),
           ...(categoryId ? { categoryId } : {}),
@@ -1097,15 +1107,31 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     categoryId,
   ]);
 
-  const hasRejectedSelected = useMemo(
-    () => [...selected].some(id => filtered.find(r => r.id === id)?.status === 'Rejected'),
+  const selectedVisibleIds = useMemo(
+    () => [...selected].filter(id => filtered.some(r => r.id === id)),
     [selected, filtered]
+  );
+
+  const hasRejectedSelected = useMemo(
+    () => selectedVisibleIds.some(id => filtered.find(r => r.id === id)?.status === 'Rejected'),
+    [selectedVisibleIds, filtered]
   );
 
   const allChecked = filtered.length > 0 && selected.size === filtered.length;
   const indeterminate = selected.size > 0 && selected.size < filtered.length;
 
-  const handleAssigned = () => setSelected(new Set());
+  const handleAssigned = () => {
+    setSuppressHighlightSelect(true);
+    setSelected(new Set());
+    setAssignOpen(false);
+    if (!highlightReportId) return;
+    setAppliedHighlightId(highlightReportId);
+    consumedHighlightRef.current = highlightReportId;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('highlightReportId');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -1223,15 +1249,15 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
               <Button
                 type="button"
                 size="sm"
-                disabled={selected.size === 0 || hasRejectedSelected}
+                disabled={selectedVisibleIds.length === 0 || hasRejectedSelected}
                 onClick={() => setAssignOpen(true)}
                 className="h-8 gap-1.5 bg-emerald-600 px-3 text-[0.8125rem] text-white hover:bg-emerald-500"
               >
                 <UserPlus className="size-3.5" />
                 Phân công
-                {selected.size > 0 ? (
+                {selectedVisibleIds.length > 0 ? (
                   <span className="rounded-full bg-white/20 px-1.5 text-[11px] font-semibold">
-                    {selected.size}
+                    {selectedVisibleIds.length}
                   </span>
                 ) : null}
               </Button>
@@ -1432,7 +1458,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
         <Dialog
           open={assignOpen}
           onClose={() => setAssignOpen(false)}
-          reportIds={[...selected]}
+          reportIds={selectedVisibleIds}
           onAssigned={handleAssigned}
         />
 

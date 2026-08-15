@@ -54,7 +54,8 @@ export type ReportQueueSortByDto =
   | 'CreatedAt'
   | 'Severity'
   | 'SlaVerifyDueAt'
-  | 'SlaResolveDueAt';
+  | 'SlaResolveDueAt'
+  | 'VerifiedAt';
 
 export type ReportQueueSortDirDto = 'Asc' | 'Desc';
 
