@@ -1708,7 +1708,16 @@ export function VerifyDetailClient({
   const { data: categories = [], isLoading: catsLoading } = useCatalogPollutionCategories();
   const verifyMutation = useVerifyReport();
   const verifyIdempotencyKeyRef = useRef(createIdempotencyKeyStore());
+  const assignedNavTimerRef = useRef<number | null>(null);
   const rejectMutation = useRejectReport();
+
+  useEffect(() => {
+    return () => {
+      if (assignedNavTimerRef.current != null) {
+        window.clearTimeout(assignedNavTimerRef.current);
+      }
+    };
+  }, []);
 
   /** Flag trùng chỉ cần trên màn xác minh — tránh GET /v1/reports/queue khi mở detail phân công. */
   const canFetchProtected = useCanFetchProtected();
@@ -1854,7 +1863,14 @@ export function VerifyDetailClient({
     setAssignDialogOpen(false);
     // Embed Phân công: về bảng, không kèm highlight để khỏi tick lại báo cáo đã gán.
     if (onBack) {
-      onBack({ assigned: true });
+      // Dialog `duration-200` — đợi overlay đóng xong rồi replace list (tránh chồng skeleton).
+      if (assignedNavTimerRef.current != null) {
+        window.clearTimeout(assignedNavTimerRef.current);
+      }
+      assignedNavTimerRef.current = window.setTimeout(() => {
+        assignedNavTimerRef.current = null;
+        onBack({ assigned: true });
+      }, 200);
       return;
     }
     void refetch();

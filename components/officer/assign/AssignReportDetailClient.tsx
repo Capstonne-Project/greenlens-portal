@@ -2,6 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 import { VerifyDetailClient } from '@/components/officer/verify/VerifyDetailClient';
 import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
@@ -23,15 +24,23 @@ export function AssignReportDetailClient({ id }: AssignReportDetailClientProps) 
   const queryClient = useQueryClient();
   const from = resolveSafeOfficerFrom(searchParams.get('from'));
 
+  useEffect(() => {
+    router.prefetch('/officer/assign');
+  }, [router]);
+
   return (
     <VerifyDetailClient
       id={id}
-      onBack={() =>
+      detailMode="assign"
+      onBack={opts =>
         goBackWithListSoftReload({
           router,
           queryClient,
-          from,
-          fallbackHref: `/officer/assign?${new URLSearchParams({ highlightReportId: id }).toString()}`,
+          from: opts?.assigned ? null : from,
+          fallbackHref: opts?.assigned
+            ? '/officer/assign'
+            : `/officer/assign?${new URLSearchParams({ highlightReportId: id }).toString()}`,
+          method: opts?.assigned ? 'replace' : 'push',
         })
       }
     />
