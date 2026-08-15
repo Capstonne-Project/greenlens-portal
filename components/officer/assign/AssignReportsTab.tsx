@@ -58,9 +58,9 @@ const REPORT_PAGE_SIZE = 8;
 /** Deep-link locate — cùng multi-status Verified + Reopened với list phân công. */
 const ASSIGN_HIGHLIGHT_LOCATE_STATUSES = ASSIGN_QUEUE_STATUSES;
 
-/** GET /v1/reports/queue — sort server-side theo `verifiedAt` desc. */
+/** GET /v1/reports/queue — BE chưa hỗ trợ sortBy=VerifiedAt; dùng createdAt desc. */
 const ASSIGN_QUEUE_SORT = {
-  sortBy: 'VerifiedAt' as const,
+  sortBy: 'CreatedAt' as const,
   sortDir: 'Desc' as const,
 };
 
@@ -199,7 +199,7 @@ function EllipsisTooltip({
 /**
  * Widths as % of table. `code` = identity (thumb + id/code/category).
  * Header identity = "Báo cáo" (không dùng "Mã báo cáo"). Không cột điểm ưu tiên.
- * Thứ tự: địa chỉ → mức độ → ngày xác minh → trạng thái → SLA.
+ * Thứ tự: địa chỉ → mức độ → ngày tạo → trạng thái → SLA.
  */
 const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
   {
@@ -219,7 +219,7 @@ const TABLE_COLS: { key: ColumnKey; label: string; className?: string }[] = [
     className: 'w-[16%] min-w-0 max-w-0',
   },
   { key: 'severity', label: REPORT_QUEUE_COLUMN_LABEL.severity, className: 'w-[9%] min-w-0' },
-  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.verified, className: 'w-[10%] min-w-0' },
+  { key: 'created', label: REPORT_QUEUE_COLUMN_LABEL.created, className: 'w-[10%] min-w-0' },
   { key: 'status', label: REPORT_QUEUE_COLUMN_LABEL.status, className: 'w-[10%] min-w-0' },
   { key: 'verifySla', label: REPORT_QUEUE_COLUMN_LABEL.verifySla, className: 'w-[9%] min-w-0' },
   { key: 'resolveSla', label: REPORT_QUEUE_COLUMN_LABEL.resolveSla, className: 'w-[8%] min-w-0' },
@@ -727,7 +727,7 @@ function renderDataCell(key: DataColumnKey, row: ReportQueueItem) {
     case 'severity':
       return <SeverityText severity={row.severity} />;
     case 'created':
-      return <CreatedCell iso={row.verifiedAt || row.createdAt} />;
+      return <CreatedCell iso={row.createdAt} />;
     case 'status':
       return <StatusBadge status={row.status} />;
     case 'verifySla':
