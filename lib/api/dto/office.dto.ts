@@ -170,7 +170,8 @@ export interface LeoMyReportsDataDto {
 export interface LeoWardBoundaryDto {
   wardCode: string;
   wardName: string;
-  boundaryUrl?: string | null;
+  /** BE trả geometry (Polygon/MultiPolygon) đã stringify trực tiếp, không còn qua CDN. */
+  geoJson?: string | null;
 }
 
 /** POST /v1/offices/my/staff — vai trò đích khi tuyển Citizen. */

@@ -1,3 +1,4 @@
+import type { Geometry } from 'geojson';
 import type {
   LeoMyReportAssignedCompanyDto,
   LeoMyReportAssignmentDto,
@@ -207,10 +208,26 @@ export function mapLeoMyReportsDataDto(data: LeoMyReportsDataDto): LeoMyReportsD
 }
 
 export function mapLeoWardBoundaryDto(dto: LeoWardBoundaryDto): LeoWardBoundary {
+  let geometry: Geometry | null = null;
+  if (dto.geoJson) {
+    try {
+      const parsed: unknown = JSON.parse(dto.geoJson);
+      if (
+        parsed != null &&
+        typeof parsed === 'object' &&
+        'type' in parsed &&
+        (parsed.type === 'Polygon' || parsed.type === 'MultiPolygon')
+      ) {
+        geometry = parsed as Geometry;
+      }
+    } catch {
+      geometry = null;
+    }
+  }
   return {
     wardCode: dto.wardCode,
     wardName: dto.wardName,
-    boundaryUrl: dto.boundaryUrl ?? null,
+    geometry,
   };
 }
 

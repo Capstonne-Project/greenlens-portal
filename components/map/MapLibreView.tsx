@@ -32,8 +32,9 @@ import Map, {
   type MapRef,
   type ViewStateChangeEvent,
 } from 'react-map-gl/maplibre';
-import { useMapReports, useWardBoundaryFeature, type MapViewportParams } from '@/hooks/useMap';
+import { useMapReports, type MapViewportParams } from '@/hooks/useMap';
 import { useLeoWardBoundary } from '@/hooks/useLeoOffices';
+import { useCanFetchProtected } from '@/hooks/useAuthSession';
 import { MAP_VIEWPORT_PIN_LIMIT } from '@/lib/constants/mapReports';
 import {
   MAP_SIDEBAR_TRANSITION_MS,
@@ -298,11 +299,14 @@ export const MapLibreView = forwardRef<MapLibreViewHandle, MapLibreViewProps>(fu
   const mapPaddingLeft = useMapShellStore(selectMapPaddingLeft);
   const { data, isFetching } = useMapReports(viewport);
 
-  const { data: wardBoundary, isFetched: isWardBoundaryFetched } = useLeoWardBoundary();
-  const { data: wardFeature, isFetched: isWardFeatureFetched } = useWardBoundaryFeature(
-    wardBoundary?.boundaryUrl ?? null,
-    wardBoundary?.wardCode ?? null
-  );
+  const canFetchProtected = useCanFetchProtected();
+  const { data: wardBoundary, isFetched: isWardBoundaryFetched } = useLeoWardBoundary({
+    enabled: canFetchProtected,
+  });
+  const wardFeature = useMemo<Feature<Geometry> | null>(() => {
+    if (!wardBoundary?.geometry) return null;
+    return { type: 'Feature', properties: {}, geometry: wardBoundary.geometry };
+  }, [wardBoundary]);
   const boundaryGeojson = useMemo<FeatureCollection>(
     () => (wardFeature ? { type: 'FeatureCollection', features: [wardFeature] } : EMPTY_GEOJSON),
     [wardFeature]
@@ -652,7 +656,7 @@ export const MapLibreView = forwardRef<MapLibreViewHandle, MapLibreViewProps>(fu
   /** Không có ranh giới phường để fit (đã fetch xong nhưng rỗng) — coi map sẵn sàng khi tile đã render (idle). */
   useEffect(() => {
     if (hasBoundary) return;
-    if (!isWardBoundaryFetched || !isWardFeatureFetched) return;
+    if (!isWardBoundaryFetched) return;
     const map = mapRef.current?.getMap();
     if (!map) return;
     if (map.loaded()) {
@@ -660,7 +664,7 @@ export const MapLibreView = forwardRef<MapLibreViewHandle, MapLibreViewProps>(fu
     } else {
       map.once('load', () => map.once('idle', () => setIsReady(true)));
     }
-  }, [hasBoundary, isWardBoundaryFetched, isWardFeatureFetched]);
+  }, [hasBoundary, isWardBoundaryFetched]);
 
   return (
     <div
