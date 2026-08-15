@@ -26,6 +26,15 @@ function buildReportQueueQuery(params?: ReportQueueParams): Record<string, unkno
   if (params?.fromDate?.trim()) query.fromDate = params.fromDate.trim();
   if (params?.toDate?.trim()) query.toDate = params.toDate.trim();
   if (params?.slaBreached !== undefined) query.slaBreached = params.slaBreached;
+  if (params?.isPossibleDuplicate !== undefined) {
+    query.isPossibleDuplicate = params.isPossibleDuplicate;
+  }
+  if (params?.isSuspectedViolationRecurrence !== undefined) {
+    query.isSuspectedViolationRecurrence = params.isSuspectedViolationRecurrence;
+  }
+  if (params?.hasPendingReopenRequest !== undefined) {
+    query.hasPendingReopenRequest = params.hasPendingReopenRequest;
+  }
   const search = params?.search?.trim();
   if (search) query.search = search;
   if (params?.sortBy) query.sortBy = params.sortBy;

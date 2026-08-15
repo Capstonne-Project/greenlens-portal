@@ -38,6 +38,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui/layout-grid';
+import { Separator } from '@/components/ui/separator';
+import { useReportImagePreview } from '@/components/officer/shared/ReportImagePreview';
 import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
 import {
   DuplicateSuspectDialog,
@@ -58,10 +60,12 @@ import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type {
   ReportDetail,
+  ReportMedia,
   ReportSeverity,
   ReportStatus,
   ReportWasteTag,
 } from '@/lib/api/models/report';
+import { mediaTypeLabelVi } from '@/lib/constants/mediaType';
 import type { VerifyReportInput } from '@/lib/api/models/reportAction';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { getWasteTagFaIcon } from '@/lib/constants/adminWasteTags';
@@ -86,6 +90,7 @@ import {
   Loader2,
   MapPin,
   RefreshCw,
+  RotateCcw,
   Shield,
   Tag,
   TrendingUp,
@@ -638,22 +643,85 @@ function HeaderStrip({
 
 const GALLERY_PREVIEW_MAX = 5;
 
+function isDisplayableReportImage(media: ReportMedia): boolean {
+  const type = media.mediaType.trim().toLowerCase();
+  const mime = media.mimeType?.trim().toLowerCase() ?? '';
+  if (mime.startsWith('video/') || type === 'video') return false;
+  if (mime.startsWith('image/')) return true;
+  if (!media.url?.trim()) return false;
+  return (
+    type.includes('image') ||
+    type === 'reopenevidence' ||
+    type === 'before' ||
+    type === 'after' ||
+    type === 'progress' ||
+    type === 'inspection'
+  );
+}
+
+/** Reopened: evidence approved mới nhất (history newest-first), fallback pending. */
+function resolveReopenEvidence(detail: ReportDetail): {
+  media: ReportMedia[];
+  reason: string | null;
+} {
+  if (detail.status !== 'Reopened') return { media: [], reason: null };
+
+  const approved = detail.reopenHistory.find(item => item.status === 'Approved');
+  const source = approved ?? detail.pendingReopenRequest;
+  const reason = source?.reason?.trim() || null;
+  const media = (source?.evidenceMedia ?? []).filter(isDisplayableReportImage);
+  return { media, reason };
+}
+
 function Gallery({
   media,
+  evidenceMedia = [],
   address,
   createdAt,
   isSuspicious = false,
   suspiciousReasons = [],
+  latitude,
+  longitude,
 }: {
   media: ReportDetail['media'];
+  evidenceMedia?: ReportMedia[];
   address: string;
   createdAt: string;
   isSuspicious?: boolean;
   suspiciousReasons?: string[];
+  latitude?: number;
+  longitude?: number;
 }) {
   const [showAll, setShowAll] = useState(false);
 
-  const images = useMemo(() => media.filter(m => m.mediaType === 'Image'), [media]);
+  const images = useMemo(() => {
+    const evidence = evidenceMedia.filter(isDisplayableReportImage);
+    const evidenceIds = new Set(evidence.map(item => item.id));
+    const current = media
+      .filter(isDisplayableReportImage)
+      .filter(item => !evidenceIds.has(item.id));
+    return [
+      ...evidence.map(item => ({ ...item, isEvidence: true as const })),
+      ...current.map(item => ({ ...item, isEvidence: false as const })),
+    ];
+  }, [media, evidenceMedia]);
+
+  const previewImages = useMemo(
+    () =>
+      images.map((img, i) => ({
+        url: img.url,
+        label: img.isEvidence
+          ? `${mediaTypeLabelVi(img.mediaType)} · ảnh ${i + 1}`
+          : `Ảnh ${i + 1}`,
+        uploadedAt: createdAt,
+        typeLabel: img.isEvidence ? mediaTypeLabelVi(img.mediaType) : undefined,
+      })),
+    [images, createdAt]
+  );
+  const { setPreviewIndex, previewDialog } = useReportImagePreview(previewImages, {
+    mapLocation: latitude != null && longitude != null ? { latitude, longitude } : null,
+  });
+
   const totalSizeBytes = useMemo(
     () =>
       media.reduce((sum, item) => sum + (Number.isFinite(item.sizeBytes) ? item.sizeBytes : 0), 0),
@@ -671,8 +739,35 @@ function Gallery({
     const preview = images.slice(0, GALLERY_PREVIEW_MAX);
     return preview.map((img, i) => {
       const isLastPreview = i === preview.length - 1;
+      const typeLabel = img.isEvidence ? mediaTypeLabelVi(img.mediaType) : '';
+      const evidenceBadge = img.isEvidence ? (
+        <span
+          className={cn(
+            'absolute right-2 top-2 z-30 max-w-[calc(100%-1rem)] truncate rounded-md bg-amber-600 px-1.5 py-0.5',
+            'text-[10px] font-semibold text-white shadow-sm ring-1 ring-white/25'
+          )}
+          title={typeLabel}
+        >
+          {typeLabel}
+        </span>
+      ) : null;
+      const galleryMoreBtn =
+        hasMore && isLastPreview ? (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setShowAll(true);
+            }}
+            className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-slate-50"
+          >
+            <Camera className="size-3.5 shrink-0" aria-hidden />
+            Xem tất cả ảnh ({total} ảnh)
+          </button>
+        ) : null;
+
       return {
-        id: img.id,
+        id: `${img.isEvidence ? 'ev' : 'cur'}-${img.id}`,
         thumbnail: img.url,
         className: hero5CardClass(i, preview.length),
         content: (
@@ -689,18 +784,11 @@ function Gallery({
           </div>
         ),
         overlay:
-          hasMore && isLastPreview ? (
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation();
-                setShowAll(true);
-              }}
-              className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-slate-50"
-            >
-              <Camera className="size-3.5 shrink-0" aria-hidden />
-              Xem gallery ({total} ảnh)
-            </button>
+          evidenceBadge || galleryMoreBtn ? (
+            <>
+              {evidenceBadge}
+              {galleryMoreBtn}
+            </>
           ) : undefined,
       };
     });
@@ -748,7 +836,7 @@ function Gallery({
       <Dialog open={showAll} onOpenChange={setShowAll}>
         <DialogContent className="flex h-dvh max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:h-[92vh] sm:rounded-xl">
           <DialogDescription className="sr-only">
-            Hộp thoại xem tất cả hình ảnh báo cáo theo dạng lưới.
+            Hộp thoại xem tất cả hình ảnh báo cáo. Chọn một ảnh để phóng to hoặc thu nhỏ.
           </DialogDescription>
           <DialogHeader className="shrink-0 space-y-0 border-b px-4 py-3 text-center sm:px-8 sm:py-4 md:px-12">
             <DialogTitle className="truncate text-center text-sm font-semibold tracking-tight text-foreground md:text-base">
@@ -759,16 +847,19 @@ function Gallery({
           <div className="shrink-0 border-b px-4 pt-2 md:px-6">
             <div className="inline-flex items-center gap-1.5 border-b-2 border-foreground pb-2 text-sm font-medium text-foreground">
               <Camera className="size-4" aria-hidden />
-              Hình ảnh
+              Tất cả ảnh
             </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
               {images.map((img, i) => (
-                <div
-                  key={img.id}
-                  className="relative aspect-4/3 overflow-hidden rounded-lg bg-muted"
+                <button
+                  key={`${img.isEvidence ? 'ev' : 'cur'}-${img.id}`}
+                  type="button"
+                  onClick={() => setPreviewIndex(i)}
+                  className="relative aspect-4/3 cursor-zoom-in overflow-hidden rounded-lg bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Xem ảnh ${i + 1} — phóng to, thu nhỏ`}
                 >
                   <Image
                     src={img.url}
@@ -778,12 +869,21 @@ function Gallery({
                     className="object-cover"
                     unoptimized
                   />
-                </div>
+                  {img.isEvidence ? (
+                    <span
+                      className="absolute right-2 top-2 z-10 max-w-[calc(100%-1rem)] truncate rounded-md bg-amber-600 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm ring-1 ring-white/25"
+                      title={mediaTypeLabelVi(img.mediaType)}
+                    >
+                      {mediaTypeLabelVi(img.mediaType)}
+                    </span>
+                  ) : null}
+                </button>
               ))}
             </div>
           </div>
         </DialogContent>
       </Dialog>
+      {previewDialog}
     </>
   );
 }
@@ -799,6 +899,7 @@ function LocationCard({
   setPendingWasteTagIds,
   categories,
   catsLoading,
+  reopenReason,
 }: {
   detail: ReportDetail;
   pendingCategoryName: string;
@@ -810,6 +911,7 @@ function LocationCard({
   setPendingWasteTagIds: (ids: string[]) => void;
   categories: { id: string; nameVi: string }[];
   catsLoading: boolean;
+  reopenReason?: string | null;
 }) {
   const [mapType, setMapType] = useState<'m' | 'k'>('m');
   const canEditFields = detail.status === 'Submitted';
@@ -923,6 +1025,15 @@ function LocationCard({
               <div className="min-w-0 @lg/verify-info:col-span-2">
                 <InfoField icon={AlignLeft} label="Mô tả">
                   <ExpandableDescription key={detail.description} text={detail.description} />
+                </InfoField>
+              </div>
+            ) : null}
+
+            {reopenReason ? (
+              <div className="min-w-0 space-y-4 @lg/verify-info:col-span-2">
+                <Separator className="bg-border" />
+                <InfoField icon={RotateCcw} label="Lý do mở lại">
+                  <ExpandableDescription key={reopenReason} text={reopenReason} />
                 </InfoField>
               </div>
             ) : null}
@@ -1350,28 +1461,52 @@ function ActionCard({
     );
   }
 
-  if (status === 'Verified' || status === 'Dispatched') {
+  if (status === 'Verified' || status === 'Dispatched' || status === 'Reopened') {
+    const isReopened = status === 'Reopened';
+    const isDispatched = status === 'Dispatched';
+
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Trạng thái</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center px-4 py-5 text-center">
-          <div className="flex size-11 items-center justify-center rounded-full border border-emerald-200 bg-white shadow-sm">
-            <CheckCircle2 className="size-6 text-emerald-600" />
+          <div
+            className={cn(
+              'flex size-11 items-center justify-center rounded-full border bg-white shadow-sm',
+              isReopened ? 'border-violet-200' : 'border-emerald-200'
+            )}
+          >
+            {isReopened ? (
+              <RotateCcw className="size-6 text-violet-600" aria-hidden />
+            ) : (
+              <CheckCircle2 className="size-6 text-emerald-600" aria-hidden />
+            )}
           </div>
-          <p className="mt-3 text-lg font-semibold text-emerald-700">
-            {status === 'Dispatched' ? 'Chờ phân công' : 'Đã xác minh'}
+          <p
+            className={cn(
+              'mt-3 text-lg font-semibold',
+              isReopened ? STATUS_TEXT_CLASSES.Reopened : 'text-emerald-700'
+            )}
+          >
+            {isDispatched ? 'Chờ phân công' : reportStatusLabelVi(status)}
           </p>
           <CardDescription className="mt-1 text-base">
-            {status === 'Dispatched'
+            {isDispatched
               ? 'Báo cáo đã dispatch và sẵn sàng gán đội xử lý.'
-              : 'Báo cáo đã được xác nhận hợp lệ và sẵn sàng phân công.'}
+              : isReopened
+                ? 'Báo cáo đã được mở lại và sẵn sàng phân công đội xử lý.'
+                : 'Báo cáo đã được xác nhận hợp lệ và sẵn sàng phân công.'}
           </CardDescription>
         </CardContent>
         <CardFooter>
           <Button
-            className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500"
+            className={cn(
+              'w-full rounded-lg',
+              isReopened
+                ? 'bg-violet-600 hover:bg-violet-500'
+                : 'bg-emerald-600 hover:bg-emerald-500'
+            )}
             onClick={onAssignNow}
           >
             Phân công đội xử lý
@@ -1561,9 +1696,12 @@ export function VerifyDetailClient({
 }: {
   id: string;
   /** Khi có — nút back gọi callback (vd. `/officer/assign/[id]` → danh sách phân công). */
-  onBack?: () => void;
-  /** `tracking` — hiển thị panel phân công & chuyển giao đội. */
-  detailMode?: 'verify' | 'tracking';
+  onBack?: (meta?: { assigned?: boolean }) => void;
+  /**
+   * `assign` — `/officer/assign/[id]`: chỉ GET detail (+ catalog), không gọi hàng đợi.
+   * `tracking` — panel phân công/chuyển giao; không cần queue Submitted.
+   */
+  detailMode?: 'verify' | 'tracking' | 'assign';
 }) {
   const router = useRouter();
   const { data: detail, isLoading, isError, refetch } = useReportDetail(id);
@@ -1572,8 +1710,9 @@ export function VerifyDetailClient({
   const verifyIdempotencyKeyRef = useRef(createIdempotencyKeyStore());
   const rejectMutation = useRejectReport();
 
-  /** Cùng nguồn flag trùng với hàng đợi — mở DuplicateSuspectDialog trước khi verify. */
+  /** Flag trùng chỉ cần trên màn xác minh — tránh GET /v1/reports/queue khi mở detail phân công. */
   const canFetchProtected = useCanFetchProtected();
+  const shouldFetchDuplicateQueue = detailMode === 'verify';
   const { data: queueSlice } = useReportQueue(
     {
       page: 1,
@@ -1581,7 +1720,7 @@ export function VerifyDetailClient({
       status: 'Submitted',
       ...(detail?.code ? { search: detail.code } : {}),
     },
-    { enabled: canFetchProtected && Boolean(detail?.code) }
+    { enabled: shouldFetchDuplicateQueue && canFetchProtected && Boolean(detail?.code) }
   );
 
   const queueItem = useMemo(
@@ -1615,6 +1754,7 @@ export function VerifyDetailClient({
       wardCode: detail.wardCode,
       priorityScore: detail.priorityScore,
       createdAt: detail.createdAt,
+      verifiedAt: detail.verifiedAt,
       slaVerifyDueAt: detail.slaVerifyDueAt,
       slaResolveDueAt: detail.slaResolveDueAt,
       firstImageUrl: image?.url ?? detail.media[0]?.url ?? null,
@@ -1652,6 +1792,11 @@ export function VerifyDetailClient({
 
   const pendingCategoryName =
     categories.find(c => c.id === pendingCategoryId)?.nameVi ?? detail?.categoryName ?? '';
+
+  const reopenEvidence = useMemo(
+    () => (detail ? resolveReopenEvidence(detail) : { media: [] as ReportMedia[], reason: null }),
+    [detail]
+  );
 
   const serverWasteTagIds = useMemo(
     () => (detail?.wasteTags ?? []).map(t => t.tagId).filter(Boolean),
@@ -1707,9 +1852,9 @@ export function VerifyDetailClient({
 
   const handleAssigned = () => {
     setAssignDialogOpen(false);
-    // Embed Phân công (AssignReportsTab): quay về bảng thay vì ở lại detail.
+    // Embed Phân công: về bảng, không kèm highlight để khỏi tick lại báo cáo đã gán.
     if (onBack) {
-      onBack();
+      onBack({ assigned: true });
       return;
     }
     void refetch();
@@ -1830,10 +1975,13 @@ export function VerifyDetailClient({
         <div className="space-y-8 md:space-y-12 2xl:space-y-16">
           <Gallery
             media={detail.media}
+            evidenceMedia={reopenEvidence.media}
             address={detail.address}
             createdAt={detail.createdAt}
             isSuspicious={detail.isSuspicious}
             suspiciousReasons={detail.suspiciousReasons}
+            latitude={detail.latitude}
+            longitude={detail.longitude}
           />
 
           <div className={DETAIL_BODY_GRID}>
@@ -1876,6 +2024,7 @@ export function VerifyDetailClient({
                 setPendingWasteTagIds={setPendingWasteTagIds}
                 categories={categories}
                 catsLoading={catsLoading}
+                reopenReason={reopenEvidence.reason}
               />
             </div>
 
