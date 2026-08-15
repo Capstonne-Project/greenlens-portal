@@ -1,3 +1,5 @@
+import type { Geometry } from 'geojson';
+
 export interface Office {
   id: string;
   name: string;
@@ -185,13 +187,12 @@ export interface LeoMyReportsData {
 
 /**
  * `data` envelope của GET /v1/offices/my/ward-boundary.
- * `boundaryUrl` trỏ tới 1 FeatureCollection GeoJSON CHỨA NHIỀU WARD (gộp theo vùng để giảm
- * số file trên CDN) — phải fetch rồi filter `features` theo `properties.code === wardCode`.
+ * `geometry` là Polygon/MultiPolygon ranh giới phường, đã parse sẵn từ `geoJson` (string) BE trả về.
  */
 export interface LeoWardBoundary {
   wardCode: string;
   wardName: string;
-  boundaryUrl: string | null;
+  geometry: Geometry | null;
 }
 
 /**
