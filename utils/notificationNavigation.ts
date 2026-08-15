@@ -8,7 +8,7 @@ import { withOfficerFromQuery } from '@/utils/officerNavigation';
 import type { QueryClient } from '@tanstack/react-query';
 
 /** Query params không quyết định “cùng màn hình” (deep-link phụ). */
-const IGNORE_SEARCH_KEYS = new Set(['from', '_r']);
+const IGNORE_SEARCH_KEYS = new Set(['from', '_r', 'highlight', 'highlightReportId', 'tab']);
 
 type AppRouterLike = {
   push: (href: string) => void;
@@ -88,7 +88,8 @@ function buildNotificationBackTarget(targetHref: string): string | null {
 
   /** Overlay detail trên cùng route list. */
   if (pathname.startsWith('/officer/community') && url.searchParams.get('eventId')?.trim()) {
-    return '/officer/community';
+    const eventId = url.searchParams.get('eventId')!.trim();
+    return `/officer/community?highlight=${encodeURIComponent(eventId)}`;
   }
   if (pathname.startsWith('/company/tracking') && url.searchParams.get('reportId')?.trim()) {
     return '/company/tracking';

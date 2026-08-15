@@ -21,8 +21,13 @@ import {
   Users,
 } from 'lucide-react';
 import Image from 'next/image';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useLayoutEffect, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PaginationSimple } from '@/components/ui/pagination';
+
+/** Highlight thẻ sau khi quay lại list — giữ ngắn rồi fade (khớp duration-700). */
+const HIGHLIGHT_HOLD_MS = 1600;
+const HIGHLIGHT_CLEAR_MS = 2300;
 
 const PAGE_SIZE = 12;
 
@@ -41,6 +46,11 @@ const TAB_ORDER: StatusTab[] = [
   'Completed',
   'Cancelled',
 ];
+
+function parseStatusTab(value: string | null): StatusTab | null {
+  if (!value) return null;
+  return (TAB_ORDER as readonly string[]).includes(value) ? (value as StatusTab) : null;
+}
 
 const TAB_LABEL: Record<StatusTab, string> = {
   PendingVerification: 'Chờ duyệt',
@@ -155,7 +165,19 @@ function StatusTabBar({
   );
 }
 
-function EventCard({ item, onOpen }: { item: CommunityCleanupListItem; onOpen: () => void }) {
+function EventCard({
+  item,
+  onOpen,
+  isHighlighted,
+  highlightFading,
+  cardRef,
+}: {
+  item: CommunityCleanupListItem;
+  onOpen: () => void;
+  isHighlighted: boolean;
+  highlightFading: boolean;
+  cardRef: (node: HTMLButtonElement | null) => void;
+}) {
   const progress = Math.max(0, Math.min(100, Math.round(item.progressPercent)));
   const statusLabel = communityCleanupStatusLabelVi(item.status);
   const badgeClass = COMMUNITY_CLEANUP_STATUS_BADGE_CLASSES[item.status];
@@ -163,9 +185,15 @@ function EventCard({ item, onOpen }: { item: CommunityCleanupListItem; onOpen: (
 
   return (
     <button
+      ref={cardRef}
       type="button"
       onClick={onOpen}
-      className="group flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        'group flex h-full flex-col overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-all duration-700 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        isHighlighted && !highlightFading
+          ? 'border-emerald-400 bg-emerald-50/80 ring-2 ring-emerald-400/70'
+          : 'border-border/60'
+      )}
     >
       <div className="relative aspect-16/9 w-full shrink-0 overflow-hidden bg-muted">
         {item.thumbnailUrl ? (
@@ -266,11 +294,39 @@ interface CommunityQueueBoardProps {
 }
 
 export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [statusTab, setStatusTab] = useState<StatusTab>('PendingVerification');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const isSearchPending = search.trim() !== debouncedSearch;
+
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [highlightFading, setHighlightFading] = useState(false);
+  const [latchedUrlHighlight, setLatchedUrlHighlight] = useState<string | null>(null);
+  const cardRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  const urlHighlight = searchParams.get('highlight')?.trim() || null;
+  const urlTab = parseStatusTab(searchParams.get('tab')?.trim() || null);
+
+  if (urlHighlight && urlHighlight !== latchedUrlHighlight) {
+    setLatchedUrlHighlight(urlHighlight);
+    setHighlightedId(urlHighlight);
+    setHighlightFading(false);
+    setStatusTab(urlTab ?? 'All');
+    setPage(1);
+  }
+
+  useEffect(() => {
+    if (!urlHighlight && !urlTab) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('highlight');
+    next.delete('tab');
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [urlHighlight, urlTab, searchParams, router, pathname]);
 
   const handleTabChange = (tab: StatusTab) => {
     setStatusTab(tab);
@@ -300,6 +356,42 @@ export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) 
   }, [items, debouncedSearch]);
 
   const totalPages = Math.max(1, data?.pagination.totalPages ?? 1);
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    if (!filteredItems.some(item => item.id === highlightedId)) return;
+    const fadeTimer = window.setTimeout(() => setHighlightFading(true), HIGHLIGHT_HOLD_MS);
+    const clearTimer = window.setTimeout(() => {
+      setLatchedUrlHighlight(null);
+      setHighlightedId(null);
+      setHighlightFading(false);
+    }, HIGHLIGHT_CLEAR_MS);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [highlightedId, filteredItems]);
+
+  useEffect(() => {
+    if (!highlightedId || highlightFading) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = cardRefs.current.get(highlightedId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      attempts += 1;
+      if (attempts < 24) requestAnimationFrame(tryScroll);
+    };
+    tryScroll();
+    return () => {
+      cancelled = true;
+    };
+  }, [highlightedId, filteredItems, highlightFading]);
 
   return (
     <div className="flex w-full flex-col px-4 pb-10 pt-2 sm:px-6 lg:px-8">
@@ -359,7 +451,17 @@ export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) 
         ) : (
           <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredItems.map(item => (
-              <EventCard key={item.id} item={item} onOpen={() => onOpenDetail(item.id)} />
+              <EventCard
+                key={item.id}
+                item={item}
+                onOpen={() => onOpenDetail(item.id)}
+                isHighlighted={item.id === highlightedId}
+                highlightFading={highlightFading}
+                cardRef={node => {
+                  if (node) cardRefs.current.set(item.id, node);
+                  else cardRefs.current.delete(item.id);
+                }}
+              />
             ))}
           </div>
         )}

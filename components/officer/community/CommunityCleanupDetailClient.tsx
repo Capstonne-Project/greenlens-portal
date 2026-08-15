@@ -637,9 +637,13 @@ function EventInfoCard({
 
 // ── Main ─────────────────────────────────────────────────────────────────
 
+export interface CommunityCleanupBackContext {
+  status?: CommunityCleanupStatus;
+}
+
 interface CommunityCleanupDetailClientProps {
   eventId: string;
-  onBack: () => void;
+  onBack: (ctx?: CommunityCleanupBackContext) => void;
 }
 
 export function CommunityCleanupDetailClient({
@@ -667,7 +671,7 @@ export function CommunityCleanupDetailClient({
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-24 text-center sm:px-6">
         <p className="text-sm text-destructive">Không tải được chương trình dọn cộng đồng.</p>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="outline" onClick={() => onBack()}>
             <ArrowLeft className="mr-1.5 size-4" />
             Quay lại
           </Button>
@@ -690,7 +694,7 @@ function DetailShell({
 }: {
   eventId: string;
   detail: NonNullable<ReturnType<typeof useCommunityCleanupDetail>['data']>;
-  onBack: () => void;
+  onBack: (ctx?: CommunityCleanupBackContext) => void;
 }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [verifyOpen, setVerifyOpen] = useState(false);
@@ -805,7 +809,7 @@ function DetailShell({
       onSuccess: () => {
         toast.success('Đã duyệt xác thực — chương trình hoàn thành.');
         setVerifyOpen(false);
-        onBack();
+        onBack({ status: 'Completed' });
       },
       onError: () => {
         toast.error('Duyệt xác thực thất bại. Vui lòng thử lại.');
@@ -821,7 +825,7 @@ function DetailShell({
           toast.success('Đã từ chối xác thực — chương trình về Đang dọn dẹp.');
           setRejectOpen(false);
           setRejectReason('');
-          onBack();
+          onBack({ status: 'InProgress' });
         },
         onError: () => {
           toast.error('Từ chối xác thực thất bại. Vui lòng thử lại.');
@@ -868,7 +872,13 @@ function DetailShell({
 
       {/* Thanh hành động — dính trên khi cuộn để nút duyệt luôn trong tầm tay */}
       <div className="sticky top-0 z-20 -mx-4 mb-6 flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-background/85 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <Button type="button" variant="ghost" size="sm" className="-ml-2 h-8 px-2" onClick={onBack}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 h-8 px-2"
+          onClick={() => onBack({ status: detail.status })}
+        >
           <ArrowLeft className="mr-1 size-4" />
           Quay lại
         </Button>

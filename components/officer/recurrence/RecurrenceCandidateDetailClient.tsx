@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  FileCheck,
   FileText,
   ImageIcon,
   MapPinned,
@@ -539,7 +540,7 @@ const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
   {
     key: 'inspection',
     label: 'Đã thanh tra',
-    render: d => (d.hadPriorInspection ? 'Có' : 'Không'),
+    render: d => (d.hasInspection || d.hadPriorInspection ? 'Có' : 'Không'),
   },
   {
     key: 'description',
@@ -772,16 +773,23 @@ export function RecurrenceCandidateDetailClient() {
               Đối chiếu báo cáo hiện tại với báo cáo đã đóng để quyết định mở thanh tra hoặc bác bỏ
             </p>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            className="shrink-0 gap-1.5 bg-sky-700 text-white hover:bg-sky-600"
-            disabled={!reportId || isPending || isError || !data}
-            onClick={() => setCreateInspectionOpen(true)}
-          >
-            <FileText className="size-4" aria-hidden />
-            Tạo hồ sơ thanh tra
-          </Button>
+          {data?.hasInspection || data?.currentReport.hasInspection ? (
+            <span className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-emerald-50 px-3 text-sm font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
+              <FileCheck className="size-4" aria-hidden />
+              Đã tạo hồ sơ thanh tra
+            </span>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0 gap-1.5 bg-sky-700 text-white hover:bg-sky-600"
+              disabled={!reportId || isPending || isError || !data}
+              onClick={() => setCreateInspectionOpen(true)}
+            >
+              <FileText className="size-4" aria-hidden />
+              Tạo hồ sơ thanh tra
+            </Button>
+          )}
         </div>
       </header>
 

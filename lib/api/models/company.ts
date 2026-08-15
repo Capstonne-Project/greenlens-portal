@@ -655,12 +655,12 @@ export interface CompanyAssignmentWasteTag {
 }
 
 /**
- * GET `/v1/reports/company-assignments/{reportId}` và
- * GET `/v1/reports/company-reports/{reportId}` — FE model (cùng shape).
+ * GET `/v1/reports/company-reports/{reportId}` — hàng đợi phân công CM (canonical).
+ * GET `/v1/reports/company-assignments/{reportId}` — theo dõi tiến độ (cùng shape).
  *
- * Wire fields (1:1 from Swagger): reportId…wasteTags, citizenMedia, assignment, media.before/after,
- * assignmentHistory, canReassign, priorityScore, sla.
- * Derived (UI compat — not on Swagger wire):
+ * Wire 1:1 Swagger: reportId…wasteTags, citizenMedia, assignment, media.before/after,
+ * assignmentHistory, canReassign, priorityScore, sla, timeline.
+ * Derived (không có trên wire):
  * - reportImages ← citizenMedia urls (thumbnailUrl ?? url for images) + legacy fallbacks
  * - teamAssignments ← assignment ? [assignment] : legacy teamAssignments
  * - summary ← legacy summary OR derived from assignment
