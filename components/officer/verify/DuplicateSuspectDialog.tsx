@@ -3,13 +3,14 @@
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
-  Eye,
   GitMerge,
   History,
   ImageIcon,
@@ -17,24 +18,15 @@ import {
   MapPinned,
   XCircle,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
 
 import {
   useReportImagePreview,
-  type ReportPreviewHandler,
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  type CarouselApi,
-} from '@/components/ui/carousel';
 import {
   Dialog,
   DialogContent,
@@ -171,43 +163,6 @@ function formatShortDate(iso: string | null | undefined): string {
   });
 }
 
-function formatCoords(lat: number | null | undefined, lng: number | null | undefined): string {
-  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return '—';
-  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-}
-
-/** Link Google Maps — không cần API key; mobile thường mở app Maps. */
-function googleMapsUrl(lat: number, lng: number): string {
-  return `https://www.google.com/maps?q=${lat},${lng}`;
-}
-
-function CoordsLink({
-  lat,
-  lng,
-}: {
-  lat: number | null | undefined;
-  lng: number | null | undefined;
-}) {
-  const label = formatCoords(lat, lng);
-  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
-    return label;
-  }
-  return (
-    <a
-      href={googleMapsUrl(lat, lng)}
-      target="_blank"
-      rel="noopener noreferrer"
-      title="Mở vị trí trên Google Maps"
-      className={cn(
-        'underline-offset-2 transition-colors hover:underline',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
-      )}
-    >
-      {label}
-    </a>
-  );
-}
-
 async function copyCode(code: string) {
   try {
     await navigator.clipboard.writeText(code);
@@ -217,216 +172,195 @@ async function copyCode(code: string) {
   }
 }
 
-function CompareThumb({
-  url,
-  alt,
-  loading,
-  tone,
-  badgeLabel,
-  onPreview,
-}: {
-  url: string | null;
-  alt: string;
-  loading?: boolean;
-  tone: 'suspect' | 'original';
-  /** Override nhãn badge góc ảnh (mặc định “Trùng lặp” khi tone=suspect). */
-  badgeLabel?: string;
-  onPreview?: ReportPreviewHandler;
-}) {
-  const canPreview = Boolean(url && !loading && onPreview);
-  const showBadge = tone === 'suspect' && badgeLabel !== '';
-  const resolvedBadge = badgeLabel ?? 'Trùng lặp';
+const CAROUSEL_EASE = [0.22, 1, 0.36, 1] as const;
+const CAROUSEL_DURATION = 0.42;
 
-  return (
-    <div className="group relative aspect-3/2 w-full overflow-hidden rounded-xl bg-slate-100">
-      {loading ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2 className="size-5 animate-spin text-slate-400" aria-hidden />
-        </div>
-      ) : url ? (
-        <Image src={url} alt={alt} fill sizes="200px" className="object-cover" unoptimized />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-slate-400">
-          <ImageIcon className="size-6" aria-hidden />
-          <span className="text-[10px]">Không có ảnh</span>
-        </div>
-      )}
-
-      {showBadge ? (
-        <span
-          className={cn(
-            'pointer-events-none absolute left-2 top-2 z-20',
-            'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5',
-            'bg-amber-500 text-[10px] font-bold uppercase tracking-wide text-white',
-            'shadow-sm ring-1 ring-white/30'
-          )}
-        >
-          {resolvedBadge === 'Tái diễn' ? (
-            <History className="size-2.5" aria-hidden strokeWidth={2.75} />
-          ) : (
-            <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
-          )}
-          {resolvedBadge}
-        </span>
-      ) : null}
-
-      {canPreview ? (
-        <button
-          type="button"
-          onClick={() => onPreview?.({ url: url!, label: alt })}
-          aria-label={`Xem trước ảnh ${alt}`}
-          className={cn(
-            'absolute inset-0 z-10 flex items-center justify-center',
-            'bg-black/0 transition-colors duration-200',
-            'hover:bg-black/45 focus-visible:bg-black/45',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60'
-          )}
-        >
-          <span
-            className={cn(
-              'flex size-9 items-center justify-center rounded-full',
-              'bg-black/55 text-white shadow-lg ring-1 ring-white/25 backdrop-blur-sm',
-              'opacity-0 transition-opacity duration-200',
-              'group-hover:opacity-100 group-focus-within:opacity-100'
-            )}
-          >
-            <Eye className="size-4" aria-hidden />
-          </span>
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-/** 1 ảnh → CompareThumb; ≥2 ảnh → shadcn Carousel. */
-function CompareSideMedia({
+/** Gallery 4:3 — cùng layout `FeaturedEvidenceGallery` (ReopenDetailClient). */
+function FeaturedEvidenceGallery({
   urls,
-  alt,
+  emptyLabel = 'Không có ảnh minh chứng',
+  latitude,
+  longitude,
   loading,
-  tone,
-  badgeLabel,
-  onPreview,
 }: {
   urls: string[];
-  alt: string;
+  emptyLabel?: string;
+  latitude?: number;
+  longitude?: number;
   loading?: boolean;
-  tone: 'suspect' | 'original';
-  badgeLabel?: string;
-  onPreview?: ReportPreviewHandler;
 }) {
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [slideIndex, setSlideIndex] = useState(0);
+  const images = urls.map(url => url.trim()).filter(Boolean);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
 
-  useEffect(() => {
-    if (!carouselApi) return;
-    const onSelect = () => setSlideIndex(carouselApi.selectedScrollSnap());
-    onSelect();
-    carouselApi.on('select', onSelect);
-    return () => {
-      carouselApi.off('select', onSelect);
-    };
-  }, [carouselApi]);
+  const previewImages: ReportPreviewImage[] = useMemo(
+    () =>
+      images.map((url, i) => ({
+        url,
+        label: `Minh chứng ${i + 1}`,
+      })),
+    [images]
+  );
 
-  if (loading || urls.length <= 1) {
+  const mapLocation = useMemo(() => {
+    if (
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      (latitude === 0 && longitude === 0)
+    ) {
+      return null;
+    }
+    return { latitude, longitude };
+  }, [latitude, longitude]);
+
+  const { setPreviewIndex, previewDialog } = useReportImagePreview(previewImages, {
+    mapLocation,
+  });
+
+  if (loading) {
     return (
-      <CompareThumb
-        url={urls[0] ?? null}
-        alt={alt}
-        loading={loading}
-        tone={tone}
-        badgeLabel={badgeLabel}
-        onPreview={onPreview}
-      />
+      <div className="mx-auto flex aspect-4/3 w-full items-center justify-center rounded-lg border border-dashed border-border bg-slate-50">
+        <Loader2 className="size-5 animate-spin text-slate-400" aria-hidden />
+      </div>
     );
   }
 
-  const showBadge = tone === 'suspect' && badgeLabel !== '';
-  const resolvedBadge = badgeLabel ?? 'Trùng lặp';
+  if (images.length === 0) {
+    return (
+      <div className="mx-auto flex aspect-4/3 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-slate-50 text-sm text-muted-foreground">
+        <ImageIcon className="size-6 text-slate-400" aria-hidden />
+        <span>{emptyLabel}</span>
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(activeIndex, images.length - 1);
+  const featured = images[safeIndex]!;
+  const hasPrev = safeIndex > 0;
+  const hasNext = safeIndex < images.length - 1;
+
+  const goTo = (next: number) => {
+    if (next === safeIndex || next < 0 || next >= images.length) return;
+    setDirection(next > safeIndex ? 1 : -1);
+    setActiveIndex(next);
+  };
+
+  const openLightbox = () => {
+    setPreviewIndex(safeIndex);
+  };
 
   return (
-    <div className="relative w-full min-w-0 overflow-hidden rounded-xl bg-slate-100">
-      {showBadge ? (
-        <span
-          className={cn(
-            'pointer-events-none absolute left-2 top-2 z-20',
-            'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5',
-            'bg-amber-500 text-[10px] font-bold uppercase tracking-wide text-white',
-            'shadow-sm ring-1 ring-white/30'
-          )}
-        >
-          {resolvedBadge === 'Tái diễn' ? (
-            <History className="size-2.5" aria-hidden strokeWidth={2.75} />
-          ) : (
-            <Copy className="size-2.5" aria-hidden strokeWidth={2.75} />
-          )}
-          {resolvedBadge}
-        </span>
-      ) : null}
+    <div className="w-full space-y-2">
+      <div className="relative aspect-4/3 w-full overflow-hidden rounded-lg bg-slate-900/90">
+        <AnimatePresence initial={false} custom={direction}>
+          <motion.div
+            key={featured}
+            custom={direction}
+            variants={{
+              enter: (dir: number) => ({ x: dir >= 0 ? '28%' : '-28%', opacity: 0 }),
+              center: { x: 0, opacity: 1 },
+              exit: (dir: number) => ({ x: dir >= 0 ? '-28%' : '28%', opacity: 0 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: CAROUSEL_DURATION, ease: CAROUSEL_EASE }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={featured}
+              alt=""
+              fill
+              unoptimized
+              aria-hidden
+              className="scale-125 object-cover opacity-45 blur-2xl"
+              sizes="(max-width: 768px) 50vw, 28vw"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-slate-900/25" aria-hidden />
+            <button
+              type="button"
+              onClick={openLightbox}
+              className="absolute inset-0 z-10 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/50"
+              aria-label={`Phóng to ảnh minh chứng ${safeIndex + 1}`}
+            >
+              <Image
+                src={featured}
+                alt={`Minh chứng ${safeIndex + 1}`}
+                fill
+                unoptimized
+                className="object-contain"
+                sizes="(max-width: 768px) 50vw, 28vw"
+              />
+            </button>
+          </motion.div>
+        </AnimatePresence>
 
-      <Carousel setApi={setCarouselApi} opts={{ loop: true }} className="w-full">
-        <CarouselContent className="ml-0">
-          {urls.map((url, index) => {
-            const label = `${alt} · ${index + 1}`;
+        {hasPrev ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute left-2 top-1/2 z-20 size-7 -translate-y-1/2 rounded-md bg-white/95 text-slate-700 shadow-md hover:bg-white"
+            onClick={e => {
+              e.stopPropagation();
+              goTo(safeIndex - 1);
+            }}
+            aria-label="Ảnh trước"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+        ) : null}
+
+        {hasNext ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute right-2 top-1/2 z-20 size-7 -translate-y-1/2 rounded-md bg-white/95 text-slate-700 shadow-md hover:bg-white"
+            onClick={e => {
+              e.stopPropagation();
+              goTo(safeIndex + 1);
+            }}
+            aria-label="Ảnh sau"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        ) : null}
+
+        <span className="pointer-events-none absolute bottom-2 right-2 z-20 rounded bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
+          {safeIndex + 1} / {images.length}
+        </span>
+      </div>
+
+      {images.length > 1 ? (
+        <ul className="flex gap-1.5 overflow-x-auto overflow-y-visible py-1.5">
+          {images.map((url, index) => {
+            const isActive = index === safeIndex;
             return (
-              <CarouselItem key={`${url}-${index}`} className="pl-0">
+              <li key={`${url}-${index}`} className="shrink-0 p-0.5">
                 <button
                   type="button"
-                  onClick={() => onPreview?.({ url, label })}
-                  aria-label={`Xem trước ${label}`}
+                  onClick={() => goTo(index)}
+                  aria-label={`Chọn ảnh minh chứng ${index + 1}`}
+                  aria-pressed={isActive}
                   className={cn(
-                    'group relative aspect-3/2 w-full overflow-hidden',
-                    'cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand/40'
+                    'relative block size-10 cursor-pointer overflow-hidden rounded-md bg-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 sm:size-12',
+                    isActive
+                      ? 'ring-2 ring-slate-900 ring-offset-1'
+                      : 'ring-1 ring-border hover:ring-slate-400'
                   )}
                 >
-                  <Image
-                    src={url}
-                    alt={label}
-                    fill
-                    sizes="(max-width: 768px) 45vw, 280px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                  <span
-                    className={cn(
-                      'absolute inset-0 z-10 flex items-center justify-center',
-                      'bg-black/0 transition-colors duration-200',
-                      'group-hover:bg-black/35 group-focus-visible:bg-black/35'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'flex size-9 items-center justify-center rounded-full',
-                        'bg-black/55 text-white shadow-lg ring-1 ring-white/25 backdrop-blur-sm',
-                        'opacity-0 transition-opacity duration-200',
-                        'group-hover:opacity-100 group-focus-visible:opacity-100'
-                      )}
-                    >
-                      <Eye className="size-4" aria-hidden />
-                    </span>
-                  </span>
+                  <Image src={url} alt="" fill unoptimized className="object-cover" sizes="48px" />
                 </button>
-              </CarouselItem>
+              </li>
             );
           })}
-        </CarouselContent>
+        </ul>
+      ) : null}
 
-        <CarouselPrevious
-          type="button"
-          variant="secondary"
-          className="left-2 top-1/2 z-20 size-8 border-0 bg-white/90 text-slate-800 shadow-sm hover:bg-white disabled:opacity-40"
-        />
-        <CarouselNext
-          type="button"
-          variant="secondary"
-          className="right-2 top-1/2 z-20 size-8 border-0 bg-white/90 text-slate-800 shadow-sm hover:bg-white disabled:opacity-40"
-        />
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center">
-          <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium tabular-nums text-white">
-            {slideIndex + 1}/{urls.length}
-          </span>
-        </div>
-      </Carousel>
+      {previewDialog}
     </div>
   );
 }
@@ -635,14 +569,12 @@ function VerifiedRecordsCompare({
   suspectImageUrls,
   parentImageUrls,
   suspectLoading,
-  onPreview,
 }: {
   suspect: ReportDetail;
   parent: ReportDetail;
   suspectImageUrls: string[];
   parentImageUrls: string[];
   suspectLoading?: boolean;
-  onPreview: ReportPreviewHandler;
 }) {
   const distanceM = metersBetween(suspect, parent);
 
@@ -655,21 +587,19 @@ function VerifiedRecordsCompare({
     >
       <div className="flex min-w-0 shrink-0 items-start gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
-          <CompareSideMedia
+          <FeaturedEvidenceGallery
             urls={suspectImageUrls}
-            alt={`${suspect.code} · Đang xác minh`}
             loading={suspectLoading}
-            tone="suspect"
-            onPreview={onPreview}
+            latitude={suspect.latitude}
+            longitude={suspect.longitude}
           />
         </div>
         <LinkPulse tall />
         <div className="min-w-0 flex-1">
-          <CompareSideMedia
+          <FeaturedEvidenceGallery
             urls={parentImageUrls}
-            alt={`${parent.code} · Báo cáo gốc`}
-            tone="original"
-            onPreview={onPreview}
+            latitude={parent.latitude}
+            longitude={parent.longitude}
           />
         </div>
       </div>
@@ -803,31 +733,12 @@ type RecurrenceCompareField = {
   render: (side: ViolationRecurrenceReport) => ReactNode;
 };
 
+/** Thứ tự: địa chỉ → thời điểm → loại → mức độ → thanh tra. Vị trí xem trên bản đồ. */
 const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
   {
     key: 'address',
     label: 'Địa chỉ',
     render: d => d.address?.trim() || '—',
-  },
-  {
-    key: 'coords',
-    label: 'Tọa độ GPS',
-    render: d => <CoordsLink lat={d.latitude} lng={d.longitude} />,
-  },
-  {
-    key: 'category',
-    label: 'Loại ô nhiễm',
-    render: d => d.categoryName?.trim() || d.categoryCode || '—',
-  },
-  {
-    key: 'severity',
-    label: 'Mức độ',
-    render: d => <SeverityPill severity={d.severity} />,
-  },
-  {
-    key: 'description',
-    label: 'Mô tả',
-    render: d => d.description?.trim() || '—',
   },
   {
     key: 'createdAt',
@@ -840,8 +751,18 @@ const RECURRENCE_COMPARE_FIELDS: RecurrenceCompareField[] = [
     render: d => formatShortDate(d.closedAt),
   },
   {
+    key: 'category',
+    label: 'Loại ô nhiễm',
+    render: d => d.categoryName?.trim() || d.categoryCode || '—',
+  },
+  {
+    key: 'severity',
+    label: 'Mức độ',
+    render: d => <SeverityPill severity={d.severity} />,
+  },
+  {
     key: 'inspection',
-    label: 'Đã thanh tra trước',
+    label: 'Đã thanh tra',
     render: d => (d.hadPriorInspection ? 'Có' : 'Không'),
   },
 ];
@@ -854,7 +775,6 @@ function RecurrenceRecordsCompare({
   priorImageUrl,
   daysSincePriorClosed,
   distanceMeters,
-  onPreview,
 }: {
   current: ViolationRecurrenceReport;
   prior: ViolationRecurrenceReport;
@@ -862,32 +782,28 @@ function RecurrenceRecordsCompare({
   priorImageUrl: string | null;
   daysSincePriorClosed: number;
   distanceMeters: number;
-  onPreview: ReportPreviewHandler;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
-      className="flex min-h-0 flex-1 flex-col gap-5"
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-5"
     >
       <div className="flex shrink-0 items-stretch gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
-          <CompareThumb
-            url={currentImageUrl}
-            alt={`${current.code} · Báo cáo hiện tại`}
-            tone="suspect"
-            badgeLabel="Tái diễn"
-            onPreview={onPreview}
+          <FeaturedEvidenceGallery
+            urls={currentImageUrl ? [currentImageUrl] : []}
+            latitude={current.latitude}
+            longitude={current.longitude}
           />
         </div>
         <LinkPulse tall />
         <div className="min-w-0 flex-1">
-          <CompareThumb
-            url={priorImageUrl}
-            alt={`${prior.code} · Đã đóng trước đó`}
-            tone="original"
-            onPreview={onPreview}
+          <FeaturedEvidenceGallery
+            urls={priorImageUrl ? [priorImageUrl] : []}
+            latitude={prior.latitude}
+            longitude={prior.longitude}
           />
         </div>
       </div>
@@ -907,13 +823,13 @@ function RecurrenceRecordsCompare({
             Cách nhau ~{formatMeters(distanceMeters)}
           </span>
         </AnimatedHoverTooltip>
-        <AnimatedHoverTooltip name="Số ngày kể từ khi báo cáo Closed trước được đóng">
+        <AnimatedHoverTooltip name="Số ngày kể từ khi báo cáo đã đóng trước đó được đóng">
           <span className="inline-flex cursor-help items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/80">
             Cách lần đóng trước {daysSincePriorClosed} ngày
           </span>
         </AnimatedHoverTooltip>
         {prior.hadPriorInspection ? (
-          <AnimatedHoverTooltip name="Báo cáo Closed trước đã từng có hồ sơ thanh tra">
+          <AnimatedHoverTooltip name="Báo cáo đã đóng trước đó đã từng có hồ sơ thanh tra">
             <span className="inline-flex cursor-help items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-800 ring-1 ring-rose-200/80">
               Đã từng thanh tra
             </span>
@@ -952,7 +868,7 @@ function RecurrenceRecordsCompare({
               {prior.code}
             </button>
             <p className="mt-1 text-xs font-medium text-slate-500">
-              Closed trước · {reportStatusLabelVi(prior.status)}
+              Báo cáo đã đóng · {reportStatusLabelVi(prior.status)}
             </p>
           </div>
         </div>
@@ -977,6 +893,36 @@ function RecurrenceRecordsCompare({
           </div>
         ))}
       </div>
+
+      <section className="min-w-0 w-full space-y-2.5" aria-label="Bản đồ vị trí hai báo cáo">
+        <div className="flex min-w-0 items-center gap-2 px-0.5">
+          <MapPinned className="size-4 shrink-0 text-slate-500" aria-hidden />
+          <h3 className="text-sm font-semibold text-slate-800">Vị trí trên bản đồ</h3>
+          {Number.isFinite(distanceMeters) ? (
+            <span className="min-w-0 truncate text-xs text-slate-500">
+              · cách nhau ~{formatMeters(distanceMeters)}
+            </span>
+          ) : null}
+        </div>
+        <CompareReportsMap
+          className="min-w-0 w-full"
+          legend={{ suspect: 'Nghi tái diễn', original: 'Báo cáo đã đóng' }}
+          pins={[
+            {
+              latitude: current.latitude,
+              longitude: current.longitude,
+              label: current.code,
+              tone: 'suspect',
+            },
+            {
+              latitude: prior.latitude,
+              longitude: prior.longitude,
+              label: prior.code,
+              tone: 'original',
+            },
+          ]}
+        />
+      </section>
     </motion.div>
   );
 }
@@ -1014,22 +960,6 @@ function RecurrenceSuspectDialogBody({
   const currentImageUrl = comparison ? firstRecurrenceImageUrl(comparison.currentReport) : null;
   const priorImageUrl = comparison ? firstRecurrenceImageUrl(comparison.priorClosedReport) : null;
 
-  const previewImages: ReportPreviewImage[] = [];
-  if (currentImageUrl && comparison) {
-    previewImages.push({
-      url: currentImageUrl,
-      label: `${comparison.currentReport.code} · Hiện tại`,
-    });
-  }
-  if (priorImageUrl && comparison) {
-    previewImages.push({
-      url: priorImageUrl,
-      label: `${comparison.priorClosedReport.code} · Closed trước`,
-    });
-  }
-
-  const { openPreview, previewDialog } = useReportImagePreview(previewImages);
-
   const handleDismiss = async () => {
     try {
       const result = await dismissMutation.mutateAsync({ reportId });
@@ -1056,146 +986,142 @@ function RecurrenceSuspectDialogBody({
     '—';
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className={cn(
-            'flex h-[min(94vh,68rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden border-slate-200 p-0',
-            'sm:max-w-7xl xl:max-w-[88rem]'
-          )}
-        >
-          {isPending ? (
-            <div className="flex h-48 items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-slate-400" aria-hidden />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          'flex h-[min(94vh,68rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden border-slate-200 p-0',
+          'sm:max-w-7xl xl:max-w-[88rem]'
+        )}
+      >
+        {isPending ? (
+          <div className="flex h-48 items-center justify-center">
+            <Loader2 className="size-6 animate-spin text-slate-400" aria-hidden />
+          </div>
+        ) : isError || !comparison ? (
+          <>
+            <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
+              <DialogHeader className="space-y-0 text-left">
+                <DialogTitle className="text-lg text-slate-900">
+                  Không tải được so sánh tái diễn
+                </DialogTitle>
+                <DialogDescription className="text-sm text-slate-600">
+                  Không thể đối chiếu với báo cáo đã đóng trước đó (
+                  <span className="font-semibold tabular-nums">{priorCode}</span>). Có thể tiếp tục
+                  xác minh hoặc thử lại sau.
+                </DialogDescription>
+              </DialogHeader>
             </div>
-          ) : isError || !comparison ? (
-            <>
-              <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
-                <DialogHeader className="space-y-0 text-left">
-                  <DialogTitle className="text-lg text-slate-900">
-                    Không tải được so sánh tái diễn
-                  </DialogTitle>
-                  <DialogDescription className="text-sm text-slate-600">
-                    Không thể đối chiếu với báo cáo Closed trước (
-                    <span className="font-semibold tabular-nums">{priorCode}</span>). Có thể tiếp
-                    tục xác minh hoặc thử lại sau.
-                  </DialogDescription>
-                </DialogHeader>
-              </div>
-              <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:px-7">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={actionPending}
-                  onClick={() => void handleDismiss()}
-                  className={cn(
-                    'border-slate-300 text-slate-700',
-                    'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700'
-                  )}
-                >
-                  {dismissMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    <XCircle className="size-4" aria-hidden />
-                  )}
-                  Xóa nghi tái diễn
-                </Button>
-                <Button
-                  type="button"
-                  disabled={actionPending || !onContinueVerify}
-                  onClick={() => void handleContinueVerify()}
-                  className="bg-emerald-600 text-white hover:bg-emerald-500"
-                >
-                  {isContinuingVerify ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    <BadgeCheck className="size-4" aria-hidden />
-                  )}
-                  Tiếp tục xác minh
-                </Button>
-              </DialogFooter>
-            </>
-          ) : (
-            <>
-              <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
-                <DialogHeader className="space-y-0 text-left">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm shadow-amber-500/25"
-                      aria-hidden
-                    >
-                      <History className="size-5" strokeWidth={2.25} />
-                    </div>
-                    <div className="min-w-0 space-y-1.5 pt-0.5">
-                      <DialogTitle className="text-lg leading-snug text-slate-900">
-                        Nghi ô nhiễm tái diễn
-                      </DialogTitle>
-                      <DialogDescription className="text-sm leading-relaxed text-slate-600">
-                        Đối chiếu báo cáo hiện tại với case Closed trước{' '}
-                        <span className="font-semibold tabular-nums text-slate-800">
-                          {comparison.priorClosedReport.code}
-                        </span>
-                        . Rác tái diễn thông thường →{' '}
-                        <span className="font-semibold text-slate-800">Xóa nghi tái diễn</span>. Cần
-                        xử lý tiếp →{' '}
-                        <span className="font-semibold text-slate-800">Tiếp tục xác minh</span>.
-                      </DialogDescription>
-                    </div>
+            <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:px-7">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={actionPending}
+                onClick={() => void handleDismiss()}
+                className={cn(
+                  'border-slate-300 text-slate-700',
+                  'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700'
+                )}
+              >
+                {dismissMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <XCircle className="size-4" aria-hidden />
+                )}
+                Xóa nghi tái diễn
+              </Button>
+              <Button
+                type="button"
+                disabled={actionPending || !onContinueVerify}
+                onClick={() => void handleContinueVerify()}
+                className="bg-emerald-600 text-white hover:bg-emerald-500"
+              >
+                {isContinuingVerify ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <BadgeCheck className="size-4" aria-hidden />
+                )}
+                Tiếp tục xác minh
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
+              <DialogHeader className="space-y-0 text-left">
+                <div className="flex items-start gap-3">
+                  <div
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm shadow-amber-500/25"
+                    aria-hidden
+                  >
+                    <History className="size-5" strokeWidth={2.25} />
                   </div>
-                </DialogHeader>
-              </div>
+                  <div className="min-w-0 space-y-1.5 pt-0.5">
+                    <DialogTitle className="text-lg leading-snug text-slate-900">
+                      Nghi ô nhiễm tái diễn
+                    </DialogTitle>
+                    <DialogDescription className="text-sm leading-relaxed text-slate-600">
+                      Đối chiếu báo cáo hiện tại với báo cáo đã đóng trước đó{' '}
+                      <span className="font-semibold tabular-nums text-slate-800">
+                        {comparison.priorClosedReport.code}
+                      </span>
+                      . Rác tái diễn thông thường →{' '}
+                      <span className="font-semibold text-slate-800">Xóa nghi tái diễn</span>. Cần
+                      xử lý tiếp →{' '}
+                      <span className="font-semibold text-slate-800">Tiếp tục xác minh</span>.
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+            </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [scrollbar-gutter:stable]">
-                <RecurrenceRecordsCompare
-                  current={comparison.currentReport}
-                  prior={comparison.priorClosedReport}
-                  currentImageUrl={currentImageUrl}
-                  priorImageUrl={priorImageUrl}
-                  daysSincePriorClosed={comparison.daysSincePriorClosed}
-                  distanceMeters={comparison.distanceMeters}
-                  onPreview={openPreview}
-                />
-              </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [scrollbar-gutter:stable]">
+              <RecurrenceRecordsCompare
+                current={comparison.currentReport}
+                prior={comparison.priorClosedReport}
+                currentImageUrl={currentImageUrl}
+                priorImageUrl={priorImageUrl}
+                daysSincePriorClosed={comparison.daysSincePriorClosed}
+                distanceMeters={comparison.distanceMeters}
+              />
+            </div>
 
-              <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:gap-2 sm:px-7">
-                <Button
-                  type="button"
-                  disabled={actionPending}
-                  onClick={() => void handleDismiss()}
-                  className={cn(
-                    'border-slate-300 bg-white text-slate-700',
-                    'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700',
-                    'focus-visible:ring-rose-400/40'
-                  )}
-                  variant="outline"
-                >
-                  {dismissMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    <XCircle className="size-4" aria-hidden />
-                  )}
-                  Xóa nghi tái diễn
-                </Button>
-                <Button
-                  type="button"
-                  disabled={actionPending || !onContinueVerify}
-                  onClick={() => void handleContinueVerify()}
-                  className="bg-emerald-600 text-white hover:bg-emerald-500"
-                >
-                  {isContinuingVerify ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : (
-                    <BadgeCheck className="size-4" aria-hidden />
-                  )}
-                  Tiếp tục xác minh
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-      {previewDialog}
-    </>
+            <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:gap-2 sm:px-7">
+              <Button
+                type="button"
+                disabled={actionPending}
+                onClick={() => void handleDismiss()}
+                className={cn(
+                  'border-slate-300 bg-white text-slate-700',
+                  'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700',
+                  'focus-visible:ring-rose-400/40'
+                )}
+                variant="outline"
+              >
+                {dismissMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <XCircle className="size-4" aria-hidden />
+                )}
+                Xóa nghi tái diễn
+              </Button>
+              <Button
+                type="button"
+                disabled={actionPending || !onContinueVerify}
+                onClick={() => void handleContinueVerify()}
+                className="bg-emerald-600 text-white hover:bg-emerald-500"
+              >
+                {isContinuingVerify ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <BadgeCheck className="size-4" aria-hidden />
+                )}
+                Tiếp tục xác minh
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1273,19 +1199,6 @@ function DuplicateSuspectDialogBody({
   const suspectImageUrls = reportImageUrls(suspectDetail, row?.firstImageUrl ?? null);
   const parentImageUrls = reportImageUrls(parentDetail, parentPreview?.firstImageUrl ?? null);
 
-  const previewImages: ReportPreviewImage[] = [
-    ...suspectImageUrls.map((url, index) => ({
-      url,
-      label: `${row?.code ?? 'Báo cáo'} · Đang xác minh · ${index + 1}`,
-    })),
-    ...parentImageUrls.map((url, index) => ({
-      url,
-      label: `${parentCode} · Báo cáo gốc · ${index + 1}`,
-    })),
-  ];
-
-  const { openPreview, previewDialog } = useReportImagePreview(previewImages);
-
   const handleDismiss = async () => {
     if (!row) return;
     try {
@@ -1321,182 +1234,174 @@ function DuplicateSuspectDialogBody({
   const dialogWide = canCompareWithParent;
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className={cn(
-            'flex flex-col gap-0 overflow-hidden border-slate-200 p-0',
-            dialogWide
-              ? 'h-[min(94vh,68rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-7xl xl:max-w-[88rem]'
-              : 'max-h-[min(92vh,60rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-2xl'
-          )}
-        >
-          {row ? (
-            showLoading ? (
-              <div className="flex h-48 items-center justify-center">
-                <Loader2 className="size-6 animate-spin text-slate-400" aria-hidden />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          'flex flex-col gap-0 overflow-hidden border-slate-200 p-0',
+          dialogWide
+            ? 'h-[min(94vh,68rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-7xl xl:max-w-[88rem]'
+            : 'max-h-[min(92vh,60rem)] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-2xl'
+        )}
+      >
+        {row ? (
+          showLoading ? (
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-slate-400" aria-hidden />
+            </div>
+          ) : (
+            <>
+              <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
+                <DialogHeader className="space-y-0 text-left">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        'flex size-10 shrink-0 items-center justify-center rounded-xl',
+                        canCompareWithParent
+                          ? 'bg-slate-900 text-white shadow-sm'
+                          : 'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
+                      )}
+                      aria-hidden
+                    >
+                      <Copy className="size-5" strokeWidth={2.25} />
+                    </div>
+                    <div className="min-w-0 space-y-1.5 pt-0.5">
+                      <DialogTitle className="text-lg leading-snug text-slate-900">
+                        {canCompareWithParent ? 'So sánh 2 báo cáo' : 'Nghi ngờ báo cáo trùng lặp'}
+                      </DialogTitle>
+                      <DialogDescription className="text-sm leading-relaxed text-slate-600">
+                        {canCompareWithParent ? (
+                          <>
+                            Báo cáo gốc{' '}
+                            <span className="font-semibold tabular-nums text-slate-800">
+                              {parentCode}
+                            </span>{' '}
+                            đang ở trạng thái{' '}
+                            <span className="font-semibold text-brand-dark">
+                              {reportStatusLabelVi(parentStatus ?? '')}
+                            </span>
+                            . Đối chiếu thông tin hai bên rồi chọn{' '}
+                            <span className="font-semibold text-slate-800">bác bỏ</span> hoặc{' '}
+                            <span className="font-semibold text-slate-800">gộp trùng</span>.
+                          </>
+                        ) : (
+                          <>
+                            Báo cáo gốc{' '}
+                            <span className="font-semibold tabular-nums text-amber-800">
+                              {parentCode}
+                            </span>{' '}
+                            vẫn đang{' '}
+                            <span className="font-semibold text-amber-800">chờ xác minh</span>. Hãy
+                            xác minh báo cáo{' '}
+                            <span className="font-semibold tabular-nums text-slate-800">
+                              {parentCode}
+                            </span>{' '}
+                            trước, rồi quay lại xử lý báo cáo nghi trùng này.
+                          </>
+                        )}
+                      </DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
               </div>
-            ) : (
-              <>
-                <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-6 sm:px-7">
-                  <DialogHeader className="space-y-0 text-left">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                          canCompareWithParent
-                            ? 'bg-slate-900 text-white shadow-sm'
-                            : 'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
-                        )}
-                        aria-hidden
-                      >
-                        <Copy className="size-5" strokeWidth={2.25} />
-                      </div>
-                      <div className="min-w-0 space-y-1.5 pt-0.5">
-                        <DialogTitle className="text-lg leading-snug text-slate-900">
-                          {canCompareWithParent
-                            ? 'So sánh 2 báo cáo'
-                            : 'Nghi ngờ báo cáo trùng lặp'}
-                        </DialogTitle>
-                        <DialogDescription className="text-sm leading-relaxed text-slate-600">
-                          {canCompareWithParent ? (
-                            <>
-                              Báo cáo gốc{' '}
-                              <span className="font-semibold tabular-nums text-slate-800">
-                                {parentCode}
-                              </span>{' '}
-                              đang ở trạng thái{' '}
-                              <span className="font-semibold text-brand-dark">
-                                {reportStatusLabelVi(parentStatus ?? '')}
-                              </span>
-                              . Đối chiếu thông tin hai bên rồi chọn{' '}
-                              <span className="font-semibold text-slate-800">bác bỏ</span> hoặc{' '}
-                              <span className="font-semibold text-slate-800">gộp trùng</span>.
-                            </>
-                          ) : (
-                            <>
-                              Báo cáo gốc{' '}
-                              <span className="font-semibold tabular-nums text-amber-800">
-                                {parentCode}
-                              </span>{' '}
-                              vẫn đang{' '}
-                              <span className="font-semibold text-amber-800">chờ xác minh</span>.
-                              Hãy xác minh báo cáo{' '}
-                              <span className="font-semibold tabular-nums text-slate-800">
-                                {parentCode}
-                              </span>{' '}
-                              trước, rồi quay lại xử lý báo cáo nghi trùng này.
-                            </>
-                          )}
-                        </DialogDescription>
-                      </div>
+
+              <div
+                className={cn(
+                  'min-h-0 flex-1',
+                  dialogWide
+                    ? 'flex flex-col overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [scrollbar-gutter:stable]'
+                    : 'overflow-y-auto overscroll-contain px-6 py-5 sm:px-7 [scrollbar-gutter:stable]'
+                )}
+              >
+                {canCompareWithParent && parentDetail && suspectDetail ? (
+                  <VerifiedRecordsCompare
+                    suspect={suspectDetail}
+                    parent={parentDetail}
+                    suspectImageUrls={suspectImageUrls}
+                    parentImageUrls={parentImageUrls}
+                    suspectLoading={suspectLoading}
+                  />
+                ) : (
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="min-w-0 flex-1">
+                      <FeaturedEvidenceGallery
+                        urls={suspectImageUrls}
+                        latitude={suspectDetail?.latitude}
+                        longitude={suspectDetail?.longitude}
+                      />
+                      <ReportCodeChip code={row.code} label="Đang xác minh" />
                     </div>
-                  </DialogHeader>
-                </div>
 
-                <div
-                  className={cn(
-                    'min-h-0 flex-1',
-                    dialogWide
-                      ? 'flex flex-col overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [scrollbar-gutter:stable]'
-                      : 'overflow-y-auto overscroll-contain px-6 py-5 sm:px-7 [scrollbar-gutter:stable]'
-                  )}
-                >
-                  {canCompareWithParent && parentDetail && suspectDetail ? (
-                    <VerifiedRecordsCompare
-                      suspect={suspectDetail}
-                      parent={parentDetail}
-                      suspectImageUrls={suspectImageUrls}
-                      parentImageUrls={parentImageUrls}
-                      suspectLoading={suspectLoading}
-                      onPreview={openPreview}
-                    />
-                  ) : (
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <div className="min-w-0 flex-1">
-                        <CompareSideMedia
-                          urls={suspectImageUrls}
-                          alt={`${row.code} · Đang xác minh`}
-                          tone="suspect"
-                          onPreview={openPreview}
-                        />
-                        <ReportCodeChip code={row.code} label="Đang xác minh" />
-                      </div>
+                    <LinkPulse />
 
-                      <LinkPulse />
-
-                      <div className="min-w-0 flex-1">
-                        <CompareSideMedia
-                          urls={parentImageUrls}
-                          alt={`${parentCode} · Báo cáo gốc`}
-                          loading={parentLoading}
-                          tone="original"
-                          onPreview={openPreview}
-                        />
-                        <ReportCodeChip code={parentCode} label="Báo cáo gốc" />
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <FeaturedEvidenceGallery
+                        urls={parentImageUrls}
+                        loading={parentLoading}
+                        latitude={parentDetail?.latitude}
+                        longitude={parentDetail?.longitude}
+                      />
+                      <ReportCodeChip code={parentCode} label="Báo cáo gốc" />
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
 
-                <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:gap-2 sm:px-7">
-                  {canCompareWithParent ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={actionPending}
-                        onClick={() => void handleDismiss()}
-                        className={cn(
-                          'border-slate-300 text-slate-700',
-                          'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700',
-                          'focus-visible:ring-rose-400/40'
-                        )}
-                      >
-                        {dismissMutation.isPending ? (
-                          <Loader2 className="size-4 animate-spin" aria-hidden />
-                        ) : (
-                          <XCircle className="size-4" aria-hidden />
-                        )}
-                        Từ chối nghi trùng
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={actionPending || !parentId}
-                        onClick={() => void handleConfirm()}
-                        className="bg-amber-600 text-white hover:bg-amber-500"
-                      >
-                        {confirmMutation.isPending ? (
-                          <Loader2 className="size-4 animate-spin" aria-hidden />
-                        ) : (
-                          <GitMerge className="size-4" aria-hidden />
-                        )}
-                        Xác nhận gộp trùng
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                        Đóng
-                      </Button>
-                      <Button
-                        type="button"
-                        className="bg-amber-600 text-white hover:bg-amber-500"
-                        onClick={onGoToParent}
-                        disabled={!row.possibleDuplicateOfReportId}
-                      >
-                        Đi đến xác minh
-                        <ArrowRight className="size-4" aria-hidden />
-                      </Button>
-                    </>
-                  )}
-                </DialogFooter>
-              </>
-            )
-          ) : null}
-        </DialogContent>
-      </Dialog>
-      {previewDialog}
-    </>
+              <DialogFooter className="shrink-0 gap-2 border-t border-slate-100 bg-slate-50/90 px-6 py-4 sm:gap-2 sm:px-7">
+                {canCompareWithParent ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={actionPending}
+                      onClick={() => void handleDismiss()}
+                      className={cn(
+                        'border-slate-300 text-slate-700',
+                        'hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700',
+                        'focus-visible:ring-rose-400/40'
+                      )}
+                    >
+                      {dismissMutation.isPending ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : (
+                        <XCircle className="size-4" aria-hidden />
+                      )}
+                      Từ chối nghi trùng
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={actionPending || !parentId}
+                      onClick={() => void handleConfirm()}
+                      className="bg-amber-600 text-white hover:bg-amber-500"
+                    >
+                      {confirmMutation.isPending ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : (
+                        <GitMerge className="size-4" aria-hidden />
+                      )}
+                      Xác nhận gộp trùng
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                      Đóng
+                    </Button>
+                    <Button
+                      type="button"
+                      className="bg-amber-600 text-white hover:bg-amber-500"
+                      onClick={onGoToParent}
+                      disabled={!row.possibleDuplicateOfReportId}
+                    >
+                      Đi đến xác minh
+                      <ArrowRight className="size-4" aria-hidden />
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
+            </>
+          )
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

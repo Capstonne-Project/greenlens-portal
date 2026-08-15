@@ -27,7 +27,7 @@ import {
 } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
 import { goBackWithListSoftReload } from '@/utils/notificationNavigation';
-import { withOfficerFromQuery } from '@/utils/officerNavigation';
+import { withOfficerFromQuery, officerTrackingDetailHref } from '@/utils/officerNavigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Check, Copy, ImageIcon, MapPinned } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -85,10 +85,7 @@ function googleMapsUrl(lat: number, lng: number): string {
  */
 function resolveReportDetailHref(reportId: string, status: ReportStatus, fromPath: string): string {
   if (status === 'InProgress') {
-    return `/officer/tracking?${new URLSearchParams({
-      reportId,
-      from: fromPath,
-    }).toString()}`;
+    return officerTrackingDetailHref(reportId, fromPath);
   }
   if (status === 'Verified') {
     return withOfficerFromQuery(`/officer/assign/${reportId}`, fromPath);

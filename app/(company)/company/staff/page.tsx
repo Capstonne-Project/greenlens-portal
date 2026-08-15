@@ -1,5 +1,6 @@
-import { CompanyStaffView } from '@/components/company/staff/CompanyStaffView';
+import { redirect } from 'next/navigation';
 
+/** Legacy — gộp vào Đội ngũ tab Nhân sự. */
 export default function CompanyStaffPage() {
-  return <CompanyStaffView />;
+  redirect('/company/workforce?tab=members');
 }

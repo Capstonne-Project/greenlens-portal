@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 
 import { RecruitStaffDialog } from './RecruitStaffDialog';
-import { WorkforceExportCsvButton } from './WorkforceToolbarActions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +27,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { MovingBorderButton } from '@/components/ui/moving-border';
 import { PaginationSimple } from '@/components/ui/pagination';
-import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -493,8 +491,6 @@ export function MembersTab() {
           </DropdownMenu>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <WorkforceExportCsvButton />
-            <Separator orientation="vertical" className="mx-0.5 h-6 shrink-0 bg-slate-300" />
             <MovingBorderButton
               type="button"
               onClick={() => setRecruitOpen(true)}

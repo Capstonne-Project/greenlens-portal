@@ -5,12 +5,14 @@ import { Droplets, FlaskConical, Trash2 } from 'lucide-react';
 
 /** Types ưu tiên hiển thị / cấu hình trên Company Manager dashboard. */
 export const COMPANY_NOTIFICATION_TYPES = [
+  'CompanyReportDispatched',
   'ReportUnassigned',
   'ReportOverdue',
   'SlaBreachWarning',
   'ReportStatusChanged',
   'ContractExpiry',
   'ReportAutoClosed',
+  'CompanyManagerAccountCreated',
 ] as const;
 
 export type CompanyNotificationType = (typeof COMPANY_NOTIFICATION_TYPES)[number];
@@ -75,6 +77,8 @@ export function adminNotificationHref(
       return '/admin/penalty-frameworks';
     case 'ContractExpiry':
       return '/admin/departments';
+    case 'CompanyManagerAccountCreated':
+      return '/admin/settings/account';
     case 'BadgeEarned':
     case 'LevelUp':
       return '/admin/gamification-configs';
@@ -91,18 +95,26 @@ export function companyNotificationHref(
   const ref = item.referenceId?.trim();
 
   switch (item.type) {
+    case 'CompanyManagerAccountCreated':
+      return '/company/settings/account';
+    case 'CompanyReportDispatched':
+      // referenceId = reportId → CompanyAssignReportDetailClient
+      if (ref) return `/company/assign/${encodeURIComponent(ref)}`;
+      return '/company/assign';
     case 'ReportUnassigned':
-      return '/company/queue';
+      return '/company/assign';
     case 'ContractExpiry':
       return '/company/contract-history';
     case 'ReportStatusChanged':
     case 'ReportOverdue':
     case 'ReportAutoClosed':
     case 'SlaBreachWarning':
-      if (ref) return `/company/assignments?tab=detail&reportId=${encodeURIComponent(ref)}`;
-      return '/company/assignments';
+    case 'CleanupBeforeImagesUploaded':
+    case 'CleanupProgressUpdated':
+      if (ref) return `/company/tracking?reportId=${encodeURIComponent(ref)}`;
+      return '/company/tracking';
     default:
-      if (ref) return `/company/assignments?tab=detail&reportId=${encodeURIComponent(ref)}`;
+      if (ref) return `/company/tracking?reportId=${encodeURIComponent(ref)}`;
       return '/company/notifications';
   }
 }
@@ -114,6 +126,10 @@ export function officerNotificationHref(
   const ref = item.referenceId?.trim();
 
   switch (item.type) {
+    case 'ReopenReviewNeeded':
+      // referenceId = reportId → ReopenDetailClient (/officer/reopen/[id])
+      if (ref) return `/officer/reopen/${encodeURIComponent(ref)}`;
+      return '/officer/reopen';
     case 'ReportVerificationNeeded':
     case 'SlaBreachWarning':
     case 'ReportStatusChanged':
@@ -121,7 +137,6 @@ export function officerNotificationHref(
     case 'ReportAutoClosed':
     case 'ReportUnassigned':
     case 'DuplicateReviewNeeded':
-    case 'ReopenReviewNeeded':
     case 'ReopenRequestDecided':
     case 'NewComment':
     case 'NearbyReport':
@@ -133,6 +148,8 @@ export function officerNotificationHref(
     case 'LevelUp':
     case 'BadgeProgressNear':
       return '/officer/dashboard';
+    case 'CompanyManagerAccountCreated':
+      return '/officer/settings/account';
     case 'StaffInvitationAccepted':
       return '/officer/workforce?tab=members';
     case 'CommunityCleanupStarted':
@@ -146,12 +163,19 @@ export function officerNotificationHref(
       if (ref) return `/officer/community?eventId=${encodeURIComponent(ref)}`;
       return '/officer/community';
     case 'CleanupTaskAccepted':
+    case 'CleanupTaskDeclined':
     case 'CleanupTaskCompleted':
     case 'CleanupProgressUpdated':
+    case 'CleanupBeforeImagesUploaded':
     case 'CompanyTeamAssigned':
       // referenceId = reportId → LeoTrackingReportDetail
-      if (ref) return `/officer/tracking?reportId=${encodeURIComponent(ref)}`;
+      if (ref) return `/officer/tracking/${encodeURIComponent(ref)}`;
       return '/officer/tracking';
+    case 'InspectionProgressUpdated':
+    case 'InspectionTaskCompleted':
+      // referenceId = inspectionId → InspectionDetailClient
+      if (ref) return `/officer/inspections/${encodeURIComponent(ref)}`;
+      return '/officer/recurrence?tab=inspections';
     default:
       if (ref) return `/officer/verify/${encodeURIComponent(ref)}`;
       return '/officer/dashboard';

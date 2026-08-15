@@ -1,16 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LeoTrackingReportDetail } from './LeoTrackingReportDetail';
-import {
-  goBackWithListSoftReload,
-  softReloadNotificationDestination,
-} from '@/utils/notificationNavigation';
-import { resolveSafeOfficerFrom } from '@/utils/officerNavigation';
-import { cn } from '@/lib/utils';
+import { officerTrackingDetailHref } from '@/utils/officerNavigation';
 
 function TrackingFallback() {
   return (
@@ -33,50 +26,16 @@ const LeoTrackingPageClient = dynamic(
 export function TrackingPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
-  const [detailReportId, setDetailReportId] = useState<string | null>(null);
-  const detailFromQuery = searchParams.get('reportId')?.trim() || null;
-  const activeDetailReportId = detailFromQuery ?? detailReportId;
+  const legacyReportId = searchParams.get('reportId')?.trim() || null;
 
-  const handleBackFromDetail = () => {
-    if (detailFromQuery) {
-      const from = resolveSafeOfficerFrom(searchParams.get('from'));
-      goBackWithListSoftReload({
-        router,
-        queryClient,
-        from,
-        fallbackHref: '/officer/tracking',
-        method: 'replace',
-      });
-      return;
-    }
-    /** Detail mở in-place — soft-reload board rồi ẩn detail. */
-    void softReloadNotificationDestination(queryClient, '/officer/tracking');
-    setDetailReportId(null);
-  };
+  useEffect(() => {
+    if (!legacyReportId) return;
+    router.replace(officerTrackingDetailHref(legacyReportId, searchParams.get('from')));
+  }, [legacyReportId, router, searchParams]);
 
-  /**
-   * Giữ LeoTrackingPageClient mounted khi mở detail để filter/search/page
-   * không bị reset. Chỉ ẩn UI (không unmount). Clear filter = nút 「Xóa tất cả」.
-   */
-  return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div
-        className={cn(
-          'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
-          activeDetailReportId && 'hidden'
-        )}
-        aria-hidden={Boolean(activeDetailReportId)}
-        {...(activeDetailReportId ? { inert: true } : {})}
-      >
-        <LeoTrackingPageClient onOpenDetail={setDetailReportId} />
-      </div>
+  if (legacyReportId) {
+    return <TrackingFallback />;
+  }
 
-      {activeDetailReportId ? (
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-          <LeoTrackingReportDetail reportId={activeDetailReportId} onBack={handleBackFromDetail} />
-        </div>
-      ) : null}
-    </div>
-  );
+  return <LeoTrackingPageClient onOpenDetail={id => router.push(officerTrackingDetailHref(id))} />;
 }

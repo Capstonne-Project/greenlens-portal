@@ -18,6 +18,7 @@ export const REPORT_QUEUE_COLUMN_LABEL = {
   priority: 'Điểm ưu tiên',
   address: 'Địa chỉ',
   created: 'Ngày tạo',
+  verified: 'Ngày xác minh',
   verifySla: 'Hạn xác minh',
   resolveSla: 'Hạn xử lý',
   /** Cột nút xác minh / xem chi tiết */

@@ -8,6 +8,7 @@ import type {
   OfficesListDataDto,
   OfficesListParamsDto,
   OfficeStaffListDataDto,
+  OfficeStaffLookupDataDto,
   RecruitOfficeStaffBodyDto,
   RecruitOfficeStaffDataDto,
   UpdateOfficeBodyDto,
@@ -18,6 +19,7 @@ import {
   mapOfficeDetailDto,
   mapOfficeDto,
   mapOfficeStaffListDataDto,
+  mapOfficeStaffLookupDataDto,
   mapOfficesListDataDto,
   mapRecruitOfficeStaffDataDto,
 } from '@/lib/api/mappers/office.mapper';
@@ -33,6 +35,7 @@ import type {
   OfficesListParams,
   OfficeStaffList,
   OfficeStaffListParams,
+  OfficeStaffLookupResult,
   RecruitOfficeStaffInput,
   RecruitOfficeStaffResult,
   UpdateOfficeInput,
@@ -90,15 +93,18 @@ export async function adaptAssignOfficeOfficer(
   await apiService.put(`/v1/offices/${id}/officer`, payload);
 }
 
-function buildLeoMyReportsQuery(
-  params?: LeoMyReportsParams
-): Record<string, string | number | boolean> {
-  const query: Record<string, string | number | boolean> = {};
+function buildLeoMyReportsQuery(params?: LeoMyReportsParams): Record<string, unknown> {
+  const query: Record<string, unknown> = {};
   if (params?.page != null) query.page = params.page;
   if (params?.pageSize != null) query.pageSize = params.pageSize;
   const search = params?.search?.trim();
   if (search) query.search = search;
-  if (params?.status) query.status = params.status;
+  if (params?.status != null) {
+    const statuses = (Array.isArray(params.status) ? params.status : [params.status]).filter(
+      Boolean
+    );
+    if (statuses.length > 0) query.status = [...statuses];
+  }
   if (params?.categoryId?.trim()) query.categoryId = params.categoryId.trim();
   if (params?.severity) query.severity = params.severity;
   if (params?.assignmentStatus) query.assignmentStatus = params.assignmentStatus;
@@ -115,7 +121,11 @@ export async function adaptFetchLeoMyReports(
 ): Promise<ApiEnvelope<LeoMyReportsData>> {
   const res = await apiService.get<ApiEnvelope<LeoMyReportsDataDto>>(
     '/v1/offices/my/reports',
-    buildLeoMyReportsQuery(params)
+    buildLeoMyReportsQuery(params),
+    {
+      // ASP.NET / Swagger: status=InProgress&status=Resolved (không status[]=)
+      paramsSerializer: { indexes: null },
+    }
   );
   return mapApiEnvelope(res.data, mapLeoMyReportsDataDto);
 }
@@ -132,13 +142,16 @@ export async function adaptFetchLeoWardBoundary(): Promise<ApiEnvelope<LeoWardBo
 /** POST /v1/offices/my/staff — tuyển Citizen vào LocalOffice và đội xử lý. */
 function buildRecruitOfficeStaffBody(body: RecruitOfficeStaffInput): RecruitOfficeStaffBodyDto {
   const teamId = body.teamId?.trim() || null;
-  return {
+  const payload: RecruitOfficeStaffBodyDto = {
     email: body.email.trim(),
     targetRole: body.targetRole,
     teamId,
-    // BE: teamId null → isLeader phải false (không gửi null).
-    isLeader: teamId ? Boolean(body.isLeader) : false,
   };
+  // isLeader optional: chỉ gửi khi có đội và caller truyền giá trị.
+  if (teamId && body.isLeader != null) {
+    payload.isLeader = Boolean(body.isLeader);
+  }
+  return payload;
 }
 
 export async function adaptRecruitOfficeStaff(
@@ -174,4 +187,15 @@ export async function adaptFetchOfficeStaff(
     buildOfficeStaffQuery(params)
   );
   return mapApiEnvelope(res.data, mapOfficeStaffListDataDto);
+}
+
+/** GET /v1/offices/my/staff/lookup — tra cứu Citizen theo email (exact). */
+export async function adaptLookupOfficeStaff(
+  email: string
+): Promise<ApiEnvelope<OfficeStaffLookupResult>> {
+  const res = await apiService.get<ApiEnvelope<OfficeStaffLookupDataDto>>(
+    '/v1/offices/my/staff/lookup',
+    { email: email.trim() }
+  );
+  return mapApiEnvelope(res.data, mapOfficeStaffLookupDataDto);
 }

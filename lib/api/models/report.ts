@@ -6,6 +6,8 @@ export type { ReportStatus } from '@/lib/constants/reportStatus';
 
 export type SeveritySetBy = 'User' | 'AI' | 'Officer';
 
+export type ReopenHistoryStatus = 'Pending' | 'Approved' | 'Rejected';
+
 /** GET /v1/reports/{id} — `data.media[]` */
 export interface ReportMedia {
   id: string;
@@ -53,6 +55,22 @@ export interface ReportPendingReopenRequest {
   requestId: string;
   reason: string;
   requestedAt: string;
+  evidenceMedia: ReportMedia[];
+}
+
+/** GET /v1/reports/{id} — `data.reopenHistory[]` (newest first). */
+export interface ReportReopenHistoryItem {
+  requestId: string;
+  reason: string;
+  /** Pending | Approved | Rejected — keep as string; FE can narrow to `ReopenHistoryStatus`. */
+  status: string;
+  requestedAt: string;
+  requestedById: string;
+  requestedByName: string | null;
+  reviewedAt: string | null;
+  reviewedById: string | null;
+  reviewedByName: string | null;
+  rejectionReason: string | null;
   evidenceMedia: ReportMedia[];
 }
 
@@ -116,6 +134,7 @@ export interface ReportDetail {
   hasCurrentUserRated: boolean;
   hasPendingReopenRequest: boolean;
   pendingReopenRequest: ReportPendingReopenRequest | null;
+  reopenHistory: ReportReopenHistoryItem[];
   mergedIntoPrimaryReportId: string | null;
   mergedIntoPrimaryReportCode: string | null;
   mergedReports: ReportMergedChild[];

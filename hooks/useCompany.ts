@@ -2,8 +2,10 @@
 
 import {
   archiveCompanyTeam,
+  addCompanyTeamMember,
   assignCompanyStaffTeam,
   assignCompanyTeam,
+  reassignCompanyTeam,
   createCompany,
   createCompanyStaff,
   createCompanyTeam,
@@ -15,6 +17,7 @@ import {
   fetchCompanyContractHistory,
   fetchCompanyDetail,
   fetchCompanyQueue,
+  fetchCompanyReportDetail,
   fetchCompanyServiceAreas,
   fetchCompanyStaff,
   fetchCompanyTeams,
@@ -31,9 +34,11 @@ import {
   updateCompanyStaffStatus,
 } from '@/lib/api/services/fetchCompany';
 import type {
+  AddCompanyTeamMemberInput,
   ArchiveCompanyTeamInput,
   AssignCompanyStaffTeamInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompaniesListParams,
   CompanyAssignmentDetail,
   CompanyAssignmentListItem,
@@ -53,6 +58,7 @@ import type {
   MyCompanyKpi,
   MyCompanyKpiParams,
   RenameCompanyTeamInput,
+  RemoveCompanyTeamMemberInput,
   RenewCompanyContractInput,
   SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
@@ -229,15 +235,16 @@ export const companyKeys = {
   teams: (params: CompanyTeamsListParams) => [...companyKeys.all, 'teams', params] as const,
   teamOptions: () => [...companyKeys.all, 'teams', 'options'] as const,
   queue: (params: CompanyQueueParams) => [...companyKeys.all, 'queue', params] as const,
+  /** Overview header “N hàng đợi” CTA — not sidebar badge. */
   queueCount: () => [...companyKeys.all, 'queue', 'count'] as const,
   assignments: (params: CompanyAssignmentsParams) =>
     [...companyKeys.all, 'assignments', params] as const,
-  /** Newly assigned tasks awaiting attention — sidebar badge. */
-  assignmentsNewCount: () => [...companyKeys.all, 'assignments', 'new-count'] as const,
   /** Snapshot for company overview dashboard — recent assignments feed + fallbacks. */
   assignmentsDashboard: () => [...companyKeys.all, 'assignments', 'dashboard'] as const,
   assignmentDetail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'detail', reportId] as const,
+  /** GET /v1/reports/company-reports/{reportId} — assign queue detail. */
+  reportDetail: (reportId: string) => [...companyKeys.all, 'reports', 'detail', reportId] as const,
   assignmentThumbnail: (reportId: string) =>
     [...companyKeys.all, 'assignments', 'thumbnail', reportId] as const,
   contractHistory: () => [...companyKeys.all, 'contract-history'] as const,
@@ -255,32 +262,45 @@ export function useMyCompany() {
   });
 }
 
-export function useCompanyStaffList(params: CompanyStaffListParams) {
+export function useCompanyStaffList(
+  params: CompanyStaffListParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: companyKeys.staff(params),
     queryFn: () => fetchCompanyStaff(params),
     select: (envelope: ApiEnvelope<CompanyStaffList>) => envelope.data,
     staleTime: STALE_MS,
+    enabled: options?.enabled ?? true,
   });
 }
 
-export function useCompanyTeamsList(params: CompanyTeamsListParams) {
+export function useCompanyTeamsList(
+  params: CompanyTeamsListParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: companyKeys.teams(params),
     queryFn: () => fetchCompanyTeams(params),
     select: (envelope: ApiEnvelope<CompanyTeamsList>) => envelope.data,
     staleTime: STALE_MS,
+    enabled: options?.enabled ?? true,
   });
 }
 
 /** Dropdown team active — dùng khi tạo staff / phân công báo cáo. */
-export function useCompanyTeamOptions() {
+export function useCompanyTeamOptions(options?: { enabled?: boolean }) {
   const query = useQuery({
     queryKey: companyKeys.teamOptions(),
     queryFn: () => fetchCompanyTeams({ page: 1, pageSize: 100, isActive: true }),
     select: (envelope: ApiEnvelope<CompanyTeamsList>) =>
-      envelope.data.items.map(t => ({ id: t.id, name: t.name })),
+      envelope.data.items.map(t => ({
+        id: t.id,
+        name: t.name,
+        memberCount: t.memberCount,
+      })),
     staleTime: STALE_MS,
+    enabled: options?.enabled ?? true,
   });
 
   return {
@@ -289,8 +309,8 @@ export function useCompanyTeamOptions() {
   };
 }
 
-/** Tất cả đội công ty — dùng khi gán nhân viên vào đội. */
-export function useCompanyAllTeamOptions() {
+/** Tất cả đội công ty (active + inactive) — gán staff / phân công báo cáo. */
+export function useCompanyAllTeamOptions(options?: { enabled?: boolean }) {
   const query = useQuery({
     queryKey: [...companyKeys.all, 'teams', 'all-options'] as const,
     queryFn: () => fetchCompanyTeams({ page: 1, pageSize: 100 }),
@@ -302,6 +322,7 @@ export function useCompanyAllTeamOptions() {
         memberCount: t.memberCount,
       })),
     staleTime: STALE_MS,
+    enabled: options?.enabled ?? true,
   });
 
   return {
@@ -331,24 +352,15 @@ function decrementQueueCountEnvelope(
   };
 }
 
+/** Overview header queue CTA count (kept when sidebar badges removed). */
 export function useCompanyQueueCount() {
   return useQuery({
     queryKey: companyKeys.queueCount(),
     queryFn: () => fetchCompanyQueue({ page: 1, pageSize: 1 }),
     select: (envelope: ApiEnvelope<CompanyQueueList>) => envelope.data.pagination.totalItems,
     staleTime: 60 * 1000,
-    /** Poll fallback when SignalR off — badge vẫn cập nhật sau LEO dispatch. */
+    /** Poll fallback when SignalR off — Overview CTA vẫn cập nhật sau LEO dispatch. */
     refetchInterval: 60 * 1000,
-  });
-}
-
-/** Count of newly assigned tasks (`Assigned`) — sidebar badge on Theo dõi phân công. */
-export function useCompanyAssignmentsNewCount() {
-  return useQuery({
-    queryKey: companyKeys.assignmentsNewCount(),
-    queryFn: () => fetchCompanyAssignments({ page: 1, pageSize: 1, status: 'Assigned' }),
-    select: (envelope: ApiEnvelope<CompanyAssignmentsList>) => envelope.data.pagination.totalItems,
-    staleTime: 60 * 1000,
   });
 }
 
@@ -387,6 +399,21 @@ export function useCompanyAssignmentDetail(reportId: string | null) {
     queryKey: companyKeys.assignmentDetail(reportId ?? ''),
     queryFn: async () => {
       const envelope = await fetchCompanyAssignmentDetail(reportId!);
+      return mergeAssignmentDetailWithListImages(envelope.data, queryClient, reportId ?? '');
+    },
+    enabled: Boolean(reportId),
+    staleTime: 60 * 1000,
+  });
+}
+
+/** GET /v1/reports/company-reports/{reportId} — chi tiết hàng đợi phân công. */
+export function useCompanyReportDetail(reportId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: companyKeys.reportDetail(reportId ?? ''),
+    queryFn: async () => {
+      const envelope = await fetchCompanyReportDetail(reportId!);
       return mergeAssignmentDetailWithListImages(envelope.data, queryClient, reportId ?? '');
     },
     enabled: Boolean(reportId),
@@ -489,10 +516,25 @@ export function useAssignCompanyStaffTeam() {
   });
 }
 
+/** POST /v1/teams/company-teams/{teamId}/members — thêm thành viên vào đội. */
+export function useAddCompanyTeamMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teamId, body }: { teamId: string; body: AddCompanyTeamMemberInput }) =>
+      addCompanyTeamMember(teamId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
+    },
+  });
+}
+
+/** DELETE /v1/teams/company-teams/{teamId}/members/{userId} — rời đội (CompanyManager). */
 export function useRemoveCompanyTeamMember() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ teamId, userId }: { teamId: string; userId: string }) =>
+    mutationFn: ({ teamId, userId }: RemoveCompanyTeamMemberInput) =>
       removeCompanyTeamMember(teamId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
@@ -556,7 +598,7 @@ export function useArchiveCompanyTeam() {
   });
 }
 
-/** DELETE /v1/teams/company-teams/{id} — [CompanyManager]. */
+/** DELETE /v1/teams/company-teams/{id} — soft delete team [CompanyManager]. */
 export function useDeleteCompanyTeam() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -590,6 +632,23 @@ export function useAssignCompanyTeam() {
       );
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'queue'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'assignments'] });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'reports', 'detail'] });
+    },
+  });
+}
+
+/**
+ * Company Manager — PUT /v1/reports/{id}/reassign-company-team
+ * Body: { oldTeamId, newTeamId, reason } (reason ≥ 20). Assignment Declined/Assigned.
+ */
+export function useReassignCompanyTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, body }: { reportId: string; body: ReassignCompanyTeamInput }) =>
+      reassignCompanyTeam(reportId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'assignments'] });
+      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'reports', 'detail'] });
     },
   });
 }

@@ -86,6 +86,7 @@ export const LEO_MY_REPORTS_STATUSES = [
   'Verified',
   'InProgress',
   'Resolved',
+  'Reopened',
   'Closed',
   'Rejected',
   'Duplicate',
@@ -113,6 +114,13 @@ export const LEO_REPORT_ASSIGNMENT_STATUSES = [
   'Declined',
   'Escalated',
 ] as const satisfies readonly LeoReportAssignmentStatus[];
+
+/** Công ty được điều phối trên item GET /v1/offices/my/reports. */
+export interface LeoMyReportAssignedCompany {
+  companyId: string;
+  companyName: string;
+  dispatchedAt: string;
+}
 
 /** Một assignment trong `LeoMyReportItem.assignments[]`. */
 export interface LeoMyReportAssignment {
@@ -159,6 +167,7 @@ export interface LeoMyReportItem {
   slaResolveDueAt: string | null;
   /** Thumbnail URLs for report media; empty when BE omits the field. */
   thumbnails: string[];
+  assignedCompany: LeoMyReportAssignedCompany | null;
   assignments: LeoMyReportAssignment[];
 }
 
@@ -203,7 +212,11 @@ export interface LeoMyReportsParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  status?: LeoMyReportsStatus;
+  /**
+   * Filter status — BE hỗ trợ multi: `?status=InProgress&status=Resolved`.
+   * Truyền 1 giá trị hoặc mảng.
+   */
+  status?: LeoMyReportsStatus | readonly LeoMyReportsStatus[];
   categoryId?: string;
   severity?: LeoMyReportsSeverity;
   assignmentStatus?: LeoReportAssignmentStatus;
@@ -263,6 +276,20 @@ export interface OfficeStaffListParams {
   hasTeam?: boolean;
 }
 
+// ─── LEO — GET /v1/offices/my/staff/lookup ────────────────────────────────────
+
+/** GET /v1/offices/my/staff/lookup — preview Citizen trước khi tuyển. */
+export interface OfficeStaffLookupResult {
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+  role: string;
+  isRecruitEligible: boolean;
+  ineligibleReason: string | null;
+}
+
 // ─── LEO — POST /v1/offices/my/staff ──────────────────────────────────────────
 
 /** Vai trò đích khi tuyển công dân vào LocalOffice (form chỉ Cleaner | Inspector). */
@@ -273,11 +300,11 @@ export interface RecruitOfficeStaffInput {
   targetRole: RecruitStaffTargetRole;
   /** Null khi tuyển vào văn phòng mà chưa gán đội. */
   teamId?: string | null;
-  /** `false` khi `teamId` null; có đội thì theo toggle trưởng nhóm. */
+  /** Optional — chỉ gửi lên BE khi có đội và caller set. */
   isLeader?: boolean;
 }
 
-/** POST /v1/offices/my/staff — kết quả tuyển nhân sự. */
+/** POST /v1/offices/my/staff — kết quả tuyển nhân sự (lời mời / staff). */
 export interface RecruitOfficeStaffResult {
   userId: string;
   email: string;
@@ -286,4 +313,5 @@ export interface RecruitOfficeStaffResult {
   localOfficeId: string;
   teamId: string | null;
   teamMemberId: string | null;
+  isLeader: boolean;
 }

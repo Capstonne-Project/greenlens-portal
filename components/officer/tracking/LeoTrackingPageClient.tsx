@@ -19,7 +19,11 @@ import { Input } from '@/components/ui/input';
 import SaveIcon from '@/components/ui/save-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useLeoMyReports } from '@/hooks/useLeoOffices';
+import {
+  LEO_TRACKING_REPORT_STATUSES,
+  useLeoTrackingReports,
+  type LeoTrackingReportStatus,
+} from '@/hooks/useLeoOffices';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type {
   LeoMyReportAssignment,
@@ -35,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { faCalendar } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  Building2,
   ChevronDown,
   Clock,
   ImageIcon,
@@ -309,6 +314,8 @@ function ProjectCard({
   const progress = Math.max(0, Math.min(100, Math.round(item.overallProgressPercent ?? 0)));
   const title = item.categoryName;
   const meta = item.address?.trim() || item.code;
+  const description = item.description?.trim() ?? '';
+  const assignedCompanyName = item.assignedCompany?.companyName?.trim() ?? '';
   const slaDateLabel = formatSlaDate(item.slaResolveDueAt);
   const slaDeadline = getDeadlineInfo(item.slaResolveDueAt);
   const slaTooltipDesignation = item.slaResolveDueAt
@@ -339,6 +346,15 @@ function ProjectCard({
           alt={item.code}
           eagerFirstImage={eagerFirstImage}
         />
+        {assignedCompanyName ? (
+          <span
+            className="absolute left-2 top-2 inline-flex items-center gap-0.5 rounded-full bg-emerald-600/95 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-sm backdrop-blur-sm"
+            title={`Công ty nhận task: ${assignedCompanyName}`}
+          >
+            <Building2 className="size-2.5 shrink-0" aria-hidden />
+            Công ty
+          </span>
+        ) : null}
         <span
           className={cn(
             'absolute right-2 top-2 inline-flex max-w-[76%] items-center truncate rounded-full px-2 py-0.5 text-[9px] font-semibold shadow-sm backdrop-blur-sm',
@@ -353,7 +369,7 @@ function ProjectCard({
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
         <div className="min-w-0">
           <div
-            className="mb-0.5 mt-0.5 flex items-center gap-1.5 py-0"
+            className="mb-0.5 mt-0.5 flex items-center gap-1.5 pb-1.5 pt-0"
             title={`Mức độ: ${SEVERITY_LABEL[item.severity]}`}
           >
             <span
@@ -378,6 +394,14 @@ function ProjectCard({
           <CardDescription className="mt-1 line-clamp-1 text-[10px]" title={meta}>
             {meta}
           </CardDescription>
+          {description ? (
+            <p
+              className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground"
+              title={`Mô tả: ${description}`}
+            >
+              <span className="font-medium text-foreground/70">Mô tả:</span> {description}
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-0.5">
@@ -454,6 +478,8 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
   const progress = Math.max(0, Math.min(100, Math.round(item.overallProgressPercent ?? 0)));
   const deadline = getDeadlineInfo(item.slaResolveDueAt);
   const title = item.address?.trim() || item.code;
+  const description = item.description?.trim() ?? '';
+  const assignedCompanyName = item.assignedCompany?.companyName?.trim() ?? '';
   const thumb = (item.thumbnails ?? []).find(Boolean);
   const visibleTeams = item.assignments.slice(0, 3);
   const extraTeams = Math.max(0, item.assignments.length - visibleTeams.length);
@@ -472,6 +498,14 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
             <ImageIcon className="size-4 opacity-40" aria-hidden />
           </div>
         )}
+        {assignedCompanyName ? (
+          <span
+            className="absolute left-0.5 top-0.5 inline-flex items-center rounded bg-emerald-600/95 p-0.5 text-white shadow-sm"
+            title={`Công ty nhận task: ${assignedCompanyName}`}
+          >
+            <Building2 className="size-2.5" aria-hidden />
+          </span>
+        ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
@@ -489,6 +523,11 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
           <span className="mx-1 text-border">·</span>
           <span className="font-mono">#{item.code}</span>
         </p>
+        {description ? (
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground" title={description}>
+            {description}
+          </p>
+        ) : null}
       </div>
 
       <span
@@ -573,14 +612,20 @@ function SkeletonList() {
 
 interface LeoTrackingPageClientProps {
   onOpenDetail: (id: string) => void;
+  /** false khi đang mở detail — tránh gọi my/reports / catalog song song với progress. */
+  queriesEnabled?: boolean;
 }
 
-export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientProps) {
+export function LeoTrackingPageClient({
+  onOpenDetail,
+  queriesEnabled = true,
+}: LeoTrackingPageClientProps) {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<LeoViewMode>('board');
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | LeoMyReportsSeverity>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | LeoTrackingReportStatus>('all');
   const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<
     'all' | LeoReportAssignmentStatus
   >('all');
@@ -608,6 +653,10 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     setCategoryFilter(value);
     setPage(1);
   };
+  const handleStatusChange = (value: 'all' | LeoTrackingReportStatus) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
   const handleAssignmentStatusChange = (value: 'all' | LeoReportAssignmentStatus) => {
     setAssignmentStatusFilter(value);
     setPage(1);
@@ -624,6 +673,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     Boolean(dateRange.fromDate || dateRange.toDate) ||
     categoryFilter !== 'all' ||
     severityFilter !== 'all' ||
+    statusFilter !== 'all' ||
     assignmentStatusFilter !== 'all';
 
   const handleClearAllFilters = () => {
@@ -631,25 +681,30 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
     setDateRange({ preset: 'all' });
     setCategoryFilter('all');
     setSeverityFilter('all');
+    setStatusFilter('all');
     setAssignmentStatusFilter('all');
     setPage(1);
   };
 
-  const { data: catalogCategories = [] } = useCatalogPollutionCategories();
+  const { data: catalogCategories = [] } = useCatalogPollutionCategories(queriesEnabled);
 
-  const { data, isLoading, isError } = useLeoMyReports({
-    page,
-    pageSize,
-    sortBy: 'createdAt',
-    sortDesc: true,
-    search: debouncedSearch || undefined,
-    status: 'InProgress',
-    categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
-    severity: severityFilter === 'all' ? undefined : severityFilter,
-    assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
-    fromDate: dateRange.fromDate,
-    toDate: dateRange.toDate,
-  });
+  const { data, isLoading, isError } = useLeoTrackingReports(
+    {
+      page,
+      pageSize,
+      sortBy: 'createdAt',
+      sortDesc: true,
+      search: debouncedSearch || undefined,
+      /** `all` → multi `?status=InProgress&status=Resolved`; filter cụ thể → 1 status. */
+      status: statusFilter,
+      categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
+      severity: severityFilter === 'all' ? undefined : severityFilter,
+      assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
+      fromDate: dateRange.fromDate,
+      toDate: dateRange.toDate,
+    },
+    { enabled: queriesEnabled }
+  );
 
   const items = useMemo(() => data?.items ?? EMPTY_LEO_ITEMS, [data?.items]);
 
@@ -661,10 +716,17 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
       ? 'Loại ô nhiễm'
       : (catalogCategories.find(cat => cat.id === categoryFilter)?.nameVi ?? 'Loại ô nhiễm');
   const severityFilterLabel = severityFilter === 'all' ? 'Mức độ' : SEVERITY_LABEL[severityFilter];
+  const statusFilterLabel =
+    statusFilter === 'all' ? 'Trạng thái' : reportStatusLabelVi(statusFilter);
   const assignmentFilterLabel =
     assignmentStatusFilter === 'all'
       ? 'Trạng thái đội'
       : ASSIGNMENT_STATUS_LABEL[assignmentStatusFilter];
+
+  const emptyStateMessage =
+    statusFilter === 'all'
+      ? 'Không có báo cáo đang xử lý hoặc đã giải quyết.'
+      : `Không có báo cáo ở trạng thái ${reportStatusLabelVi(statusFilter)}.`;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -765,6 +827,32 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
+                {statusFilterLabel}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleStatusChange('all')}
+                className={statusFilter === 'all' ? 'font-medium text-brand' : ''}
+              >
+                Trạng thái
+              </DropdownMenuItem>
+              {LEO_TRACKING_REPORT_STATUSES.map(status => (
+                <DropdownMenuItem
+                  key={status}
+                  onClick={() => handleStatusChange(status)}
+                  className={statusFilter === status ? 'font-medium text-brand' : ''}
+                >
+                  {reportStatusLabelVi(status)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className={FILTER_BTN_CLASS}>
                 {assignmentFilterLabel}
                 <ChevronDown className="size-3.5 opacity-60" aria-hidden />
               </Button>
@@ -819,13 +907,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
             ) : items.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <SaveIcon size={32} className="opacity-30" />
-                <p>
-                  Không có báo cáo ở trạng thái{' '}
-                  <span className="font-medium text-foreground">
-                    {reportStatusLabelVi('InProgress')}
-                  </span>
-                  .
-                </p>
+                <p>{emptyStateMessage}</p>
               </div>
             ) : (
               <HoverEffect
@@ -855,13 +937,7 @@ export function LeoTrackingPageClient({ onOpenDetail }: LeoTrackingPageClientPro
           ) : items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
               <SaveIcon size={32} className="opacity-30" />
-              <p>
-                Không có báo cáo ở trạng thái{' '}
-                <span className="font-medium text-foreground">
-                  {reportStatusLabelVi('InProgress')}
-                </span>
-                .
-              </p>
+              <p>{emptyStateMessage}</p>
             </div>
           ) : (
             <section className="flex flex-col gap-2">

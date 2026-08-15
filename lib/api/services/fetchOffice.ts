@@ -4,6 +4,7 @@ import {
   adaptFetchLeoMyReports,
   adaptFetchLeoWardBoundary,
   adaptFetchOfficeStaff,
+  adaptLookupOfficeStaff,
   adaptOfficeDetail,
   adaptOfficesList,
   adaptRecruitOfficeStaff,
@@ -21,6 +22,7 @@ import type {
   OfficesListParams,
   OfficeStaffList,
   OfficeStaffListParams,
+  OfficeStaffLookupResult,
   RecruitOfficeStaffInput,
   RecruitOfficeStaffResult,
   UpdateOfficeInput,
@@ -45,6 +47,7 @@ export type {
   OfficesListParams,
   OfficeStaffList,
   OfficeStaffListParams,
+  OfficeStaffLookupResult,
   RecruitOfficeStaffInput,
   RecruitOfficeStaffResult,
   UpdateOfficeInput,
@@ -80,11 +83,62 @@ export async function fetchLeoMyReports(
   return adaptFetchLeoMyReports(params);
 }
 
+const DASHBOARD_PAGE_SIZE = 100;
+const DASHBOARD_MAX_PAGES = 5;
+
+/**
+ * Tạm thời cho dashboard LEO (chưa có `/v1/dashboard/leo`).
+ * Gọi cùng GET /v1/offices/my/reports, lấy tối đa 5 trang × 100 để aggregate KPI.
+ */
+export async function fetchLeoMyReportsForDashboard(
+  params?: Omit<LeoMyReportsParams, 'page' | 'pageSize'>
+): Promise<ApiEnvelope<LeoMyReportsData>> {
+  const first = await fetchLeoMyReports({
+    ...params,
+    page: 1,
+    pageSize: DASHBOARD_PAGE_SIZE,
+    sortBy: 'createdAt',
+    sortDesc: true,
+  });
+  const data = first.data;
+  if (!data) return first;
+
+  const extraPages = Math.min(Math.max(0, data.pagination.totalPages - 1), DASHBOARD_MAX_PAGES - 1);
+  if (extraPages === 0) return first;
+
+  const rest = await Promise.all(
+    Array.from({ length: extraPages }, (_, index) =>
+      fetchLeoMyReports({
+        ...params,
+        page: index + 2,
+        pageSize: DASHBOARD_PAGE_SIZE,
+        sortBy: 'createdAt',
+        sortDesc: true,
+      })
+    )
+  );
+
+  return {
+    ...first,
+    data: {
+      ...data,
+      items: [...data.items, ...rest.flatMap(page => page.data?.items ?? [])],
+    },
+  };
+}
+
 /** GET /v1/offices/my/staff — danh sách Cleaner/Inspector trong LocalOffice. */
 export async function fetchOfficeStaff(
   params?: OfficeStaffListParams
 ): Promise<ApiEnvelope<OfficeStaffList>> {
   return adaptFetchOfficeStaff(params);
+}
+
+/** GET /v1/offices/my/staff/lookup — tra cứu Citizen theo email (exact). */
+export async function lookupOfficeStaff(
+  email: string
+): Promise<ApiEnvelope<OfficeStaffLookupResult>> {
+  return adaptLookupOfficeStaff(email);
 }
 
 /** POST /v1/offices/my/staff — LEO tuyển Citizen vào LocalOffice + đội. */
@@ -106,7 +160,9 @@ export default {
   updateOffice,
   assignOfficeOfficer,
   fetchLeoMyReports,
+  fetchLeoMyReportsForDashboard,
   fetchOfficeStaff,
+  lookupOfficeStaff,
   recruitOfficeStaff,
   fetchLeoWardBoundary,
 };

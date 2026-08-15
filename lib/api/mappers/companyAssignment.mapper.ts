@@ -1,18 +1,27 @@
 import type {
+  CompanyAssignmentCitizenMediaDto,
+  CompanyAssignmentDetailAssignmentDto,
   CompanyAssignmentDetailDto,
+  CompanyAssignmentHistoryEntryDto,
   CompanyAssignmentListItemDto,
   CompanyAssignmentMediaItemDto,
+  CompanyAssignmentProgressUpdateDto,
   CompanyAssignmentTeamDetailDto,
   CompanyAssignmentTimelineEntryDto,
   CompanyAssignmentWasteTagDto,
   CompanyAssignmentsListDto,
 } from '@/lib/api/dto/companyAssignment.dto';
 import type {
+  CompanyAssignmentCitizenMedia,
   CompanyAssignmentDetail,
+  CompanyAssignmentFirstMedia,
+  CompanyAssignmentHistoryEntry,
   CompanyAssignmentListItem,
   CompanyAssignmentMedia,
   CompanyAssignmentMediaItem,
+  CompanyAssignmentProgressUpdate,
   CompanyAssignmentTeamDetail,
+  CompanyAssignmentTeamMember,
   CompanyAssignmentTimelineEntry,
   CompanyAssignmentWasteTag,
   CompanyAssignmentsList,
@@ -46,8 +55,37 @@ function pickStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
 }
 
-function mapReportImages(
+function mapFirstMedia(
   report: CompanyAssignmentListItemDto['report']
+): CompanyAssignmentFirstMedia | null {
+  const firstMedia =
+    report.firstMedia ??
+    (readRecordValue(report, ['firstMedia', 'FirstMedia']) as
+      | CompanyAssignmentListItemDto['report']['firstMedia']
+      | undefined);
+
+  if (!firstMedia || typeof firstMedia !== 'object') return null;
+
+  const url = asOptionalUrl(firstMedia.url);
+  if (!url) return null;
+
+  const id =
+    typeof firstMedia.id === 'string' && firstMedia.id.trim()
+      ? firstMedia.id
+      : `first-media-${url}`;
+
+  return {
+    id,
+    url,
+    thumbnailUrl: asOptionalUrl(firstMedia.thumbnailUrl),
+    type: typeof firstMedia.type === 'string' && firstMedia.type.trim() ? firstMedia.type : 'Image',
+    uploadedAt: firstMedia.uploadedAt ?? new Date(0).toISOString(),
+  };
+}
+
+function mapReportImages(
+  report: CompanyAssignmentListItemDto['report'],
+  firstMedia: CompanyAssignmentFirstMedia | null
 ): CompanyAssignmentMediaItem[] {
   const images: CompanyAssignmentMediaItem[] = [];
   const seen = new Set<string>();
@@ -62,6 +100,12 @@ function mapReportImages(
     });
   };
 
+  // Canonical Swagger: report.firstMedia (thumbnailUrl then url)
+  if (firstMedia && isImageMediaType(firstMedia.type)) {
+    push(firstMedia.thumbnailUrl ?? firstMedia.url, firstMedia.uploadedAt);
+  }
+
+  // Legacy fallbacks
   for (const item of report.media ?? []) {
     const mediaType = item.type ?? item.mediaType;
     if (!isImageMediaType(mediaType)) continue;
@@ -82,9 +126,16 @@ function mapReportImages(
 
 function pickReportThumbnail(
   report: CompanyAssignmentListItemDto['report'],
+  firstMedia: CompanyAssignmentFirstMedia | null,
   itemThumbnail?: string | null,
   reportImages: CompanyAssignmentMediaItem[] = []
 ): string | null {
+  // Prefer firstMedia thumbnailUrl → url
+  if (firstMedia && isImageMediaType(firstMedia.type)) {
+    const fromFirst = asOptionalUrl(firstMedia.thumbnailUrl) ?? asOptionalUrl(firstMedia.url);
+    if (fromFirst) return fromFirst;
+  }
+
   if (reportImages[0]?.url) return reportImages[0].url;
 
   const rawReport = report as unknown as Record<string, unknown>;
@@ -114,9 +165,9 @@ function pickReportThumbnail(
   if (Array.isArray(media)) {
     for (const item of media) {
       if (!item || typeof item !== 'object') continue;
-      const url = asOptionalUrl(
-        readRecordValue(item, ['url', 'Url', 'thumbnailUrl', 'ThumbnailUrl'])
-      );
+      const url =
+        asOptionalUrl(readRecordValue(item, ['thumbnailUrl', 'ThumbnailUrl'])) ??
+        asOptionalUrl(readRecordValue(item, ['url', 'Url']));
       if (url) return url;
     }
   }
@@ -124,13 +175,28 @@ function pickReportThumbnail(
   return null;
 }
 
+function mapTeamMembers(
+  members: CompanyAssignmentListItemDto['team']['members']
+): CompanyAssignmentTeamMember[] {
+  return (members ?? [])
+    .filter((m): m is NonNullable<typeof m> => Boolean(m && typeof m === 'object'))
+    .map(m => ({
+      userId: m.userId,
+      fullName: m.fullName,
+      avatarUrl: asOptionalUrl(m.avatarUrl),
+      isLeader: Boolean(m.isLeader),
+    }));
+}
+
 function mapAssignmentListItem(dto: CompanyAssignmentListItemDto): CompanyAssignmentListItem {
   const itemThumb =
     dto.thumbnailUrl ??
     (readRecordValue(dto, ['thumbnailUrl', 'ThumbnailUrl']) as string | null | undefined);
 
-  const reportImages = mapReportImages(dto.report);
-  const thumbnailUrl = pickReportThumbnail(dto.report, itemThumb, reportImages);
+  const firstMedia = mapFirstMedia(dto.report);
+  const reportImages = mapReportImages(dto.report, firstMedia);
+  const thumbnailUrl = pickReportThumbnail(dto.report, firstMedia, itemThumb, reportImages);
+  const members = mapTeamMembers(dto.team.members);
 
   return {
     assignmentId: dto.assignmentId,
@@ -152,13 +218,15 @@ function mapAssignmentListItem(dto: CompanyAssignmentListItemDto): CompanyAssign
       severity: dto.report.severity,
       status: dto.report.status,
       slaResolveDueAt: dto.report.slaResolveDueAt,
+      firstMedia,
       thumbnailUrl,
       reportImages,
     },
     team: {
       teamId: dto.team.teamId,
       teamName: dto.team.teamName,
-      memberCount: dto.team.memberCount,
+      memberCount: dto.team.memberCount ?? members.length,
+      members,
     },
   };
 }
@@ -182,56 +250,179 @@ export function assignmentListMissingThumbnailIds(items: CompanyAssignmentListIt
   return ids;
 }
 
-function mapMediaItem(dto: CompanyAssignmentMediaItemDto): CompanyAssignmentMediaItem | null {
-  const url = asOptionalUrl(dto.url);
+function mapMediaItem(
+  dto: CompanyAssignmentMediaItemDto | null | undefined
+): CompanyAssignmentMediaItem | null {
+  if (!dto || typeof dto !== 'object') return null;
+  const url = asOptionalUrl(dto.url) ?? asOptionalUrl(dto.thumbnailUrl);
   if (!url) return null;
   return {
+    id: typeof dto.id === 'string' && dto.id.trim() ? dto.id : undefined,
     url,
-    uploadedAt: dto.uploadedAt,
+    thumbnailUrl: asOptionalUrl(dto.thumbnailUrl),
+    mediaType: dto.mediaType ?? null,
+    mimeType: dto.mimeType ?? null,
+    sizeBytes: typeof dto.sizeBytes === 'number' ? dto.sizeBytes : null,
+    uploadedAt: dto.uploadedAt ?? new Date(0).toISOString(),
   };
 }
 
-function mapMedia(
-  dto: CompanyAssignmentDetailDto['media'] | null | undefined
+function mapMediaBuckets(
+  dto: CompanyAssignmentDetailDto['media'] | null | undefined,
+  progressImages: CompanyAssignmentMediaItem[]
 ): CompanyAssignmentMedia {
   return {
     beforeImages: (dto?.beforeImages ?? [])
       .map(mapMediaItem)
       .filter((item): item is CompanyAssignmentMediaItem => item !== null),
-    progressImages: (dto?.progressImages ?? [])
-      .map(mapMediaItem)
-      .filter((item): item is CompanyAssignmentMediaItem => item !== null),
+    progressImages,
     afterImages: (dto?.afterImages ?? [])
       .map(mapMediaItem)
       .filter((item): item is CompanyAssignmentMediaItem => item !== null),
   };
 }
 
-function mapTeamDetail(dto: CompanyAssignmentTeamDetailDto): CompanyAssignmentTeamDetail {
+function mapSla(
+  dto: CompanyAssignmentDetailDto['sla'] | null | undefined
+): CompanyAssignmentDetail['sla'] {
   return {
-    assignmentId: dto.assignmentId,
-    status: dto.status,
-    assignedAt: dto.assignedAt,
+    resolveDueAt: dto?.resolveDueAt ?? '',
+    hoursRemaining: dto?.hoursRemaining ?? 0,
+    isBreached: Boolean(dto?.isBreached),
+    severityLabel: dto?.severityLabel ?? '',
+  };
+}
+
+function mapProgressUpdate(
+  dto: CompanyAssignmentProgressUpdateDto | null | undefined
+): CompanyAssignmentProgressUpdate | null {
+  if (!dto || typeof dto !== 'object') return null;
+  const id = typeof dto.id === 'string' && dto.id.trim() ? dto.id : '';
+  return {
+    id,
+    progressPercent: dto.progressPercent ?? 0,
+    progressNote: dto.progressNote ?? null,
+    updatedAt: dto.updatedAt ?? '',
+    updatedByUserId: dto.updatedByUserId ?? '',
+    updatedByName: dto.updatedByName ?? '',
+    images: (dto.images ?? [])
+      .map(mapMediaItem)
+      .filter((item): item is CompanyAssignmentMediaItem => item !== null),
+  };
+}
+
+function mapAssignmentDetail(
+  dto: CompanyAssignmentDetailAssignmentDto | CompanyAssignmentTeamDetailDto | null | undefined
+): CompanyAssignmentTeamDetail | null {
+  if (!dto || typeof dto !== 'object') return null;
+  if (!dto.assignmentId && !dto.teamId) return null;
+
+  return {
+    assignmentId: dto.assignmentId ?? '',
+    status: dto.status ?? '',
+    assignedAt: dto.assignedAt ?? '',
+    acceptedAt: dto.acceptedAt ?? null,
     startedAt: dto.startedAt ?? null,
     completedAt: dto.completedAt ?? null,
     note: dto.note ?? null,
     declineReason: dto.declineReason ?? null,
-    progressPercent: dto.progressPercent,
+    checkedInAt: dto.checkedInAt ?? null,
+    checkedInLatitude: dto.checkedInLatitude ?? null,
+    checkedInLongitude: dto.checkedInLongitude ?? null,
+    checkedInNote: dto.checkedInNote ?? null,
+    progressPercent: dto.progressPercent ?? 0,
     progressNote: dto.progressNote ?? null,
     progressUpdatedAt: dto.progressUpdatedAt ?? null,
     progressUpdatedByName: dto.progressUpdatedByName ?? null,
-    teamId: dto.teamId,
-    teamName: dto.teamName,
-    members: (dto.members ?? []).map(m => ({
-      userId: m.userId,
-      fullName: m.fullName,
-      isLeader: m.isLeader,
-    })),
-    assignedByName: dto.assignedByName,
+    teamId: dto.teamId ?? '',
+    teamName: dto.teamName ?? '',
+    teamLeaderName: dto.teamLeaderName?.trim() || null,
+    members: (dto.members ?? [])
+      .filter((m): m is NonNullable<typeof m> => Boolean(m && typeof m === 'object'))
+      .map(m => ({
+        userId: m.userId ?? '',
+        fullName: m.fullName ?? '',
+        avatarUrl: asOptionalUrl(m.avatarUrl),
+        isLeader: Boolean(m.isLeader),
+        joinedAt: m.joinedAt ?? null,
+      })),
+    assignedByName: dto.assignedByName ?? '',
+    progressUpdates: (dto.progressUpdates ?? [])
+      .map(mapProgressUpdate)
+      .filter((item): item is CompanyAssignmentProgressUpdate => item !== null),
   };
 }
 
-function mapTimelineEntry(dto: CompanyAssignmentTimelineEntryDto): CompanyAssignmentTimelineEntry {
+function mapAssignmentHistoryEntry(
+  dto: CompanyAssignmentHistoryEntryDto | null | undefined
+): CompanyAssignmentHistoryEntry | null {
+  if (!dto || typeof dto !== 'object') return null;
+  return {
+    assignmentId: dto.assignmentId ?? '',
+    teamId: dto.teamId ?? '',
+    teamName: dto.teamName ?? '',
+    status: dto.status ?? '',
+    assignedAt: dto.assignedAt ?? '',
+    acceptedAt: dto.acceptedAt ?? null,
+    completedAt: dto.completedAt ?? null,
+    declineReason: dto.declineReason ?? null,
+    note: dto.note ?? null,
+  };
+}
+
+function deriveSummaryFromAssignment(
+  assignment: CompanyAssignmentTeamDetail | null
+): CompanyAssignmentDetail['summary'] {
+  if (!assignment) {
+    return {
+      totalTeams: 0,
+      acceptedTeams: 0,
+      completedTeams: 0,
+      declinedTeams: 0,
+      pendingTeams: 0,
+      overallProgressPercent: 0,
+      startedAt: null,
+    };
+  }
+
+  const status = (assignment.status ?? '').trim();
+  const isDeclined = status === 'Declined';
+  const hasAccepted =
+    Boolean(assignment.acceptedAt?.trim()) || status === 'InProgress' || status === 'Completed';
+
+  return {
+    totalTeams: 1,
+    acceptedTeams: !isDeclined && (hasAccepted || status === 'Assigned') ? 1 : 0,
+    completedTeams: status === 'Completed' ? 1 : 0,
+    declinedTeams: isDeclined ? 1 : 0,
+    pendingTeams: status === 'Assigned' && !assignment.acceptedAt ? 1 : 0,
+    overallProgressPercent: assignment.progressPercent ?? 0,
+    startedAt: assignment.startedAt ?? null,
+  };
+}
+
+function mapSummary(
+  dto: CompanyAssignmentDetailDto['summary'] | null | undefined,
+  assignment: CompanyAssignmentTeamDetail | null
+): CompanyAssignmentDetail['summary'] {
+  if (dto && typeof dto === 'object') {
+    return {
+      totalTeams: dto.totalTeams ?? 0,
+      acceptedTeams: dto.acceptedTeams ?? 0,
+      completedTeams: dto.completedTeams ?? 0,
+      declinedTeams: dto.declinedTeams ?? 0,
+      pendingTeams: dto.pendingTeams ?? 0,
+      overallProgressPercent: dto.overallProgressPercent ?? 0,
+      startedAt: dto.startedAt ?? null,
+    };
+  }
+  return deriveSummaryFromAssignment(assignment);
+}
+
+function mapTimelineEntry(
+  dto: CompanyAssignmentTimelineEntryDto | null | undefined
+): CompanyAssignmentTimelineEntry | null {
+  if (!dto || typeof dto !== 'object') return null;
   return {
     timestamp: dto.timestamp,
     fromStatus: dto.fromStatus ?? null,
@@ -241,7 +432,10 @@ function mapTimelineEntry(dto: CompanyAssignmentTimelineEntryDto): CompanyAssign
   };
 }
 
-function mapWasteTag(dto: CompanyAssignmentWasteTagDto): CompanyAssignmentWasteTag {
+function mapWasteTag(
+  dto: CompanyAssignmentWasteTagDto | null | undefined
+): CompanyAssignmentWasteTag | null {
+  if (!dto || typeof dto !== 'object') return null;
   return {
     tagId: dto.tagId,
     code: dto.code,
@@ -250,34 +444,71 @@ function mapWasteTag(dto: CompanyAssignmentWasteTagDto): CompanyAssignmentWasteT
   };
 }
 
-function mapCitizenImages(dto: CompanyAssignmentDetailDto): CompanyAssignmentMediaItem[] {
-  const images: CompanyAssignmentMediaItem[] = [];
+function mapCitizenMediaItem(
+  dto: CompanyAssignmentCitizenMediaDto | null | undefined
+): CompanyAssignmentCitizenMedia | null {
+  if (!dto || typeof dto !== 'object') return null;
+  const url = asOptionalUrl(dto.url);
+  if (!url) return null;
+  const id = typeof dto.id === 'string' && dto.id.trim() ? dto.id : `citizen-media-${url}`;
+  return {
+    id,
+    url,
+    thumbnailUrl: asOptionalUrl(dto.thumbnailUrl),
+    type: typeof dto.type === 'string' && dto.type.trim() ? dto.type : 'Image',
+    uploadedAt: dto.uploadedAt ?? new Date(0).toISOString(),
+  };
+}
+
+/** Prefer citizenMedia; fallback legacy images / reportImages / reportMedia / flat media[]. */
+function mapCitizenMedia(dto: CompanyAssignmentDetailDto): CompanyAssignmentCitizenMedia[] {
+  const fromWire = (dto.citizenMedia ?? [])
+    .map(mapCitizenMediaItem)
+    .filter((item): item is CompanyAssignmentCitizenMedia => item !== null);
+
+  if (fromWire.length > 0) return fromWire;
+
+  const images: CompanyAssignmentCitizenMedia[] = [];
   const seen = new Set<string>();
 
-  const push = (url: unknown, uploadedAt?: string | null) => {
+  const pushLegacy = (
+    url: unknown,
+    uploadedAt?: string | null,
+    thumbnailUrl?: string | null,
+    type?: string,
+    id?: string
+  ) => {
     const normalized = asOptionalUrl(url);
     if (!normalized || seen.has(normalized)) return;
     seen.add(normalized);
     images.push({
+      id: id && id.trim() ? id : `legacy-media-${normalized}`,
       url: normalized,
+      thumbnailUrl: asOptionalUrl(thumbnailUrl),
+      type: type && type.trim() ? type : 'Image',
       uploadedAt: uploadedAt ?? new Date(0).toISOString(),
     });
   };
 
   for (const group of [dto.images, dto.reportImages, dto.reportMedia]) {
     for (const item of group ?? []) {
-      push(item.url, item.uploadedAt);
+      if (!item || typeof item !== 'object') continue;
+      pushLegacy(item.url, item.uploadedAt);
     }
   }
 
   const raw = dto as unknown as Record<string, unknown>;
   const flatMedia = readRecordValue(raw, ['media', 'Media']);
+  // Nested media buckets ({ beforeImages, … }) must not be treated as flat URL list.
   if (Array.isArray(flatMedia)) {
     for (const item of flatMedia) {
       if (!item || typeof item !== 'object') continue;
-      push(
+      pushLegacy(
         readRecordValue(item, ['url', 'Url']),
-        readRecordValue(item, ['uploadedAt', 'UploadedAt']) as string
+        readRecordValue(item, ['uploadedAt', 'UploadedAt']) as string,
+        readRecordValue(item, ['thumbnailUrl', 'ThumbnailUrl']) as string,
+        readRecordValue(item, ['type', 'Type']) as string,
+        readRecordValue(item, ['id', 'Id']) as string
       );
     }
   }
@@ -285,47 +516,107 @@ function mapCitizenImages(dto: CompanyAssignmentDetailDto): CompanyAssignmentMed
   return images;
 }
 
+/** Derived gallery urls from citizenMedia (images use thumbnailUrl ?? url). */
+function mapReportImagesFromCitizenMedia(
+  citizenMedia: CompanyAssignmentCitizenMedia[]
+): CompanyAssignmentMediaItem[] {
+  const images: CompanyAssignmentMediaItem[] = [];
+  const seen = new Set<string>();
+
+  for (const item of citizenMedia) {
+    if (!isImageMediaType(item.type)) continue;
+    const preferred = asOptionalUrl(item.thumbnailUrl) ?? asOptionalUrl(item.url);
+    if (!preferred || seen.has(preferred)) continue;
+    seen.add(preferred);
+    images.push({
+      url: preferred,
+      uploadedAt: item.uploadedAt ?? new Date(0).toISOString(),
+    });
+  }
+
+  return images;
+}
+
+function mapProgressImages(
+  assignment: CompanyAssignmentTeamDetail | null,
+  legacyMedia: CompanyAssignmentDetailDto['media'] | null | undefined
+): CompanyAssignmentMediaItem[] {
+  const fromUpdates: CompanyAssignmentMediaItem[] = [];
+  const seen = new Set<string>();
+
+  const push = (item: CompanyAssignmentMediaItem) => {
+    if (seen.has(item.url)) return;
+    seen.add(item.url);
+    fromUpdates.push(item);
+  };
+
+  for (const update of assignment?.progressUpdates ?? []) {
+    for (const img of update.images) {
+      push(img);
+    }
+  }
+
+  if (fromUpdates.length > 0) return fromUpdates;
+
+  return (legacyMedia?.progressImages ?? [])
+    .map(mapMediaItem)
+    .filter((item): item is CompanyAssignmentMediaItem => item !== null);
+}
+
 export function mapCompanyAssignmentDetailDto(
   dto: CompanyAssignmentDetailDto
 ): CompanyAssignmentDetail {
-  const reportImages = mapCitizenImages(dto);
+  const citizenMedia = mapCitizenMedia(dto);
+  const reportImages = mapReportImagesFromCitizenMedia(citizenMedia);
+
+  const assignment = mapAssignmentDetail(dto.assignment);
+  const teamAssignments = assignment
+    ? [assignment]
+    : (dto.teamAssignments ?? [])
+        .map(mapAssignmentDetail)
+        .filter((item): item is CompanyAssignmentTeamDetail => item !== null);
+
+  // Progress/summary derive from singular wire assignment, else first legacy team.
+  const progressSource = assignment ?? teamAssignments[0] ?? null;
+  const progressImages = mapProgressImages(progressSource, dto.media);
 
   return {
     reportId: dto.reportId,
-    code: dto.code,
+    code: dto.code ?? '',
     status: normalizeReportStatus(dto.status),
     severity: dto.severity,
-    categoryName: dto.categoryName,
-    description: dto.description,
-    address: dto.address,
+    categoryName: dto.categoryName ?? '',
+    description: dto.description ?? '',
+    address: dto.address ?? '',
     wardCode: dto.wardCode ?? null,
-    latitude: dto.latitude,
-    longitude: dto.longitude,
-    createdAt: dto.createdAt,
+    provinceCode: dto.provinceCode ?? null,
+    latitude: dto.latitude ?? 0,
+    longitude: dto.longitude ?? 0,
+    createdAt: dto.createdAt ?? '',
+    verifiedAt: dto.verifiedAt ?? null,
+    verifiedByName: dto.verifiedByName ?? null,
     dispatchedToCompanyAt: dto.dispatchedToCompanyAt ?? null,
     resolvedAt: dto.resolvedAt ?? null,
     closedAt: dto.closedAt ?? null,
-    reopenedCount: dto.reopenedCount,
-    sla: {
-      resolveDueAt: dto.sla.resolveDueAt,
-      hoursRemaining: dto.sla.hoursRemaining,
-      isBreached: dto.sla.isBreached,
-      severityLabel: dto.sla.severityLabel,
-    },
-    summary: {
-      totalTeams: dto.summary.totalTeams,
-      acceptedTeams: dto.summary.acceptedTeams,
-      completedTeams: dto.summary.completedTeams,
-      declinedTeams: dto.summary.declinedTeams,
-      pendingTeams: dto.summary.pendingTeams,
-      overallProgressPercent: dto.summary.overallProgressPercent,
-      startedAt: dto.summary.startedAt ?? null,
-    },
-    media: mapMedia(dto.media),
+    reopenedCount: dto.reopenedCount ?? 0,
+    priorityScore: dto.priorityScore ?? 0,
+    sla: mapSla(dto.sla),
+    citizenMedia,
+    assignment,
+    media: mapMediaBuckets(dto.media, progressImages),
+    assignmentHistory: (dto.assignmentHistory ?? [])
+      .map(mapAssignmentHistoryEntry)
+      .filter((item): item is CompanyAssignmentHistoryEntry => item !== null),
+    canReassign: Boolean(dto.canReassign),
     reportImages,
-    teamAssignments: (dto.teamAssignments ?? []).map(mapTeamDetail),
-    timeline: (dto.timeline ?? []).map(mapTimelineEntry),
-    wasteTags: (dto.wasteTags ?? []).map(mapWasteTag),
+    teamAssignments,
+    summary: mapSummary(dto.summary, progressSource),
+    timeline: (dto.timeline ?? [])
+      .map(mapTimelineEntry)
+      .filter((item): item is CompanyAssignmentTimelineEntry => item !== null),
+    wasteTags: (dto.wasteTags ?? [])
+      .map(mapWasteTag)
+      .filter((item): item is CompanyAssignmentWasteTag => item !== null),
   };
 }
 

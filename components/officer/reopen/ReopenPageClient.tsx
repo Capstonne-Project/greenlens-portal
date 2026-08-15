@@ -145,7 +145,7 @@ function CopyIconButton({
       }}
       className={cn(
         'inline-flex size-5 shrink-0 items-center justify-center rounded text-slate-400',
-        'opacity-0 transition-opacity group-hover/copyrow:opacity-100',
+        'opacity-100 transition-opacity md:opacity-0 md:group-hover/copyrow:opacity-100',
         'hover:bg-slate-100 hover:text-slate-700',
         'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
       )}
@@ -410,6 +410,102 @@ function renderCell(key: ColumnKey, row: ReopenRequestItem, opts?: { imagePriori
   }
 }
 
+/** Card list — mobile / tablet hẹp (enterprise: tránh table-fixed 6 cột trên màn hẹp). */
+function ReopenRequestMobileCard({
+  row,
+  imagePriority,
+  onOpen,
+}: {
+  row: ReopenRequestItem;
+  imagePriority?: boolean;
+  onOpen: () => void;
+}) {
+  const url = row.firstEvidenceImageUrl;
+  const { date, time } = formatRequestedParts(row.requestedAt);
+  const detailHref = `/officer/reopen/${row.reportId}`;
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className={cn(
+        'cursor-pointer rounded-xl border border-slate-200/90 bg-white p-3 shadow-sm transition-colors',
+        'hover:border-sky-200 hover:bg-sky-50/30',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+      )}
+    >
+      <div className="flex gap-3">
+        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200/80">
+          {url ? (
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes="56px"
+              className="object-cover"
+              unoptimized
+              priority={imagePriority}
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-slate-400">
+              <ImageIcon className="size-5" aria-hidden />
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 space-y-0.5">
+              <p className="truncate text-xs font-semibold tabular-nums text-sky-700">
+                {row.reportId}
+              </p>
+              <p className="truncate text-sm font-medium tabular-nums text-slate-900">
+                {row.reportCode}
+              </p>
+            </div>
+            <RequestStatusBadge status={row.status} />
+          </div>
+
+          <p className="line-clamp-2 text-xs leading-snug text-slate-600">
+            {row.reason?.trim() || '—'}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <ReportStatusBadge status={row.reportStatus} />
+            <span className="text-[11px] tabular-nums text-slate-500">
+              {time ? `${date} · ${time}` : date}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex justify-end border-t border-slate-100 pt-2.5">
+        <Link
+          href={detailHref}
+          title="Xem chi tiết"
+          aria-label={`Xem chi tiết ${row.reportCode}`}
+          onClick={e => e.stopPropagation()}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-700',
+            'hover:bg-slate-100',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40'
+          )}
+        >
+          <Eye className="size-3.5" aria-hidden />
+          Chi tiết
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 export function ReopenPageClient() {
   const router = useRouter();
   const [page, setPage] = useState(1);
@@ -435,27 +531,67 @@ export function ReopenPageClient() {
   const pagination = data?.pagination;
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="mb-4 shrink-0">
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
-            <RotateCcw className="size-7" aria-hidden />
+    <div className="-mx-2 flex h-full min-h-0 flex-1 flex-col overflow-hidden md:-mx-6">
+      <header className="mb-3 shrink-0 px-2 sm:mb-4 md:px-6">
+        <div className="flex items-start gap-2.5 border-b border-slate-200 pb-3 sm:items-center sm:gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-emerald-700 sm:size-9">
+            <RotateCcw className="size-6 sm:size-7" aria-hidden />
           </span>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-900">Xử lý lại</h1>
-            <p className="text-xs font-normal text-slate-500">
+          <div className="min-w-0">
+            <h1 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+              Xử lý lại
+            </h1>
+            <p className="text-[11px] font-normal leading-snug text-slate-500 sm:text-xs">
               Duyệt yêu cầu mở lại báo cáo từ người dân để xử lý / dọn dẹp lại
             </p>
           </div>
         </div>
       </header>
 
-      <div className="mb-3 shrink-0">
+      <div className="mb-3 shrink-0 px-2 md:px-6">
         <ReopenStatusTabBar activeKey={statusTab} onChange={handleStatusTabChange} />
       </div>
 
-      <div className="-mx-6 flex flex-1 flex-col overflow-hidden bg-white">
-        <div className="@container/reopen-table min-h-0 flex-1 overflow-auto [scrollbar-gutter:stable]">
+      {/* Mobile / tablet hẹp — card list */}
+      <div className="min-h-0 flex-1 overflow-auto px-2 py-1 [scrollbar-gutter:stable] md:hidden">
+        {isPending ? (
+          <div className="flex h-40 items-center justify-center">
+            <Loader2 className="size-8 animate-spin text-slate-400" />
+          </div>
+        ) : isError ? (
+          <div className="flex h-40 flex-col items-center justify-center gap-2 px-4 text-center">
+            <p className="text-sm text-destructive">Không tải được danh sách yêu cầu mở lại.</p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="text-sm font-medium text-sky-700 hover:underline"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex h-40 flex-col items-center justify-center gap-2 text-base font-medium text-slate-500">
+            <SaveIcon size={40} className="opacity-30" />
+            <span>Không có yêu cầu mở lại</span>
+          </div>
+        ) : (
+          <ul className="space-y-2.5">
+            {items.map((row, rowIndex) => (
+              <li key={row.requestId}>
+                <ReopenRequestMobileCard
+                  row={row}
+                  imagePriority={rowIndex < 2}
+                  onOpen={() => router.push(`/officer/reopen/${row.reportId}`)}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Desktop table — full-bleed trong panel; chữ vẫn inset qua tableCellPad */}
+      <div className="hidden min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex">
+        <div className="@container/reopen-table min-h-0 flex-1 overflow-auto">
           <Table className="w-full table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-slate-100">
               <TableRow className={cn(ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
@@ -561,23 +697,30 @@ export function ReopenPageClient() {
             </TableBody>
           </Table>
         </div>
-
-        {pagination ? (
-          <div className="relative flex shrink-0 items-center justify-center px-6 py-3">
-            {pagination.totalPages > 1 ? (
-              <PaginationSimple
-                page={page}
-                totalPages={pagination.totalPages}
-                onPageChange={setPage}
-                className="mx-auto w-auto justify-center"
-              />
-            ) : null}
-            <p className="absolute right-6 top-1/2 -translate-y-1/2 text-xs text-slate-500 tabular-nums">
-              {pagination.totalItems.toLocaleString('vi-VN')} yêu cầu
-            </p>
-          </div>
-        ) : null}
       </div>
+
+      {pagination ? (
+        <div className="relative flex shrink-0 flex-col items-center gap-2 border-t border-slate-100 px-3 py-3 sm:flex-row sm:justify-center md:px-6">
+          {pagination.totalPages > 1 ? (
+            <PaginationSimple
+              page={page}
+              totalPages={pagination.totalPages}
+              onPageChange={setPage}
+              className="mx-auto w-auto justify-center"
+            />
+          ) : null}
+          <p
+            className={cn(
+              'text-xs text-slate-500 tabular-nums',
+              pagination.totalPages > 1
+                ? 'sm:absolute sm:right-6 sm:top-1/2 sm:-translate-y-1/2'
+                : 'sm:ml-auto sm:mr-0'
+            )}
+          >
+            {pagination.totalItems.toLocaleString('vi-VN')} yêu cầu
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -19,6 +19,8 @@ export const NOTIFICATION_TEMPLATE_TYPES = [
   'SlaResolutionBreached',
   'SlaInspectionBreached',
   'CleanupProgressStale',
+  'CleanupProgressUpdated',
+  'CleanupBeforeImagesUploaded',
   'CleanupTaskAssigned',
   'NearbyReport',
   'NewComment',
@@ -37,11 +39,14 @@ export const NOTIFICATION_TEMPLATE_TYPES = [
   'CommunityCleanupLeaderAssigned',
   'CommunityCleanupStarted',
   'CommunityCleanupProgressUpdated',
+  'InspectionProgressUpdated',
+  'InspectionTaskCompleted',
   'CommunityCleanupVerificationSubmitted',
   'CommunityCleanupVerificationRejected',
   'CommunityCleanupVerified',
   'CommunityCleanupCheckInReminder',
   'BadgeProgressNear',
+  'CompanyManagerAccountCreated',
 ] as const;
 
 export type NotificationTemplateType = (typeof NOTIFICATION_TEMPLATE_TYPES)[number];
@@ -55,7 +60,12 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   SlaResolutionBreached: 'SLA xử lý vi phạm',
   SlaInspectionBreached: 'SLA kiểm tra vi phạm',
   CleanupProgressStale: 'Tiến độ cleanup chậm',
+  CleanupProgressUpdated: 'Cập nhật tiến độ cleanup',
+  CleanupBeforeImagesUploaded: 'Đội đã tải ảnh hiện trạng (before)',
   CleanupTaskAssigned: 'Có task cleanup mới',
+  CleanupTaskAccepted: 'Đội đã nhận task cleanup',
+  CleanupTaskDeclined: 'Đội từ chối task cleanup',
+  CleanupTaskCompleted: 'Đội hoàn thành task cleanup',
   NearbyReport: 'Báo cáo gần bạn',
   NewComment: 'Bình luận mới',
   ReportAutoClosed: 'Tự động đóng báo cáo',
@@ -79,11 +89,14 @@ export const NOTIFICATION_TYPE_LABEL_VI: Record<string, string> = {
   CommunityCleanupLeaderAssigned: 'Được chỉ định làm Leader',
   CommunityCleanupStarted: 'Dọn cộng đồng bắt đầu',
   CommunityCleanupProgressUpdated: 'Cập nhật tiến độ dọn cộng đồng',
+  InspectionProgressUpdated: 'Cập nhật tiến độ hồ sơ xử phạt',
+  InspectionTaskCompleted: 'Hoàn thành nhiệm vụ hồ sơ xử phạt',
   CommunityCleanupVerificationSubmitted: 'Cần duyệt hoàn thành dọn cộng đồng',
   CommunityCleanupVerificationRejected: 'Minh chứng dọn cộng đồng bị từ chối',
   CommunityCleanupVerified: 'Dọn cộng đồng đã hoàn thành',
   CommunityCleanupCheckInReminder: 'Nhắc check-in dọn cộng đồng',
   BadgeProgressNear: 'Sắp đạt huy hiệu',
+  CompanyManagerAccountCreated: 'Tài khoản quản lý công ty đã tạo',
 };
 
 export const NOTIFICATION_TEMPLATE_PAGE_SIZE = 8;

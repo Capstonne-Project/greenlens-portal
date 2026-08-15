@@ -1,1 +1,9 @@
+#!/usr/bin/env sh
+# Strip Cursor attribution trailers so commits stay under the real author
+# (Settings > Attribution opt-out is unreliable; agent may still pass --trailer).
+MSG_FILE="$1"
+if [ -f "$MSG_FILE" ]; then
+  grep -v -E '^[[:space:]]*Co-authored-by:[[:space:]]*Cursor[[:space:]]*<' "$MSG_FILE" > "$MSG_FILE.tmp" && mv "$MSG_FILE.tmp" "$MSG_FILE"
+  grep -v -E '^[[:space:]]*(Made-with:|Made with)[[:space:]]*Cursor' "$MSG_FILE" > "$MSG_FILE.tmp" && mv "$MSG_FILE.tmp" "$MSG_FILE"
+fi
 npx commitlint --edit "$1"

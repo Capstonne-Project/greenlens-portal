@@ -118,6 +118,10 @@ function mapStatusHistoryDto(dto: ReportProgressStatusHistoryDto): ReportProgres
 
 export function mapReportProgressDataDto(dto: ReportProgressDataDto): ReportProgress {
   const sla = dto.sla;
+  const latitude =
+    typeof dto.latitude === 'number' && Number.isFinite(dto.latitude) ? dto.latitude : 0;
+  const longitude =
+    typeof dto.longitude === 'number' && Number.isFinite(dto.longitude) ? dto.longitude : 0;
 
   return {
     reportId: dto.reportId,
@@ -127,6 +131,8 @@ export function mapReportProgressDataDto(dto: ReportProgressDataDto): ReportProg
     categoryName: dto.categoryName ?? '',
     address: dto.address ?? '',
     wardCode: dto.wardCode ?? '',
+    latitude,
+    longitude,
     description: dto.description ?? '',
     sla: {
       resolveDueAt: sla?.resolveDueAt || null,

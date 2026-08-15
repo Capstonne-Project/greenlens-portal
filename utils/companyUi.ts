@@ -48,6 +48,32 @@ export function formatCompanyDate(iso: string | null | undefined): string {
   }
 }
 
+/**
+ * BE `officeName` thường dạng "LEO {tên phường}".
+ * FE bỏ prefix LEO và chuẩn hoá thành "Phường {tên}".
+ */
+export function formatCompanyTeamWardLabel(officeName: string | null | undefined): string | null {
+  const raw = officeName?.trim();
+  if (!raw) return null;
+
+  const withoutLeo = raw.replace(/^LEO\s*[-–—:]?\s*/i, '').trim();
+  if (!withoutLeo) return null;
+
+  if (/^phường\b/i.test(withoutLeo)) {
+    return withoutLeo.replace(/^phường/i, 'Phường');
+  }
+  return `Phường ${withoutLeo}`;
+}
+
+/** Dòng phụ dưới tên đội — hiện chỉ tên công ty (MyCompany). */
+export function formatCompanyTeamAffiliationLine(
+  companyName: string | null | undefined,
+  _officeName?: string | null
+): string {
+  const company = companyName?.trim();
+  return company || 'Đội công ty';
+}
+
 export function getCompanyMutationError(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
     const res = (err as { response?: { data?: { message?: string } } }).response;
@@ -66,10 +92,10 @@ const SEVERITY_LABELS: Record<string, string> = {
 };
 
 const SEVERITY_CLASSES: Record<string, string> = {
-  Low: 'bg-emerald-100 text-emerald-900',
-  Medium: 'bg-lime-100 text-lime-900',
-  High: 'bg-orange-100 text-orange-900',
-  Critical: 'bg-red-100 text-red-900',
+  Low: 'bg-emerald-100 text-emerald-900 ring-emerald-200/80',
+  Medium: 'bg-lime-100 text-lime-900 ring-lime-200/80',
+  High: 'bg-orange-100 text-orange-900 ring-orange-200/80',
+  Critical: 'bg-red-100 text-red-900 ring-red-200/80',
 };
 
 export function queueSeverityLabel(severity: string): string {
@@ -105,6 +131,7 @@ const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
   InProgress: 'Đang xử lý',
   Completed: 'Hoàn thành',
   Declined: 'Từ chối',
+  Escalated: 'Đã leo thang',
 };
 
 const ASSIGNMENT_STATUS_CLASSES: Record<string, string> = {
@@ -112,6 +139,7 @@ const ASSIGNMENT_STATUS_CLASSES: Record<string, string> = {
   InProgress: 'bg-emerald-100 text-emerald-900',
   Completed: 'bg-emerald-600/15 text-emerald-900',
   Declined: 'bg-red-100 text-red-900',
+  Escalated: 'bg-amber-100 text-amber-900',
 };
 
 export function assignmentStatusLabel(status: string): string {
@@ -133,6 +161,8 @@ export function assignmentStatusCompanyHint(status: string): string {
       return 'Đội đã hoàn thành phần việc';
     case 'Declined':
       return 'Đội từ chối task';
+    case 'Escalated':
+      return 'Task đã được leo thang';
     default:
       return '';
   }

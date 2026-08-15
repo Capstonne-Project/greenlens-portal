@@ -84,6 +84,7 @@ export type LeoMyReportsStatusDto =
   | 'Verified'
   | 'InProgress'
   | 'Resolved'
+  | 'Reopened'
   | 'Closed'
   | 'Rejected'
   | 'Duplicate';
@@ -105,6 +106,13 @@ export interface LeoMyReportAssignmentDto {
   startedAt?: string | null;
   completedAt?: string | null;
   progressUpdatedAt?: string | null;
+}
+
+/** GET /v1/offices/my/reports — items[].assignedCompany */
+export interface LeoMyReportAssignedCompanyDto {
+  companyId: string;
+  companyName: string;
+  dispatchedAt: string;
 }
 
 /** GET /v1/offices/my/reports — item */
@@ -135,6 +143,7 @@ export interface LeoMyReportItemDto {
   slaResolveDueAt?: string | null;
   /** Thumbnail URLs for report media (Swagger: string[]). */
   thumbnails?: string[];
+  assignedCompany?: LeoMyReportAssignedCompanyDto | null;
   assignments: LeoMyReportAssignmentDto[];
 }
 
@@ -171,8 +180,8 @@ export interface RecruitOfficeStaffBodyDto {
   email: string;
   targetRole: RecruitStaffTargetRoleDto;
   teamId?: string | null;
-  /** `false` khi `teamId` null. */
-  isLeader: boolean;
+  /** Optional — chỉ gửi khi có `teamId` / caller set. */
+  isLeader?: boolean;
 }
 
 /** GET /v1/offices/my/staff — query `role` (Swagger enum). */
@@ -226,4 +235,17 @@ export interface RecruitOfficeStaffDataDto {
   localOfficeId: string;
   teamId: string | null;
   teamMemberId: string | null;
+  isLeader?: boolean;
+}
+
+/** GET /v1/offices/my/staff/lookup — tra cứu Citizen theo email (exact). */
+export interface OfficeStaffLookupDataDto {
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string | null;
+  avatarUrl?: string | null;
+  role: string;
+  isRecruitEligible: boolean;
+  ineligibleReason?: string | null;
 }

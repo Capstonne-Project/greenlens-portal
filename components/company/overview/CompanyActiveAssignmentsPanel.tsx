@@ -32,6 +32,7 @@ interface CompanyActiveAssignmentsPanelProps {
   totalItems?: number;
   isPending?: boolean;
   isError?: boolean;
+  className?: string;
 }
 
 export function CompanyActiveAssignmentsPanel({
@@ -39,6 +40,7 @@ export function CompanyActiveAssignmentsPanel({
   totalItems = 0,
   isPending,
   isError,
+  className,
 }: CompanyActiveAssignmentsPanelProps) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -60,7 +62,12 @@ export function CompanyActiveAssignmentsPanel({
   }, [allItems, now]);
 
   return (
-    <article className="flex shrink-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2.5 shadow-sm sm:p-3">
+    <article
+      className={cn(
+        'flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-border bg-card p-2.5 shadow-sm sm:p-3',
+        className
+      )}
+    >
       <header className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-xs font-semibold text-foreground sm:text-sm">
@@ -73,7 +80,7 @@ export function CompanyActiveAssignmentsPanel({
           </p>
         </div>
         <Link
-          href="/company/assignments"
+          href="/company/tracking"
           className="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800 transition hover:bg-emerald-100"
         >
           Xem tất cả
@@ -104,7 +111,7 @@ export function CompanyActiveAssignmentsPanel({
             const slaHours =
               dueMs !== null && !Number.isNaN(dueMs) ? (dueMs - now) / (60 * 60 * 1000) : null;
             const slaOverdue = slaHours !== null && slaHours < 0;
-            const detailHref = `/company/assignments?reportId=${encodeURIComponent(row.report.reportId)}`;
+            const detailHref = `/company/tracking?reportId=${encodeURIComponent(row.report.reportId)}`;
 
             return (
               <li key={row.assignmentId}>
@@ -157,10 +164,7 @@ export function CompanyActiveAssignmentsPanel({
       {count > rows.length ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           +{count - rows.length} task khác ·{' '}
-          <Link
-            href="/company/assignments"
-            className="font-medium text-emerald-800 hover:underline"
-          >
+          <Link href="/company/tracking" className="font-medium text-emerald-800 hover:underline">
             mở trang Phân công
           </Link>
         </p>

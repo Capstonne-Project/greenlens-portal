@@ -50,11 +50,11 @@ export function CompanyTeamDeleteDialog({
             </span>
             <div>
               <h2 id="team-delete-title" className="text-lg font-semibold">
-                Xóa đội vĩnh viễn
+                Xóa đội
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Xóa đội <span className="font-semibold text-foreground">{team.name}</span>? Hành
-                động này không thể hoàn tác.
+                Xóa mềm đội <span className="font-semibold text-foreground">{team.name}</span>? Đội
+                sẽ không còn xuất hiện trên hệ thống (dữ liệu vẫn được lưu).
               </p>
               {hasMembers ? (
                 <p className="mt-2 text-sm font-medium text-red-700">

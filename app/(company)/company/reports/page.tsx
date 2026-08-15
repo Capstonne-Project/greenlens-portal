@@ -1,7 +1,8 @@
-import { CompanyAssignmentsView } from '@/components/company/assignments/CompanyAssignmentsView';
 import { Suspense } from 'react';
 
-export default function CompanyAssignmentsPage() {
+import { CompanyReportsView } from '@/components/company/reports/CompanyReportsView';
+
+export default function CompanyReportsPage() {
   return (
     <Suspense
       fallback={
@@ -10,7 +11,7 @@ export default function CompanyAssignmentsPage() {
         </div>
       }
     >
-      <CompanyAssignmentsView />
+      <CompanyReportsView />
     </Suspense>
   );
 }

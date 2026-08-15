@@ -129,7 +129,7 @@ export function PostProcessingHubClient() {
               </AnimatePresence>
             </span>
             <div className="min-w-0">
-              <h1 className="text-lg font-bold tracking-tight text-slate-900">Sau xử lý</h1>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900">Tái diễn</h1>
               <div className="relative min-h-4.5">
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.p
@@ -155,7 +155,7 @@ export function PostProcessingHubClient() {
               'px-0 pb-0 pt-4',
               'border-b border-slate-200'
             )}
-            aria-label="Chế độ Sau xử lý"
+            aria-label="Chế độ Tái diễn"
           >
             <TabsTrigger value="recurrence" className={HUB_TAB_TRIGGER}>
               <History className="size-3.5 shrink-0" aria-hidden />

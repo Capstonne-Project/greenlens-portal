@@ -94,7 +94,13 @@ function trendDispatched(point: CompanyWorkloadTrendPoint): number {
 }
 
 /** Biểu đồ cột — khối lượng nhiệm vụ từ /overview. */
-export function CompanyTaskVolumeBarChart({ overview }: { overview: CompanyDashboardOverview }) {
+export function CompanyTaskVolumeBarChart({
+  overview,
+  className,
+}: {
+  overview: CompanyDashboardOverview;
+  className?: string;
+}) {
   const bars = [
     { label: 'Đã giao', value: Math.max(0, overview.assignedTasks), color: '#4f46e5' },
     { label: 'Hoàn thành', value: Math.max(0, overview.completedTasks), color: '#059669' },
@@ -106,6 +112,7 @@ export function CompanyTaskVolumeBarChart({ overview }: { overview: CompanyDashb
   return (
     <CardShell
       chart
+      className={className}
       title="Khối lượng nhiệm vụ"
       subtitle={`SLA ${slaPct.toFixed(0)}% · TB ${formatHours(overview.averageResolutionHours, 1)} · ${formatOverviewNumber(overview.activeTeams)} đội / ${formatOverviewNumber(overview.activeStaff)} nhân sự`}
     >
@@ -139,8 +146,10 @@ export function CompanyTaskVolumeBarChart({ overview }: { overview: CompanyDashb
 /** Line chart from /workload-trend */
 export function CompanyWorkloadTrend({
   points,
+  className,
 }: {
   points: CompanyWorkloadTrendPoint[] | undefined;
+  className?: string;
 }) {
   const data = points ?? [];
   const W = 400;
@@ -158,7 +167,12 @@ export function CompanyWorkloadTrend({
     data.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(getter(p))}`).join(' ');
 
   return (
-    <CardShell chart title="Xu hướng khối lượng" subtitle="Giao việc vs hoàn thành theo ngày">
+    <CardShell
+      chart
+      className={className}
+      title="Xu hướng khối lượng"
+      subtitle="Giao việc vs hoàn thành theo ngày"
+    >
       {data.length === 0 ? (
         <EmptyHint text="Chưa có chuỗi thời gian" />
       ) : (
@@ -237,7 +251,13 @@ export function CompanyWorkloadTrend({
 }
 
 /** Donut from /task-status */
-export function CompanyTaskStatusDonut({ items }: { items: CompanyTaskStatusItem[] | undefined }) {
+export function CompanyTaskStatusDonut({
+  items,
+  className,
+}: {
+  items: CompanyTaskStatusItem[] | undefined;
+  className?: string;
+}) {
   const slices = items ?? [];
   const total = slices.reduce((s, i) => s + Math.max(0, i.count), 0);
   const SIZE = 140;
@@ -257,6 +277,7 @@ export function CompanyTaskStatusDonut({ items }: { items: CompanyTaskStatusItem
   return (
     <CardShell
       chart
+      className={className}
       title="Theo trạng thái nhiệm vụ"
       subtitle={`Tổng ${formatOverviewNumber(total)} task`}
     >
@@ -485,8 +506,10 @@ export function CompanyStaffPerformanceTable({
 /** List/table from /upcoming-deadlines */
 export function CompanyUpcomingDeadlines({
   items,
+  className,
 }: {
   items: CompanyUpcomingDeadlineItem[] | undefined;
+  className?: string;
 }) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -501,10 +524,9 @@ export function CompanyUpcomingDeadlines({
 
   return (
     <CardShell
-      fitContent
       title="Sắp đến hạn SLA"
       subtitle="Ưu tiên xử lý — task gần hoặc quá deadline"
-      className="p-3 sm:p-4"
+      className={cn('p-3 sm:p-4', className)}
     >
       {allRows.length > 0 ? (
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -513,7 +535,7 @@ export function CompanyUpcomingDeadlines({
             {urgentCount > 0 ? ` · ${urgentCount} gấp (<24h)` : ''}
           </p>
           <Link
-            href="/company/assignments"
+            href="/company/tracking"
             className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-emerald-800 hover:underline"
           >
             Xem tất cả
@@ -528,7 +550,7 @@ export function CompanyUpcomingDeadlines({
         <ul className="space-y-1.5">
           {rows.map((row, idx) => {
             const detailHref = row.reportId
-              ? `/company/assignments?reportId=${encodeURIComponent(row.reportId)}`
+              ? `/company/tracking?reportId=${encodeURIComponent(row.reportId)}`
               : null;
             const remainingHours =
               typeof row.remainingHours === 'number' && Number.isFinite(row.remainingHours)
@@ -594,10 +616,7 @@ export function CompanyUpcomingDeadlines({
       {allRows.length > rows.length ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           +{allRows.length - rows.length} deadline khác ·{' '}
-          <Link
-            href="/company/assignments"
-            className="font-medium text-emerald-800 hover:underline"
-          >
+          <Link href="/company/tracking" className="font-medium text-emerald-800 hover:underline">
             mở Phân công
           </Link>
         </p>
@@ -621,7 +640,7 @@ export function CompanyRecentActivities({
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-[10px] text-muted-foreground">{allItems.length} sự kiện gần đây</p>
           <Link
-            href="/company/assignments"
+            href="/company/tracking"
             className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-emerald-800 hover:underline"
           >
             Xem tất cả
@@ -658,10 +677,7 @@ export function CompanyRecentActivities({
       {allItems.length > list.length ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           +{allItems.length - list.length} sự kiện khác ·{' '}
-          <Link
-            href="/company/assignments"
-            className="font-medium text-emerald-800 hover:underline"
-          >
+          <Link href="/company/tracking" className="font-medium text-emerald-800 hover:underline">
             mở Phân công
           </Link>
         </p>

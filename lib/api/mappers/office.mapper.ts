@@ -1,4 +1,5 @@
 import type {
+  LeoMyReportAssignedCompanyDto,
   LeoMyReportAssignmentDto,
   LeoMyReportItemDto,
   LeoMyReportsDataDto,
@@ -11,9 +12,11 @@ import type {
   OfficeTeamDto,
   OfficeStaffItemDto,
   OfficeStaffListDataDto,
+  OfficeStaffLookupDataDto,
   RecruitOfficeStaffDataDto,
 } from '@/lib/api/dto/office.dto';
 import type {
+  LeoMyReportAssignedCompany,
   LeoMyReportAssignment,
   LeoMyReportItem,
   LeoMyReportsData,
@@ -24,6 +27,7 @@ import type {
   OfficeListItem,
   OfficesList,
   OfficeStaffList,
+  OfficeStaffLookupResult,
   OfficeStaffMember,
   OfficeStaffRoleFilter,
   OfficeTeam,
@@ -119,6 +123,17 @@ function mapAssignmentStatus(value: string | undefined): LeoReportAssignmentStat
   return 'Assigned';
 }
 
+function mapLeoMyReportAssignedCompanyDto(
+  dto: LeoMyReportAssignedCompanyDto | null | undefined
+): LeoMyReportAssignedCompany | null {
+  if (!dto?.companyId) return null;
+  return {
+    companyId: dto.companyId,
+    companyName: dto.companyName,
+    dispatchedAt: dto.dispatchedAt,
+  };
+}
+
 function mapLeoMyReportAssignmentDto(dto: LeoMyReportAssignmentDto): LeoMyReportAssignment {
   return {
     assignmentId: dto.assignmentId,
@@ -164,6 +179,7 @@ function mapLeoMyReportItemDto(dto: LeoMyReportItemDto): LeoMyReportItem {
     closedAt: dto.closedAt ?? null,
     slaResolveDueAt: dto.slaResolveDueAt ?? null,
     thumbnails: dto.thumbnails ?? [],
+    assignedCompany: mapLeoMyReportAssignedCompanyDto(dto.assignedCompany),
     assignments: (dto.assignments ?? []).map(mapLeoMyReportAssignmentDto),
   };
 }
@@ -252,5 +268,21 @@ export function mapRecruitOfficeStaffDataDto(
     localOfficeId: data.localOfficeId,
     teamId: data.teamId ?? null,
     teamMemberId: data.teamMemberId ?? null,
+    isLeader: Boolean(data.isLeader),
+  };
+}
+
+export function mapOfficeStaffLookupDataDto(
+  data: OfficeStaffLookupDataDto
+): OfficeStaffLookupResult {
+  return {
+    userId: data.userId,
+    email: data.email,
+    fullName: data.fullName,
+    phoneNumber: data.phoneNumber ?? null,
+    avatarUrl: data.avatarUrl ?? null,
+    role: data.role,
+    isRecruitEligible: Boolean(data.isRecruitEligible),
+    ineligibleReason: data.ineligibleReason?.trim() || null,
   };
 }

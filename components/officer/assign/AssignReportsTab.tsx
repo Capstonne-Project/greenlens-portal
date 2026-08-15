@@ -24,10 +24,15 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useAssignReportQueue } from '@/hooks/useOfficer';
+import {
+  locateReportInQueuePage,
+  useAssignReportQueue,
+  ASSIGN_QUEUE_STATUSES,
+} from '@/hooks/useOfficer';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Check,
   ChevronDown,
@@ -40,8 +45,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
@@ -49,6 +54,15 @@ import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constant
 import type { ReportSeverity } from '@/lib/api/models/report';
 
 const REPORT_PAGE_SIZE = 8;
+
+/** Deep-link locate — cùng multi-status Verified + Reopened với list phân công. */
+const ASSIGN_HIGHLIGHT_LOCATE_STATUSES = ASSIGN_QUEUE_STATUSES;
+
+/** GET /v1/reports/queue — BE chưa hỗ trợ sortBy=VerifiedAt; dùng createdAt desc. */
+const ASSIGN_QUEUE_SORT = {
+  sortBy: 'CreatedAt' as const,
+  sortDir: 'Desc' as const,
+};
 
 /** Filter panel width when open; collapse animates to 0 then unmounts. */
 const FILTER_WIDTH_OPEN = '14rem';
@@ -875,10 +889,11 @@ interface AssignReportsTabProps {
 }
 
 /**
- * Tab phân công — báo cáo Verified + Rejected từ GET /v1/reports/queue.
+ * Tab phân công — báo cáo Verified + Reopened (multi-status GET /v1/reports/queue).
  */
 export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignReportsTabProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const yearOnlyDefaults = getPresetDateInputs('all');
 
   const [page, setPage] = useState(1);
@@ -935,10 +950,13 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
   };
 
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const highlightReportId = searchParams.get('highlightReportId');
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const [highlightFading, setHighlightFading] = useState(false);
   const consumedHighlightRef = useRef<string | null>(null);
+  /** After a successful assign, do not re-tick from leftover `?highlightReportId=`. */
+  const [suppressHighlightSelect, setSuppressHighlightSelect] = useState(false);
   /** Track highlight đã apply — state thay vì update ref lúc render (eslint react-hooks/refs). */
   const [appliedHighlightId, setAppliedHighlightId] = useState<string | null>(null);
 
@@ -946,8 +964,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
     () => ({
       page,
       pageSize: REPORT_PAGE_SIZE,
-      sortBy: 'CreatedAt' as const,
-      sortDir: 'Desc' as const,
+      ...ASSIGN_QUEUE_SORT,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...getDateRange(datePreset, customFrom, customTo),
       ...(categoryId ? { categoryId } : {}),
@@ -987,25 +1004,134 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
    */
   if (!highlightReportId && appliedHighlightId !== null) {
     setAppliedHighlightId(null);
+    setSuppressHighlightSelect(false);
   } else if (
     highlightReportId &&
     appliedHighlightId !== highlightReportId &&
     filtered.some(r => r.id === highlightReportId)
   ) {
     setAppliedHighlightId(highlightReportId);
-    setSelected(new Set([highlightReportId]));
+    if (!suppressHighlightSelect) {
+      setSelected(new Set([highlightReportId]));
+    }
     setHighlightFading(false);
   }
 
-  const hasRejectedSelected = useMemo(
-    () => [...selected].some(id => filtered.find(r => r.id === id)?.status === 'Rejected'),
+  /**
+   * Deep-link `?highlightReportId=` — locate trang chứa báo cáo (ưu tiên Reopened)
+   * rồi setPage để row hiện và highlight ngay.
+   */
+  const locateStartedForRef = useRef<string | null>(null);
+  const deepLinkTargetPageRef = useRef<number | null>(null);
+  const pageRef = useRef(page);
+  const isFetchingRef = useRef(isFetching);
+
+  useEffect(() => {
+    pageRef.current = page;
+    isFetchingRef.current = isFetching;
+  }, [page, isFetching]);
+
+  useEffect(() => {
+    if (!highlightReportId) {
+      locateStartedForRef.current = null;
+      deepLinkTargetPageRef.current = null;
+      return;
+    }
+    if (isPending) return;
+
+    if (filtered.some(r => r.id === highlightReportId)) {
+      deepLinkTargetPageRef.current = null;
+      locateStartedForRef.current = highlightReportId;
+      return;
+    }
+
+    if (deepLinkTargetPageRef.current != null) {
+      if (page !== deepLinkTargetPageRef.current || isFetching) return;
+      deepLinkTargetPageRef.current = null;
+      return;
+    }
+
+    if (locateStartedForRef.current === highlightReportId) return;
+    locateStartedForRef.current = highlightReportId;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        let foundPage: number | null = null;
+        foundPage = await locateReportInQueuePage(queryClient, highlightReportId, {
+          pageSize: REPORT_PAGE_SIZE,
+          status: ASSIGN_HIGHLIGHT_LOCATE_STATUSES,
+          ...ASSIGN_QUEUE_SORT,
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
+          ...getDateRange(datePreset, customFrom, customTo),
+          ...(categoryId ? { categoryId } : {}),
+        });
+        if (cancelled) return;
+
+        if (foundPage == null) return;
+
+        if (foundPage === pageRef.current) {
+          if (isFetchingRef.current) {
+            locateStartedForRef.current = null;
+          }
+          return;
+        }
+
+        deepLinkTargetPageRef.current = foundPage;
+        setPage(foundPage);
+      } catch {
+        if (!cancelled) locateStartedForRef.current = null;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (
+        deepLinkTargetPageRef.current == null &&
+        locateStartedForRef.current === highlightReportId
+      ) {
+        locateStartedForRef.current = null;
+      }
+    };
+  }, [
+    highlightReportId,
+    filtered,
+    isPending,
+    isFetching,
+    page,
+    queryClient,
+    debouncedSearch,
+    datePreset,
+    customFrom,
+    customTo,
+    categoryId,
+  ]);
+
+  const selectedVisibleIds = useMemo(
+    () => [...selected].filter(id => filtered.some(r => r.id === id)),
     [selected, filtered]
+  );
+
+  const hasRejectedSelected = useMemo(
+    () => selectedVisibleIds.some(id => filtered.find(r => r.id === id)?.status === 'Rejected'),
+    [selectedVisibleIds, filtered]
   );
 
   const allChecked = filtered.length > 0 && selected.size === filtered.length;
   const indeterminate = selected.size > 0 && selected.size < filtered.length;
 
-  const handleAssigned = () => setSelected(new Set());
+  const handleAssigned = () => {
+    setSuppressHighlightSelect(true);
+    setSelected(new Set());
+    setAssignOpen(false);
+    if (!highlightReportId) return;
+    setAppliedHighlightId(highlightReportId);
+    consumedHighlightRef.current = highlightReportId;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('highlightReportId');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -1123,15 +1249,15 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
               <Button
                 type="button"
                 size="sm"
-                disabled={selected.size === 0 || hasRejectedSelected}
+                disabled={selectedVisibleIds.length === 0 || hasRejectedSelected}
                 onClick={() => setAssignOpen(true)}
                 className="h-8 gap-1.5 bg-emerald-600 px-3 text-[0.8125rem] text-white hover:bg-emerald-500"
               >
                 <UserPlus className="size-3.5" />
                 Phân công
-                {selected.size > 0 ? (
+                {selectedVisibleIds.length > 0 ? (
                   <span className="rounded-full bg-white/20 px-1.5 text-[11px] font-semibold">
-                    {selected.size}
+                    {selectedVisibleIds.length}
                   </span>
                 ) : null}
               </Button>
@@ -1332,7 +1458,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
         <Dialog
           open={assignOpen}
           onClose={() => setAssignOpen(false)}
-          reportIds={[...selected]}
+          reportIds={selectedVisibleIds}
           onAssigned={handleAssigned}
         />
 

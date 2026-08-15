@@ -181,7 +181,13 @@ export function OverviewPollutionAnalytics({
 }
 
 /** Donut from /report-status */
-export function OverviewStatusDonut({ items }: { items: AdminReportStatusItem[] | undefined }) {
+export function OverviewStatusDonut({
+  items,
+  className,
+}: {
+  items: AdminReportStatusItem[] | undefined;
+  className?: string;
+}) {
   const slices = items ?? [];
   const total = slices.reduce((s, i) => s + Math.max(0, i.count), 0);
   const SIZE = 112;
@@ -196,7 +202,11 @@ export function OverviewStatusDonut({ items }: { items: AdminReportStatusItem[] 
   }));
 
   return (
-    <CardShell title="Theo trạng thái" subtitle={`Tổng ${formatOverviewNumber(total)}`}>
+    <CardShell
+      title="Theo trạng thái"
+      subtitle={`Tổng ${formatOverviewNumber(total)}`}
+      className={className}
+    >
       {total === 0 ? (
         <EmptyHint text="Chưa có phân bố trạng thái" />
       ) : (
@@ -352,13 +362,15 @@ export function OverviewResolutionBars({
 /** Compact activity feed from /recent-activities */
 export function OverviewRecentActivities({
   items,
+  className,
 }: {
   items: AdminRecentActivityItem[] | undefined;
+  className?: string;
 }) {
   const list = (items ?? []).slice(0, 8);
 
   return (
-    <CardShell title="Hoạt động gần đây" subtitle="Vòng đời báo cáo">
+    <CardShell title="Hoạt động gần đây" subtitle="Vòng đời báo cáo" className={className}>
       {list.length === 0 ? (
         <EmptyHint text="Chưa có sự kiện" />
       ) : (

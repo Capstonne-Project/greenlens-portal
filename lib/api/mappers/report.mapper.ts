@@ -5,6 +5,7 @@ import type {
   ReportMergedChildDto,
   ReportPendingReopenRequestDto,
   ReportPriorClosedReportDto,
+  ReportReopenHistoryItemDto,
   ReportSatisfactionDto,
   ReportWasteTagDto,
 } from '@/lib/api/dto/report.dto';
@@ -15,6 +16,7 @@ import type {
   ReportMergedChild,
   ReportPendingReopenRequest,
   ReportPriorClosedReport,
+  ReportReopenHistoryItem,
   ReportSatisfaction,
   ReportWasteTag,
   SeveritySetBy,
@@ -77,6 +79,22 @@ function mapPendingReopenDto(
     requestId: dto.requestId,
     reason: dto.reason,
     requestedAt: dto.requestedAt,
+    evidenceMedia: (dto.evidenceMedia ?? []).map(mapReportMediaDto),
+  };
+}
+
+function mapReopenHistoryItemDto(dto: ReportReopenHistoryItemDto): ReportReopenHistoryItem {
+  return {
+    requestId: dto.requestId,
+    reason: dto.reason,
+    status: dto.status,
+    requestedAt: dto.requestedAt,
+    requestedById: dto.requestedById,
+    requestedByName: dto.requestedByName?.trim() || null,
+    reviewedAt: dto.reviewedAt || null,
+    reviewedById: dto.reviewedById || null,
+    reviewedByName: dto.reviewedByName?.trim() || null,
+    rejectionReason: dto.rejectionReason?.trim() || null,
     evidenceMedia: (dto.evidenceMedia ?? []).map(mapReportMediaDto),
   };
 }
@@ -157,6 +175,7 @@ export function mapReportDetailDto(dto: ReportDetailDto): Omit<ReportDetail, 'st
     hasCurrentUserRated: dto.hasCurrentUserRated ?? false,
     hasPendingReopenRequest: dto.hasPendingReopenRequest ?? false,
     pendingReopenRequest: mapPendingReopenDto(dto.pendingReopenRequest),
+    reopenHistory: (dto.reopenHistory ?? []).map(mapReopenHistoryItemDto),
     mergedIntoPrimaryReportId: dto.mergedIntoPrimaryReportId ?? null,
     mergedIntoPrimaryReportCode: dto.mergedIntoPrimaryReportCode ?? null,
     mergedReports: (dto.mergedReports ?? []).map(mapMergedChildDto),

@@ -28,7 +28,7 @@ export const OFFICER_ROUTE_ACL: ReadonlyArray<{
   { prefix: '/officer/reopen', roles: ['LEO'] },
   { prefix: '/officer/workforce', roles: ['LEO'] },
   { prefix: '/officer/companies', roles: ['DEO'] },
-  /** Tra cứu báo cáo (Resolved/Closed/Rejected) — LEO + DEO. */
+  /** Tra cứu báo cáo (Closed/Rejected) — LEO + DEO. */
   { prefix: '/officer/reports', roles: ['DEO', 'LEO'] },
 ];
 
@@ -65,7 +65,7 @@ export function canAccessDeoReports(systemRole: UserRole | string | undefined): 
   return canAccessOfficerReports(systemRole);
 }
 
-/** Tra cứu báo cáo (Resolved / Closed / Rejected) — LEO + DEO. */
+/** Tra cứu báo cáo (Closed / Rejected) — LEO + DEO. */
 export function canAccessOfficerReports(systemRole: UserRole | string | undefined): boolean {
   return parseOfficerApiRole(systemRole) !== null;
 }

@@ -39,6 +39,7 @@ function mapReportQueueItemDto(dto: ReportQueueItemDto): ReportQueueItem {
     wardCode: dto.wardCode ?? '',
     priorityScore: dto.priorityScore ?? 0,
     createdAt: dto.createdAt,
+    verifiedAt: dto.verifiedAt || null,
     slaVerifyDueAt: dto.slaVerifyDueAt || null,
     slaResolveDueAt: dto.slaResolveDueAt || null,
     firstImageUrl: dto.firstImageUrl || null,

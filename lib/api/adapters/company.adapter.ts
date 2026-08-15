@@ -8,13 +8,16 @@ import type {
   CompanyAssignmentDetailDto,
   CompanyAssignmentsListDto,
 } from '@/lib/api/dto/companyAssignment.dto';
+import type { CompanyQueueListDto } from '@/lib/api/dto/companyQueue.dto';
 import {
   mapCompanyAssignmentDetailDto,
   mapCompanyAssignmentsListDto,
 } from '@/lib/api/mappers/companyAssignment.mapper';
+import { mapCompanyQueueListDto } from '@/lib/api/mappers/companyQueue.mapper';
 import type {
   AddCompanyTeamMemberInput,
   AssignCompanyTeamInput,
+  ReassignCompanyTeamInput,
   CompanyAssignmentDetail,
   CompanyAssignmentsList,
   CompanyAssignmentsParams,
@@ -59,11 +62,18 @@ function buildTeamsQuery(
   return query;
 }
 
-function buildQueueQuery(params?: CompanyQueueParams): Record<string, string | number> {
-  const query: Record<string, string | number> = {};
+function buildQueueQuery(params?: CompanyQueueParams): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
   if (params?.page != null) query.page = params.page;
   if (params?.pageSize != null) query.pageSize = params.pageSize;
+  if (params?.search?.trim()) query.search = params.search.trim();
   if (params?.severity?.trim()) query.severity = params.severity.trim();
+  if (params?.wardCode?.trim()) query.wardCode = params.wardCode.trim();
+  if (params?.categoryId?.trim()) query.categoryId = params.categoryId.trim();
+  if (params?.fromDate?.trim()) query.fromDate = params.fromDate.trim();
+  if (params?.toDate?.trim()) query.toDate = params.toDate.trim();
+  if (params?.sortBy?.trim()) query.sortBy = params.sortBy.trim();
+  if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
   return query;
 }
 
@@ -103,12 +113,16 @@ export async function adaptUpdateCompanyStaffStatus(
   return res.data;
 }
 
+/**
+ * POST /v1/teams/company-teams/{teamId}/members
+ * [CompanyManager] Thêm CompanyStaff (cùng công ty) vào team; có thể đặt trưởng nhóm.
+ */
 export async function adaptAddCompanyTeamMember(
   teamId: string,
   body: AddCompanyTeamMemberInput
 ): Promise<ApiEnvelope<CompanyTeamMembership>> {
   const res = await apiService.post<ApiEnvelope<CompanyTeamMembership>>(
-    `/v1/teams/company-teams/${teamId}/members`,
+    `/v1/teams/company-teams/${encodeURIComponent(teamId)}/members`,
     {
       userId: body.userId,
       isLeader: body.isLeader ?? false,
@@ -117,12 +131,16 @@ export async function adaptAddCompanyTeamMember(
   return res.data;
 }
 
+/**
+ * DELETE /v1/teams/company-teams/{teamId}/members/{userId}
+ * [CompanyManager] — 200: envelope data string; 404: không tìm thấy thành viên hoặc team.
+ */
 export async function adaptRemoveCompanyTeamMember(
   teamId: string,
   userId: string
 ): Promise<ApiEnvelope<string>> {
   const res = await apiService.delete<ApiEnvelope<string>>(
-    `/v1/teams/company-teams/${teamId}/members/${userId}`
+    `/v1/teams/company-teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`
   );
   return res.data;
 }
@@ -167,9 +185,13 @@ export async function adaptArchiveCompanyTeam(
   return res.data;
 }
 
-/** DELETE /v1/teams/company-teams/{id} — xóa team công ty [CompanyManager]. */
-export async function adaptDeleteCompanyTeam(id: string): Promise<ApiEnvelope<string | null>> {
-  const res = await apiService.delete<ApiEnvelope<string | null>>(
+/**
+ * DELETE /v1/teams/company-teams/{id}
+ * [CompanyManager] Soft delete — dữ liệu không mất nhưng team không còn hiện trên hệ thống.
+ * 200: Đã xóa (data string); 404: Không tìm thấy team.
+ */
+export async function adaptDeleteCompanyTeam(id: string): Promise<ApiEnvelope<string>> {
+  const res = await apiService.delete<ApiEnvelope<string>>(
     `/v1/teams/company-teams/${encodeURIComponent(id)}`
   );
   return res.data;
@@ -207,20 +229,35 @@ export async function adaptMyCompanyKpi(
 export async function adaptCompanyQueue(
   params?: CompanyQueueParams
 ): Promise<ApiEnvelope<CompanyQueueList>> {
-  const res = await apiService.get<ApiEnvelope<CompanyQueueList>>(
+  const res = await apiService.get<ApiEnvelope<CompanyQueueListDto>>(
     '/v1/reports/company-queue',
     buildQueueQuery(params)
   );
-  return res.data;
+  const envelope = res.data;
+  if (!envelope.data) return envelope as ApiEnvelope<CompanyQueueList>;
+  return {
+    ...envelope,
+    data: mapCompanyQueueListDto(envelope.data),
+  };
 }
 
-function buildAssignmentsQuery(params?: CompanyAssignmentsParams): Record<string, string | number> {
-  const query: Record<string, string | number> = {};
+function buildAssignmentsQuery(
+  params?: CompanyAssignmentsParams
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
   if (params?.page != null) query.page = params.page;
   if (params?.pageSize != null) query.pageSize = params.pageSize;
   if (params?.status?.trim()) query.status = params.status.trim();
   if (params?.reportStatus?.trim()) query.reportStatus = params.reportStatus.trim();
   if (params?.search?.trim()) query.search = params.search.trim();
+  if (params?.severity?.trim()) query.severity = params.severity.trim();
+  if (params?.wardCode?.trim()) query.wardCode = params.wardCode.trim();
+  if (params?.categoryId?.trim()) query.categoryId = params.categoryId.trim();
+  if (params?.teamId?.trim()) query.teamId = params.teamId.trim();
+  if (params?.fromDate?.trim()) query.fromDate = params.fromDate.trim();
+  if (params?.toDate?.trim()) query.toDate = params.toDate.trim();
+  if (params?.sortBy?.trim()) query.sortBy = params.sortBy.trim();
+  if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
   return query;
 }
 
@@ -253,6 +290,21 @@ export async function adaptCompanyAssignmentDetail(
   };
 }
 
+/** GET /v1/reports/company-reports/{reportId} — chi tiết báo cáo [CompanyManager] (assign queue). */
+export async function adaptCompanyReportDetail(
+  reportId: string
+): Promise<ApiEnvelope<CompanyAssignmentDetail>> {
+  const res = await apiService.get<ApiEnvelope<CompanyAssignmentDetailDto>>(
+    `/v1/reports/company-reports/${reportId}`
+  );
+  const envelope = res.data;
+  if (!envelope.data) return envelope as ApiEnvelope<CompanyAssignmentDetail>;
+  return {
+    ...envelope,
+    data: mapCompanyAssignmentDetailDto(envelope.data),
+  };
+}
+
 /**
  * POST /v1/reports/{id}/assign-company-team — [CompanyManager] gán team công ty.
  * Không dùng POST /v1/reports/{id}/assign (đó là LEO gán community team).
@@ -275,4 +327,20 @@ export async function adaptAssignCompanyTeam(
       mergeIdempotencyConfig(key, options?.config)
     );
   });
+}
+
+/**
+ * PUT /v1/reports/{id}/reassign-company-team — [CompanyManager] chuyển giao đội
+ * khi assignment `Declined` hoặc `Assigned` (chưa nhận). Report vẫn `InProgress`.
+ */
+export async function adaptReassignCompanyTeam(
+  reportId: string,
+  body: ReassignCompanyTeamInput
+): Promise<void> {
+  const payload: ReassignCompanyTeamInput = {
+    oldTeamId: body.oldTeamId,
+    newTeamId: body.newTeamId,
+    reason: body.reason.trim(),
+  };
+  await apiService.put(`/v1/reports/${reportId}/reassign-company-team`, payload);
 }

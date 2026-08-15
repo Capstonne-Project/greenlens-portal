@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -55,13 +55,13 @@ import {
 } from '@/components/ui/table';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import {
-  LOOKUP_QUEUE_STATUSES,
-  useLookupReportQueue,
-  type LookupQueueStatus,
-} from '@/hooks/useOfficer';
+  LEO_LOOKUP_REPORT_STATUSES,
+  useLeoLookupReports,
+  type LeoLookupReportStatus,
+} from '@/hooks/useLeoOffices';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
+import type { LeoMyReportItem } from '@/lib/api/models/office';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
-import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import type { ReportSeverity } from '@/lib/api/models/report';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
@@ -72,7 +72,7 @@ const PAGE_SIZE = 10;
 
 type ColumnKey = 'code' | 'address' | 'severity' | 'created' | 'resolveSla' | 'status' | 'actions';
 
-type StatusFilter = 'all' | LookupQueueStatus;
+type StatusFilter = 'all' | LeoLookupReportStatus;
 type SlaBreachedFilter = 'all' | 'yes';
 
 /** Vertical rhythm; padding scales with `@container/verify-table` khi sidebar mở hẹp content. */
@@ -161,7 +161,7 @@ const SEVERITY_FILTERS: { key: SeverityFilter; label: string }[] = [
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
-  ...LOOKUP_QUEUE_STATUSES.map(status => ({
+  ...LEO_LOOKUP_REPORT_STATUSES.map(status => ({
     key: status as StatusFilter,
     label: reportStatusLabelVi(status),
   })),
@@ -800,7 +800,7 @@ function SlaCell({ dueAt }: { dueAt: string | null }) {
   );
 }
 
-function ViewRowAction({ row }: { row: ReportQueueItem }) {
+function ViewRowAction({ row }: { row: LeoMyReportItem }) {
   return (
     <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
       <Link
@@ -939,13 +939,16 @@ export function ReportsListClient() {
     () => ({
       page,
       pageSize: PAGE_SIZE,
-      status: applied.status,
-      sortBy: 'CreatedAt' as const,
-      sortDir: 'Desc' as const,
+      /**
+       * `all` → multi `?status=Rejected&status=Closed` (GET /v1/offices/my/reports).
+       * Filter 1 status → một giá trị.
+       */
+      status: applied.status === 'all' ? LEO_LOOKUP_REPORT_STATUSES : applied.status,
+      sortBy: 'createdAt',
+      sortDesc: true,
       ...(applied.severity !== 'all' ? { severity: applied.severity } : {}),
       ...effectiveDateRange,
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
-      ...(applied.slaBreached === 'yes' ? { slaBreached: true } : {}),
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
     }),
     [
@@ -953,20 +956,34 @@ export function ReportsListClient() {
       applied.status,
       applied.severity,
       applied.categoryId,
-      applied.slaBreached,
       effectiveDateRange,
       debouncedSearch,
     ]
   );
 
-  const { data, isPending, isFetching, isError, refetch } = useLookupReportQueue(listParams);
+  const { data, isPending, isFetching, isError, refetch } = useLeoLookupReports(listParams);
 
-  const items = data?.items ?? [];
+  /** Snapshot “now” ngoài render — tránh impure `Date.now()` trong useMemo (react-hooks/purity). */
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const items = useMemo(() => {
+    const rows = data?.items ?? [];
+    if (applied.slaBreached !== 'yes') return rows;
+    return rows.filter(row => {
+      if (!row.slaResolveDueAt) return false;
+      const dueMs = new Date(row.slaResolveDueAt).getTime();
+      return !Number.isNaN(dueMs) && dueMs < nowMs;
+    });
+  }, [applied.slaBreached, data?.items, nowMs]);
   const pagination = data?.pagination;
 
   return (
     <>
-      <header className="mb-6 shrink-0">
+      <header className="mb-6 shrink-0 px-2 md:px-6">
         <div className="border-b border-slate-200 pb-3">
           <div className="flex items-center gap-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
@@ -975,7 +992,7 @@ export function ReportsListClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Báo cáo</h1>
               <p className="text-xs font-normal text-slate-500">
-                Tra cứu báo cáo đã giải quyết, đã đóng hoặc đã từ chối
+                Tra cứu báo cáo đã đóng hoặc đã từ chối
               </p>
             </div>
           </div>
@@ -1055,7 +1072,7 @@ export function ReportsListClient() {
         onDraftChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
       />
 
-      <div className="-mx-6 flex flex-1 flex-col overflow-hidden bg-white">
+      <div className="flex flex-1 flex-col overflow-hidden bg-white">
         <div className="@container/verify-table min-h-0 flex-1 overflow-auto [scrollbar-gutter:stable]">
           <Table className="w-full table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-slate-100">
@@ -1164,7 +1181,7 @@ export function ReportsListClient() {
 
 function renderReportsCell(
   key: ColumnKey,
-  row: ReportQueueItem,
+  row: LeoMyReportItem,
   opts?: { imagePriority?: boolean }
 ) {
   switch (key) {
@@ -1250,12 +1267,12 @@ function ReportIdentityCell({
   row,
   imagePriority = false,
 }: {
-  row: ReportQueueItem;
+  row: LeoMyReportItem;
   imagePriority?: boolean;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <ReportThumb url={row.firstImageUrl} alt={row.code} priority={imagePriority} />
+      <ReportThumb url={row.thumbnails[0] ?? null} alt={row.code} priority={imagePriority} />
 
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="group/copyrow flex min-w-0 items-center gap-1">
@@ -1348,7 +1365,7 @@ function SeverityText({ severity }: { severity: ReportSeverity }) {
   );
 }
 
-function StatusBadge({ status }: { status: ReportQueueItem['status'] }) {
+function StatusBadge({ status }: { status: LeoMyReportItem['status'] }) {
   const label = reportStatusLabelVi(status);
   return (
     <span className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])} title={label}>

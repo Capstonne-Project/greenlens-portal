@@ -138,6 +138,8 @@ export interface InspectionDetailDto {
   payments?: InspectionPaymentDto[] | null;
   acceptedAt?: string | null;
   acceptedByUserId?: string | null;
+  acceptedByUserName?: string | null;
+  acceptedByName?: string | null;
   arrivalConfirmedAt?: string | null;
   arrivalLatitude?: number | null;
   arrivalLongitude?: number | null;
