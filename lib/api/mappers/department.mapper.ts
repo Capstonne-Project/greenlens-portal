@@ -157,6 +157,16 @@ function mapDeoMyReportItemDto(dto: DeoMyReportItemDto): DeoMyReportItem {
     slaVerifyDueAt: dto.slaVerifyDueAt ?? null,
     slaResolveDueAt: dto.slaResolveDueAt ?? null,
     firstImageUrl: dto.firstImageUrl?.trim() ? dto.firstImageUrl.trim() : null,
+    isPossibleDuplicate: Boolean(dto.isPossibleDuplicate),
+    possibleDuplicateOfReportId: dto.possibleDuplicateOfReportId ?? null,
+    possibleDuplicateOfReportCode: dto.possibleDuplicateOfReportCode?.trim()
+      ? dto.possibleDuplicateOfReportCode.trim()
+      : null,
+    isSuspectedViolationRecurrence: Boolean(dto.isSuspectedViolationRecurrence),
+    suspectedRecurrenceOfReportId: dto.suspectedRecurrenceOfReportId ?? null,
+    suspectedRecurrenceOfReportCode: dto.suspectedRecurrenceOfReportCode?.trim()
+      ? dto.suspectedRecurrenceOfReportCode.trim()
+      : null,
   };
 }
 

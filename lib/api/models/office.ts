@@ -139,6 +139,9 @@ export interface LeoMyReportAssignment {
   startedAt: string | null;
   completedAt: string | null;
   progressUpdatedAt: string | null;
+  isCompanyTeam: boolean;
+  beforeImageUrls: string[];
+  afterImageUrls: string[];
 }
 
 /** Item báo cáo LEO quản lý (kèm `assignments[]`). */
@@ -208,6 +211,10 @@ export type LeoMyReportsSortBy =
   | 'createdAt'
   | 'assignmentCount';
 
+export const LEO_MY_REPORTS_TEAM_SCOPES = ['All', 'Company', 'Community'] as const;
+
+export type LeoMyReportsTeamScope = (typeof LEO_MY_REPORTS_TEAM_SCOPES)[number];
+
 /** Query GET /v1/offices/my/reports — khớp Swagger. */
 export interface LeoMyReportsParams {
   page?: number;
@@ -228,6 +235,10 @@ export interface LeoMyReportsParams {
   /** Swagger: plain string — dùng `LeoMyReportsSortBy` làm gợi ý giá trị. */
   sortBy?: string;
   sortDesc?: boolean;
+  /** All | Company | Community — bỏ trống = All. */
+  teamScope?: LeoMyReportsTeamScope;
+  /** Tracking luôn `false` để ẩn chương trình cộng đồng. */
+  hasActiveCommunityCleanup?: boolean;
 }
 
 // ─── LEO — GET /v1/offices/my/staff ───────────────────────────────────────────

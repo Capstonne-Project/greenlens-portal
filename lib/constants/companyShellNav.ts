@@ -14,9 +14,8 @@ import {
   faUser,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
+import { APP_NAME } from '@/lib/constants/brand';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
-
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'GreenLens';
 
 function item(id: string, label: string, href: string, icon: IconDefinition): MapShellNavItem {
   return { id, label, href, icon };

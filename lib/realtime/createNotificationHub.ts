@@ -24,6 +24,7 @@ import {
   type ILogger,
 } from '@microsoft/signalr';
 import { refreshSessionOnce } from '@/lib/api/core';
+import { isAbortError } from '@/lib/utils/abortError';
 import type {
   NotificationHub,
   NotificationRealtimeEvent,
@@ -118,8 +119,9 @@ function normalizeRealtimePayload(raw: unknown): RealTimeNotificationPayload | n
   return { id, type, title, message, referenceId, createdAt };
 }
 
-/** Abort do stop() giữa negotiate — không phải lỗi auth / BE. */
+/** Abort do stop() giữa negotiate / fetch bị hủy — không phải lỗi auth / BE. */
 function isNegotiationAbort(error: unknown): boolean {
+  if (isAbortError(error)) return true;
   const msg = error instanceof Error ? error.message : String(error ?? '');
   return /stopped during negotiation|invocation canceled|invocation cancelled/i.test(msg);
 }
@@ -132,7 +134,7 @@ function isUnauthorizedError(error: unknown): boolean {
 /** Bỏ log abort negotiate (Next overlay coi console.error là runtime error). */
 class HubLogger implements ILogger {
   log(logLevel: LogLevel, message: string): void {
-    if (isNegotiationAbort(message)) return;
+    if (isNegotiationAbort(message) || isAbortError(message)) return;
     if (logLevel >= LogLevel.Warning) {
       console.warn(`[SignalR] ${message}`);
     }

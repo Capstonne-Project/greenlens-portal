@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import { isAbortError } from '@/lib/utils/abortError';
 
 /**
  * Browser QueryClient singleton — MUST be the same instance as QueryClientProvider.
@@ -17,7 +18,10 @@ function makeQueryClient(): QueryClient {
         staleTime: 3 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         refetchOnWindowFocus: process.env.NODE_ENV === 'production',
-        retry: 1,
+        retry: (failureCount, error) => {
+          if (isAbortError(error)) return false;
+          return failureCount < 1;
+        },
       },
       mutations: { retry: false },
     },

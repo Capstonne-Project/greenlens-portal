@@ -111,7 +111,8 @@ export interface CommunityCleanupList {
 export interface CommunityCleanupOfficeQueueParams {
   page?: number;
   pageSize?: number;
-  status?: CommunityCleanupStatus;
+  /** Bỏ trống = mọi status (tab Tất cả). Nhiều giá trị → `?status=A&status=B`. */
+  status?: CommunityCleanupStatus | CommunityCleanupStatus[];
 }
 
 export type CommunityCleanupParticipantRole = 'Leader' | 'Member';

@@ -24,9 +24,8 @@ import {
   faBan,
 } from '@fortawesome/free-solid-svg-icons';
 import { ADMIN_USERS_NAV } from '@/lib/constants/adminUsersNav';
+import { APP_NAME } from '@/lib/constants/brand';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
-
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'GreenLens';
 
 function item(
   id: string,

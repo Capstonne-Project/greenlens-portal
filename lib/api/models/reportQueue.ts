@@ -42,13 +42,14 @@ export interface ReportQueueData {
   pagination: PaginationMeta;
 }
 
+/** GET /v1/reports/queue — Swagger `sortBy`. */
 export type ReportQueueSortBy =
   | 'PriorityScore'
   | 'CreatedAt'
   | 'Severity'
+  | 'VerifiedAt'
   | 'SlaVerifyDueAt'
-  | 'SlaResolveDueAt'
-  | 'VerifiedAt';
+  | 'SlaResolveDueAt';
 
 export type ReportQueueSortDir = 'Asc' | 'Desc';
 

@@ -99,6 +99,7 @@ export type DeoMyReportsStatusDto =
   | 'Verified'
   | 'InProgress'
   | 'Resolved'
+  | 'Reopened'
   | 'Closed'
   | 'Rejected'
   | 'Duplicate';
@@ -134,6 +135,12 @@ export interface DeoMyReportItemDto {
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
   firstImageUrl: string | null;
+  isPossibleDuplicate?: boolean;
+  possibleDuplicateOfReportId?: string | null;
+  possibleDuplicateOfReportCode?: string | null;
+  isSuspectedViolationRecurrence?: boolean;
+  suspectedRecurrenceOfReportId?: string | null;
+  suspectedRecurrenceOfReportCode?: string | null;
 }
 
 /** GET /v1/departments/my/reports — data envelope */

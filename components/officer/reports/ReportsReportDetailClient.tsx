@@ -11,15 +11,19 @@ import { ReassignTeamDialog } from '@/components/officer/tracking/ReassignTeamDi
 import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useReportProgress } from '@/hooks/useReport';
-import { useTeamDetail } from '@/hooks/useTeams';
+import { useReportDetail } from '@/hooks/useReport';
+import type {
+  ReportAssignment,
+  ReportDetail,
+  ReportMedia,
+  ReportStatus,
+} from '@/lib/api/models/report';
 import type {
   ReportProgress,
   ReportProgressAssignment,
   ReportProgressImage,
   ReportProgressStatusHistory,
 } from '@/lib/api/models/reportProgress';
-import type { ReportStatus } from '@/lib/api/models/report';
 import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
@@ -196,15 +200,168 @@ function hashColor(key: string): string {
 }
 
 function latestUploadedAt(images: ReportProgressImage[]): string | null {
-  if (images.length === 0) return null;
+  const dated = images.filter(img => Boolean(nullIso(img.uploadedAt)));
+  if (dated.length === 0) return null;
   return (
-    [...images].sort((a, b) => a.uploadedAt.localeCompare(b.uploadedAt)).at(-1)?.uploadedAt ?? null
+    [...dated].sort((a, b) => a.uploadedAt.localeCompare(b.uploadedAt)).at(-1)?.uploadedAt ?? null
   );
 }
 
 function statusRank(status: ReportStatus): number {
   const idx = REPORT_STATUS_ORDER.indexOf(status);
   return idx >= 0 ? idx : -1;
+}
+
+function asProgressImage(media: ReportMedia): ReportProgressImage | null {
+  const url = media.url?.trim();
+  if (!url) return null;
+  return {
+    id: media.id,
+    mediaType: media.mediaType,
+    url,
+    thumbnailUrl: null,
+    mimeType: media.mimeType ?? '',
+    sizeBytes: media.sizeBytes ?? 0,
+    uploadedAt: '',
+  };
+}
+
+function mediaByType(items: ReportMedia[], type: string): ReportProgressImage[] {
+  return items
+    .filter(item => item.mediaType === type)
+    .map(asProgressImage)
+    .filter((item): item is ReportProgressImage => item != null);
+}
+
+function mapAssignmentToProgressView(
+  assignment: ReportAssignment,
+  progressImages: ReportProgressImage[]
+): ReportProgressAssignment {
+  const progressNote = assignment.progressNote?.trim() || null;
+  const progressUpdatedAt = nullIso(assignment.progressUpdatedAt);
+  const hasProgress =
+    progressUpdatedAt != null ||
+    Boolean(progressNote) ||
+    (Number.isFinite(assignment.progressPercent) && assignment.progressPercent > 0);
+
+  return {
+    assignmentId: assignment.id,
+    teamId: assignment.teamId,
+    teamName: assignment.teamName,
+    teamType: assignment.teamType,
+    isCompanyTeam: /company/i.test(assignment.teamType ?? ''),
+    companyId: null,
+    companyName: null,
+    localOfficeId: null,
+    localOfficeName: null,
+    teamLeaderName: '',
+    assignedById: '',
+    assignedByName: '',
+    status: assignment.status,
+    assignedAt: assignment.assignedAt,
+    acceptedAt: assignment.startedAt,
+    completedAt: assignment.completedAt,
+    declineReason: assignment.status === 'Declined' ? assignment.note : null,
+    progressPercent: assignment.progressPercent ?? 0,
+    progressNote,
+    progressUpdatedAt,
+    members: [],
+    progressUpdates: hasProgress
+      ? [
+          {
+            id: assignment.id,
+            progressPercent: assignment.progressPercent ?? 0,
+            progressNote,
+            updatedAt: progressUpdatedAt ?? assignment.assignedAt,
+            updatedByUserId: '',
+            updatedByName: assignment.teamName,
+            images: progressImages,
+          },
+        ]
+      : [],
+  };
+}
+
+function statusHistoryFromDetail(detail: ReportDetail): ReportProgressStatusHistory[] {
+  const events: { at: string | null; from: ReportStatus; to: ReportStatus; by: string | null }[] = [
+    { at: detail.createdAt, from: 'Submitted', to: 'Submitted', by: detail.reporterName },
+    { at: detail.verifiedAt, from: 'Submitted', to: 'Verified', by: detail.verifiedBy },
+    { at: detail.startedAt, from: 'Verified', to: 'InProgress', by: null },
+    { at: detail.resolvedAt, from: 'InProgress', to: 'Resolved', by: null },
+    { at: detail.closedAt, from: 'Resolved', to: 'Closed', by: null },
+  ];
+  return events
+    .filter(event => Boolean(nullIso(event.at)))
+    .map(event => ({
+      fromStatus: event.from,
+      toStatus: event.to,
+      changedAt: event.at as string,
+      changedByName: event.by?.trim() || '',
+      note: null,
+    }));
+}
+
+/** GET /v1/reports/{id} → shape UI hiện tại; field không có trên API thì để trống để UI ẩn. */
+function mapReportDetailToProgressView(detail: ReportDetail): ReportProgress {
+  const media = detail.media ?? [];
+  const submissionImages = [
+    ...mediaByType(media, 'Image'),
+    ...media
+      .filter(item => !item.mediaType || item.mediaType === 'Video')
+      .map(asProgressImage)
+      .filter((item): item is ReportProgressImage => item != null),
+  ];
+  const beforeImages = mediaByType(media, 'Before');
+  const afterImages = mediaByType(media, 'After');
+  const progressImages = mediaByType(media, 'Progress');
+  const inspectionImages = mediaByType(media, 'Inspection');
+  const reopenEvidenceImages = mediaByType(media, 'ReopenEvidence');
+
+  const assignments = (detail.assignments ?? []).map(item =>
+    mapAssignmentToProgressView(item, progressImages)
+  );
+  const assignment = assignments[0] ?? null;
+
+  const resolveDueAt = nullIso(detail.slaResolveDueAt);
+  const dueMs = resolveDueAt ? new Date(resolveDueAt).getTime() : Number.NaN;
+  const hoursRemaining = Number.isFinite(dueMs) ? Math.round((dueMs - Date.now()) / 3_600_000) : 0;
+  const terminal =
+    detail.status === 'Closed' ||
+    detail.status === 'Resolved' ||
+    detail.status === 'Rejected' ||
+    detail.status === 'Duplicate' ||
+    detail.status === 'ClosedNoViolation';
+  const isBreached =
+    Boolean(resolveDueAt) && Number.isFinite(dueMs) && dueMs < Date.now() && !terminal;
+
+  return {
+    reportId: detail.id,
+    code: detail.code,
+    status: detail.status,
+    severity: detail.severity,
+    categoryName: detail.categoryName,
+    address: detail.address ?? '',
+    wardCode: detail.wardCode ?? '',
+    latitude: detail.latitude,
+    longitude: detail.longitude,
+    description: detail.description ?? '',
+    sla: {
+      resolveDueAt,
+      hoursRemaining,
+      isBreached,
+      severityLabel: '',
+    },
+    assignedCompany: null,
+    assignment,
+    media: {
+      submissionImages,
+      beforeImages,
+      afterImages,
+      inspectionImages,
+      reopenEvidenceImages,
+    },
+    statusHistory: statusHistoryFromDetail(detail),
+  };
 }
 
 /** Thanh tiến độ ngang — dùng trong mỗi hàng đội (tab Tiến độ). */
@@ -720,18 +877,12 @@ function TeamProgressRow({
   const isDeclined = assignment.status === 'Declined';
   const statusLabel = ASSIGNMENT_STATUS_LABEL[assignment.status] ?? assignment.status;
 
-  const {
-    data: teamDetail,
-    isPending,
-    isError,
-    refetch,
-    isFetching,
-  } = useTeamDetail(expanded ? assignment.teamId : null);
-
   const members = useMemo(
-    () => [...(teamDetail?.members ?? [])].sort((a, b) => Number(b.isLeader) - Number(a.isLeader)),
-    [teamDetail?.members]
+    () => [...(assignment.members ?? [])].sort((a, b) => Number(b.isLeader) - Number(a.isLeader)),
+    [assignment.members]
   );
+  const leaderName = assignment.teamLeaderName?.trim() ?? '';
+  const canExpandMembers = members.length > 0;
 
   const percent = Math.max(0, Math.min(100, Math.round(assignment.progressPercent)));
 
@@ -740,8 +891,8 @@ function TeamProgressRow({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => setExpanded(v => !v)}
-          aria-expanded={expanded}
+          onClick={() => canExpandMembers && setExpanded(v => !v)}
+          aria-expanded={canExpandMembers ? expanded : undefined}
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
         >
           <span
@@ -769,9 +920,9 @@ function TeamProgressRow({
                 {statusLabel}
               </span>
             </div>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
-              Trưởng nhóm: {assignment.teamLeaderName?.trim() || '—'}
-            </p>
+            {leaderName ? (
+              <p className="mt-0.5 truncate text-xs text-slate-500">Trưởng nhóm: {leaderName}</p>
+            ) : null}
             {!isDeclined ? (
               <div className="mt-2 sm:hidden">
                 <TeamRowProgress percent={percent} />
@@ -785,11 +936,13 @@ function TeamProgressRow({
             </div>
           ) : null}
 
-          {expanded ? (
-            <ChevronUp className="size-4 shrink-0 text-slate-400" aria-hidden />
-          ) : (
-            <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
-          )}
+          {canExpandMembers ? (
+            expanded ? (
+              <ChevronUp className="size-4 shrink-0 text-slate-400" aria-hidden />
+            ) : (
+              <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
+            )
+          ) : null}
         </button>
 
         {isDeclined ? (
@@ -805,25 +958,9 @@ function TeamProgressRow({
         ) : null}
       </div>
 
-      {expanded ? (
+      {expanded && canExpandMembers ? (
         <div className="mt-3 ml-12 border-l border-slate-100 pl-3">
-          {isPending ? (
-            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              Đang tải thành viên…
-            </div>
-          ) : isError ? (
-            <div className="flex flex-wrap items-center gap-2 py-2">
-              <p className="text-xs text-destructive">Không tải được danh sách thành viên.</p>
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                className="text-xs font-medium text-brand hover:underline"
-              >
-                {isFetching ? 'Đang thử lại…' : 'Thử lại'}
-              </button>
-            </div>
-          ) : members.length === 0 ? (
+          {members.length === 0 ? (
             <p className="py-2 text-xs text-muted-foreground">Đội chưa có thành viên.</p>
           ) : (
             <ul className="space-y-2.5 py-1">
@@ -1261,12 +1398,14 @@ function ActivityEventRow({
                     {reportStatusLabelVi(entry.toStatus)}
                   </span>
                 </div>
-                <div className="flex justify-between gap-3">
-                  <span className="shrink-0 text-slate-500">Người đổi</span>
-                  <span className="text-right font-medium text-slate-800">
-                    {entry.changedByName?.trim() || 'Hệ thống'}
-                  </span>
-                </div>
+                {entry.changedByName?.trim() ? (
+                  <div className="flex justify-between gap-3">
+                    <span className="shrink-0 text-slate-500">Người đổi</span>
+                    <span className="text-right font-medium text-slate-800">
+                      {entry.changedByName.trim()}
+                    </span>
+                  </div>
+                ) : null}
                 <div className="border-t border-slate-200/80 pt-1.5">
                   <p className="text-xs font-medium text-slate-500">Ghi chú</p>
                   <p className="mt-0.5 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap break-words">
@@ -1278,11 +1417,8 @@ function ActivityEventRow({
 
             <p className="mt-1.5 text-xs tabular-nums text-slate-500">
               {formatHistoryTime(entry.changedAt)}
-              {!canExpand ? (
-                <span className="text-slate-400">
-                  {' '}
-                  · {entry.changedByName?.trim() || 'Hệ thống'}
-                </span>
+              {entry.changedByName?.trim() ? (
+                <span className="text-slate-400"> · {entry.changedByName.trim()}</span>
               ) : null}
             </p>
           </div>
@@ -1334,7 +1470,13 @@ function ActivityTimeline({ items }: { items: ReportProgressStatusHistory[] }) {
   );
 }
 
-function ReportInfoCard({ data }: { data: ReportProgress }) {
+function ReportInfoCard({
+  data,
+  assignments,
+}: {
+  data: ReportProgress;
+  assignments: ReportProgressAssignment[];
+}) {
   const mapLat = data.latitude;
   const mapLng = data.longitude;
   const hasCoords = hasProgressCoords(mapLat, mapLng);
@@ -1357,18 +1499,16 @@ function ReportInfoCard({ data }: { data: ReportProgress }) {
   const assignedByName = data.assignment?.assignedByName?.trim() || '';
 
   const teamTooltipItems = useMemo(() => {
-    const a = data.assignment;
-    if (!a) return [];
-    return [
-      {
-        id: 1,
+    return assignments
+      .filter(a => a.teamName?.trim())
+      .map((a, index) => ({
+        id: index + 1,
         name: a.teamName,
-        designation: `Trưởng nhóm: ${a.teamLeaderName}`,
+        designation: a.teamLeaderName?.trim() ? `Trưởng nhóm: ${a.teamLeaderName.trim()}` : '',
         initials: getInitials(a.teamName),
         fallbackClassName: hashColor(a.teamId),
-      },
-    ];
-  }, [data.assignment]);
+      }));
+  }, [assignments]);
 
   return (
     <div className="flex flex-col">
@@ -1515,15 +1655,18 @@ function ReportInfoCard({ data }: { data: ReportProgress }) {
               )}
             </p>
           </div>
-          {!data.assignment ? (
+          {!assignments.length ? (
             <p className="py-4 text-sm text-muted-foreground">Chưa có đội được phân công.</p>
           ) : (
             <ul className="divide-y divide-border/50">
-              <TeamProgressRow
-                assignment={data.assignment}
-                reportId={data.reportId}
-                reportCode={data.code}
-              />
+              {assignments.map(assignment => (
+                <TeamProgressRow
+                  key={assignment.assignmentId}
+                  assignment={assignment}
+                  reportId={data.reportId}
+                  reportCode={data.code}
+                />
+              ))}
             </ul>
           )}
         </TabsContent>
@@ -1703,7 +1846,15 @@ function OuterRailScrollbar({
   );
 }
 
-function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => void }) {
+function DetailShell({ detail, onBack }: { detail: ReportDetail; onBack: () => void }) {
+  const data = useMemo(() => mapReportDetailToProgressView(detail), [detail]);
+  const assignments = useMemo(() => {
+    const progressImages = mediaByType(detail.media ?? [], 'Progress');
+    return (detail.assignments ?? []).map(item =>
+      mapAssignmentToProgressView(item, progressImages)
+    );
+  }, [detail]);
+
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   /** Desktop: pane đang tương tác — quyết định hiện rail scrollbar mép phải. */
   const [activePane, setActivePane] = useState<'left' | 'right'>('right');
@@ -1773,7 +1924,7 @@ function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => voi
             onWheel={() => setActivePane('left')}
             className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:pb-8 lg:scrollbar-hide"
           >
-            <ReportInfoCard data={data} />
+            <ReportInfoCard data={data} assignments={assignments} />
           </aside>
 
           <div className="hidden bg-border lg:block" aria-hidden />
@@ -1805,10 +1956,10 @@ function DetailShell({ data, onBack }: { data: ReportProgress; onBack: () => voi
 /**
  * Chi tiết báo cáo tra cứu (`/officer/reports/[id]`).
  * UI đồng bộ Leo tracking progress — file riêng để URL browser có `/id`.
- * Data: GET /v1/reports/{id}/progress.
+ * Data: GET /v1/reports/{id}.
  */
 export function ReportsReportDetailClient({ reportId, onBack }: ReportsReportDetailClientProps) {
-  const { data, isPending, isError, refetch, isFetching } = useReportProgress(reportId);
+  const { data, isPending, isError, refetch, isFetching } = useReportDetail(reportId);
 
   if (isPending) {
     return (
@@ -1821,7 +1972,7 @@ export function ReportsReportDetailClient({ reportId, onBack }: ReportsReportDet
   if (isError || !data) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-24 text-center sm:px-6">
-        <p className="text-sm text-destructive">Không tải được tiến trình báo cáo.</p>
+        <p className="text-sm text-destructive">Không tải được chi tiết báo cáo.</p>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={onBack}>
             <ArrowLeft className="mr-1.5 size-4" />
@@ -1836,5 +1987,5 @@ export function ReportsReportDetailClient({ reportId, onBack }: ReportsReportDet
     );
   }
 
-  return <DetailShell data={data} onBack={onBack} />;
+  return <DetailShell detail={data} onBack={onBack} />;
 }

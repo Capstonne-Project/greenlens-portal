@@ -75,7 +75,7 @@ export function CompanyActiveAssignmentsPanel({
           </h2>
           <p className="mt-0.5 text-[10px] text-muted-foreground">
             {count > 0
-              ? `${count} task${overdueCount > 0 ? ` · ${overdueCount} quá hạn` : ''}`
+              ? `${count} nhiệm vụ${overdueCount > 0 ? ` · ${overdueCount} quá hạn` : ''}`
               : 'Tóm tắt nhanh — chi tiết tại trang Phân công'}
           </p>
         </div>
@@ -100,7 +100,7 @@ export function CompanyActiveAssignmentsPanel({
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
           <ClipboardList className="size-7 text-emerald-200" aria-hidden />
-          <p className="text-xs text-muted-foreground">Chưa có task phân công nào.</p>
+          <p className="text-xs text-muted-foreground">Chưa có phân công nào.</p>
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -163,7 +163,7 @@ export function CompanyActiveAssignmentsPanel({
 
       {count > rows.length ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
-          +{count - rows.length} task khác ·{' '}
+          +{count - rows.length} nhiệm vụ khác ·{' '}
           <Link href="/company/tracking" className="font-medium text-emerald-800 hover:underline">
             mở trang Phân công
           </Link>
