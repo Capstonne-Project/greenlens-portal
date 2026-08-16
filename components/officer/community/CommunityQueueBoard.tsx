@@ -36,14 +36,14 @@ type StatusTab =
   | 'All'
   | Exclude<CommunityCleanupStatus, 'PendingVerification'>;
 
-/** Thứ tự theo đúng vòng đời: OpenForJoin → JoinClosed → InProgress → PendingVerification → Completed; Cancelled là nhánh phụ. */
+/** Tab kết thúc: Đã đóng đăng ký ngay trái Đã hủy. */
 const TAB_ORDER: StatusTab[] = [
   'All',
   'OpenForJoin',
-  'JoinClosed',
   'InProgress',
   'PendingVerification',
   'Completed',
+  'JoinClosed',
   'Cancelled',
 ];
 

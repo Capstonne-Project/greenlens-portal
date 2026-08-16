@@ -136,8 +136,10 @@ interface LifecycleStage {
   key: string;
   label: string;
   at: string | null;
-  /** Dòng phụ: số người đăng ký, ghi chú tiến độ, lý do… */
+  /** Dòng phụ: số người đăng ký, lý do… */
   meta?: string | null;
+  /** Ghi chú dưới ảnh minh chứng (vd. Bắt đầu dọn dẹp). */
+  note?: string | null;
   mediaLabel?: string;
   mediaEmptyHint?: string;
   images?: MediaStageImage[];
@@ -242,6 +244,16 @@ function LifecycleSpine({
                       ))}
                     </ul>
                   )}
+                </div>
+              ) : null}
+
+              {stage.note?.trim() ? (
+                <div className="mt-2.5 flex gap-2.5 rounded-md bg-muted/70 px-2.5 py-2">
+                  <span className="w-0.5 shrink-0 self-stretch rounded-full bg-brand" aria-hidden />
+                  <p className="min-w-0 text-sm leading-relaxed text-muted-foreground">
+                    <span className="font-medium text-foreground">Ghi chú: </span>
+                    {stage.note.trim()}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -391,20 +403,30 @@ function VerifyConfirmDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={isOpen => !isOpen && !isSubmitting && onCancel()}>
-      <DialogContent className="max-w-md p-0">
-        <DialogHeader className="space-y-2 border-b border-border bg-linear-to-b from-emerald-50/70 to-transparent px-6 pb-4 pt-6 text-left dark:from-emerald-500/5">
-          <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+      <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+        <DialogHeader className="space-y-0 px-6 pb-4 pt-6 text-left">
+          <DialogTitle className="flex items-center gap-3 pr-8 text-lg font-semibold tracking-tight">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
               <CheckCircle2 className="size-4" aria-hidden />
             </span>
             Duyệt xác thực hoàn thành
           </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            Chương trình sẽ chuyển sang{' '}
-            <span className="font-medium text-foreground">Đã hoàn thành</span> và báo cáo gốc sẽ
-            được đánh dấu <span className="font-medium text-foreground">Đã giải quyết</span>.
-          </DialogDescription>
         </DialogHeader>
+
+        <DialogDescription asChild>
+          <div className="space-y-2 px-6 pb-5 text-sm leading-6 text-muted-foreground">
+            <p>Sau khi xác nhận, hệ thống sẽ cập nhật:</p>
+            <ul className="space-y-1.5">
+              <li>
+                Chương trình → <span className="font-semibold text-foreground">Đã hoàn thành</span>
+              </li>
+              <li>
+                Báo cáo gốc → <span className="font-semibold text-foreground">Đã giải quyết</span>
+              </li>
+            </ul>
+          </div>
+        </DialogDescription>
+
         <DialogFooter className="border-t border-border bg-muted/20 px-6 py-4">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Huỷ
@@ -755,7 +777,7 @@ function DetailShell({
         key: 'inProgress',
         label: 'Bắt đầu dọn dẹp',
         at: detail.startsAt,
-        meta: detail.progressNote,
+        note: detail.progressNote,
         mediaLabel: 'Ảnh trước dọn dẹp',
         mediaEmptyHint: 'Chưa có ảnh hiện trạng ban đầu.',
         images: toImages(media.beforeImageUrls),
@@ -931,12 +953,6 @@ function DetailShell({
             title="Vòng đời chương trình"
             description="Mốc thời gian và minh chứng Leader nộp ở từng giai đoạn"
           >
-            {detail.progressNote ? (
-              <p className="mb-5 rounded-lg border-l-2 border-brand bg-brand/5 px-4 py-3 text-sm text-foreground/80">
-                <span className="font-medium">Ghi chú tiến độ mới nhất: </span>
-                {detail.progressNote}
-              </p>
-            ) : null}
             <LifecycleSpine stages={lifecycleStages} onPreview={handlePreview} />
           </SectionBlock>
         </div>
