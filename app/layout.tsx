@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { APP_DESCRIPTION, APP_ICONS, APP_NAME, APP_TAGLINE } from '@/lib/constants/brand';
 import { Providers } from '@/lib/providers';
 import './globals.css';
 
@@ -12,10 +13,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'EcoReport — Báo cáo ô nhiễm môi trường',
-    template: '%s | EcoReport',
+    default: `${APP_NAME} — ${APP_TAGLINE}`,
+    template: `%s | ${APP_NAME}`,
   },
-  description: 'Nền tảng crowdsourcing báo cáo ô nhiễm môi trường cộng đồng',
+  description: APP_DESCRIPTION,
+  icons: APP_ICONS,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
