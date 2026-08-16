@@ -81,9 +81,18 @@ function googleMapsUrl(lat: number, lng: number): string {
 
 /**
  * Deep-link chi tiết theo vòng đời báo cáo — luôn kèm `from` để Quay lại đúng trang so sánh.
- * Closed → reports · Verified → assign · InProgress → tracking · còn lại → reports.
+ * Báo cáo gốc Closed → tra cứu `/officer/reports/[id]`.
+ * Verified → assign · InProgress → tracking · còn lại → reports.
  */
-function resolveReportDetailHref(reportId: string, status: ReportStatus, fromPath: string): string {
+function resolveReportDetailHref(
+  reportId: string,
+  status: ReportStatus,
+  fromPath: string,
+  options?: { isOriginal?: boolean }
+): string {
+  if (options?.isOriginal && status === 'Closed') {
+    return withOfficerFromQuery(`/officer/reports/${reportId}`, fromPath);
+  }
   if (status === 'InProgress') {
     return officerTrackingDetailHref(reportId, fromPath);
   }
@@ -237,13 +246,15 @@ function SidePanelHeader({
   roleLabel,
   roleTone,
   fromPath,
+  isOriginal = false,
 }: {
   side: DuplicateCandidateDetailSide;
   roleLabel: string;
   roleTone: 'suspect' | 'primary';
   fromPath: string;
+  isOriginal?: boolean;
 }) {
-  const detailHref = resolveReportDetailHref(side.id, side.status, fromPath);
+  const detailHref = resolveReportDetailHref(side.id, side.status, fromPath, { isOriginal });
 
   return (
     <div className="flex min-w-0 w-full flex-wrap items-center gap-2">
@@ -570,6 +581,7 @@ function DuplicateCompareBody({
                 roleLabel="Báo cáo gốc"
                 roleTone="primary"
                 fromPath={fromPath}
+                isOriginal
               />
               <MediaStrip
                 media={primaryReport.media}
