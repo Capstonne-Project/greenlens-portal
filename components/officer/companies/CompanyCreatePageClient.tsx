@@ -34,6 +34,7 @@ import {
   type CreatedCompany,
 } from '@/lib/api/models/company';
 import { getCompanyMutationError } from '@/utils/companyErrors';
+import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Building2,
@@ -177,6 +178,8 @@ export function CompanyCreatePageClient() {
   });
 
   const contractType = watch('contractType');
+  const formValues = watch();
+  const canSubmit = schema.safeParse(formValues).success;
   const isBiddingContract = contractType === 'Bidding';
 
   useEffect(() => {
@@ -439,7 +442,10 @@ export function CompanyCreatePageClient() {
                     <Button
                       type="submit"
                       disabled={isPending}
-                      className="h-10 min-w-[7rem] bg-slate-200 text-slate-900 hover:bg-slate-300"
+                      className={cn(
+                        'h-10 min-w-[7rem] text-brand-foreground',
+                        canSubmit ? 'bg-brand hover:bg-brand-dark' : 'bg-brand/40 hover:bg-brand/40'
+                      )}
                     >
                       {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
                       Lưu
