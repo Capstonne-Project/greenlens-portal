@@ -585,7 +585,7 @@ export function AdminDashboardGeographicMap({
             className="pointer-events-none absolute top-2 left-1/2 z-10 max-w-[min(100%-1rem,340px)] -translate-x-1/2 rounded-md border border-destructive/30 bg-card/95 px-2.5 py-1.5 text-center text-[11px] text-destructive shadow-sm backdrop-blur"
             role="status"
           >
-            Không tải được ranh giới tỉnh — vẫn hiển thị marker nếu có
+            Không tải được ranh giới tỉnh — vẫn hiển thị điểm báo cáo nếu có
           </div>
         ) : null}
 
@@ -616,7 +616,7 @@ export function AdminDashboardGeographicMap({
 
         {statusLegend.length > 0 ? (
           <div className="pointer-events-none absolute bottom-8 left-2 z-10 max-w-[min(100%,220px)] rounded-md border border-border bg-card/95 px-2 py-1.5 text-[10px] shadow-sm backdrop-blur">
-            <p className="mb-1 font-semibold text-foreground">Trạng thái marker</p>
+            <p className="mb-1 font-semibold text-foreground">Trạng thái điểm báo cáo</p>
             <ul className="flex flex-wrap gap-x-2 gap-y-1">
               {statusLegend.map(status => (
                 <li key={status} className="inline-flex items-center gap-1 text-muted-foreground">

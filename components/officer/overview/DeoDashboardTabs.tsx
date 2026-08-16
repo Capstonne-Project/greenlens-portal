@@ -15,7 +15,7 @@ const TAB_ICONS: Record<DeoDashboardTab, LucideIcon> = {
 export function DeoDashboardTabs({
   activeTab,
   onChange,
-  ariaLabel = 'Mục dashboard Sở',
+  ariaLabel = 'Mục tổng quan Sở',
 }: {
   activeTab: DeoDashboardTab;
   onChange: (tab: DeoDashboardTab) => void;

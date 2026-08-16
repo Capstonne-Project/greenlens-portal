@@ -1,4 +1,7 @@
-import { alertTypeLabel } from '@/components/admin/overview/adminDashboardFormat';
+import {
+  alertTypeLabel,
+  localizeDashboardText,
+} from '@/components/admin/overview/adminDashboardFormat';
 import type {
   AdminDashboardAlert,
   AdminDashboardAlertSeverity,
@@ -12,6 +15,13 @@ function severityStyles(severity: AdminDashboardAlertSeverity): {
   label: string;
 } {
   const key = String(severity).toLowerCase();
+  if (key === 'critical') {
+    return {
+      dot: 'bg-red-600',
+      badge: 'bg-red-50 text-red-900 ring-red-200/80',
+      label: 'Nghiêm trọng',
+    };
+  }
   if (key === 'high') {
     return {
       dot: 'bg-red-500',
@@ -33,10 +43,17 @@ function severityStyles(severity: AdminDashboardAlertSeverity): {
       label: 'Thấp',
     };
   }
+  if (key === 'info' || key === 'information') {
+    return {
+      dot: 'bg-sky-500',
+      badge: 'bg-sky-50 text-sky-800 ring-sky-200/80',
+      label: 'Thông tin',
+    };
+  }
   return {
     dot: 'bg-slate-400',
     badge: 'bg-muted text-muted-foreground ring-border',
-    label: String(severity),
+    label: localizeDashboardText(String(severity)),
   };
 }
 
@@ -122,7 +139,7 @@ export function OverviewAlertsCard({
                     </span>
                   </div>
                   <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-                    {alert.message}
+                    {localizeDashboardText(alert.message)}
                   </p>
                 </div>
               </li>

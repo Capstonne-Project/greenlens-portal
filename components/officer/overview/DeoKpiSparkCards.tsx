@@ -54,7 +54,7 @@ function WowBadge({
     return (
       <span
         className="text-[10px] font-semibold tabular-nums text-slate-300"
-        title="BE chưa trả *ChangePercentWoW trên /overview"
+        title="Chưa có tỷ lệ so với tuần trước"
       >
         —
       </span>

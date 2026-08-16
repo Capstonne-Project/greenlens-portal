@@ -35,7 +35,7 @@ const FALLBACK: CompanyPageMeta = {
 export const companyPageMeta: Record<string, CompanyPageMeta> = {
   '/company': {
     title: 'Tổng quan công ty',
-    description: 'Dashboard vận hành, KPI và phân công đang hoạt động.',
+    description: 'Tổng quan vận hành, KPI và phân công đang hoạt động.',
     icon: LayoutDashboard,
   },
   '/company/assign': {

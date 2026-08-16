@@ -23,7 +23,7 @@ const AdminDashboardGeographicMap = dynamic(
 export function DeoMapTab({
   geographic,
   title = 'Bản đồ Sở',
-  subtitle = 'Heatmap và marker báo cáo trong địa bàn',
+  subtitle = 'Bản đồ nhiệt và điểm báo cáo trong địa bàn',
 }: {
   geographic: DeoGeographicData | undefined;
   title?: string;

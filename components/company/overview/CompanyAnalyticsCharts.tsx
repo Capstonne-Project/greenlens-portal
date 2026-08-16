@@ -279,7 +279,7 @@ export function CompanyTaskStatusDonut({
       chart
       className={className}
       title="Theo trạng thái nhiệm vụ"
-      subtitle={`Tổng ${formatOverviewNumber(total)} task`}
+      subtitle={`Tổng ${formatOverviewNumber(total)} nhiệm vụ`}
     >
       {total === 0 ? (
         <EmptyHint text="Chưa có phân bố trạng thái" />
@@ -525,13 +525,13 @@ export function CompanyUpcomingDeadlines({
   return (
     <CardShell
       title="Sắp đến hạn SLA"
-      subtitle="Ưu tiên xử lý — task gần hoặc quá deadline"
+      subtitle="Ưu tiên xử lý — nhiệm vụ gần hạn hoặc quá hạn"
       className={cn('p-3 sm:p-4', className)}
     >
       {allRows.length > 0 ? (
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-[10px] text-muted-foreground">
-            {allRows.length} task
+            {allRows.length} nhiệm vụ
             {urgentCount > 0 ? ` · ${urgentCount} gấp (<24h)` : ''}
           </p>
           <Link
@@ -545,7 +545,7 @@ export function CompanyUpcomingDeadlines({
       ) : null}
 
       {rows.length === 0 ? (
-        <EmptyHint text="Không có deadline sắp tới" />
+        <EmptyHint text="Không có hạn xử lý sắp tới" />
       ) : (
         <ul className="space-y-1.5">
           {rows.map((row, idx) => {
@@ -615,7 +615,7 @@ export function CompanyUpcomingDeadlines({
 
       {allRows.length > rows.length ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
-          +{allRows.length - rows.length} deadline khác ·{' '}
+          +{allRows.length - rows.length} hạn khác ·{' '}
           <Link href="/company/tracking" className="font-medium text-emerald-800 hover:underline">
             mở Phân công
           </Link>
