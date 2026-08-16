@@ -106,6 +106,9 @@ export interface LeoMyReportAssignmentDto {
   startedAt?: string | null;
   completedAt?: string | null;
   progressUpdatedAt?: string | null;
+  isCompanyTeam?: boolean;
+  beforeImageUrls?: string[];
+  afterImageUrls?: string[];
 }
 
 /** GET /v1/offices/my/reports — items[].assignedCompany */
