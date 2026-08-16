@@ -7,6 +7,7 @@ import type { MapReportDetailItem } from '@/lib/api/services/fetchMap';
 import { MAP_VIEWPORT_PIN_LIMIT } from '@/lib/constants/mapReports';
 import { clampMapViewportToVietnam } from '@/lib/constants/vietnamMapBounds';
 import { cn } from '@/lib/utils';
+import { isAbortError } from '@/lib/utils/abortError';
 import type { FeatureCollection, Point } from 'geojson';
 import type { CircleLayerSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -173,7 +174,10 @@ export function AdminMapInner() {
             onLoad={handleMapLoad}
             onMoveEnd={handleMoveEnd}
             onClick={handleMapClick}
-            onError={event => console.error('[AdminMapInner] Map error:', event.error)}
+            onError={event => {
+              if (isAbortError(event.error)) return;
+              console.error('[AdminMapInner] Map error:', event.error);
+            }}
           >
             <NavigationControl position="top-left" showCompass={false} />
             <AttributionControl position="bottom-right" compact />

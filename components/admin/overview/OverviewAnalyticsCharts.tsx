@@ -2,6 +2,7 @@ import {
   activityTypeLabel,
   formatOverviewNumber,
   formatRelativeTimeVi,
+  localizeDashboardText,
 } from '@/components/admin/overview/adminDashboardFormat';
 import type {
   AdminCompanyPerformanceItem,
@@ -72,7 +73,7 @@ export function OverviewLifecycleFunnel({
   const top = Math.max(1, list[0]?.count ?? 0);
 
   return (
-    <CardShell title="Phễu vòng đời" subtitle="Submitted → Closed">
+    <CardShell title="Phễu vòng đời" subtitle="Đã gửi → Đã đóng">
       {list.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu phễu" />
       ) : (
@@ -274,7 +275,7 @@ export function OverviewQueueAging({ items }: { items: AdminQueueAgingItem[] | u
   const oldest = [...buckets].reverse().find(b => b.count > 0);
 
   return (
-    <CardShell title="Tuổi hàng đợi" subtitle="Pending theo khoảng thời gian">
+    <CardShell title="Tuổi hàng đợi" subtitle="Chờ xử lý theo khoảng thời gian">
       {total === 0 ? (
         <EmptyHint text="Hàng đợi trống" />
       ) : (
@@ -334,7 +335,7 @@ export function OverviewResolutionBars({
   const max = Math.max(1, ...bars.map(b => b.count));
 
   return (
-    <CardShell title="Thời gian giải quyết" subtitle="Histogram">
+    <CardShell title="Thời gian giải quyết" subtitle="Phân bố theo khoảng thời gian">
       {bars.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu" />
       ) : (
@@ -389,7 +390,7 @@ export function OverviewRecentActivities({
                 </time>
               </div>
               <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
-                {item.description}
+                {localizeDashboardText(item.description)}
               </p>
             </li>
           ))}

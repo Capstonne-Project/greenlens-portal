@@ -29,6 +29,7 @@ import type {
   LeoMyReportAssignment,
   LeoMyReportItem,
   LeoMyReportsSeverity,
+  LeoMyReportsTeamScope,
   LeoReportAssignmentStatus,
 } from '@/lib/api/models/office';
 import { LEO_MY_REPORTS_SEVERITIES, LEO_REPORT_ASSIGNMENT_STATUSES } from '@/lib/api/models/office';
@@ -67,7 +68,7 @@ type LeoViewMode = 'list' | 'board';
 const SEVERITY_LABEL = REPORT_SEVERITY_LABEL_VI;
 
 const FILTER_BTN_CLASS =
-  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand';
+  'h-8 shrink-0 gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand shadow-none outline-none ring-0 ring-offset-0 focus:border-slate-300 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-slate-300 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 active:border-slate-300 active:outline-none data-[state=open]:border-slate-300 data-[state=open]:ring-0';
 const BOARD_TEAM_AVATAR_SIZE_CLASS = 'size-5 sm:size-6 lg:size-7';
 const BOARD_TEAM_EXTRA_BADGE_CLASS =
   'relative z-10 -ml-1.5 flex size-5 items-center justify-center rounded-full bg-muted text-[9px] font-semibold text-foreground ring-2 ring-card sm:-ml-2 sm:size-6 sm:text-[10px] lg:-ml-2.5 lg:size-7';
@@ -625,6 +626,9 @@ export function LeoTrackingPageClient({
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | LeoMyReportsSeverity>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+  const [teamScopeFilter, setTeamScopeFilter] = useState<
+    'all' | Extract<LeoMyReportsTeamScope, 'Company'>
+  >('all');
   const [statusFilter, setStatusFilter] = useState<'all' | LeoTrackingReportStatus>('all');
   const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<
     'all' | LeoReportAssignmentStatus
@@ -653,6 +657,10 @@ export function LeoTrackingPageClient({
     setCategoryFilter(value);
     setPage(1);
   };
+  const handleTeamScopeChange = (value: 'all' | Extract<LeoMyReportsTeamScope, 'Company'>) => {
+    setTeamScopeFilter(value);
+    setPage(1);
+  };
   const handleStatusChange = (value: 'all' | LeoTrackingReportStatus) => {
     setStatusFilter(value);
     setPage(1);
@@ -672,6 +680,7 @@ export function LeoTrackingPageClient({
     dateRange.preset !== 'all' ||
     Boolean(dateRange.fromDate || dateRange.toDate) ||
     categoryFilter !== 'all' ||
+    teamScopeFilter !== 'all' ||
     severityFilter !== 'all' ||
     statusFilter !== 'all' ||
     assignmentStatusFilter !== 'all';
@@ -680,6 +689,7 @@ export function LeoTrackingPageClient({
     setSearch('');
     setDateRange({ preset: 'all' });
     setCategoryFilter('all');
+    setTeamScopeFilter('all');
     setSeverityFilter('all');
     setStatusFilter('all');
     setAssignmentStatusFilter('all');
@@ -698,6 +708,8 @@ export function LeoTrackingPageClient({
       /** `all` → multi `?status=InProgress&status=Resolved`; filter cụ thể → 1 status. */
       status: statusFilter,
       categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
+      teamScope: teamScopeFilter === 'all' ? undefined : teamScopeFilter,
+      hasActiveCommunityCleanup: false,
       severity: severityFilter === 'all' ? undefined : severityFilter,
       assignmentStatus: assignmentStatusFilter === 'all' ? undefined : assignmentStatusFilter,
       fromDate: dateRange.fromDate,
@@ -711,6 +723,7 @@ export function LeoTrackingPageClient({
   /** Tổng trang từ BE (`pagination.totalPages`), tính theo `pageSize` server nhận. */
   const totalPages = Math.max(1, data?.pagination.totalPages ?? 1);
 
+  const teamScopeFilterLabel = teamScopeFilter === 'all' ? 'Tất cả' : 'Công ty';
   const categoryFilterLabel =
     categoryFilter === 'all'
       ? 'Loại ô nhiễm'
@@ -771,6 +784,38 @@ export function LeoTrackingPageClient({
 
             <TrackingDateRangePicker value={dateRange} onChange={handleDateRangeChange} />
           </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(
+                  FILTER_BTN_CLASS,
+                  teamScopeFilter !== 'all' && 'border-brand text-brand'
+                )}
+              >
+                <Building2 className="size-3.5 opacity-70" aria-hidden />
+                {teamScopeFilterLabel}
+                <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem
+                onClick={() => handleTeamScopeChange('all')}
+                className={teamScopeFilter === 'all' ? 'font-medium text-brand' : ''}
+              >
+                Tất cả
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleTeamScopeChange('Company')}
+                className={teamScopeFilter === 'Company' ? 'font-medium text-brand' : ''}
+              >
+                Công ty
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -125,6 +125,7 @@ export const DEO_MY_REPORTS_STATUSES = [
   'Verified',
   'InProgress',
   'Resolved',
+  'Reopened',
   'Closed',
   'Rejected',
   'Duplicate',
@@ -172,6 +173,12 @@ export interface DeoMyReportItem {
   slaVerifyDueAt: string | null;
   slaResolveDueAt: string | null;
   firstImageUrl: string | null;
+  isPossibleDuplicate: boolean;
+  possibleDuplicateOfReportId: string | null;
+  possibleDuplicateOfReportCode: string | null;
+  isSuspectedViolationRecurrence: boolean;
+  suspectedRecurrenceOfReportId: string | null;
+  suspectedRecurrenceOfReportCode: string | null;
 }
 
 export interface DeoMyReportsData {
@@ -189,6 +196,13 @@ export interface DeoMyReportsParams {
   categoryId?: string;
   severity?: DeoMyReportsSeverity;
   wardCode?: string;
+  assignedOfficeId?: string;
+  fromDate?: string;
+  toDate?: string;
+  slaBreached?: boolean;
+  isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
+  hasPendingReopenRequest?: boolean;
   sortBy?: DeoMyReportsSortBy;
   sortDesc?: boolean;
 }

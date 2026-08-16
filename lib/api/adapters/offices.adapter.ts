@@ -112,6 +112,10 @@ function buildLeoMyReportsQuery(params?: LeoMyReportsParams): Record<string, unk
   if (params?.toDate?.trim()) query.toDate = params.toDate.trim();
   if (params?.sortBy) query.sortBy = params.sortBy;
   if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
+  if (params?.teamScope && params.teamScope !== 'All') query.teamScope = params.teamScope;
+  if (params?.hasActiveCommunityCleanup !== undefined) {
+    query.hasActiveCommunityCleanup = params.hasActiveCommunityCleanup;
+  }
   return query;
 }
 

@@ -130,6 +130,10 @@ export function officerNotificationHref(
       // referenceId = reportId → ReopenDetailClient (/officer/reopen/[id])
       if (ref) return `/officer/reopen/${encodeURIComponent(ref)}`;
       return '/officer/reopen';
+    case 'ViolationRecurrenceReviewNeeded':
+      // referenceId = reportId → VerifyPageClient list + highlight (không mở VerifyDetailClient)
+      if (ref) return `/officer/verify?highlight=${encodeURIComponent(ref)}`;
+      return '/officer/verify';
     case 'ReportVerificationNeeded':
     case 'SlaBreachWarning':
     case 'ReportStatusChanged':
@@ -144,6 +148,10 @@ export function officerNotificationHref(
       // Luôn mở chi tiết báo cáo khi có referenceId (VerifyDetailClient).
       if (ref) return `/officer/verify/${encodeURIComponent(ref)}`;
       return '/officer/verify';
+    case 'ReportClosedByCitizen':
+      // referenceId = reportId → ReportsReportDetailClient
+      if (ref) return `/officer/reports/${encodeURIComponent(ref)}`;
+      return '/officer/reports';
     case 'BadgeEarned':
     case 'LevelUp':
     case 'BadgeProgressNear':
@@ -172,6 +180,7 @@ export function officerNotificationHref(
       if (ref) return `/officer/tracking/${encodeURIComponent(ref)}`;
       return '/officer/tracking';
     case 'InspectionProgressUpdated':
+    case 'InspectionTaskAccepted':
     case 'InspectionTaskCompleted':
       // referenceId = inspectionId → InspectionDetailClient
       if (ref) return `/officer/inspections/${encodeURIComponent(ref)}`;

@@ -8,7 +8,8 @@ import { withOfficerFromQuery } from '@/utils/officerNavigation';
 import type { QueryClient } from '@tanstack/react-query';
 
 /** Query params không quyết định “cùng màn hình” (deep-link phụ). */
-const IGNORE_SEARCH_KEYS = new Set(['from', '_r']);
+/** `from` / `_r` không đổi đích; `highlight*` là deep-link nên phải so sánh. */
+const IGNORE_SEARCH_KEYS = new Set(['from', '_r', 'tab']);
 
 type AppRouterLike = {
   push: (href: string) => void;
@@ -78,7 +79,10 @@ function buildNotificationBackTarget(targetHref: string): string | null {
   }
 
   const reportsMatch = pathname.match(/^\/officer\/reports\/([^/]+)/);
-  if (reportsMatch?.[1]) return '/officer/reports';
+  if (reportsMatch?.[1]) {
+    const id = decodeURIComponent(reportsMatch[1]);
+    return `/officer/reports?highlight=${encodeURIComponent(id)}`;
+  }
 
   const reopenMatch = pathname.match(/^\/officer\/reopen\/([^/]+)/);
   if (reopenMatch?.[1]) return '/officer/reopen';
@@ -88,7 +92,8 @@ function buildNotificationBackTarget(targetHref: string): string | null {
 
   /** Overlay detail trên cùng route list. */
   if (pathname.startsWith('/officer/community') && url.searchParams.get('eventId')?.trim()) {
-    return '/officer/community';
+    const eventId = url.searchParams.get('eventId')!.trim();
+    return `/officer/community?highlight=${encodeURIComponent(eventId)}`;
   }
   if (pathname.startsWith('/company/tracking') && url.searchParams.get('reportId')?.trim()) {
     return '/company/tracking';

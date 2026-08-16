@@ -3,7 +3,10 @@
 /**
  * Chi tiết báo cáo hàng đợi phân công — `/company/assign/[id]`.
  * Layout parity VerifyDetailClient / AssignReportDetailClient (không có AiInsightCard).
- * Data: GET /v1/reports/company-reports/{id}.
+ * Data: GET /v1/reports/company-reports/{id}
+ *   L4 `useCompanyReportDetail` → L2 `fetchCompanyReportDetail` → L1
+ *   `adaptCompanyReportDetail` (`lib/api/adapters/company.adapter.ts`).
+ * Không dùng GET /v1/reports/company-assignments/{id} (đó là tracking).
  */
 
 import { CompanyAssignTeamDialog } from '@/components/company/assign/CompanyAssignTeamDialog';
@@ -582,12 +585,15 @@ function PollutionInfoSection({ detail }: { detail: CompanyAssignmentDetail }) {
 function AssignActionCard({
   detail,
   onAssign,
+  onReassign,
 }: {
   detail: CompanyAssignmentDetail;
   onAssign: () => void;
+  onReassign: () => void;
 }) {
   const status = normalizeReportStatus(detail.status);
   const hasTeam = Boolean(detail.assignment?.teamId);
+  const canReassign = detail.canReassign && hasTeam;
 
   if (hasTeam) {
     return (
@@ -613,6 +619,17 @@ function AssignActionCard({
             và đang trong quá trình khắc phục.
           </CardDescription>
         </CardContent>
+        {canReassign ? (
+          <CardFooter>
+            <Button
+              className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500"
+              onClick={onReassign}
+            >
+              <UserPlus className="mr-2 size-4" />
+              Phân công lại
+            </Button>
+          </CardFooter>
+        ) : null}
       </Card>
     );
   }
@@ -717,6 +734,7 @@ export function CompanyAssignReportDetailClient({
   } = useCompanyReportDetail(reportId);
 
   const [assignOpen, setAssignOpen] = useState(false);
+  const [assignMode, setAssignMode] = useState<'assign' | 'reassign'>('assign');
   const [successOpen, setSuccessOpen] = useState(false);
 
   const assignListHref = `/company/assign?${new URLSearchParams({ highlightReportId: reportId }).toString()}`;
@@ -814,7 +832,17 @@ export function CompanyAssignReportDetailClient({
             </div>
 
             <div className="flex flex-col gap-4 lg:sticky lg:top-19 lg:self-start">
-              <AssignActionCard detail={detail} onAssign={() => setAssignOpen(true)} />
+              <AssignActionCard
+                detail={detail}
+                onAssign={() => {
+                  setAssignMode('assign');
+                  setAssignOpen(true);
+                }}
+                onReassign={() => {
+                  setAssignMode('reassign');
+                  setAssignOpen(true);
+                }}
+              />
             </div>
           </div>
         </div>
@@ -824,6 +852,9 @@ export function CompanyAssignReportDetailClient({
         open={assignOpen}
         reportId={reportId}
         reportCode={detail.code}
+        mode={assignMode}
+        oldTeamId={detail.assignment?.teamId ?? null}
+        oldTeamName={detail.assignment?.teamName ?? null}
         onClose={() => setAssignOpen(false)}
         onSuccess={handleAssignSuccess}
         showSuccessToast={false}

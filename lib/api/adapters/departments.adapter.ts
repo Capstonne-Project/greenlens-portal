@@ -73,6 +73,19 @@ function buildDeoMyReportsQuery(
   if (params?.categoryId?.trim()) query.categoryId = params.categoryId.trim();
   if (params?.severity) query.severity = params.severity;
   if (params?.wardCode?.trim()) query.wardCode = params.wardCode.trim();
+  if (params?.assignedOfficeId?.trim()) query.assignedOfficeId = params.assignedOfficeId.trim();
+  if (params?.fromDate) query.fromDate = params.fromDate;
+  if (params?.toDate) query.toDate = params.toDate;
+  if (params?.slaBreached !== undefined) query.slaBreached = params.slaBreached;
+  if (params?.isPossibleDuplicate !== undefined) {
+    query.isPossibleDuplicate = params.isPossibleDuplicate;
+  }
+  if (params?.isSuspectedViolationRecurrence !== undefined) {
+    query.isSuspectedViolationRecurrence = params.isSuspectedViolationRecurrence;
+  }
+  if (params?.hasPendingReopenRequest !== undefined) {
+    query.hasPendingReopenRequest = params.hasPendingReopenRequest;
+  }
   if (params?.sortBy) query.sortBy = params.sortBy;
   if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
   return query;

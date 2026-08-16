@@ -39,6 +39,7 @@ export type {
   LeoMyReportsSeverity,
   LeoMyReportsSortBy,
   LeoMyReportsStatus,
+  LeoMyReportsTeamScope,
   LeoWardBoundary,
   Office,
   OfficeDetail,

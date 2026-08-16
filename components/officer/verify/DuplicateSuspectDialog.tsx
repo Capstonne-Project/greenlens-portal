@@ -1050,7 +1050,7 @@ function RecurrenceSuspectDialogBody({
               <DialogHeader className="space-y-0 text-left">
                 <div className="flex items-start gap-3">
                   <div
-                    className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm shadow-amber-500/25"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-700 text-white shadow-sm shadow-sky-700/25"
                     aria-hidden
                   >
                     <History className="size-5" strokeWidth={2.25} />

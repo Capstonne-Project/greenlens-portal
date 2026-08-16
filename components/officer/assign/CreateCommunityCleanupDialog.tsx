@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UsersGroupIcon from '@/components/ui/users-group-icon';
 import { MeetingPointMapPicker } from '@/components/officer/assign/MeetingPointMapPicker';
 import { useCreateCommunityCleanup } from '@/hooks/useCommunityCleanup';
@@ -25,8 +26,17 @@ import type { TeamMember } from '@/lib/api/services/fetchTeam';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, ClipboardList, HeartHandshake, Loader2, MapPin, Users } from 'lucide-react';
-import { useCallback, useMemo, useState, type UIEvent } from 'react';
+import {
+  CalendarClock,
+  CircleHelp,
+  ClipboardList,
+  HeartHandshake,
+  Loader2,
+  MapPin,
+  Users,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useMemo, useState, type KeyboardEvent, type UIEvent } from 'react';
 
 export interface CreateCommunityCleanupDialogProps {
   open: boolean;
@@ -35,10 +45,30 @@ export interface CreateCommunityCleanupDialogProps {
   reportCode: string;
   reportLatitude: number;
   reportLongitude: number;
-  onCreated?: () => void;
+  onCreated?: (eventId: string) => void;
 }
 
 const DEFAULT_MAX_PARTICIPANTS = 50;
+
+/** Đóng đăng ký: trước giờ bắt đầu ≥ 1 phút, tối đa 24 giờ (cùng ngày hoặc ngày trước). */
+const JOIN_CLOSE_MIN_LEAD_MS = 60 * 1000;
+const JOIN_CLOSE_MAX_LEAD_MS = 24 * 60 * 60 * 1000;
+const END_AFTER_START_MS = 60 * 1000;
+
+function parseTimeMs(iso: string): number | null {
+  if (!iso.trim()) return null;
+  const ms = new Date(iso).getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+function isJoinCloseInWindow(joinMs: number, startMs: number): boolean {
+  const lead = startMs - joinMs;
+  return lead >= JOIN_CLOSE_MIN_LEAD_MS && lead <= JOIN_CLOSE_MAX_LEAD_MS;
+}
+
+/** Mô tả mẫu — Tab khi ô trống để điền (thiện nguyện / công dân). */
+const DESCRIPTION_TEMPLATE =
+  'Mang găng tay, nước uống và túi đựng rác. Tập trung đúng giờ tại điểm hẹn; tuân thủ hướng dẫn của leader, không tự ý vào khu vực nguy hiểm.';
 
 const TEXTAREA_CLASS =
   'mt-1.5 h-18 w-full resize-none rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10';
@@ -51,6 +81,36 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
     >
       {children}
     </Label>
+  );
+}
+
+function FieldHint({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Tooltip open={open} onOpenChange={setOpen} delayDuration={0}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          onClick={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(prev => !prev);
+          }}
+          className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <CircleHelp className="size-3.5" aria-hidden />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="start"
+        className="z-[110] max-w-64 text-left text-xs leading-relaxed"
+      >
+        {children}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -157,6 +217,7 @@ export function CreateCommunityCleanupDialog({
 }: CreateCommunityCleanupDialogProps) {
   const createMutation = useCreateCommunityCleanup();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -245,14 +306,48 @@ export function CreateCommunityCleanupDialog({
 
   const isSubmitting = createMutation.isPending;
 
+  const startMs = parseTimeMs(startsAt);
+  const joinCloseMs = parseTimeMs(joinClosesAt);
+  const endMs = parseTimeMs(endsAt);
+
+  const joinCloseMinDate = startMs != null ? new Date(startMs - JOIN_CLOSE_MAX_LEAD_MS) : undefined;
+  const joinCloseMaxDate = startMs != null ? new Date(startMs - JOIN_CLOSE_MIN_LEAD_MS) : undefined;
+  const endsMinDate = startMs != null ? new Date(startMs + END_AFTER_START_MS) : undefined;
+
+  const joinCloseError =
+    joinCloseMs != null && startMs != null && !isJoinCloseInWindow(joinCloseMs, startMs)
+      ? 'Đóng đăng ký phải trước giờ bắt đầu dọn ít nhất 1 phút và không quá 24 giờ.'
+      : undefined;
+  const endsError =
+    endMs != null && startMs != null && endMs <= startMs
+      ? 'Giờ kết thúc phải sau giờ bắt đầu dọn.'
+      : endMs != null && joinCloseMs != null && endMs <= joinCloseMs
+        ? 'Giờ kết thúc phải sau giờ đóng đăng ký.'
+        : undefined;
+
   const canSubmit =
-    title.trim().length > 0 && Boolean(leaderUserId) && Boolean(startsAt) && !isSubmitting;
+    title.trim().length > 0 &&
+    Boolean(leaderUserId) &&
+    Boolean(startsAt) &&
+    !joinCloseError &&
+    !endsError &&
+    !isSubmitting;
+
+  const handleStartsAtChange = (iso: string) => {
+    setStartsAt(iso);
+    const nextStart = parseTimeMs(iso);
+    if (nextStart == null) return;
+    const joinMs = parseTimeMs(joinClosesAt);
+    if (joinMs != null && !isJoinCloseInWindow(joinMs, nextStart)) setJoinClosesAt('');
+    const nextEnd = parseTimeMs(endsAt);
+    if (nextEnd != null && nextEnd <= nextStart) setEndsAt('');
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit || !leaderUserId || !startsAt) return;
 
     try {
-      await createMutation.mutateAsync({
+      const envelope = await createMutation.mutateAsync({
         reportId,
         body: {
           title: title.trim(),
@@ -267,9 +362,14 @@ export function CreateCommunityCleanupDialog({
           meetingLongitude: meetingLng,
         },
       });
+      const eventId = envelope.data?.id?.trim();
       toastApiSuccess(null, `Đã mở chương trình dọn cộng đồng cho báo cáo ${reportCode}.`);
-      onCreated?.();
+      if (eventId) onCreated?.(eventId);
+      else onCreated?.('');
       handleClose();
+      if (eventId) {
+        router.push(`/officer/community?eventId=${encodeURIComponent(eventId)}`);
+      }
     } catch (err) {
       toastApiError(err, 'Không thể mở chương trình dọn cộng đồng. Vui lòng thử lại.');
     }
@@ -325,13 +425,24 @@ export function CreateCommunityCleanupDialog({
                   />
                 </div>
                 <div>
-                  <FieldLabel htmlFor="cc-description">Mô tả (tuỳ chọn)</FieldLabel>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <FieldLabel htmlFor="cc-description">Mô tả (tuỳ chọn)</FieldLabel>
+                    {!description.trim() ? (
+                      <span className="text-[11px] text-muted-foreground">Tab để dùng mẫu</span>
+                    ) : null}
+                  </div>
                   <textarea
                     id="cc-description"
                     value={description}
                     onChange={e => setDescription(e.target.value)}
+                    onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+                      if (event.key !== 'Tab' || event.shiftKey) return;
+                      if (description.trim()) return;
+                      event.preventDefault();
+                      setDescription(DESCRIPTION_TEMPLATE);
+                    }}
                     rows={2}
-                    placeholder="Mang găng tay, nước uống. Tập trung cổng công viên."
+                    placeholder={DESCRIPTION_TEMPLATE}
                     className={TEXTAREA_CLASS}
                   />
                 </div>
@@ -417,56 +528,89 @@ export function CreateCommunityCleanupDialog({
             {/* Thời gian */}
             <section className="space-y-3">
               <SectionHeading icon={CalendarClock} title="Thời gian" />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <FieldLabel htmlFor="cc-starts">Bắt đầu dọn</FieldLabel>
-                  <div className="mt-1.5">
-                    <DateTimePicker
-                      id="cc-starts"
-                      value={startsAt}
-                      onChange={setStartsAt}
-                      placeholder="Chọn ngày giờ bắt đầu"
-                    />
+              <TooltipProvider delayDuration={0}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <FieldLabel htmlFor="cc-starts">Bắt đầu dọn</FieldLabel>
+                      <FieldHint label="Giải thích giờ bắt đầu dọn">
+                        Mốc gốc của chương trình. Giờ đóng đăng ký và giờ kết thúc đều neo theo mốc
+                        này.
+                      </FieldHint>
+                    </div>
+                    <div className="mt-1.5">
+                      <DateTimePicker
+                        id="cc-starts"
+                        value={startsAt}
+                        onChange={handleStartsAtChange}
+                        placeholder="Chọn ngày giờ bắt đầu"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex min-h-4 items-center gap-1.5">
+                      <FieldLabel htmlFor="cc-max">Số người tối đa</FieldLabel>
+                    </div>
+                    <div className="mt-1.5">
+                      <Input
+                        id="cc-max"
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={maxParticipants}
+                        onChange={e => setMaxParticipants(e.target.value)}
+                        className="h-10 rounded-lg py-0 text-sm leading-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <FieldLabel htmlFor="cc-ends">Kết thúc (tuỳ chọn)</FieldLabel>
+                      <FieldHint label="Giải thích giờ kết thúc">
+                        Phải sau giờ bắt đầu dọn ít nhất 1 phút. Nếu đã chọn đóng đăng ký, giờ kết
+                        thúc cũng phải sau giờ đóng đăng ký. Không chọn trước hoặc trùng giờ bắt
+                        đầu.
+                      </FieldHint>
+                    </div>
+                    <div className="mt-1.5">
+                      <DateTimePicker
+                        id="cc-ends"
+                        value={endsAt}
+                        onChange={setEndsAt}
+                        placeholder="Chọn ngày giờ kết thúc"
+                        minDate={endsMinDate}
+                        clearable
+                      />
+                      {endsError ? (
+                        <p className="mt-1.5 text-[11px] text-destructive">{endsError}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <FieldLabel htmlFor="cc-join-closes">Đóng đăng ký lúc (tuỳ chọn)</FieldLabel>
+                      <FieldHint label="Giải thích giờ đóng đăng ký">
+                        Cùng ngày hoặc ngày trước giờ bắt đầu dọn. Phải trước giờ bắt đầu ít nhất 1
+                        phút, tối đa 24 giờ — không trùng và không sau giờ dọn.
+                      </FieldHint>
+                    </div>
+                    <div className="mt-1.5">
+                      <DateTimePicker
+                        id="cc-join-closes"
+                        value={joinClosesAt}
+                        onChange={setJoinClosesAt}
+                        placeholder="Chọn ngày giờ đóng đăng ký"
+                        minDate={joinCloseMinDate}
+                        maxDate={joinCloseMaxDate}
+                        clearable
+                      />
+                      {joinCloseError ? (
+                        <p className="mt-1.5 text-[11px] text-destructive">{joinCloseError}</p>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <FieldLabel htmlFor="cc-max">Số người tối đa</FieldLabel>
-                  <Input
-                    id="cc-max"
-                    type="number"
-                    min={1}
-                    max={200}
-                    value={maxParticipants}
-                    onChange={e => setMaxParticipants(e.target.value)}
-                    className="mt-1.5"
-                  />
-                </div>
-                <div>
-                  <FieldLabel htmlFor="cc-ends">Kết thúc (tuỳ chọn)</FieldLabel>
-                  <div className="mt-1.5">
-                    <DateTimePicker
-                      id="cc-ends"
-                      value={endsAt}
-                      onChange={setEndsAt}
-                      placeholder="Chọn ngày giờ kết thúc"
-                      minDate={startsAt ? new Date(startsAt) : undefined}
-                      clearable
-                    />
-                  </div>
-                </div>
-                <div>
-                  <FieldLabel htmlFor="cc-join-closes">Đóng đăng ký lúc (tuỳ chọn)</FieldLabel>
-                  <div className="mt-1.5">
-                    <DateTimePicker
-                      id="cc-join-closes"
-                      value={joinClosesAt}
-                      onChange={setJoinClosesAt}
-                      placeholder="Chọn ngày giờ đóng đăng ký"
-                      clearable
-                    />
-                  </div>
-                </div>
-              </div>
+              </TooltipProvider>
             </section>
 
             <div className="h-px bg-border" />

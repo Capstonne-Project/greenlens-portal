@@ -623,7 +623,7 @@ function HeaderStrip({
               <span
                 className={cn(
                   'inline-flex size-5 shrink-0 items-center justify-center',
-                  'rounded-full bg-orange-500 text-white shadow-sm',
+                  'rounded-full bg-sky-700 text-white shadow-sm',
                   'ring-2 ring-white'
                 )}
                 aria-label="Nghi ô nhiễm tái diễn"
@@ -1293,8 +1293,8 @@ function SlaActionCard({
         </Alert>
       ) : null}
       {isSuspectedViolationRecurrence ? (
-        <Alert className="rounded-none border-x-0 border-t-0 border-orange-200 bg-orange-50 text-orange-900">
-          <History className="size-4 text-orange-600" />
+        <Alert className="rounded-none border-x-0 border-t-0 border-sky-200 bg-sky-50 text-sky-900">
+          <History className="size-4 text-sky-700" />
           <AlertDescription className="font-medium">
             Nghi ô nhiễm tái diễn — kiểm tra báo cáo đã đóng trước đó trước khi xác minh.
           </AlertDescription>

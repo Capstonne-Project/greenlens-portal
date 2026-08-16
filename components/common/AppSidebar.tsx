@@ -11,7 +11,7 @@ import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/s
 import { Separator } from '@/components/ui/separator';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
 import { isFontAwesomeNavIcon } from '@/lib/constants/mapShellNav';
-import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
+import { APP_LOGO_MARK_SRC, APP_NAME } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import { MapSidebarUserProfile } from '@/components/common/SidebarUserProfile';
 import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
@@ -29,7 +29,6 @@ type AppSidebarProps = {
 };
 
 const ICON_CLASS = 'h-5 w-5 shrink-0';
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'GreenLens';
 
 /**
  * Longest-href active match so `/admin` does not steal `/admin/reports`.

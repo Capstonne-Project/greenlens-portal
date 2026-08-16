@@ -28,6 +28,7 @@ export interface ViolationRecurrenceReport {
   hadPriorInspection: boolean;
   priorInspectionId: string | null;
   priorInspectionFinalStatus: string | null;
+  hasInspection: boolean;
 }
 
 /** GET /v1/reports/{id}/violation-recurrence-comparison — domain model. */
@@ -36,6 +37,7 @@ export interface ViolationRecurrenceComparison {
   priorClosedReport: ViolationRecurrenceReport;
   daysSincePriorClosed: number;
   distanceMeters: number;
+  hasInspection: boolean;
 }
 
 /** POST /v1/reports/{id}/dismiss-violation-recurrence — kết quả. */

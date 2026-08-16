@@ -53,7 +53,7 @@ export function LeoOverviewDashboard() {
         <DeoDashboardTabs
           activeTab={activeTab}
           onChange={setActiveTab}
-          ariaLabel="Mục dashboard phường"
+          ariaLabel="Mục tổng quan phường"
         />
       </header>
 
@@ -132,7 +132,7 @@ export function LeoOverviewDashboard() {
             <DeoMapTab
               geographic={geographic}
               title="Bản đồ phường"
-              subtitle="Heatmap và marker báo cáo trong địa bàn phụ trách"
+              subtitle="Bản đồ nhiệt và điểm báo cáo trong địa bàn phụ trách"
             />
           )
         ) : null}

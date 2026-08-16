@@ -20,6 +20,8 @@ export interface DateTimePickerProps {
   clearable?: boolean;
   /** Chặn chọn thời điểm trước mốc này (vd. không cho endsAt trước startsAt). */
   minDate?: Date;
+  /** Chặn chọn thời điểm sau mốc này (vd. đóng đăng ký phải trước giờ bắt đầu). */
+  maxDate?: Date;
   className?: string;
   id?: string;
 }
@@ -45,11 +47,11 @@ function parseIso(iso: string): Date | undefined {
   return parsed;
 }
 
-function emitIso(date: Date, minDate?: Date): string {
-  if (minDate && date.getTime() < minDate.getTime()) {
-    return minDate.toISOString();
-  }
-  return date.toISOString();
+function emitIso(date: Date, minDate?: Date, maxDate?: Date): string {
+  let t = date.getTime();
+  if (minDate && t < minDate.getTime()) t = minDate.getTime();
+  if (maxDate && t > maxDate.getTime()) t = maxDate.getTime();
+  return new Date(t).toISOString();
 }
 
 function combineDraft(day: Date, hour: number, minute: number): Date {
@@ -75,6 +77,7 @@ function TimeColumn({
   selected,
   onSelect,
   selectedRef,
+  isDisabled,
 }: {
   label: string;
   colKey: string;
@@ -82,6 +85,7 @@ function TimeColumn({
   selected: number;
   onSelect: (value: number) => void;
   selectedRef: RefObject<HTMLButtonElement | null>;
+  isDisabled?: (value: number) => boolean;
 }) {
   return (
     <div className="flex h-full min-h-0 w-1/2 flex-col border-l border-border first:border-l-0">
@@ -95,17 +99,21 @@ function TimeColumn({
         <div className="flex flex-col gap-0.5">
           {values.map(value => {
             const isActive = value === selected;
+            const disabled = isDisabled?.(value) ?? false;
             return (
               <button
                 key={value}
                 type="button"
                 ref={isActive ? selectedRef : undefined}
+                disabled={disabled}
                 onClick={() => onSelect(value)}
                 className={cn(
                   'flex h-8 w-full shrink-0 items-center justify-center rounded-md text-sm tabular-nums transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                  disabled && 'cursor-not-allowed opacity-35',
+                  !disabled && isActive && 'bg-primary text-primary-foreground',
+                  !disabled &&
+                    !isActive &&
+                    'text-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
               >
                 {pad2(value)}
@@ -131,6 +139,7 @@ export function DateTimePicker({
   placeholder = 'Chọn ngày giờ',
   clearable = false,
   minDate,
+  maxDate,
   className,
   id,
 }: DateTimePickerProps) {
@@ -187,13 +196,29 @@ export function DateTimePicker({
     return () => cancelAnimationFrame(frame);
   }, [open, draftHour, draftMinute]);
 
+  const isDraftOutOfRange = (hour: number, minute: number) => {
+    if (!draftDay) return false;
+    const t = combineDraft(draftDay, hour, minute).getTime();
+    if (minDate && t < minDate.getTime()) return true;
+    if (maxDate && t > maxDate.getTime()) return true;
+    return false;
+  };
+
   const handleConfirm = () => {
-    if (!draftDay) return;
-    onChange(emitIso(combineDraft(draftDay, draftHour, draftMinute), minDate));
+    if (!draftDay || isDraftOutOfRange(draftHour, draftMinute)) return;
+    onChange(emitIso(combineDraft(draftDay, draftHour, draftMinute), minDate, maxDate));
     setOpen(false);
   };
 
-  const canConfirm = Boolean(draftDay);
+  const canConfirm = Boolean(draftDay) && !isDraftOutOfRange(draftHour, draftMinute);
+
+  const calendarDisabled =
+    minDate || maxDate
+      ? [
+          ...(minDate ? [{ before: startOfDay(minDate) }] : []),
+          ...(maxDate ? [{ after: startOfDay(maxDate) }] : []),
+        ]
+      : undefined;
 
   return (
     <div className={cn('relative', className)}>
@@ -243,7 +268,7 @@ export function DateTimePicker({
               onSelect={day => {
                 if (day) setDraftDay(day);
               }}
-              disabled={minDate ? { before: startOfDay(minDate) } : undefined}
+              disabled={calendarDisabled}
               className="rounded-none border-0 p-2"
             />
 
@@ -263,6 +288,7 @@ export function DateTimePicker({
                 selected={draftHour}
                 onSelect={setDraftHour}
                 selectedRef={selectedHourRef}
+                isDisabled={hour => MINUTES.every(minute => isDraftOutOfRange(hour, minute))}
               />
               <TimeColumn
                 label="Phút"
@@ -271,6 +297,7 @@ export function DateTimePicker({
                 selected={draftMinute}
                 onSelect={setDraftMinute}
                 selectedRef={selectedMinuteRef}
+                isDisabled={minute => isDraftOutOfRange(draftHour, minute)}
               />
             </div>
           </div>

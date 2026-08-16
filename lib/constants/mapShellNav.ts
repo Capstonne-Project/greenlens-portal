@@ -15,6 +15,7 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
+import { APP_NAME } from '@/lib/constants/brand';
 import { parseOfficerApiRole } from '@/lib/constants/officerRoles';
 import type { UserRole } from '@/lib/constants/systemRoles';
 
@@ -74,8 +75,6 @@ export type MapShellNavConfig = {
   mainNav: MapShellNavItem[];
   systemNav: MapShellSystemNav;
 };
-
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'GreenLens';
 
 const SYSTEM_NAV: MapShellSystemNav = {
   notifications: {

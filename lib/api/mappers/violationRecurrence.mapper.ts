@@ -47,6 +47,7 @@ function mapReportDto(dto: ViolationRecurrenceReportDto): ViolationRecurrenceRep
     hadPriorInspection: Boolean(dto.hadPriorInspection),
     priorInspectionId: dto.priorInspectionId ?? null,
     priorInspectionFinalStatus: dto.priorInspectionFinalStatus ?? null,
+    hasInspection: Boolean(dto.hasInspection),
   };
 }
 
@@ -59,6 +60,7 @@ export function mapViolationRecurrenceComparisonDto(
     priorClosedReport: mapReportDto(dto.priorClosedReport),
     daysSincePriorClosed: Number(dto.daysSincePriorClosed) || 0,
     distanceMeters: Number(dto.distanceMeters) || 0,
+    hasInspection: Boolean(dto.hasInspection),
   };
 }
 

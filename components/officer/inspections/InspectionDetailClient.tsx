@@ -307,10 +307,40 @@ function isVideoMime(mime: string | null | undefined, url: string | null | undef
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
 }
 
-function isAudioMime(mime: string | null | undefined, url: string | null | undefined): boolean {
-  if (mime?.startsWith('audio/')) return true;
-  if (!url) return false;
-  return /\.(mp3|wav|ogg|m4a|aac)(\?|$)/i.test(url);
+/**
+ * Native `<source type>` từ BE thường sai (`audio/m4a`, `audio/x-m4a`, `video/mp4`)
+ * → Chrome/Safari bỏ source, nút play không phát. Gắn `src` trên `<audio>`, để browser sniff.
+ */
+function FieldAudioPlayer({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <p className="text-sm text-slate-500">
+        Không phát được ghi âm.{' '}
+        <a
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-sky-700 hover:underline"
+        >
+          Tải file
+        </a>
+      </p>
+    );
+  }
+
+  return (
+    <audio
+      key={src}
+      src={src}
+      controls
+      preload="metadata"
+      playsInline
+      className="w-full"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 function CopyIconButton({ value, label }: { value: string; label: string }) {
@@ -563,13 +593,11 @@ function MinuteExhibits({ items }: { items: InspectionChecklistEvidence[] }) {
               ) : section.kind === 'audio' ? (
                 <div className="mt-1.5 space-y-2">
                   {list.map(item => (
-                    <div key={item.id} className="max-w-xs">
-                      {item.mediaUrl && isAudioMime(item.mimeType, item.mediaUrl) ? (
-                        <audio controls preload="metadata" className="w-full">
-                          <source src={item.mediaUrl} type={item.mimeType ?? undefined} />
-                        </audio>
+                    <div key={item.id} className="max-w-md">
+                      {item.mediaUrl ? (
+                        <FieldAudioPlayer src={item.mediaUrl} />
                       ) : (
-                        <p className="text-sm text-slate-500">Không phát được ghi âm</p>
+                        <p className="text-sm text-slate-500">Không có file ghi âm</p>
                       )}
                       <p className="mt-0.5 font-mono text-[11px] tabular-nums text-slate-400">
                         {[formatViDateTime(item.uploadedAt), formatDuration(item.durationSeconds)]
@@ -1413,7 +1441,7 @@ function CapstoneMinutesDisclaimer() {
     <aside
       role="note"
       aria-label="Lưu ý: biên bản mô phỏng đồ án"
-      className="flex gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 px-3.5 py-3 shadow-sm ring-1 ring-amber-300/50 sm:px-4 sm:py-3.5"
+      className="flex w-fit max-w-full justify-self-end gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 px-3.5 py-3 shadow-sm ring-1 ring-amber-300/50 sm:px-4 sm:py-3.5"
     >
       <AlertTriangle
         className="mt-0.5 size-5 shrink-0 text-amber-600"
@@ -1422,7 +1450,7 @@ function CapstoneMinutesDisclaimer() {
       />
       <div className="min-w-0 space-y-1.5">
         <p className="text-[11px] font-bold tracking-wide text-amber-900 uppercase">
-          Lưu ý đồ án — không có giá trị pháp lý
+          Lưu ý — không có giá trị pháp lý
         </p>
         <ul className="list-none space-y-1 text-xs leading-snug text-amber-950/95 sm:text-[13px]">
           <li>
@@ -1460,7 +1488,7 @@ function InspectionDetailHeader({
 
   return (
     <header className="border-b border-slate-200 pb-5">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start lg:gap-8">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-8">
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <h1 className="text-xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-2xl">

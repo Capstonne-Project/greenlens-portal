@@ -49,13 +49,14 @@ export interface ReportQueueDataDto {
   pagination: ReportQueuePaginationDto;
 }
 
+/** GET /v1/reports/queue — Swagger `sortBy`. */
 export type ReportQueueSortByDto =
   | 'PriorityScore'
   | 'CreatedAt'
   | 'Severity'
+  | 'VerifiedAt'
   | 'SlaVerifyDueAt'
-  | 'SlaResolveDueAt'
-  | 'VerifiedAt';
+  | 'SlaResolveDueAt';
 
 export type ReportQueueSortDirDto = 'Asc' | 'Desc';
 

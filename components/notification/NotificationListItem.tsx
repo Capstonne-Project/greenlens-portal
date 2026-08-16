@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { useMarkNotificationRead } from '@/hooks/useNotification';
+import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
 import type { NotificationItem } from '@/lib/api/models/notification';
 import { cn } from '@/lib/utils';
 import {
@@ -16,7 +17,7 @@ import {
   getNotificationMutationError,
   resolveNotificationCategoryBadge,
 } from '@/utils/notificationUi';
-import { CheckCheck, ImageIcon, MoreHorizontal } from 'lucide-react';
+import { CheckCheck, MoreHorizontal } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -126,7 +127,7 @@ export function NotificationListItem({
           {/* overflow-visible để badge FB không bị cắt */}
           <div className="relative shrink-0" style={{ width: d.rowH, height: d.rowH }}>
             <div className="relative size-full overflow-hidden rounded-full bg-muted">
-              {item.thumbnailUrl ? (
+              {item.thumbnailUrl?.trim() ? (
                 <Image
                   src={item.thumbnailUrl}
                   alt=""
@@ -136,9 +137,14 @@ export function NotificationListItem({
                   unoptimized
                 />
               ) : (
-                <span className="flex size-full items-center justify-center text-muted-foreground">
-                  <ImageIcon className={cn(d.icon, 'opacity-50')} aria-hidden />
-                </span>
+                <Image
+                  src={APP_LOGO_MARK_SRC}
+                  alt=""
+                  fill
+                  sizes={`${d.rowH}px`}
+                  className="object-contain p-2.5"
+                  unoptimized
+                />
               )}
             </div>
 

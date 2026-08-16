@@ -36,6 +36,7 @@ import { useMapReports, type MapViewportParams } from '@/hooks/useMap';
 import { useLeoWardBoundary } from '@/hooks/useLeoOffices';
 import { useCanFetchProtected } from '@/hooks/useAuthSession';
 import { MAP_VIEWPORT_PIN_LIMIT } from '@/lib/constants/mapReports';
+import { isAbortError } from '@/lib/utils/abortError';
 import {
   MAP_SIDEBAR_TRANSITION_MS,
   selectMapPaddingLeft,
@@ -700,6 +701,7 @@ export const MapLibreView = forwardRef<MapLibreViewHandle, MapLibreViewProps>(fu
         onClick={handleMapClick}
         onError={event => {
           const err = event.error as (Error & { url?: string; sourceId?: string }) | undefined;
+          if (isAbortError(err) || isAbortError(err?.message)) return;
           console.error('[MapLibreView] Map error:', {
             message: err?.message,
             url: err?.url,

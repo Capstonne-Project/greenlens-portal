@@ -150,6 +150,9 @@ function mapLeoMyReportAssignmentDto(dto: LeoMyReportAssignmentDto): LeoMyReport
     startedAt: dto.startedAt ?? null,
     completedAt: dto.completedAt ?? null,
     progressUpdatedAt: dto.progressUpdatedAt ?? null,
+    isCompanyTeam: Boolean(dto.isCompanyTeam),
+    beforeImageUrls: dto.beforeImageUrls ?? [],
+    afterImageUrls: dto.afterImageUrls ?? [],
   };
 }
 

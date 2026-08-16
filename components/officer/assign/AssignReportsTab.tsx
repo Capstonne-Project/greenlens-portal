@@ -58,9 +58,9 @@ const REPORT_PAGE_SIZE = 8;
 /** Deep-link locate — cùng multi-status Verified + Reopened với list phân công. */
 const ASSIGN_HIGHLIGHT_LOCATE_STATUSES = ASSIGN_QUEUE_STATUSES;
 
-/** GET /v1/reports/queue — BE chưa hỗ trợ sortBy=VerifiedAt; dùng createdAt desc. */
+/** GET /v1/reports/queue — sortBy=VerifiedAt, sortDir=Desc. */
 const ASSIGN_QUEUE_SORT = {
-  sortBy: 'CreatedAt' as const,
+  sortBy: 'VerifiedAt' as const,
   sortDir: 'Desc' as const,
 };
 

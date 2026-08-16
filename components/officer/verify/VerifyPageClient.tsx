@@ -1829,7 +1829,7 @@ function ReportThumb({
           <span
             className={cn(
               'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
-              'rounded-full bg-orange-500 text-white shadow-sm',
+              'rounded-full bg-sky-700 text-white shadow-sm',
               'ring-2 ring-white'
             )}
             aria-label="Nghi ô nhiễm tái diễn"

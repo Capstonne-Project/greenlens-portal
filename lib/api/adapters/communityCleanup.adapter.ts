@@ -52,14 +52,21 @@ export async function adaptCreateCommunityCleanup(
 export async function adaptGetOfficeCommunityQueue(
   params?: CommunityCleanupOfficeQueueParams
 ): Promise<ApiEnvelope<CommunityCleanupList>> {
-  const query: Record<string, string | number> = {};
+  const query: Record<string, string | number | string[]> = {};
   if (params?.page != null) query.page = params.page;
   if (params?.pageSize != null) query.pageSize = params.pageSize;
-  if (params?.status) query.status = params.status;
+  if (params?.status) {
+    const statuses = Array.isArray(params.status) ? params.status : [params.status];
+    if (statuses.length > 0) query.status = statuses;
+  }
 
   const res = await apiService.get<ApiEnvelope<CommunityCleanupListResponseDto>>(
     '/v1/community-cleanups/office-queue',
-    query
+    query,
+    {
+      // ASP.NET: status=InProgress&status=Completed (không status[]=)
+      paramsSerializer: { indexes: null },
+    }
   );
   return mapApiEnvelope(res.data, mapCommunityCleanupListResponseDto);
 }
