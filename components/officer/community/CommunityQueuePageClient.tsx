@@ -16,10 +16,10 @@ import {
 
 function QueueFallback() {
   return (
-    <div className="animate-pulse space-y-3 p-4">
+    <div className="flex h-full min-h-0 flex-1 animate-pulse flex-col gap-3 p-4">
       <div className="h-7 w-56 rounded bg-slate-200" />
       <div className="h-10 w-full max-w-md rounded bg-slate-200" />
-      <div className="h-64 w-full rounded-xl bg-slate-100" />
+      <div className="min-h-0 flex-1 rounded-xl bg-slate-100" />
     </div>
   );
 }
@@ -30,6 +30,7 @@ const CommunityQueueBoard = dynamic(
 );
 
 const COMMUNITY_QUEUE_TABS = new Set<string>([
+  'All',
   'OpenForJoin',
   'JoinClosed',
   'InProgress',
@@ -82,7 +83,7 @@ export function CommunityQueuePageClient() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <CommunityQueueBoard onOpenDetail={handleOpenDetail} />
     </div>
   );

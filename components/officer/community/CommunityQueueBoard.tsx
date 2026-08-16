@@ -29,7 +29,7 @@ import { PaginationSimple } from '@/components/ui/pagination';
 const HIGHLIGHT_HOLD_MS = 1600;
 const HIGHLIGHT_CLEAR_MS = 2300;
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 8;
 
 type StatusTab =
   | 'PendingVerification'
@@ -126,7 +126,7 @@ function StatusTabBar({
   return (
     <div
       ref={tabsScrollRef}
-      className="relative flex min-w-0 flex-1 items-stretch overflow-x-auto border-b border-border pb-2 scrollbar-hide"
+      className="relative flex w-full min-w-0 shrink-0 items-stretch overflow-x-auto border-b border-border pb-2 scrollbar-hide"
       role="tablist"
       aria-label="Lọc chương trình theo trạng thái"
     >
@@ -264,7 +264,7 @@ function EventCard({
           <CalendarDays className="size-3.5 shrink-0" aria-hidden />
           Bắt đầu {formatDate(item.startsAt)}
           {item.joinClosesAt ? (
-            <span className="truncate">· Đóng ĐK {formatDateTime(item.joinClosesAt)}</span>
+            <span className="truncate">· Đóng đăng ký {formatDateTime(item.joinClosesAt)}</span>
           ) : null}
         </div>
       </div>
@@ -298,7 +298,7 @@ export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
-  const [statusTab, setStatusTab] = useState<StatusTab>('PendingVerification');
+  const [statusTab, setStatusTab] = useState<StatusTab>('All');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const isSearchPending = search.trim() !== debouncedSearch;
@@ -394,7 +394,7 @@ export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) 
   }, [highlightedId, filteredItems, highlightFading]);
 
   return (
-    <div className="flex w-full flex-col px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden px-4 pt-2 sm:px-6 lg:px-8">
       <header className="mb-4 shrink-0">
         <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
@@ -433,7 +433,7 @@ export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) 
         </div>
       </div>
 
-      <div className="min-h-40 py-1">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-1">
         {isError ? (
           <div className="flex h-40 items-center justify-center text-destructive">
             Không thể tải dữ liệu. Vui lòng thử lại.
@@ -467,8 +467,8 @@ export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) 
         )}
       </div>
 
-      {data?.pagination && !debouncedSearch && totalPages > 1 ? (
-        <div className="relative mt-4 flex shrink-0 items-center justify-center">
+      {data?.pagination ? (
+        <div className="relative flex shrink-0 items-center justify-center py-3">
           <PaginationSimple
             page={page}
             totalPages={totalPages}
@@ -479,10 +479,6 @@ export function CommunityQueueBoard({ onOpenDetail }: CommunityQueueBoardProps) 
             {data.pagination.totalItems.toLocaleString('vi-VN')} chương trình
           </p>
         </div>
-      ) : data?.pagination ? (
-        <p className="mt-4 text-center text-xs text-slate-500 tabular-nums">
-          {data.pagination.totalItems.toLocaleString('vi-VN')} chương trình
-        </p>
       ) : null}
     </div>
   );
