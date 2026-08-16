@@ -14,6 +14,7 @@ import {
   FileText,
   Filter,
   FlaskConical,
+  History,
   ImageIcon,
   Leaf,
   Loader2,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AnimatedHoverTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -59,20 +61,45 @@ import {
   useLeoLookupReports,
   type LeoLookupReportStatus,
 } from '@/hooks/useLeoOffices';
+import { useDeoMyReports } from '@/hooks/useDepartments';
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
-import type { LeoMyReportItem } from '@/lib/api/models/office';
+import {
+  DEO_MY_REPORTS_STATUSES,
+  type DeoMyReportsParams,
+  type DeoMyReportsStatus,
+} from '@/lib/api/models/department';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import type { ReportSeverity } from '@/lib/api/models/report';
+import { parseOfficerApiRole } from '@/lib/constants/officerRoles';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { REPORT_QUEUE_COLUMN_LABEL } from '@/lib/constants/reportQueueTable';
-import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
+import {
+  REPORT_STATUS_BADGE_CLASSES,
+  normalizeReportStatus,
+  reportStatusLabelVi,
+} from '@/lib/constants/reportStatus';
+import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
 
 type ColumnKey = 'code' | 'address' | 'severity' | 'created' | 'resolveSla' | 'status' | 'actions';
 
-type StatusFilter = 'all' | LeoLookupReportStatus;
+type StatusFilter = 'all' | DeoMyReportsStatus | LeoLookupReportStatus;
+
+type ReportsListRow = {
+  id: string;
+  code: string;
+  categoryName: string;
+  severity: ReportSeverity;
+  status: string;
+  address: string;
+  createdAt: string;
+  slaResolveDueAt: string | null;
+  thumbnails: string[];
+  isPossibleDuplicate: boolean;
+  isSuspectedViolationRecurrence: boolean;
+};
 type SlaBreachedFilter = 'all' | 'yes';
 
 /** Vertical rhythm; padding scales with `@container/verify-table` khi sidebar mở hẹp content. */
@@ -159,9 +186,17 @@ const SEVERITY_FILTERS: { key: SeverityFilter; label: string }[] = [
   { key: 'Low', label: REPORT_SEVERITY_LABEL_VI.Low },
 ];
 
-const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+const STATUS_FILTERS_LEO: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   ...LEO_LOOKUP_REPORT_STATUSES.map(status => ({
+    key: status as StatusFilter,
+    label: reportStatusLabelVi(status),
+  })),
+];
+
+const STATUS_FILTERS_DEO: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: 'Tất cả' },
+  ...DEO_MY_REPORTS_STATUSES.map(status => ({
     key: status as StatusFilter,
     label: reportStatusLabelVi(status),
   })),
@@ -565,6 +600,7 @@ function ReportsFilterDrawer({
   draft,
   categories,
   categoriesLoading,
+  statusFilters,
   onReset,
   onApply,
   onDraftChange,
@@ -575,6 +611,7 @@ function ReportsFilterDrawer({
   draft: AppliedFilters;
   categories: PollutionCategory[];
   categoriesLoading: boolean;
+  statusFilters: { key: StatusFilter; label: string }[];
   onReset: () => void;
   onApply: () => void;
   onDraftChange: (patch: Partial<AppliedFilters>) => void;
@@ -600,7 +637,7 @@ function ReportsFilterDrawer({
         <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto px-5">
           <DrawerFilterSection title="Trạng thái">
             <div className="grid grid-cols-2 gap-2">
-              {STATUS_FILTERS.map(opt => (
+              {statusFilters.map(opt => (
                 <GridOption
                   key={opt.key}
                   value={opt.key}
@@ -800,7 +837,7 @@ function SlaCell({ dueAt }: { dueAt: string | null }) {
   );
 }
 
-function ViewRowAction({ row }: { row: LeoMyReportItem }) {
+function ViewRowAction({ row }: { row: ReportsListRow }) {
   return (
     <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
       <Link
@@ -848,6 +885,10 @@ function createDefaultFilters(): AppliedFilters {
 
 export function ReportsListClient() {
   const router = useRouter();
+  const systemRole = useAuthStore(s => s.user?.systemRole);
+  const officerRole = parseOfficerApiRole(systemRole);
+  const isDeo = officerRole === 'DEO';
+  const isLeo = officerRole === 'LEO';
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -939,29 +980,38 @@ export function ReportsListClient() {
     () => ({
       page,
       pageSize: PAGE_SIZE,
-      /**
-       * `all` → multi `?status=Rejected&status=Closed` (GET /v1/offices/my/reports).
-       * Filter 1 status → một giá trị.
-       */
-      status: applied.status === 'all' ? LEO_LOOKUP_REPORT_STATUSES : applied.status,
-      sortBy: 'createdAt',
+      sortBy: 'createdAt' as const,
       sortDesc: true,
       ...(applied.severity !== 'all' ? { severity: applied.severity } : {}),
       ...effectiveDateRange,
       ...(applied.categoryId ? { categoryId: applied.categoryId } : {}),
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
     }),
-    [
-      page,
-      applied.status,
-      applied.severity,
-      applied.categoryId,
-      effectiveDateRange,
-      debouncedSearch,
-    ]
+    [page, applied.severity, applied.categoryId, effectiveDateRange, debouncedSearch]
   );
 
-  const { data, isPending, isFetching, isError, refetch } = useLeoLookupReports(listParams);
+  const leoStatus: LeoLookupReportStatus | typeof LEO_LOOKUP_REPORT_STATUSES =
+    applied.status === 'Closed' || applied.status === 'Rejected'
+      ? applied.status
+      : LEO_LOOKUP_REPORT_STATUSES;
+
+  const leoQuery = useLeoLookupReports({ ...listParams, status: leoStatus }, { enabled: isLeo });
+
+  const deoParams = useMemo((): DeoMyReportsParams => {
+    return {
+      ...listParams,
+      pageSize: PAGE_SIZE,
+      sortBy: 'createdAt',
+      sortDesc: true,
+      ...(applied.status !== 'all' ? { status: applied.status as DeoMyReportsStatus } : {}),
+      ...(applied.slaBreached === 'yes' ? { slaBreached: true } : {}),
+    };
+  }, [listParams, applied.status, applied.slaBreached]);
+
+  const deoQuery = useDeoMyReports(deoParams, isDeo);
+
+  const activeQuery = isDeo ? deoQuery : leoQuery;
+  const { isPending, isFetching, isError, refetch } = activeQuery;
 
   /** Snapshot “now” ngoài render — tránh impure `Date.now()` trong useMemo (react-hooks/purity). */
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -970,16 +1020,48 @@ export function ReportsListClient() {
     return () => window.clearInterval(id);
   }, []);
 
-  const items = useMemo(() => {
-    const rows = data?.items ?? [];
-    if (applied.slaBreached !== 'yes') return rows;
-    return rows.filter(row => {
-      if (!row.slaResolveDueAt) return false;
-      const dueMs = new Date(row.slaResolveDueAt).getTime();
-      return !Number.isNaN(dueMs) && dueMs < nowMs;
-    });
-  }, [applied.slaBreached, data?.items, nowMs]);
-  const pagination = data?.pagination;
+  const items = useMemo((): ReportsListRow[] => {
+    if (isDeo) {
+      return (deoQuery.data?.items ?? []).map(row => ({
+        id: row.id,
+        code: row.code,
+        categoryName: row.categoryName,
+        severity: row.severity,
+        status: row.status,
+        address: row.address,
+        createdAt: row.createdAt,
+        slaResolveDueAt: row.slaResolveDueAt,
+        thumbnails: row.firstImageUrl ? [row.firstImageUrl] : [],
+        isPossibleDuplicate: row.isPossibleDuplicate,
+        isSuspectedViolationRecurrence: row.isSuspectedViolationRecurrence,
+      }));
+    }
+
+    const rows = leoQuery.data?.items ?? [];
+    const filtered =
+      applied.slaBreached !== 'yes'
+        ? rows
+        : rows.filter(row => {
+            if (!row.slaResolveDueAt) return false;
+            const dueMs = new Date(row.slaResolveDueAt).getTime();
+            return !Number.isNaN(dueMs) && dueMs < nowMs;
+          });
+
+    return filtered.map(row => ({
+      id: row.id,
+      code: row.code,
+      categoryName: row.categoryName,
+      severity: row.severity,
+      status: row.status,
+      address: row.address,
+      createdAt: row.createdAt,
+      slaResolveDueAt: row.slaResolveDueAt,
+      thumbnails: row.thumbnails ?? [],
+      isPossibleDuplicate: false,
+      isSuspectedViolationRecurrence: false,
+    }));
+  }, [applied.slaBreached, deoQuery.data?.items, isDeo, leoQuery.data?.items, nowMs]);
+  const pagination = isDeo ? deoQuery.data?.pagination : leoQuery.data?.pagination;
 
   return (
     <>
@@ -992,7 +1074,9 @@ export function ReportsListClient() {
             <div>
               <h1 className="text-lg font-bold tracking-tight text-slate-900">Báo cáo</h1>
               <p className="text-xs font-normal text-slate-500">
-                Tra cứu báo cáo đã đóng hoặc đã từ chối
+                {isDeo
+                  ? 'Tất cả báo cáo thuộc Sở bạn quản lý'
+                  : 'Tra cứu báo cáo đã đóng hoặc đã từ chối'}
               </p>
             </div>
           </div>
@@ -1067,6 +1151,7 @@ export function ReportsListClient() {
         draft={draft}
         categories={catalogCategories}
         categoriesLoading={categoriesLoading}
+        statusFilters={isDeo ? STATUS_FILTERS_DEO : STATUS_FILTERS_LEO}
         onReset={handleResetDraft}
         onApply={handleApplyDraft}
         onDraftChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
@@ -1181,7 +1266,7 @@ export function ReportsListClient() {
 
 function renderReportsCell(
   key: ColumnKey,
-  row: LeoMyReportItem,
+  row: ReportsListRow,
   opts?: { imagePriority?: boolean }
 ) {
   switch (key) {
@@ -1267,12 +1352,18 @@ function ReportIdentityCell({
   row,
   imagePriority = false,
 }: {
-  row: LeoMyReportItem;
+  row: ReportsListRow;
   imagePriority?: boolean;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <ReportThumb url={row.thumbnails[0] ?? null} alt={row.code} priority={imagePriority} />
+      <ReportThumb
+        url={row.thumbnails[0] ?? null}
+        alt={row.code}
+        isPossibleDuplicate={row.isPossibleDuplicate}
+        isSuspectedViolationRecurrence={row.isSuspectedViolationRecurrence}
+        priority={imagePriority}
+      />
 
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="group/copyrow flex min-w-0 items-center gap-1">
@@ -1320,21 +1411,21 @@ function ReportIdentityCell({
 function ReportThumb({
   url,
   alt,
+  isPossibleDuplicate = false,
+  isSuspectedViolationRecurrence = false,
   priority = false,
 }: {
   url: string | null;
   alt: string;
+  isPossibleDuplicate?: boolean;
+  isSuspectedViolationRecurrence?: boolean;
   priority?: boolean;
 }) {
-  if (!url) {
-    return (
-      <div className={cn(THUMB_SQUARE, 'flex items-center justify-center text-slate-400')}>
-        <ImageIcon className="size-4" aria-hidden />
-      </div>
-    );
-  }
-
-  return (
+  const thumb = !url ? (
+    <div className={cn(THUMB_SQUARE, 'flex items-center justify-center text-slate-400')}>
+      <ImageIcon className="size-4" aria-hidden />
+    </div>
+  ) : (
     <div className={THUMB_SQUARE}>
       <Image
         src={url}
@@ -1345,6 +1436,59 @@ function ReportThumb({
         unoptimized
         priority={priority}
       />
+    </div>
+  );
+
+  if (!isPossibleDuplicate && !isSuspectedViolationRecurrence) return thumb;
+
+  return (
+    <div className="relative inline-flex shrink-0">
+      {thumb}
+      {isPossibleDuplicate ? (
+        <AnimatedHoverTooltip
+          name="Nghi ngờ trùng lặp"
+          className="absolute -right-1.5 -top-1.5 z-10"
+        >
+          <span
+            className={cn(
+              'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
+              'rounded-full bg-amber-500 text-white shadow-sm',
+              'ring-2 ring-white'
+            )}
+            aria-label="Nghi ngờ trùng lặp"
+          >
+            <Copy
+              className="size-2 @[44rem]/verify-table:size-2.5"
+              aria-hidden
+              strokeWidth={2.75}
+            />
+          </span>
+        </AnimatedHoverTooltip>
+      ) : null}
+      {isSuspectedViolationRecurrence ? (
+        <AnimatedHoverTooltip
+          name="Nghi ô nhiễm tái diễn"
+          className={cn(
+            'absolute z-10',
+            isPossibleDuplicate ? '-right-1.5 top-3.5' : '-right-1.5 -top-1.5'
+          )}
+        >
+          <span
+            className={cn(
+              'inline-flex size-4 items-center justify-center @[44rem]/verify-table:size-5',
+              'rounded-full bg-orange-500 text-white shadow-sm',
+              'ring-2 ring-white'
+            )}
+            aria-label="Nghi ô nhiễm tái diễn"
+          >
+            <History
+              className="size-2 @[44rem]/verify-table:size-2.5"
+              aria-hidden
+              strokeWidth={2.75}
+            />
+          </span>
+        </AnimatedHoverTooltip>
+      ) : null}
     </div>
   );
 }
@@ -1365,10 +1509,14 @@ function SeverityText({ severity }: { severity: ReportSeverity }) {
   );
 }
 
-function StatusBadge({ status }: { status: LeoMyReportItem['status'] }) {
-  const label = reportStatusLabelVi(status);
+function StatusBadge({ status }: { status: string }) {
+  const normalized = normalizeReportStatus(status);
+  const label = reportStatusLabelVi(normalized);
   return (
-    <span className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[status])} title={label}>
+    <span
+      className={cn(BADGE_BASE, BADGE_SIZE, REPORT_STATUS_BADGE_CLASSES[normalized])}
+      title={label}
+    >
       {label}
     </span>
   );

@@ -12,7 +12,6 @@ import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useReportProgress } from '@/hooks/useReport';
-import { useTeamDetail } from '@/hooks/useTeams';
 import type {
   ReportProgress,
   ReportProgressAssignment,
@@ -720,17 +719,9 @@ function TeamProgressRow({
   const isDeclined = assignment.status === 'Declined';
   const statusLabel = ASSIGNMENT_STATUS_LABEL[assignment.status] ?? assignment.status;
 
-  const {
-    data: teamDetail,
-    isPending,
-    isError,
-    refetch,
-    isFetching,
-  } = useTeamDetail(expanded ? assignment.teamId : null);
-
   const members = useMemo(
-    () => [...(teamDetail?.members ?? [])].sort((a, b) => Number(b.isLeader) - Number(a.isLeader)),
-    [teamDetail?.members]
+    () => [...(assignment.members ?? [])].sort((a, b) => Number(b.isLeader) - Number(a.isLeader)),
+    [assignment.members]
   );
 
   const percent = Math.max(0, Math.min(100, Math.round(assignment.progressPercent)));
@@ -807,23 +798,7 @@ function TeamProgressRow({
 
       {expanded ? (
         <div className="mt-3 ml-12 border-l border-slate-100 pl-3">
-          {isPending ? (
-            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              Đang tải thành viên…
-            </div>
-          ) : isError ? (
-            <div className="flex flex-wrap items-center gap-2 py-2">
-              <p className="text-xs text-destructive">Không tải được danh sách thành viên.</p>
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                className="text-xs font-medium text-brand hover:underline"
-              >
-                {isFetching ? 'Đang thử lại…' : 'Thử lại'}
-              </button>
-            </div>
-          ) : members.length === 0 ? (
+          {members.length === 0 ? (
             <p className="py-2 text-xs text-muted-foreground">Đội chưa có thành viên.</p>
           ) : (
             <ul className="space-y-2.5 py-1">
