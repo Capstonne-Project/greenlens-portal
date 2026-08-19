@@ -2,6 +2,16 @@
 
 import { ValidatedInput } from '@/components/common/ValidatedField';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useUpdateAdminUser } from '@/hooks/useAdminUsers';
 import {
   ADMIN_USER_ASSIGNABLE_ROLES,
@@ -14,7 +24,7 @@ import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -59,6 +69,7 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
     handleSubmit,
     reset,
     watch,
+    control,
     formState: { errors },
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
@@ -104,9 +115,6 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
     );
   });
 
-  const selectClass =
-    'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
   return (
     <AdminUserDialogShell
       open={user != null}
@@ -119,7 +127,9 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
           <p className="text-sm text-muted-foreground">
             Email: <span className="font-medium text-foreground">{user.email}</span>
           </p>
-          <Field label="Họ tên">
+
+          <div className="space-y-1.5">
+            <Label>Họ tên</Label>
             <ValidatedInput
               type="text"
               {...register('fullName')}
@@ -128,8 +138,10 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
               maxLength={160}
               error={errors.fullName?.message}
             />
-          </Field>
-          <Field label="Số điện thoại">
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Số điện thoại</Label>
             <ValidatedInput
               type="tel"
               {...register('phoneNumber')}
@@ -138,73 +150,65 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
               maxLength={15}
               error={errors.phoneNumber?.message}
             />
-          </Field>
-          <Field label="Vai trò">
-            <select className={selectClass} {...register('role')}>
-              {ADMIN_USER_ASSIGNABLE_ROLES.map(r => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Vai trò</Label>
+            <Controller
+              control={control}
+              name="role"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Chọn vai trò" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ADMIN_USER_ASSIGNABLE_ROLES.map(r => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.role ? (
               <p className="text-xs font-medium text-destructive">{errors.role.message}</p>
             ) : null}
-          </Field>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-input text-emerald-700 focus:ring-emerald-500/40"
-              {...register('isEmailVerified')}
-            />
-            Đã xác minh email
-          </label>
-          <DialogFormActions
-            pending={updateUser.isPending}
-            onCancel={onClose}
-            submitLabel="Lưu thay đổi"
+          </div>
+
+          <Controller
+            control={control}
+            name="isEmailVerified"
+            render={({ field }) => (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit-email-verified"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+                <Label htmlFor="edit-email-verified" className="cursor-pointer">
+                  Đã xác minh email
+                </Label>
+              </div>
+            )}
           />
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              disabled={updateUser.isPending}
+              className="bg-emerald-700 text-white hover:bg-emerald-800"
+            >
+              {updateUser.isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              Lưu thay đổi
+            </Button>
+          </div>
         </form>
       )}
     </AdminUserDialogShell>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-sm font-medium text-foreground">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function DialogFormActions({
-  pending,
-  onCancel,
-  submitLabel,
-}: {
-  pending: boolean;
-  onCancel: () => void;
-  submitLabel: string;
-}) {
-  return (
-    <div className="flex justify-end gap-2 pt-2">
-      <button
-        type="button"
-        onClick={onCancel}
-        className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-      >
-        Hủy
-      </button>
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-      >
-        {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        {submitLabel}
-      </button>
-    </div>
   );
 }

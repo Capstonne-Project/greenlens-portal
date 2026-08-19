@@ -12,6 +12,7 @@ import {
 } from '@/components/admin/shared/adminDataTableChrome';
 import { ValidatedNumberInput } from '@/components/common/ValidatedField';
 import { useSpamSuspectsList } from '@/hooks/useSpamSuspects';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -32,7 +33,7 @@ import {
   suspectBanBadgeClass,
   suspectBanLabel,
 } from '@/utils/spamSuspectUi';
-import { Filter, Loader2, RotateCcw } from 'lucide-react';
+import { Filter, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const COLUMN_COUNT = 6;
@@ -234,7 +235,7 @@ export function AdminSpamSuspectsView() {
               {listQuery.isPending && !listQuery.data ? (
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={COLUMN_COUNT} className="h-40 px-6 py-4 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
                   </TableCell>
                 </TableRow>
               ) : listQuery.isError ? (

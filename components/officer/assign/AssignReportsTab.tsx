@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CreateCommunityCleanupDialog } from '@/components/officer/assign/CreateCommunityCleanupDialog';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { Input } from '@/components/ui/input';
 import LayoutSidebarRightIcon from '@/components/ui/layout-sidebar-right-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
@@ -1319,7 +1320,7 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
                         colSpan={TABLE_COLS.length}
                         className={cn(tableCellPad('code'), 'h-40 text-center')}
                       >
-                        <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
+                        <GreenLensLookupSpinner className="mx-auto size-8" />
                       </TableCell>
                     </TableRow>
                   ) : isError ? (

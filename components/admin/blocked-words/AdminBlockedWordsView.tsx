@@ -11,6 +11,7 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { BlockedWordFormDialog } from '@/components/admin/blocked-words/BlockedWordFormDialog';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import {
   useBlockedWordsList,
@@ -97,7 +98,7 @@ export function AdminBlockedWordsView() {
               {isPending ? (
                 <tr>
                   <td colSpan={3} className="h-32 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
                   </td>
                 </tr>
               ) : isError ? (
