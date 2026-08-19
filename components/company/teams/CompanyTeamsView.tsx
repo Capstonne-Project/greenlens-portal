@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import {
   Table,
@@ -694,7 +695,7 @@ export function CompanyTeamsView({
                 {isPending ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-40 text-center text-sm text-slate-500">
-                      <Loader2 className="mx-auto size-5 animate-spin" />
+                      <GreenLensLookupSpinner className="mx-auto size-8" />
                     </TableCell>
                   </TableRow>
                 ) : isError ? (

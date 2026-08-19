@@ -1,6 +1,15 @@
 'use client';
 
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAdminRoles, useChangeAdminUserRole } from '@/hooks/useAdminUsers';
 import type { AdminUser, AdminUserDetail } from '@/lib/api/models/adminUser';
 import { ADMIN_USER_ASSIGNABLE_ROLES } from '@/lib/constants/adminUsersNav';
@@ -10,7 +19,7 @@ import { roleDisplayVi } from '@/utils/adminUserUi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -58,9 +67,9 @@ function ChangeRoleForm({
   const schema = useMemo(() => createChangeRoleSchema(user.role), [user.role]);
 
   const {
-    register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<ChangeRoleFormValues>({
     resolver: zodResolver(schema),
@@ -96,9 +105,6 @@ function ChangeRoleForm({
     );
   });
 
-  const fieldClass =
-    'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-sm">
@@ -117,47 +123,54 @@ function ChangeRoleForm({
       ) : null}
 
       <div className="space-y-1.5">
-        <label htmlFor="admin-user-new-role" className="text-sm font-medium text-foreground">
+        <Label htmlFor="admin-user-new-role">
           Vai trò mới <span className="text-destructive">*</span>
-        </label>
-        <select
-          id="admin-user-new-role"
-          className={fieldClass}
-          disabled={rolesLoading || changeRole.isPending}
-          {...register('newRole')}
-        >
-          <option value="">{rolesLoading ? 'Đang tải vai trò…' : 'Chọn vai trò'}</option>
-          {roleOptions.map(r => (
-            <option
-              key={r.value}
-              value={r.value}
-              disabled={normalizeApiRole(r.value) === normalizeApiRole(user.role)}
+        </Label>
+        <Controller
+          control={control}
+          name="newRole"
+          render={({ field }) => (
+            <Select
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={rolesLoading || changeRole.isPending}
             >
-              {r.label}
-            </option>
-          ))}
-        </select>
+              <SelectTrigger id="admin-user-new-role" className="w-full">
+                <SelectValue
+                  placeholder={rolesLoading ? 'Đang tải vai trò…' : 'Chọn vai trò'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map(r => (
+                  <SelectItem
+                    key={r.value}
+                    value={r.value}
+                    disabled={normalizeApiRole(r.value) === normalizeApiRole(user.role)}
+                  >
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.newRole ? (
           <p className="text-xs font-medium text-destructive">{errors.newRole.message}</p>
         ) : null}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-        >
+        <Button type="button" variant="outline" onClick={onClose}>
           Hủy
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={changeRole.isPending || rolesLoading}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+          className="bg-emerald-700 text-white hover:bg-emerald-800"
         >
           {changeRole.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
           Xác nhận đổi
-        </button>
+        </Button>
       </div>
     </form>
   );

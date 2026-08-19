@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,7 +38,7 @@ import { cn } from '@/lib/utils';
 import { faUser } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Leaf, Loader2, Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -76,19 +77,6 @@ type RecruitStaffFormValues = z.infer<typeof recruitStaffSchema>;
 const RECRUIT_TEAM_LIST_PARAMS = { page: 1, pageSize: 10 } as const;
 
 const EMAIL_LOOKUP_SCHEMA = z.string().trim().email();
-
-/** Spinner GreenLens — lá trong vòng quay xanh (thay Octocat GitHub). */
-function GreenLensLookupSpinner({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn('relative inline-flex size-5 shrink-0 items-center justify-center', className)}
-      aria-hidden
-    >
-      <span className="absolute inset-0 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
-      <Leaf className="size-2.5 text-emerald-600" strokeWidth={2.5} />
-    </span>
-  );
-}
 
 /** BE `currentStatus` → nhãn VI ngắn — parity CreateInspectionReportDialog. */
 function teamStatusLabelVi(currentStatus: string): string {

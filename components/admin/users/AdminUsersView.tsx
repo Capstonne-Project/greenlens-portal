@@ -1,12 +1,8 @@
 'use client';
 
 import {
-  ADMIN_TABLE_CLASS,
   ADMIN_TABLE_HEAD_CELL,
   ADMIN_TABLE_ROW_BORDER,
-  ADMIN_TABLE_SCROLL,
-  ADMIN_TABLE_SHELL,
-  ADMIN_TABLE_PAGINATION_FOOTER,
   ADMIN_TABLE_PAGINATION_META,
   adminTableCellPadCompact,
 } from '@/components/admin/shared/adminDataTableChrome';
@@ -17,6 +13,10 @@ import { AdminUserDetailDialog } from '@/components/admin/users/AdminUserDetailD
 import { AdminUserEditDialog } from '@/components/admin/users/AdminUserEditDialog';
 import { AdminUserSummaryStrip } from '@/components/admin/users/AdminUserSummaryStrip';
 import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -26,21 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAdminUsersList } from '@/hooks/useAdminUsers';
 import type { AdminUser, AdminUserDetail } from '@/lib/api/models/adminUser';
 import { ADMIN_USERS_PAGE_SIZE } from '@/lib/constants/adminUsersNav';
 import { cn } from '@/lib/utils';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
-import { Download, Eye, Loader2, Pencil, Trash2, UserCog } from 'lucide-react';
+import { Eye, Pencil, Trash2, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
@@ -77,7 +70,7 @@ interface AdminUsersViewProps {
   apiRole?: string;
 }
 
-/** Tìm kiếm người dùng — debounce + nút Tìm. */
+/** Tìm kiếm người dùng — debounce, không label. */
 function AdminUsersSearchField({
   searchQ,
   pathname,
@@ -102,11 +95,11 @@ function AdminUsersSearchField({
 
   return (
     <AdminSearchField
-      label="Tìm người dùng"
+      label=""
       value={searchQ}
       onCommit={commitSearch}
       placeholder="Họ tên, email, số điện thoại..."
-      className="min-w-[220px] flex-1"
+      className="min-w-55 flex-1"
     />
   );
 }
@@ -159,29 +152,27 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
   const verifiedOnPage = items.filter(u => u.isEmailVerified).length;
   const unverifiedOnPage = items.length - verifiedOnPage;
 
-  const pageLabel =
-    pagination != null ? `Trang ${pagination.page}/${pagination.totalPages}` : `Trang ${page}`;
-
   return (
-    <div className="w-full min-w-0 space-y-2">
-      <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-2.5 shadow-sm">
+    /* Viewport-fit layout: toolbar fixed, only table area scrolls */
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
+      {/* ── Toolbar (fixed height, never scrolls) ─────────────────────────── */}
+      <div className="shrink-0 space-y-4 pb-8">
         <AdminUserSummaryStrip
           totalItems={pagination?.totalItems ?? null}
           onPageCount={items.length}
           verifiedOnPage={verifiedOnPage}
           unverifiedOnPage={unverifiedOnPage}
-          roleHint={apiRole ? roleDisplayVi(apiRole) : 'Mọi vai trò'}
-          pageLabel={pageLabel}
         />
 
-        <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
+        {/* Filter row — single line on md+, wraps gracefully on mobile */}
+        <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
           <AdminUsersSearchField
             searchQ={searchQ}
             pathname={pathname}
             searchParams={searchParams}
           />
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 md:ml-auto">
             <Select
               value={verifiedParam ?? 'all'}
               onValueChange={v => {
@@ -194,7 +185,7 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
             >
               <SelectTrigger
                 id="verified-filter"
-                className="h-9 w-[14rem] rounded-lg"
+                className="h-9 w-56"
                 aria-label="Trạng thái xác minh email"
               >
                 <SelectValue placeholder="Xác minh email: Tất cả" />
@@ -205,216 +196,233 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
                 <SelectItem value="false">Chưa xác minh</SelectItem>
               </SelectContent>
             </Select>
-          </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground"
-            >
-              <Download className="size-4" />
-              Xuất
-            </button>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              className="h-9 shrink-0 bg-emerald-700 text-white hover:bg-emerald-800"
               onClick={() => setCreateOpen(true)}
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
             >
-              + Tạo tài khoản
-            </button>
+              + <span className="hidden sm:inline">Tạo tài khoản</span>
+              <span className="sm:hidden">Tạo</span>
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className={ADMIN_TABLE_SHELL}>
-        <div className={ADMIN_TABLE_SCROLL}>
-          <Table className={ADMIN_TABLE_CLASS}>
-            <TableHeader className="sticky top-0 z-10 bg-slate-100">
-              <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
-                <TableHead
+      {/* ── Table area (fills remaining height, header fixed, body scrolls) ─── */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">
+        {/*
+          Enterprise pattern: render native <table> directly (bypassing shadcn
+          wrapper div that breaks sticky thead) inside a single overflow-auto
+          scroll container. thead uses position:sticky top-0 — works reliably
+          because this div is the only scroll ancestor.
+        */}
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
+          <table className="w-full min-w-170 caption-bottom text-sm">
+            <thead className="sticky top-0 z-10">
+              <tr className={cn(ADMIN_TABLE_ROW_BORDER, 'bg-slate-100 hover:bg-slate-100')}>
+                <th
                   className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPadCompact('first', 'head'))}
                 >
                   Họ tên
-                </TableHead>
-                <TableHead
+                </th>
+                <th
                   className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPadCompact('middle', 'head'))}
                 >
                   Liên hệ
-                </TableHead>
-                <TableHead
+                </th>
+                <th
                   className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPadCompact('middle', 'head'))}
                 >
                   Vai trò
-                </TableHead>
-                <TableHead
+                </th>
+                <th
                   className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPadCompact('middle', 'head'))}
                 >
                   Ngày tạo
-                </TableHead>
-                <TableHead
+                </th>
+                <th
                   className={cn(ADMIN_TABLE_HEAD_CELL, adminTableCellPadCompact('middle', 'head'))}
                 >
                   Trạng thái email
-                </TableHead>
-                <TableHead
+                </th>
+                <th
                   className={cn(
                     ADMIN_TABLE_HEAD_CELL,
                     adminTableCellPadCompact('last', 'head'),
-                    'w-56 whitespace-nowrap text-right'
+                    'w-44 whitespace-nowrap text-right'
                   )}
                 >
                   Thao tác
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="[&_tr:last-child]:border-0">
               {isPending ? (
-                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
-                  <TableCell colSpan={6} className="h-32 px-6 py-3 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
-                  </TableCell>
-                </TableRow>
+                <tr className={ADMIN_TABLE_ROW_BORDER}>
+                  <td colSpan={6} className="h-32 px-6 py-3 text-center align-middle">
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
+                  </td>
+                </tr>
               ) : isError ? (
-                <TableRow className={ADMIN_TABLE_ROW_BORDER}>
-                  <TableCell colSpan={6} className="h-32 px-6 py-3 text-center">
+                <tr className={ADMIN_TABLE_ROW_BORDER}>
+                  <td colSpan={6} className="h-32 px-6 py-3 text-center align-middle">
                     <p className="text-sm text-destructive">
                       {getAdminUserMutationError(error, 'Không tải được danh sách người dùng.')}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => refetch()}
-                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
-                    >
+                    <Button variant="link" onClick={() => refetch()} className="mt-2 text-sky-700">
                       Thử lại
-                    </button>
-                  </TableCell>
-                </TableRow>
+                    </Button>
+                  </td>
+                </tr>
               ) : items.length === 0 ? (
-                <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
-                  <TableCell colSpan={6} className="h-32 px-6 py-3 text-center">
+                <tr className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-transparent')}>
+                  <td colSpan={6} className="h-32 px-6 py-3 text-center align-middle">
                     <div className="flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
                       <SaveIcon size={32} className="opacity-30" />
                       <span>Không có người dùng phù hợp.</span>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : (
-                items.map(user => (
-                  <TableRow
-                    key={user.id}
-                    className={cn(ADMIN_TABLE_ROW_BORDER, 'hover:bg-sky-50/40')}
-                  >
-                    <TableCell className={cn(adminTableCellPadCompact('first'), 'align-middle')}>
-                      <div className="flex items-center gap-3">
-                        {user.avatarUrl ? (
-                          <div className="relative size-8 shrink-0 overflow-hidden rounded-full ring-2 ring-emerald-600/15">
-                            <Image
-                              src={user.avatarUrl}
-                              alt=""
-                              fill
-                              sizes="32px"
-                              className="object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div
-                            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/15 text-[10px] font-bold text-emerald-900"
-                            aria-hidden
-                          >
-                            {initialsFromName(user.fullName || user.email)}
-                          </div>
-                        )}
-                        <span className="text-sm font-semibold text-foreground">
-                          {user.fullName}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        adminTableCellPadCompact('middle'),
-                        'max-w-[220px] align-middle'
-                      )}
+                <TooltipProvider delayDuration={200}>
+                  {items.map(user => (
+                    <tr
+                      key={user.id}
+                      className={cn(ADMIN_TABLE_ROW_BORDER, 'transition-colors hover:bg-sky-50/40')}
                     >
-                      <div className="truncate text-muted-foreground">{user.email}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {user.phoneNumber ?? '—'}
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn(adminTableCellPadCompact('middle'), 'align-middle')}>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${roleBadgeClasses(user.role)}`}
+                      <td className={cn(adminTableCellPadCompact('first'), 'align-middle')}>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8 ring-2 ring-emerald-600/15">
+                            {user.avatarUrl ? (
+                              <AvatarImage asChild src={user.avatarUrl}>
+                                <Image
+                                  src={user.avatarUrl}
+                                  alt=""
+                                  fill
+                                  sizes="32px"
+                                  className="object-cover"
+                                />
+                              </AvatarImage>
+                            ) : null}
+                            <AvatarFallback className="bg-emerald-600/15 text-[10px] font-bold text-emerald-900">
+                              {initialsFromName(user.fullName || user.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-semibold text-foreground">
+                            {user.fullName}
+                          </span>
+                        </div>
+                      </td>
+                      <td
+                        className={cn(adminTableCellPadCompact('middle'), 'max-w-55 align-middle')}
                       >
-                        {roleDisplayVi(user.role)}
-                      </span>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        adminTableCellPadCompact('middle'),
-                        'whitespace-nowrap align-middle text-muted-foreground'
-                      )}
-                    >
-                      {formatCreatedAt(user.createdAt)}
-                    </TableCell>
-                    <TableCell className={cn(adminTableCellPadCompact('middle'), 'align-middle')}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className={`size-2 shrink-0 rounded-full ${user.isEmailVerified ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                          aria-hidden
-                        />
-                        {user.isEmailVerified ? 'Đã xác minh' : 'Chưa xác minh'}
-                      </span>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        adminTableCellPadCompact('last'),
-                        'w-56 whitespace-nowrap text-right align-middle'
-                      )}
-                    >
-                      <div className="inline-flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setDetailUserId(user.id)}
-                          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                          aria-label="Xem chi tiết người dùng"
+                        <div className="truncate text-muted-foreground">{user.email}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {user.phoneNumber ?? '—'}
+                        </div>
+                      </td>
+                      <td className={cn(adminTableCellPadCompact('middle'), 'align-middle')}>
+                        <Badge
+                          variant="outline"
+                          className={cn('text-[11px] font-medium', roleBadgeClasses(user.role))}
                         >
-                          <Eye className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setChangeRoleUser(user)}
-                          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                          aria-label="Đổi vai trò"
-                        >
-                          <UserCog className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditUser(user)}
-                          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                          aria-label="Sửa người dùng"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteUser(user)}
-                          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                          aria-label="Xóa người dùng"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          {roleDisplayVi(user.role)}
+                        </Badge>
+                      </td>
+                      <td
+                        className={cn(
+                          adminTableCellPadCompact('middle'),
+                          'whitespace-nowrap align-middle text-muted-foreground'
+                        )}
+                      >
+                        {formatCreatedAt(user.createdAt)}
+                      </td>
+                      <td className={cn(adminTableCellPadCompact('middle'), 'align-middle')}>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className={`size-2 shrink-0 rounded-full ${user.isEmailVerified ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                            aria-hidden
+                          />
+                          {user.isEmailVerified ? 'Đã xác minh' : 'Chưa xác minh'}
+                        </span>
+                      </td>
+                      <td
+                        className={cn(
+                          adminTableCellPadCompact('last'),
+                          'w-44 whitespace-nowrap text-right align-middle'
+                        )}
+                      >
+                        <div className="inline-flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground"
+                                onClick={() => setDetailUserId(user.id)}
+                              >
+                                <Eye className="size-3.5" />
+                                <span className="sr-only">Xem chi tiết</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Xem chi tiết</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground"
+                                onClick={() => setChangeRoleUser(user)}
+                              >
+                                <UserCog className="size-3.5" />
+                                <span className="sr-only">Đổi vai trò</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Đổi vai trò</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground"
+                                onClick={() => setEditUser(user)}
+                              >
+                                <Pencil className="size-3.5" />
+                                <span className="sr-only">Sửa</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Sửa người dùng</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setDeleteUser(user)}
+                              >
+                                <Trash2 className="size-3.5" />
+                                <span className="sr-only">Xóa</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Xóa người dùng</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </TooltipProvider>
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
 
+        {/* Pagination footer — pinned at bottom of the table card */}
         {pagination ? (
-          <div className={ADMIN_TABLE_PAGINATION_FOOTER}>
+          <div className="flex shrink-0 items-center justify-between border-t border-slate-200 px-4 py-2.5">
             {pagination.totalPages > 1 ? (
               <PaginationSimple
                 page={pagination.page}
@@ -422,7 +430,9 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
                 onPageChange={p => setQuery({ page: String(p) })}
                 className="w-auto"
               />
-            ) : null}
+            ) : (
+              <span />
+            )}
             <p className={ADMIN_TABLE_PAGINATION_META}>
               {pagination.totalItems.toLocaleString('vi-VN')} rows
             </p>

@@ -15,7 +15,10 @@ const adminNavConfig = getAdminShellNavConfig();
  */
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isViewportFitPage = pathname === '/admin' || pathname === '/admin/notification-templates';
+  const isViewportFitPage =
+    pathname === '/admin' ||
+    pathname === '/admin/notification-templates' ||
+    pathname.startsWith('/admin/users');
 
   return (
     <div className="app-canvas flex h-dvh w-screen overflow-hidden font-sans md:flex-row">

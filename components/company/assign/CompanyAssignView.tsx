@@ -10,6 +10,7 @@ import { CompanyAssignTeamDialog } from '@/components/company/assign/CompanyAssi
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import LayoutSidebarRightIcon from '@/components/ui/layout-sidebar-right-icon';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
@@ -1193,7 +1194,7 @@ export function CompanyAssignView() {
                         colSpan={TABLE_COLS.length}
                         className={cn(tableCellPad('code'), 'h-40 text-center')}
                       >
-                        <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
+                        <GreenLensLookupSpinner className="mx-auto size-8" />
                       </TableCell>
                     </TableRow>
                   ) : isError ? (
