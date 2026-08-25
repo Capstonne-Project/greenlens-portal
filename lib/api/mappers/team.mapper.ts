@@ -5,6 +5,7 @@ import type {
   TeamMemberDto,
   TeamMembershipDto,
   TeamsListDataDto,
+  WasteTagInTeamDto,
 } from '@/lib/api/dto/team.dto';
 import type {
   CreatedTeam,
@@ -13,6 +14,7 @@ import type {
   TeamMember,
   TeamMembership,
   TeamsList,
+  WasteTagInTeam,
 } from '@/lib/api/models/team';
 
 export function mapTeamListItemDto(dto: TeamListItemDto): TeamListItem {
@@ -27,6 +29,8 @@ export function mapTeamListItemDto(dto: TeamListItemDto): TeamListItem {
     createdAt: dto.createdAt,
     currentStatus: dto.currentStatus,
     activeReportId: dto.activeReportId ?? null,
+    wasteTags: (dto.wasteTags ?? []).map(mapWasteTagInTeamDto),
+    wasteTagMatchCount: dto.wasteTagMatchCount ?? 0,
   };
 }
 
@@ -51,8 +55,19 @@ export function mapTeamDetailDto(dto: TeamDetailDto): TeamDetail {
     officeName: dto.officeName ?? null,
     isActive: dto.isActive,
     members: (dto.members ?? []).map(mapTeamMemberDto),
+    wasteTags: (dto.wasteTags ?? []).map(mapWasteTagInTeamDto),
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+  };
+}
+
+export function mapWasteTagInTeamDto(dto: WasteTagInTeamDto): WasteTagInTeam {
+  return {
+    tagId: dto.tagId,
+    code: dto.code,
+    nameVi: dto.nameVi,
+    nameEn: dto.nameEn,
+    iconUrl: dto.iconUrl ?? null,
   };
 }
 
@@ -62,6 +77,7 @@ export function mapCreateTeamDataDto(dto: CreateTeamDataDto): CreatedTeam {
     name: dto.name,
     localOfficeId: dto.localOfficeId,
     teamType: dto.teamType,
+    wasteTags: (dto.wasteTags ?? []).map(mapWasteTagInTeamDto),
   };
 }
 

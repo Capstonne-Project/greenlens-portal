@@ -7,6 +7,7 @@ import type {
   ReportProgressMemberDto,
   ReportProgressStatusHistoryDto,
   ReportProgressUpdateDto,
+  ReportProgressWasteTagDto,
 } from '@/lib/api/dto/reportProgress.dto';
 import type {
   ReportProgress,
@@ -17,6 +18,7 @@ import type {
   ReportProgressMember,
   ReportProgressStatusHistory,
   ReportProgressUpdate,
+  ReportProgressWasteTag,
 } from '@/lib/api/models/reportProgress';
 
 function mapProgressImageDto(dto: ReportProgressImageDto): ReportProgressImage {
@@ -66,6 +68,16 @@ function mapAssignedCompanyDto(
   };
 }
 
+function mapProgressWasteTagDto(dto: ReportProgressWasteTagDto): ReportProgressWasteTag {
+  return {
+    tagId: dto.tagId,
+    code: dto.code,
+    nameVi: dto.nameVi,
+    nameEn: dto.nameEn ?? null,
+    iconUrl: dto.iconUrl ?? null,
+  };
+}
+
 function mapProgressAssignmentDto(
   dto: ReportProgressAssignmentDto | null | undefined
 ): ReportProgressAssignment | null {
@@ -91,6 +103,7 @@ function mapProgressAssignmentDto(
     progressPercent: dto.progressPercent ?? 0,
     progressNote: dto.progressNote ?? null,
     progressUpdatedAt: dto.progressUpdatedAt ?? null,
+    teamWasteTags: (dto.teamWasteTags ?? []).map(mapProgressWasteTagDto),
     members: (dto.members ?? []).map(mapProgressMemberDto),
     progressUpdates: (dto.progressUpdates ?? []).map(mapProgressUpdateDto),
   };

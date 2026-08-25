@@ -6,12 +6,14 @@ import {
   fetchTeamDetail,
   fetchTeams,
   removeTeamMember,
+  updateTeam,
 } from '@/lib/api/services/fetchTeam';
 import type {
   AddTeamMemberInput,
   CreateTeamInput,
   TeamDetail,
   TeamsListParams,
+  UpdateTeamInput,
 } from '@/lib/api/models/team';
 import type { OfficeStaffList, OfficeStaffListParams } from '@/lib/api/models/office';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -123,6 +125,17 @@ export function useCreateTeam() {
     mutationFn: (body: CreateTeamInput) => createTeam(body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: teamKeys.all });
+    },
+  });
+}
+
+export function useUpdateTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateTeamInput }) => updateTeam(id, body),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: teamKeys.all });
+      void queryClient.invalidateQueries({ queryKey: teamKeys.detail(id) });
     },
   });
 }

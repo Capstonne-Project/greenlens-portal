@@ -4,14 +4,32 @@
 export interface CreateTeamBodyDto {
   name: string;
   teamType: string;
+  /** Cleanup → bắt buộc ≥ 1; Inspection → bỏ qua / không gửi. */
+  wasteTagIds?: string[];
 }
 
-/** POST /v1/teams — 201 data */
+/** wasteTags trong response của POST /v1/teams. */
+export interface WasteTagInTeamDto {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  iconUrl: string | null;
+}
+
+/** POST /v1/teams — 200 data */
 export interface CreateTeamDataDto {
   id: string;
   name: string;
   localOfficeId: string;
   teamType: string;
+  wasteTags: WasteTagInTeamDto[];
+}
+
+/** PUT /v1/teams/{id} — body. */
+export interface UpdateTeamBodyDto {
+  name: string;
+  wasteTagIds?: string[];
 }
 
 /** POST /v1/teams/{teamId}/members */
@@ -42,6 +60,9 @@ export interface TeamListItemDto {
   currentStatus: string;
   /** ReportId đang xử lý nếu team Busy. */
   activeReportId: string | null;
+  /** Cleanup teams only. */
+  wasteTags?: WasteTagInTeamDto[];
+  wasteTagMatchCount?: number;
 }
 
 /** GET /v1/teams/{id} — item trong `members[]` */
@@ -65,6 +86,8 @@ export interface TeamDetailDto {
   officeName: string | null;
   isActive: boolean;
   members: TeamMemberDto[];
+  /** Cleanup teams only. */
+  wasteTags?: WasteTagInTeamDto[];
   createdAt: string;
   updatedAt: string;
 }

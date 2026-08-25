@@ -14,7 +14,7 @@ export interface ReportMediaDto {
   sizeBytes: number;
 }
 
-/** GET /v1/reports/{id} — `data.assignments[]` */
+/** GET /v1/reports/{id} — `data.assignments[]` & `data.currentAssignment` */
 export interface ReportAssignmentDto {
   id: string;
   teamId: string;
@@ -28,6 +28,28 @@ export interface ReportAssignmentDto {
   progressPercent?: number;
   progressNote?: string | null;
   progressUpdatedAt?: string | null;
+  teamWasteTags?: ReportWasteTagDto[];
+}
+
+/** GET /v1/reports/{id} — `data.assignmentHistory[]` */
+export interface ReportAssignmentHistoryItemDto {
+  assignmentId: string;
+  teamId: string;
+  teamName: string;
+  teamType: string;
+  status: string;
+  note?: string | null;
+  declineReason?: string | null;
+  assignedAt: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  assignedById?: string | null;
+  assignedByName?: string | null;
+  progressPercent?: number;
+  progressNote?: string | null;
+  progressUpdatedAt?: string | null;
+  isCurrent?: boolean;
+  teamWasteTags?: ReportWasteTagDto[];
 }
 
 /** GET /v1/reports/{id} — `data.wasteTags[]` */
@@ -121,6 +143,8 @@ export interface ReportDetailDto {
   assignedOfficeId?: string | null;
   media?: ReportMediaDto[];
   assignments?: ReportAssignmentDto[];
+  currentAssignment?: ReportAssignmentDto | null;
+  assignmentHistory?: ReportAssignmentHistoryItemDto[];
   wasteTags?: ReportWasteTagDto[];
   aiSuggestedWasteTagCodes?: string | null;
   createdAt: string;
