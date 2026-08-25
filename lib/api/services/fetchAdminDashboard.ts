@@ -107,9 +107,35 @@ export interface AdminResolutionDistributionItem {
 
 export interface AdminReportTrendPoint {
   date: string;
+  /** Total for single-series fallback */
   count: number;
+  /** BE: newly created reports */
+  created?: number;
+  /** Legacy / alias of `created` */
   submitted?: number;
   resolved?: number;
+}
+
+type AdminReportTrendPointRaw = {
+  date: string;
+  count?: number;
+  created?: number;
+  submitted?: number;
+  resolved?: number;
+};
+
+function normalizeAdminReportTrendPoint(raw: AdminReportTrendPointRaw): AdminReportTrendPoint {
+  const created = raw.created ?? raw.submitted ?? 0;
+  const resolved = raw.resolved ?? 0;
+  const count = raw.count ?? created + resolved;
+
+  return {
+    date: raw.date,
+    count,
+    created,
+    submitted: created,
+    resolved,
+  };
 }
 
 function buildDateRangeQuery(
@@ -265,12 +291,7 @@ export async function fetchAdminDashboardReportTrend(
     code: res.data.code,
     message: res.data.message,
     status: res.data.status,
-    data: points.map(p => ({
-      date: p.date,
-      count: p.count ?? 0,
-      submitted: p.submitted,
-      resolved: p.resolved,
-    })),
+    data: (points as AdminReportTrendPointRaw[]).map(normalizeAdminReportTrendPoint),
   };
 }
 

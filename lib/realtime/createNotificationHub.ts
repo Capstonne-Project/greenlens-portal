@@ -24,6 +24,7 @@ import {
   type ILogger,
 } from '@microsoft/signalr';
 import { refreshSessionOnce } from '@/lib/api/core';
+import { getApiBaseUrl } from '@/lib/api/getApiBaseUrl';
 import { isAbortError } from '@/lib/utils/abortError';
 import type {
   NotificationHub,
@@ -45,12 +46,9 @@ export function resolveNotificationHubUrl(): string {
   const override = trimUrl(process.env.NEXT_PUBLIC_NOTIFICATION_HUB_URL);
   if (override) return override.endsWith(HUB_PATH) ? override : `${override}${HUB_PATH}`;
 
-  const apiBase = trimUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
+  const apiBase = getApiBaseUrl();
   if (apiBase) return `${apiBase}${HUB_PATH}`;
 
-  if (typeof window !== 'undefined') {
-    return `/proxy-api${HUB_PATH}`;
-  }
   return `http://localhost:5162${HUB_PATH}`;
 }
 

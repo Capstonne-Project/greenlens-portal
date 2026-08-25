@@ -11,7 +11,7 @@ import {
 import { forwardRef, type ComponentProps, type ReactNode } from 'react';
 
 const fieldBaseClass =
-  'w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60';
+  'w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60';
 
 type ValidatedFieldBaseProps = {
   value?: string;
@@ -134,6 +134,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
         <input
           ref={ref}
           disabled={disabled}
+          value={value}
           maxLength={countMode === 'chars' ? maxLength : undefined}
           aria-invalid={invalid || undefined}
           className={cn(
@@ -198,6 +199,7 @@ export const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextar
         <textarea
           ref={ref}
           disabled={disabled}
+          value={value}
           rows={rows}
           maxLength={countMode === 'chars' ? maxLength : undefined}
           aria-invalid={invalid || undefined}
@@ -237,12 +239,13 @@ export type ValidatedNumberInputProps = Omit<ComponentProps<'input'>, 'type' | '
   error?: string;
   hint?: ReactNode;
   unit?: string;
+  showCounter?: boolean;
   className?: string;
 };
 
 export const ValidatedNumberInput = forwardRef<HTMLInputElement, ValidatedNumberInputProps>(
   function ValidatedNumberInput(
-    { value, min, max, error, hint, unit, className, disabled, ...props },
+    { value, min, max, error, hint, unit, showCounter = true, className, disabled, ...props },
     ref
   ) {
     const num = value === '' || value == null ? NaN : Number(value);
@@ -269,6 +272,7 @@ export const ValidatedNumberInput = forwardRef<HTMLInputElement, ValidatedNumber
           ref={ref}
           type="number"
           disabled={disabled}
+          value={value ?? ''}
           min={min}
           max={max}
           aria-invalid={invalid || undefined}
@@ -283,7 +287,7 @@ export const ValidatedNumberInput = forwardRef<HTMLInputElement, ValidatedNumber
         <FieldFooter
           message={error ?? liveHint}
           invalid={invalid}
-          counter={counter ?? ''}
+          counter={showCounter ? (counter ?? '') : ''}
           hint={hint}
         />
       </div>

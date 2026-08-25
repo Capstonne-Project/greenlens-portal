@@ -3,15 +3,17 @@
 import { BadgeIcon } from '@/components/admin/badges/BadgeIcon';
 import { getBadgeDisplay } from '@/lib/constants/adminBadges';
 import type { AdminBadge } from '@/lib/api/models/adminBadge';
-import { resolveBadgeIconUrl } from '@/utils/adminBadgeUi';
-import { ArchiveRestore, CircleOff, Pencil, Zap } from 'lucide-react';
+import { formatBadgeThresholdValue, resolveBadgeIconUrl } from '@/utils/adminBadgeUi';
+import { ArchiveRestore, CircleOff, Gauge, Pencil, Zap } from 'lucide-react';
 
 interface BadgeCardProps {
   badge: AdminBadge;
   onEdit: (badge: AdminBadge) => void;
+  onEditThreshold?: (badge: AdminBadge) => void;
   onToggle: (badge: AdminBadge, isActive: boolean) => void;
   onPreviewIcon?: (badge: AdminBadge) => void;
   toggleBusy?: boolean;
+  thresholdBusy?: boolean;
 }
 
 function formatShortDate(iso: string | null): string {
@@ -38,7 +40,10 @@ function CriteriaChips({ badge }: { badge: AdminBadge }) {
     chips.push(`${badge.requiredReportCount.toLocaleString('vi-VN')} báo cáo`);
   }
   if (badge.requiredStreakDays != null) {
-    chips.push(`${badge.requiredStreakDays.toLocaleString('vi-VN')} ngày liên tiếp`);
+    chips.push(`${formatBadgeThresholdValue(badge.requiredStreakDays)} ngày liên tiếp`);
+  }
+  if (badge.requiredActionCount != null) {
+    chips.push(`${formatBadgeThresholdValue(badge.requiredActionCount)} hành động`);
   }
   if (chips.length === 0) {
     return <span className="text-xs text-zinc-500">Điều kiện đặc biệt / thủ công</span>;
@@ -57,7 +62,15 @@ function CriteriaChips({ badge }: { badge: AdminBadge }) {
   );
 }
 
-export function BadgeCard({ badge, onEdit, onToggle, onPreviewIcon, toggleBusy }: BadgeCardProps) {
+export function BadgeCard({
+  badge,
+  onEdit,
+  onEditThreshold,
+  onToggle,
+  onPreviewIcon,
+  toggleBusy,
+  thresholdBusy,
+}: BadgeCardProps) {
   const { accent } = getBadgeDisplay(badge.code);
   const inactive = !badge.isActive;
   const iconUrl = resolveBadgeIconUrl(badge.iconUrl);
@@ -125,6 +138,18 @@ export function BadgeCard({ badge, onEdit, onToggle, onPreviewIcon, toggleBusy }
         <p className="mt-4 text-[11px] text-zinc-500">Tạo {formatShortDate(badge.createdAt)}</p>
 
         <div className="mt-4 flex items-center justify-end gap-1.5">
+          {onEditThreshold ? (
+            <button
+              type="button"
+              disabled={thresholdBusy}
+              onClick={() => onEditThreshold(badge)}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+              title="Sửa ngưỡng"
+              aria-label={`Sửa ngưỡng ${badge.nameVi}`}
+            >
+              <Gauge className="size-4" />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => onEdit(badge)}
