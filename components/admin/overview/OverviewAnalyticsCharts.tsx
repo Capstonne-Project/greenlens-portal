@@ -12,6 +12,7 @@ import type {
   AdminRecentActivityItem,
   AdminReportFunnelStage,
   AdminReportStatusItem,
+  AdminReportTrendPoint,
   AdminResolutionDistributionItem,
 } from '@/lib/api/services/fetchAdminDashboard';
 import { reportStatusLabelVi } from '@/lib/constants/reportStatus';
@@ -46,7 +47,7 @@ function CardShell({
   return (
     <article
       className={cn(
-        'flex h-full min-h-0 flex-col rounded-card border border-border bg-card p-3 shadow-sm',
+        'flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-border bg-card p-3 shadow-sm',
         className
       )}
     >
@@ -63,7 +64,52 @@ function EmptyHint({ text }: { text: string }) {
   return <p className="py-6 text-center text-xs text-muted-foreground">{text}</p>;
 }
 
-/** Compact inverted-triangle funnel from /report-funnel */
+type FunnelVisualSegment = {
+  stage: AdminReportFunnelStage;
+  points: string;
+  color: string;
+  label: string;
+  pct: number;
+};
+
+/** Phễu thon đều theo tầng — hình liền; số liệu ở legend HTML bên cạnh. */
+function buildFunnelVisualSegments(
+  list: AdminReportFunnelStage[],
+  top: number
+): FunnelVisualSegment[] {
+  const n = list.length;
+  const stageHeight = 100 / n;
+  const maxW = 92;
+  const minW = 28;
+  const cx = 50;
+
+  return list.map((stage, index) => {
+    const t0 = index / n;
+    const t1 = (index + 1) / n;
+    const topW = maxW - (maxW - minW) * t0;
+    const bottomW = maxW - (maxW - minW) * t1;
+    const y0 = index * stageHeight + 0.4;
+    const y1 = (index + 1) * stageHeight - 0.4;
+    const pct = Math.round((stage.count / top) * 1000) / 10;
+
+    const points = [
+      `${cx - topW / 2},${y0}`,
+      `${cx + topW / 2},${y0}`,
+      `${cx + bottomW / 2},${y1}`,
+      `${cx - bottomW / 2},${y1}`,
+    ].join(' ');
+
+    return {
+      stage,
+      points,
+      color: FUNNEL_COLORS[index % FUNNEL_COLORS.length],
+      label: reportStatusLabelVi(stage.stage),
+      pct,
+    };
+  });
+}
+
+/** Phễu vòng đời — SVG gọn + legend HTML (tránh cắt chữ trong cột hẹp). */
 export function OverviewLifecycleFunnel({
   stages,
 }: {
@@ -71,39 +117,81 @@ export function OverviewLifecycleFunnel({
 }) {
   const list = stages ?? [];
   const top = Math.max(1, list[0]?.count ?? 0);
+  const segments = buildFunnelVisualSegments(list, top);
 
   return (
     <CardShell title="Phễu vòng đời" subtitle="Đã gửi → Đã đóng">
       {list.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu phễu" />
       ) : (
-        <div className="space-y-0.5">
-          {list.map((stage, index) => {
-            const ratio = stage.count / top;
-            const width = Math.max(28, Math.min(100, ratio * 100));
-            const next = list[index + 1];
-            const nextWidth = next ? Math.max(28, Math.min(100, (next.count / top) * 100)) : width;
-            const inset = Math.max(0, (width - nextWidth) / 2 / width) * 100;
-            const pct = Math.round((stage.count / top) * 1000) / 10;
-            return (
-              <div key={stage.stage} className="flex justify-center">
-                <div
-                  className="flex h-7 w-full max-w-full items-center justify-between gap-1 px-2 text-[10px] text-white sm:h-8 sm:text-[11px]"
-                  style={{
-                    width: `${width}%`,
-                    backgroundColor: FUNNEL_COLORS[index % FUNNEL_COLORS.length],
-                    clipPath: `polygon(0% 0%, 100% 0%, ${100 - inset}% 100%, ${inset}% 100%)`,
-                  }}
-                  title={`${stage.stage}: ${stage.count}`}
-                >
-                  <span className="truncate font-semibold">{reportStatusLabelVi(stage.stage)}</span>
-                  <span className="shrink-0 tabular-nums opacity-90">
-                    {formatOverviewNumber(stage.count)} · {pct}%
+        <div className="flex min-h-0 flex-1 items-stretch gap-2.5 sm:gap-3">
+          <div className="flex w-[44%] min-w-[88px] max-w-[118px] shrink-0 items-center justify-center self-stretch py-0.5">
+            <svg
+              viewBox="0 0 100 100"
+              className="aspect-[5/8] h-full w-full max-h-[196px] min-h-[140px]"
+              preserveAspectRatio="xMidYMid meet"
+              role="img"
+              aria-hidden
+            >
+              <defs>
+                {segments.map((seg, index) => (
+                  <linearGradient
+                    key={`grad-${seg.stage.stage}`}
+                    id={`admin-funnel-grad-${index}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor={seg.color} />
+                    <stop offset="100%" stopColor={seg.color} stopOpacity={0.88} />
+                  </linearGradient>
+                ))}
+              </defs>
+              {segments.map((seg, index) => (
+                <polygon
+                  key={seg.stage.stage}
+                  points={seg.points}
+                  fill={`url(#admin-funnel-grad-${index})`}
+                  stroke="#fff"
+                  strokeOpacity={0.35}
+                  strokeWidth="0.6"
+                  strokeLinejoin="round"
+                />
+              ))}
+            </svg>
+          </div>
+
+          <ul
+            className="min-w-0 flex-1 space-y-1.5 overflow-y-auto py-0.5"
+            aria-label="Phễu vòng đời báo cáo theo trạng thái"
+          >
+            {segments.map(seg => (
+              <li key={seg.stage.stage}>
+                <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] sm:text-[11px]">
+                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                    <span
+                      className="size-2 shrink-0 rounded-sm"
+                      style={{ backgroundColor: seg.color }}
+                      aria-hidden
+                    />
+                    <span className="truncate font-medium text-foreground" title={seg.label}>
+                      {seg.label}
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    {formatOverviewNumber(seg.stage.count)} · {seg.pct}%
                   </span>
                 </div>
-              </div>
-            );
-          })}
+                <div className="h-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-300"
+                    style={{ width: `${seg.pct}%`, backgroundColor: seg.color }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </CardShell>
@@ -181,7 +269,7 @@ export function OverviewPollutionAnalytics({
   );
 }
 
-/** Donut from /report-status */
+/** Donut from GET /v1/dashboard/admin/report-status */
 export function OverviewStatusDonut({
   items,
   className,
@@ -189,53 +277,58 @@ export function OverviewStatusDonut({
   items: AdminReportStatusItem[] | undefined;
   className?: string;
 }) {
-  const slices = items ?? [];
+  const slices = [...(items ?? [])].sort((a, b) => b.count - a.count);
   const total = slices.reduce((s, i) => s + Math.max(0, i.count), 0);
-  const SIZE = 112;
-  const STROKE = 16;
+  const SIZE = 128;
+  const STROKE = 18;
   const R = (SIZE - STROKE) / 2;
   const C = 2 * Math.PI * R;
   const segments = slices.map((slice, index) => ({
     slice,
     index,
-    length: (slice.count / total) * C,
-    offset: (slices.slice(0, index).reduce((sum, item) => sum + item.count, 0) / total) * C,
+    length: total > 0 ? (slice.count / total) * C : 0,
+    offset:
+      total > 0
+        ? (slices.slice(0, index).reduce((sum, item) => sum + item.count, 0) / total) * C
+        : 0,
   }));
 
   return (
     <CardShell
-      title="Theo trạng thái"
-      subtitle={`Tổng ${formatOverviewNumber(total)}`}
+      title="Phân bố trạng thái"
+      subtitle={`Tổng ${formatOverviewNumber(total)} báo cáo`}
       className={className}
     >
       {total === 0 ? (
         <EmptyHint text="Chưa có phân bố trạng thái" />
       ) : (
-        <div className="flex items-center gap-3">
-          <div className="relative size-28 shrink-0">
+        <div className="flex min-h-0 flex-1 items-center gap-4">
+          <div className="relative size-32 shrink-0">
             <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="size-full">
               <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
-                {segments.map(segment => (
-                  <circle
-                    key={segment.slice.status}
-                    cx={SIZE / 2}
-                    cy={SIZE / 2}
-                    r={R}
-                    fill="none"
-                    stroke={STATUS_COLORS[segment.index % STATUS_COLORS.length]}
-                    strokeWidth={STROKE}
-                    strokeDasharray={`${segment.length} ${C - segment.length}`}
-                    strokeDashoffset={-segment.offset}
-                  />
-                ))}
+                {segments.map(segment =>
+                  segment.length > 0 ? (
+                    <circle
+                      key={segment.slice.status}
+                      cx={SIZE / 2}
+                      cy={SIZE / 2}
+                      r={R}
+                      fill="none"
+                      stroke={STATUS_COLORS[segment.index % STATUS_COLORS.length]}
+                      strokeWidth={STROKE}
+                      strokeDasharray={`${segment.length} ${C - segment.length}`}
+                      strokeDashoffset={-segment.offset}
+                    />
+                  ) : null
+                )}
               </g>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <p className="text-[9px] uppercase text-muted-foreground">Tổng</p>
-              <p className="text-sm font-bold tabular-nums">{formatOverviewNumber(total)}</p>
+              <p className="text-base font-bold tabular-nums">{formatOverviewNumber(total)}</p>
             </div>
           </div>
-          <ul className="min-w-0 flex-1 space-y-1 overflow-y-auto text-[10px]">
+          <ul className="min-w-0 flex-1 space-y-1.5 overflow-y-auto text-[10px]">
             {slices.map((slice, i) => (
               <li key={slice.status} className="flex items-center justify-between gap-2">
                 <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
@@ -247,7 +340,7 @@ export function OverviewStatusDonut({
                   <span className="truncate">{reportStatusLabelVi(slice.status)}</span>
                 </span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
-                  {slice.percentage.toFixed(0)}%
+                  {formatOverviewNumber(slice.count)} · {slice.percentage.toFixed(0)}%
                 </span>
               </li>
             ))}
@@ -332,25 +425,46 @@ export function OverviewResolutionBars({
   items: AdminResolutionDistributionItem[] | undefined;
 }) {
   const bars = items ?? [];
+  const total = bars.reduce((sum, bar) => sum + Math.max(0, bar.count), 0);
   const max = Math.max(1, ...bars.map(b => b.count));
+  const chartHeightPx = 96;
 
   return (
-    <CardShell title="Thời gian giải quyết" subtitle="Phân bố theo khoảng thời gian">
+    <CardShell
+      title="Thời gian giải quyết"
+      subtitle={
+        total > 0
+          ? `${formatOverviewNumber(total)} báo cáo · phân bố thời gian xử lý`
+          : 'Phân bố theo khoảng thời gian'
+      }
+    >
       {bars.length === 0 ? (
         <EmptyHint text="Chưa có dữ liệu" />
+      ) : total === 0 ? (
+        <EmptyHint text="Chưa có báo cáo giải quyết trong khoảng thời gian này" />
       ) : (
-        <div className="flex h-[140px] items-end gap-1.5 px-1">
+        <div className="flex h-[132px] items-end gap-1.5 px-1 pb-0.5">
           {bars.map(bar => {
-            const h = Math.max(4, (bar.count / max) * 100);
+            const barHeight =
+              bar.count > 0 ? Math.max(8, Math.round((bar.count / max) * chartHeightPx)) : 0;
             return (
-              <div key={bar.range} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="text-[9px] tabular-nums text-muted-foreground">{bar.count}</span>
+              <div
+                key={bar.range}
+                className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
+              >
+                <span className="text-[9px] font-semibold tabular-nums text-foreground">
+                  {formatOverviewNumber(bar.count)}
+                </span>
                 <div
-                  className="w-full max-w-8 rounded-t bg-teal-600/80"
-                  style={{ height: `${h}%` }}
-                  title={`${bar.range}: ${bar.count}`}
+                  className="w-full max-w-9 rounded-t bg-teal-600/85 transition-[height] duration-300"
+                  style={{ height: barHeight }}
+                  title={`${bar.range}: ${bar.count} báo cáo`}
+                  role="img"
+                  aria-label={`${bar.range}: ${bar.count}`}
                 />
-                <span className="truncate text-[9px] text-muted-foreground">{bar.range}</span>
+                <span className="w-full truncate text-center text-[9px] text-muted-foreground">
+                  {bar.range}
+                </span>
               </div>
             );
           })}
@@ -375,7 +489,7 @@ export function OverviewRecentActivities({
       {list.length === 0 ? (
         <EmptyHint text="Chưa có sự kiện" />
       ) : (
-        <ul className="max-h-[200px] space-y-2 overflow-y-auto pr-1">
+        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
           {list.map((item, index) => (
             <li
               key={`${item.time}-${item.type}-${index}`}
@@ -474,44 +588,209 @@ export function OverviewPerformanceBars({
   );
 }
 
-/** Bar trend from GET /v1/dashboard/admin/report-trend */
+const TREND_CREATED_COLOR = '#6366f1';
+const TREND_RESOLVED_COLOR = '#10b981';
+
+type TrendRow = {
+  date: string;
+  label: string;
+  created: number;
+  resolved: number;
+};
+
+function buildTrendRows(points: AdminReportTrendPoint[] | undefined): TrendRow[] {
+  return [...(points ?? [])]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(point => ({
+      date: point.date,
+      label: point.date?.slice(5) ?? '',
+      created: Math.max(0, point.created ?? point.submitted ?? 0),
+      resolved: Math.max(0, point.resolved ?? 0),
+    }));
+}
+
+function seriesPath(
+  rows: TrendRow[],
+  key: 'created' | 'resolved',
+  xAt: (index: number) => number,
+  yAt: (value: number) => number
+): string {
+  if (rows.length === 0) return '';
+  return rows
+    .map((row, index) => `${index === 0 ? 'M' : 'L'} ${xAt(index)} ${yAt(row[key])}`)
+    .join(' ');
+}
+
+function seriesAreaPath(
+  rows: TrendRow[],
+  key: 'created' | 'resolved',
+  xAt: (index: number) => number,
+  yAt: (value: number) => number,
+  baselineY: number
+): string {
+  if (rows.length === 0) return '';
+  const line = seriesPath(rows, key, xAt, yAt);
+  const lastX = xAt(rows.length - 1);
+  const firstX = xAt(0);
+  return `${line} L ${lastX} ${baselineY} L ${firstX} ${baselineY} Z`;
+}
+
+/** Line chart from GET /v1/dashboard/admin/report-trend (created vs resolved). */
 export function OverviewReportTrend({
   points,
+  className,
 }: {
-  points: import('@/lib/api/services/fetchAdminDashboard').AdminReportTrendPoint[] | undefined;
+  points: AdminReportTrendPoint[] | undefined;
+  className?: string;
 }) {
-  const list = points ?? [];
-  const max = Math.max(1, ...list.map(p => p.count));
+  const rows = buildTrendRows(points);
+  const totalCreated = rows.reduce((sum, row) => sum + row.created, 0);
+  const totalResolved = rows.reduce((sum, row) => sum + row.resolved, 0);
+  const total = totalCreated + totalResolved;
+
+  const width = 360;
+  const height = 136;
+  const pad = { top: 8, right: 10, bottom: 24, left: 30 };
+  const chartW = width - pad.left - pad.right;
+  const chartH = height - pad.top - pad.bottom;
+  const maxValue = Math.max(1, ...rows.flatMap(row => [row.created, row.resolved]));
+  const baselineY = pad.top + chartH;
+
+  const xAt = (index: number) => {
+    if (rows.length <= 1) return pad.left + chartW / 2;
+    return pad.left + (index / (rows.length - 1)) * chartW;
+  };
+  const yAt = (value: number) => pad.top + chartH - (value / maxValue) * chartH;
 
   return (
-    <CardShell title="Xu hướng báo cáo" subtitle="Theo ngày">
-      {list.length === 0 ? (
-        <EmptyHint text="Chưa có dữ liệu xu hướng" />
+    <CardShell
+      title="Xu hướng báo cáo"
+      subtitle={
+        total > 0
+          ? `Tạo mới ${formatOverviewNumber(totalCreated)} · Giải quyết ${formatOverviewNumber(totalResolved)}`
+          : 'Theo ngày · chưa có báo cáo'
+      }
+      className={className}
+    >
+      {rows.length === 0 || total === 0 ? (
+        <EmptyHint text="Chưa có dữ liệu xu hướng trong khoảng thời gian này" />
       ) : (
-        <div className="flex h-full min-h-[140px] items-end gap-1 px-1 pb-1">
-          {list.map(point => {
-            const h = Math.max(4, Math.round((point.count / max) * 100));
-            const label = point.date?.slice(5) ?? '';
-            return (
-              <div
-                key={point.date}
-                className="group flex min-w-0 flex-1 flex-col items-center gap-1"
-                title={`${point.date}: ${point.count}`}
-              >
-                <span className="hidden text-[9px] tabular-nums text-muted-foreground group-hover:inline">
-                  {point.count}
-                </span>
-                <div
-                  className="w-full max-w-[28px] rounded-t bg-indigo-500/90 transition-[height]"
-                  style={{ height: `${h}%` }}
-                  aria-hidden
+        <div className="flex flex-col gap-1 overflow-hidden">
+          <div className="flex shrink-0 items-center justify-end gap-3 text-[9px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: TREND_CREATED_COLOR }}
+              />
+              Tạo mới
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: TREND_RESOLVED_COLOR }}
+              />
+              Đã giải quyết
+            </span>
+          </div>
+
+          <div className="h-[120px] shrink-0 overflow-hidden">
+            <svg
+              viewBox={`0 0 ${width} ${height}`}
+              className="h-full w-full"
+              preserveAspectRatio="xMidYMid meet"
+              role="img"
+              aria-label="Biểu đồ đường xu hướng báo cáo"
+            >
+              <defs>
+                <clipPath id="admin-report-trend-plot">
+                  <rect x={pad.left} y={pad.top} width={chartW} height={chartH} />
+                </clipPath>
+              </defs>
+
+              {[0, 0.5, 1].map(step => {
+                const y = pad.top + chartH * (1 - step);
+                return (
+                  <line
+                    key={step}
+                    x1={pad.left}
+                    y1={y}
+                    x2={width - pad.right}
+                    y2={y}
+                    stroke="currentColor"
+                    strokeOpacity={0.1}
+                    strokeDasharray={step === 0 ? undefined : '4 4'}
+                  />
+                );
+              })}
+
+              <g clipPath="url(#admin-report-trend-plot)">
+                <path
+                  d={seriesAreaPath(rows, 'created', xAt, yAt, baselineY)}
+                  fill={TREND_CREATED_COLOR}
+                  fillOpacity={0.12}
                 />
-                <span className="truncate text-[8px] tabular-nums text-muted-foreground">
-                  {label}
-                </span>
-              </div>
-            );
-          })}
+                <path
+                  d={seriesAreaPath(rows, 'resolved', xAt, yAt, baselineY)}
+                  fill={TREND_RESOLVED_COLOR}
+                  fillOpacity={0.1}
+                />
+
+                {rows.length > 1 ? (
+                  <>
+                    <path
+                      d={seriesPath(rows, 'created', xAt, yAt)}
+                      fill="none"
+                      stroke={TREND_CREATED_COLOR}
+                      strokeWidth={2.25}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d={seriesPath(rows, 'resolved', xAt, yAt)}
+                      fill="none"
+                      stroke={TREND_RESOLVED_COLOR}
+                      strokeWidth={2.25}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </>
+                ) : null}
+              </g>
+
+              {rows.map((row, index) => (
+                <g key={row.date}>
+                  <circle
+                    cx={xAt(index)}
+                    cy={yAt(row.created)}
+                    r={4}
+                    fill={TREND_CREATED_COLOR}
+                    stroke="#fff"
+                    strokeWidth={1.5}
+                  >
+                    <title>{`${row.label}: ${formatOverviewNumber(row.created)} tạo mới`}</title>
+                  </circle>
+                  <circle
+                    cx={xAt(index)}
+                    cy={yAt(row.resolved)}
+                    r={4}
+                    fill={TREND_RESOLVED_COLOR}
+                    stroke="#fff"
+                    strokeWidth={1.5}
+                  >
+                    <title>{`${row.label}: ${formatOverviewNumber(row.resolved)} giải quyết`}</title>
+                  </circle>
+                  <text
+                    x={xAt(index)}
+                    y={height - 6}
+                    textAnchor="middle"
+                    className="fill-muted-foreground text-[9px] tabular-nums"
+                  >
+                    {row.label}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
         </div>
       )}
     </CardShell>

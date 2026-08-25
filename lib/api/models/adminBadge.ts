@@ -8,6 +8,7 @@ export type AdminBadgeSortBy =
   | 'requiredPoints'
   | 'requiredReportCount'
   | 'requiredStreakDays'
+  | 'requiredActionCount'
   | 'createdAt';
 
 export interface AdminBadge {
@@ -21,6 +22,7 @@ export interface AdminBadge {
   requiredPoints: number | null;
   requiredReportCount: number | null;
   requiredStreakDays: number | null;
+  requiredActionCount: number | null;
   createdAt: string | null;
 }
 
@@ -56,4 +58,8 @@ export interface UpdateAdminBadgeInput {
 
 export interface ToggleAdminBadgeInput {
   isActive: boolean;
+}
+
+export interface UpdateAdminBadgeThresholdInput {
+  threshold: number;
 }
