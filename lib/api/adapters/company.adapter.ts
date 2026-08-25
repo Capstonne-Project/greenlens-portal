@@ -26,6 +26,7 @@ import type {
   CompanyStaffList,
   CompanyStaffListParams,
   CompanyTeam,
+  CompanyTeamDetail,
   CompanyTeamMembership,
   CompanyTeamsList,
   CompanyTeamsListParams,
@@ -37,8 +38,8 @@ import type {
   MyCompanyContractHistory,
   MyCompanyKpi,
   MyCompanyKpiParams,
-  RenameCompanyTeamInput,
   UpdateCompanyStaffStatusInput,
+  UpdateCompanyTeamInput,
 } from '@/lib/api/models/company';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
@@ -52,13 +53,13 @@ function buildStaffQuery(
   return query;
 }
 
-function buildTeamsQuery(
-  params?: CompanyTeamsListParams
-): Record<string, string | number | boolean> {
-  const query: Record<string, string | number | boolean> = {};
+function buildTeamsQuery(params?: CompanyTeamsListParams): Record<string, unknown> {
+  const query: Record<string, unknown> = {};
   if (params?.page != null) query.page = params.page;
   if (params?.pageSize != null) query.pageSize = params.pageSize;
   if (params?.isActive !== undefined) query.isActive = params.isActive;
+  if (params?.wasteTagIds?.length) query.wasteTagIds = params.wasteTagIds;
+  if (params?.reportId?.trim()) query.reportId = params.reportId.trim();
   return query;
 }
 
@@ -158,18 +159,31 @@ export async function adaptCompanyTeamsList(
 export async function adaptCreateCompanyTeam(
   body: CreateCompanyTeamInput
 ): Promise<ApiEnvelope<CompanyTeam>> {
-  const res = await apiService.post<ApiEnvelope<CompanyTeam>>('/v1/teams/company-teams', body);
+  const res = await apiService.post<ApiEnvelope<CompanyTeam>>('/v1/teams/company-teams', {
+    name: body.name.trim(),
+    wasteTagIds: body.wasteTagIds,
+  });
   return res.data;
 }
 
-export async function adaptRenameCompanyTeam(
+/** PUT /v1/teams/company-teams/{id} — cập nhật tên + wasteTagIds (optional replace).
+ *  200: "Đã cập nhật" | 403: Team không thuộc công ty | 404: Không tìm thấy team. */
+export async function adaptUpdateCompanyTeam(
   id: string,
-  body: RenameCompanyTeamInput
-): Promise<ApiEnvelope<string | null>> {
-  const res = await apiService.put<ApiEnvelope<string | null>>(
-    `/v1/teams/company-teams/${id}`,
-    body
+  body: UpdateCompanyTeamInput
+): Promise<ApiEnvelope<string>> {
+  const payload: Record<string, unknown> = { name: body.name.trim() };
+  if (body.wasteTagIds) payload.wasteTagIds = body.wasteTagIds;
+  const res = await apiService.put<ApiEnvelope<string>>(
+    `/v1/teams/company-teams/${encodeURIComponent(id)}`,
+    payload
   );
+  return res.data;
+}
+
+/** GET /v1/teams/company-teams/{id} — chi tiết đội công ty. */
+export async function adaptCompanyTeamDetail(id: string): Promise<ApiEnvelope<CompanyTeamDetail>> {
+  const res = await apiService.get<ApiEnvelope<CompanyTeamDetail>>(`/v1/teams/company-teams/${id}`);
   return res.data;
 }
 

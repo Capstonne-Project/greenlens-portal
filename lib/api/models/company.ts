@@ -228,14 +228,28 @@ export interface CompanyTeam {
   name: string;
   companyId: string;
   teamType: string;
+  wasteTags: CompanyTeamWasteTag[];
+}
+
+/** Waste tag trả về trong company team responses. */
+export interface CompanyTeamWasteTag {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  iconUrl: string | null;
 }
 
 export interface CreateCompanyTeamInput {
   name: string;
+  /** Bắt buộc, min 1 tag. */
+  wasteTagIds: string[];
 }
 
-export interface RenameCompanyTeamInput {
+/** PUT /v1/teams/company-teams/{id} — cập nhật tên + wasteTagIds (optional replace). */
+export interface UpdateCompanyTeamInput {
   name: string;
+  wasteTagIds?: string[];
 }
 
 /** PUT /v1/teams/company-teams/{id}/archive — [CompanyManager]. */
@@ -301,6 +315,10 @@ export interface CompanyTeamListItem {
   createdAt: string;
   /** BE thường trả "LEO {tên phường}" — FE format thành "Phường …". */
   officeName?: string | null;
+  /** Cleanup teams only — tags đội phụ trách. */
+  wasteTags: CompanyTeamWasteTag[];
+  /** Số tag khớp với report khi filter theo reportId. */
+  wasteTagMatchCount: number;
 }
 
 export interface CompanyTeamsList {
@@ -312,6 +330,10 @@ export interface CompanyTeamsListParams {
   page?: number;
   pageSize?: number;
   isActive?: boolean;
+  /** Multi-filter OR — trả về đội có bất kỳ tag nào trong danh sách. */
+  wasteTagIds?: string[];
+  /** Khi có reportId → sort theo wasteTagMatchCount desc. */
+  reportId?: string;
 }
 
 export interface UpdateCompanyStaffStatusInput {
@@ -341,6 +363,30 @@ export interface CompanyTeamMembership {
   teamId: string;
   userId: string;
   isLeader: boolean;
+}
+
+/** GET /v1/teams/company-teams/{id} — 200 data. */
+export interface CompanyTeamDetail {
+  id: string;
+  name: string;
+  teamType: string;
+  companyId: string;
+  isActive: boolean;
+  memberCount: number;
+  members: CompanyTeamDetailMember[];
+  wasteTags: CompanyTeamWasteTag[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompanyTeamDetailMember {
+  userId: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+  isLeader: boolean;
+  joinedAt: string;
 }
 
 export interface AssignCompanyStaffTeamInput {
@@ -442,6 +488,25 @@ export type CompanyAssignmentStatus =
   | 'Escalated'
   | string;
 
+/** Văn phòng / LEO điều phối — list `report.dispatchSource`, detail `dispatchSource`. */
+export interface CompanyAssignmentDispatchSource {
+  localOfficeId: string;
+  localOfficeName: string;
+  wardCode: string;
+  wardName: string;
+  leoUserId: string;
+  leoFullName: string;
+}
+
+/** Waste tag trên đội — list `team.wasteTags`, detail `assignment.teamWasteTags`. */
+export interface CompanyAssignmentTeamWasteTag {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string | null;
+  iconUrl: string | null;
+}
+
 /** Canonical first media from list `report.firstMedia`. */
 export interface CompanyAssignmentFirstMedia {
   id: string;
@@ -460,6 +525,7 @@ export interface CompanyAssignmentReportSummary {
   severity: CompanyQueueSeverity;
   status: string;
   slaResolveDueAt: string;
+  dispatchSource: CompanyAssignmentDispatchSource | null;
   /** Canonical cover from Swagger list (`report.firstMedia`). */
   firstMedia?: CompanyAssignmentFirstMedia | null;
   /** Derived — firstMedia.thumbnailUrl ?? firstMedia.url hoặc fallback legacy. */
@@ -472,6 +538,7 @@ export interface CompanyAssignmentTeamSummary {
   teamId: string;
   teamName: string;
   memberCount: number;
+  wasteTags: CompanyAssignmentTeamWasteTag[];
   members: CompanyAssignmentTeamMember[];
 }
 
@@ -621,6 +688,7 @@ export interface CompanyAssignmentTeamDetail {
   teamId: string;
   teamName: string;
   teamLeaderName?: string | null;
+  teamWasteTags: CompanyAssignmentTeamWasteTag[];
   members: CompanyAssignmentTeamMember[];
   assignedByName: string;
   progressUpdates: CompanyAssignmentProgressUpdate[];
@@ -637,6 +705,7 @@ export interface CompanyAssignmentHistoryEntry {
   completedAt?: string | null;
   declineReason?: string | null;
   note?: string | null;
+  teamWasteTags: CompanyAssignmentTeamWasteTag[];
 }
 
 export interface CompanyAssignmentTimelineEntry {
@@ -651,6 +720,7 @@ export interface CompanyAssignmentWasteTag {
   tagId: string;
   code: string;
   nameVi: string;
+  nameEn?: string | null;
   iconUrl?: string | null;
 }
 
@@ -685,6 +755,7 @@ export interface CompanyAssignmentDetail {
   /** Wire */
   verifiedByName?: string | null;
   dispatchedToCompanyAt?: string | null;
+  dispatchSource: CompanyAssignmentDispatchSource | null;
   resolvedAt?: string | null;
   closedAt?: string | null;
   reopenedCount: number;

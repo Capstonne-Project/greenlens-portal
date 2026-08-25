@@ -2,11 +2,13 @@ import type {
   CompanyAssignmentCitizenMediaDto,
   CompanyAssignmentDetailAssignmentDto,
   CompanyAssignmentDetailDto,
+  CompanyAssignmentDispatchSourceDto,
   CompanyAssignmentHistoryEntryDto,
   CompanyAssignmentListItemDto,
   CompanyAssignmentMediaItemDto,
   CompanyAssignmentProgressUpdateDto,
   CompanyAssignmentTeamDetailDto,
+  CompanyAssignmentTeamWasteTagDto,
   CompanyAssignmentTimelineEntryDto,
   CompanyAssignmentWasteTagDto,
   CompanyAssignmentsListDto,
@@ -14,6 +16,7 @@ import type {
 import type {
   CompanyAssignmentCitizenMedia,
   CompanyAssignmentDetail,
+  CompanyAssignmentDispatchSource,
   CompanyAssignmentFirstMedia,
   CompanyAssignmentHistoryEntry,
   CompanyAssignmentListItem,
@@ -22,6 +25,7 @@ import type {
   CompanyAssignmentProgressUpdate,
   CompanyAssignmentTeamDetail,
   CompanyAssignmentTeamMember,
+  CompanyAssignmentTeamWasteTag,
   CompanyAssignmentTimelineEntry,
   CompanyAssignmentWasteTag,
   CompanyAssignmentsList,
@@ -53,6 +57,39 @@ function readRecordValue(source: unknown, keys: string[]): unknown {
 function pickStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function mapDispatchSource(
+  dto: CompanyAssignmentDispatchSourceDto | null | undefined
+): CompanyAssignmentDispatchSource | null {
+  if (!dto || typeof dto !== 'object') return null;
+  const localOfficeId = typeof dto.localOfficeId === 'string' ? dto.localOfficeId.trim() : '';
+  const leoUserId = typeof dto.leoUserId === 'string' ? dto.leoUserId.trim() : '';
+  if (!localOfficeId && !leoUserId && !dto.localOfficeName?.trim() && !dto.leoFullName?.trim()) {
+    return null;
+  }
+  return {
+    localOfficeId,
+    localOfficeName: dto.localOfficeName?.trim() ?? '',
+    wardCode: dto.wardCode?.trim() ?? '',
+    wardName: dto.wardName?.trim() ?? '',
+    leoUserId,
+    leoFullName: dto.leoFullName?.trim() ?? '',
+  };
+}
+
+function mapTeamWasteTag(
+  dto: CompanyAssignmentTeamWasteTagDto | CompanyAssignmentWasteTagDto | null | undefined
+): CompanyAssignmentTeamWasteTag | null {
+  if (!dto || typeof dto !== 'object') return null;
+  if (!dto.tagId?.trim() && !dto.code?.trim()) return null;
+  return {
+    tagId: dto.tagId ?? '',
+    code: dto.code ?? '',
+    nameVi: dto.nameVi ?? '',
+    nameEn: dto.nameEn?.trim() || null,
+    iconUrl: dto.iconUrl ?? null,
+  };
 }
 
 function mapFirstMedia(
@@ -218,6 +255,7 @@ function mapAssignmentListItem(dto: CompanyAssignmentListItemDto): CompanyAssign
       severity: dto.report.severity,
       status: dto.report.status,
       slaResolveDueAt: dto.report.slaResolveDueAt,
+      dispatchSource: mapDispatchSource(dto.report.dispatchSource),
       firstMedia,
       thumbnailUrl,
       reportImages,
@@ -226,6 +264,9 @@ function mapAssignmentListItem(dto: CompanyAssignmentListItemDto): CompanyAssign
       teamId: dto.team.teamId,
       teamName: dto.team.teamName,
       memberCount: dto.team.memberCount ?? members.length,
+      wasteTags: (dto.team.wasteTags ?? [])
+        .map(mapTeamWasteTag)
+        .filter((item): item is CompanyAssignmentTeamWasteTag => item !== null),
       members,
     },
   };
@@ -347,6 +388,9 @@ function mapAssignmentDetail(
         joinedAt: m.joinedAt ?? null,
       })),
     assignedByName: dto.assignedByName ?? '',
+    teamWasteTags: (dto.teamWasteTags ?? [])
+      .map(mapTeamWasteTag)
+      .filter((item): item is CompanyAssignmentTeamWasteTag => item !== null),
     progressUpdates: (dto.progressUpdates ?? [])
       .map(mapProgressUpdate)
       .filter((item): item is CompanyAssignmentProgressUpdate => item !== null),
@@ -367,6 +411,9 @@ function mapAssignmentHistoryEntry(
     completedAt: dto.completedAt ?? null,
     declineReason: dto.declineReason ?? null,
     note: dto.note ?? null,
+    teamWasteTags: (dto.teamWasteTags ?? [])
+      .map(mapTeamWasteTag)
+      .filter((item): item is CompanyAssignmentTeamWasteTag => item !== null),
   };
 }
 
@@ -440,6 +487,7 @@ function mapWasteTag(
     tagId: dto.tagId,
     code: dto.code,
     nameVi: dto.nameVi,
+    nameEn: dto.nameEn?.trim() || null,
     iconUrl: dto.iconUrl ?? null,
   };
 }
@@ -596,6 +644,7 @@ export function mapCompanyAssignmentDetailDto(
     verifiedAt: dto.verifiedAt ?? null,
     verifiedByName: dto.verifiedByName ?? null,
     dispatchedToCompanyAt: dto.dispatchedToCompanyAt ?? null,
+    dispatchSource: mapDispatchSource(dto.dispatchSource),
     resolvedAt: dto.resolvedAt ?? null,
     closedAt: dto.closedAt ?? null,
     reopenedCount: dto.reopenedCount ?? 0,

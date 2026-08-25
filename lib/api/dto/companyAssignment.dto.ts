@@ -1,5 +1,24 @@
 /** GET /v1/reports/company-assignments — list item (Swagger / BE). */
 
+/** Văn phòng / LEO điều phối — `report.dispatchSource` (list) và `dispatchSource` (detail). */
+export interface CompanyAssignmentDispatchSourceDto {
+  localOfficeId: string;
+  localOfficeName: string;
+  wardCode: string;
+  wardName: string;
+  leoUserId: string;
+  leoFullName: string;
+}
+
+/** Waste tag trên đội — list `team.wasteTags`, detail `assignment.teamWasteTags`. */
+export interface CompanyAssignmentTeamWasteTagDto {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn?: string | null;
+  iconUrl?: string | null;
+}
+
 /** Canonical first media on list report (`report.firstMedia`). */
 export interface CompanyAssignmentFirstMediaDto {
   id: string;
@@ -28,6 +47,7 @@ export interface CompanyAssignmentReportSummaryDto {
   severity: string;
   status: string;
   slaResolveDueAt: string;
+  dispatchSource?: CompanyAssignmentDispatchSourceDto | null;
   /** Canonical cover media from Swagger list response. */
   firstMedia?: CompanyAssignmentFirstMediaDto | null;
   /** @deprecated Prefer `firstMedia` — kept for legacy list payloads. */
@@ -54,6 +74,7 @@ export interface CompanyAssignmentTeamSummaryDto {
   teamId: string;
   teamName: string;
   memberCount: number;
+  wasteTags?: CompanyAssignmentTeamWasteTagDto[];
   members?: CompanyAssignmentTeamMemberDto[];
 }
 
@@ -171,6 +192,7 @@ export interface CompanyAssignmentDetailAssignmentDto {
   teamId: string;
   teamName: string;
   teamLeaderName?: string | null;
+  teamWasteTags?: CompanyAssignmentTeamWasteTagDto[];
   members?: CompanyAssignmentTeamMemberDto[];
   assignedByName: string;
   progressUpdates?: CompanyAssignmentProgressUpdateDto[];
@@ -200,6 +222,7 @@ export interface CompanyAssignmentTeamDetailDto {
   teamId: string;
   teamName: string;
   teamLeaderName?: string | null;
+  teamWasteTags?: CompanyAssignmentTeamWasteTagDto[];
   members?: CompanyAssignmentTeamMemberDto[];
   assignedByName: string;
   progressUpdates?: CompanyAssignmentProgressUpdateDto[];
@@ -215,6 +238,7 @@ export interface CompanyAssignmentHistoryEntryDto {
   completedAt?: string | null;
   declineReason?: string | null;
   note?: string | null;
+  teamWasteTags?: CompanyAssignmentTeamWasteTagDto[];
 }
 
 export interface CompanyAssignmentTimelineEntryDto {
@@ -229,6 +253,7 @@ export interface CompanyAssignmentWasteTagDto {
   tagId: string;
   code: string;
   nameVi: string;
+  nameEn?: string | null;
   iconUrl?: string | null;
 }
 
@@ -260,6 +285,7 @@ export interface CompanyAssignmentDetailDto {
   verifiedAt?: string | null;
   verifiedByName?: string | null;
   dispatchedToCompanyAt?: string | null;
+  dispatchSource?: CompanyAssignmentDispatchSourceDto | null;
   resolvedAt?: string | null;
   closedAt?: string | null;
   reopenedCount: number;
