@@ -23,9 +23,11 @@ import { LayoutGrid, hero5CardClass, type LayoutGridCard } from '@/components/ui
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanyAssignTeamDialog } from '@/components/company/assign/CompanyAssignTeamDialog';
+import { WasteTagBadge } from '@/components/common/WasteTagSelectChip';
 import { useCompanyAssignmentDetail } from '@/hooks/useCompany';
 import type {
   CompanyAssignmentDetail,
+  CompanyAssignmentDispatchSource,
   CompanyAssignmentMediaItem,
   CompanyAssignmentTeamDetail,
   CompanyAssignmentTimelineEntry,
@@ -205,6 +207,30 @@ function usefulReason(reason?: string | null): string | null {
 
 function teamLeaderName(team: CompanyAssignmentTeamDetail): string {
   return team.members.find(m => m.isLeader)?.fullName?.trim() || '—';
+}
+
+/** Copy tab Tiến độ — company hiểu báo cáo do LEO / văn phòng xác minh & điều phối, không phải quản lý công ty gán đội. */
+function dispatchAttributionCopy(source: CompanyAssignmentDispatchSource | null): {
+  lead: string;
+  leo: string | null;
+  office: string | null;
+} {
+  const leo = source?.leoFullName?.trim() || null;
+  const office = source?.localOfficeName?.trim() || null;
+  if (leo && office) {
+    return { lead: 'Báo cáo đã được xác minh và điều phối bởi', leo, office };
+  }
+  if (leo) {
+    return { lead: 'Báo cáo đã được xác minh và điều phối bởi', leo, office: null };
+  }
+  if (office) {
+    return { lead: 'Báo cáo đã được xác minh và điều phối bởi', leo: null, office };
+  }
+  return {
+    lead: 'Báo cáo đã được cơ quan môi trường xác minh và điều phối đến công ty của bạn.',
+    leo: null,
+    office: null,
+  };
 }
 
 function hasValidCoords(lat: number, lng: number): boolean {
@@ -1521,6 +1547,8 @@ function ReportInfoCard({
     [data.teamAssignments]
   );
 
+  const dispatchCopy = dispatchAttributionCopy(data.dispatchSource);
+
   return (
     <div className="flex flex-col">
       <SubmissionGallery images={data.reportImages} address={data.address} onPreview={onPreview} />
@@ -1592,11 +1620,22 @@ function ReportInfoCard({
             </div>
           </MetaRow>
 
-          <MetaRow icon={Users} label="Đội phụ trách">
+          <MetaRow icon={Users} label="Đội phụ trách" align="start">
             {teamTooltipItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">Chưa phân công</p>
             ) : (
-              <AnimatedTooltip items={teamTooltipItems} avatarClassName="size-8" />
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <div className="shrink-0">
+                  <AnimatedTooltip items={teamTooltipItems} avatarClassName="size-8" />
+                </div>
+                {(assignment?.teamWasteTags ?? []).length > 0 ? (
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    {assignment!.teamWasteTags.map(tag => (
+                      <WasteTagBadge key={tag.tagId} tag={tag} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             )}
           </MetaRow>
 
@@ -1637,18 +1676,22 @@ function ReportInfoCard({
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">Tiến độ đội phụ trách</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {data.assignment?.assignedByName?.trim() ||
-                data.teamAssignments[0]?.assignedByName?.trim() ? (
-                  <>
-                    Tiến độ và trạng thái xử lý của đội được phân công{' '}
-                    <span className="font-semibold text-foreground/80">
-                      bởi quản lý{' '}
-                      {data.assignment?.assignedByName?.trim() ||
-                        data.teamAssignments[0]?.assignedByName?.trim()}
-                    </span>
-                  </>
+                {!dispatchCopy.leo && !dispatchCopy.office ? (
+                  dispatchCopy.lead
                 ) : (
-                  'Tiến độ và trạng thái xử lý của đội được phân công'
+                  <>
+                    {dispatchCopy.lead}{' '}
+                    {dispatchCopy.leo ? (
+                      <span className="font-semibold text-foreground/80">{dispatchCopy.leo}</span>
+                    ) : null}
+                    {dispatchCopy.leo && dispatchCopy.office ? ' thuộc ' : null}
+                    {dispatchCopy.office ? (
+                      <span className="font-semibold text-foreground/80">
+                        {dispatchCopy.office}
+                      </span>
+                    ) : null}
+                    .
+                  </>
                 )}
               </p>
             </div>
@@ -1827,20 +1870,29 @@ function DeclineReasonDrawer({
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
               Đội phụ trách
             </p>
-            <div className="mt-2.5 flex items-center gap-3">
-              <span
-                className={cn(
-                  'flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white',
-                  hashColor(assignment?.teamId ?? teamName)
-                )}
-                aria-hidden
-              >
-                {getInitials(teamName)}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">{teamName}</p>
-                <p className="mt-0.5 truncate text-xs text-slate-500">Trưởng nhóm: {leader}</p>
+            <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className={cn(
+                    'flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white',
+                    hashColor(assignment?.teamId ?? teamName)
+                  )}
+                  aria-hidden
+                >
+                  {getInitials(teamName)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">{teamName}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">Trưởng nhóm: {leader}</p>
+                </div>
               </div>
+              {(assignment?.teamWasteTags ?? []).length > 0 ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  {assignment!.teamWasteTags.map(tag => (
+                    <WasteTagBadge key={tag.tagId} tag={tag} />
+                  ))}
+                </div>
+              ) : null}
             </div>
           </section>
 

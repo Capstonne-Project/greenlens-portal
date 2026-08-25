@@ -1,6 +1,7 @@
 'use client';
 
 import { LeoAssignDialog } from '@/components/officer/assign/LeoAssignDialog';
+import { WasteTagBadge } from '@/components/common/WasteTagSelectChip';
 import {
   ClickableReportImage,
   ReportImagePreviewDialog,
@@ -256,7 +257,7 @@ function MetaRow({
   return (
     <div
       className={cn(
-        'grid grid-cols-[auto_7.5rem_minmax(0,1fr)] gap-x-3 gap-y-1',
+        'grid grid-cols-[auto_6rem_minmax(0,1fr)] gap-x-3 gap-y-1 sm:grid-cols-[auto_7.5rem_minmax(0,1fr)]',
         align === 'start' ? 'items-start' : 'items-center'
       )}
     >
@@ -476,7 +477,7 @@ function LifecycleSpine({
             </div>
 
             <div className="min-w-0 flex-1 pt-1">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                   {isProgressStep ? (
                     <button
@@ -526,7 +527,7 @@ function LifecycleSpine({
                   ) : null}
                 </div>
                 {stage.key !== 'progress' ? (
-                  <span className="shrink-0 text-right text-xs tabular-nums text-slate-500">
+                  <span className="text-right text-xs tabular-nums text-slate-500 sm:shrink-0">
                     {stage.at ? (
                       formatDateTime(stage.at)
                     ) : isDone ? (
@@ -782,7 +783,7 @@ function TeamProgressRow({ assignment }: { assignment: ReportProgressAssignment 
           </div>
 
           {!isDeclined ? (
-            <div className="hidden min-w-0 shrink-0 sm:block sm:w-40 md:w-44">
+            <div className="hidden min-w-0 shrink-0 sm:block sm:w-36 md:w-40 lg:w-36 xl:w-44">
               <TeamRowProgress percent={percent} />
             </div>
           ) : null}
@@ -1584,11 +1585,22 @@ function ReportInfoCard({
             </div>
           </MetaRow>
 
-          <MetaRow icon={Users} label="Đội phụ trách">
+          <MetaRow icon={Users} label="Đội phụ trách" align="start">
             {teamTooltipItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">Chưa phân công</p>
             ) : (
-              <AnimatedTooltip items={teamTooltipItems} avatarClassName="size-8" />
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <div className="shrink-0">
+                  <AnimatedTooltip items={teamTooltipItems} avatarClassName="size-8" />
+                </div>
+                {(data.assignment?.teamWasteTags ?? []).length > 0 && (
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    {data.assignment!.teamWasteTags.map(tag => (
+                      <WasteTagBadge key={tag.tagId} tag={tag} />
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </MetaRow>
 
