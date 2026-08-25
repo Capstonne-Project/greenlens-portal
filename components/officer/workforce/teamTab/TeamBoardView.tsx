@@ -1,16 +1,20 @@
 'use client';
 
 import UsersIcon from '@/components/ui/users-icon';
+import { WasteTagBadgeRow } from '@/components/common/WasteTagSelectChip';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { PaginationSimple } from '@/components/ui/pagination';
 import { useRemoveTeamMember, useTeamDetail } from '@/hooks/useTeams';
+import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
@@ -20,8 +24,10 @@ import {
   Crown,
   Loader2,
   MoreHorizontal,
+  Pencil,
   Plus,
   Search,
+  Tag,
   Trash2,
   UserPlus,
   Users,
@@ -29,21 +35,21 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { WorkforceViewModeSwitch, type WorkforceViewMode } from '../WorkforceToolbarActions';
-import { RemoveMemberConfirmDialog } from './TeamTabDialogs';
+import { EditTeamDialog, RemoveMemberConfirmDialog } from './TeamTabDialogs';
 import {
   AVAILABLE_LABEL,
-  BOARD_COLUMN_PAGE_SIZE,
-  buildClientPagination,
   FILTER_BTN_CLASS,
   filterTeamsBySearch,
   formatDate,
   getInitials,
-  paginateClient,
   STATUS_LABEL,
   teamAvailabilityBadge,
   TEAM_TYPE_LABEL,
+  toEditTeamTarget,
   type AddMemberTeamTarget,
   type AvailableFilter,
+  type ClientPagination,
+  type EditTeamTarget,
   type LeoCreateTeamType,
   type StatusFilter,
   type TeamTypeFilter,
@@ -54,16 +60,67 @@ const CARD_EXPAND_TRANSITION = {
   ease: [0.22, 1, 0.36, 1] as const,
 };
 
+function TeamCardActionsMenu({
+  onEdit,
+  canRemoveMember,
+  showMemberActions,
+  onToggleRemoveMember,
+}: {
+  onEdit: () => void;
+  canRemoveMember: boolean;
+  showMemberActions: boolean;
+  onToggleRemoveMember: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-slate-500 hover:bg-muted hover:text-slate-700"
+          onClick={e => e.stopPropagation()}
+          aria-label="Thao tác đội"
+        >
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+        <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
+          <Pencil className="mr-2 size-3.5" />
+          Chỉnh sửa
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={!canRemoveMember}
+          onClick={onToggleRemoveMember}
+          className={cn(
+            'cursor-pointer',
+            showMemberActions
+              ? 'font-medium text-brand focus:text-brand'
+              : 'text-destructive focus:text-destructive'
+          )}
+        >
+          <Trash2 className="mr-2 size-3.5" />
+          {showMemberActions ? 'Huỷ xoá thành viên' : 'Xóa thành viên'}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function TeamCard({
   team,
   isExpanded,
   onToggle,
   onAddMember,
+  onEdit,
 }: {
   team: TeamListItem;
   isExpanded: boolean;
   onToggle: () => void;
   onAddMember: () => void;
+  onEdit: () => void;
 }) {
   const { data: detail, isLoading: membersLoading } = useTeamDetail(isExpanded ? team.id : null);
   const removeMemberMutation = useRemoveTeamMember();
@@ -104,7 +161,7 @@ function TeamCard({
   return (
     <div
       className={cn(
-        'flex flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-md',
+        'flex h-auto flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-md',
         isExpanded ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-border'
       )}
     >
@@ -117,7 +174,9 @@ function TeamCard({
         {/* Row 1: name + status + chevron */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-            <span className="text-sm font-semibold leading-snug text-slate-800">{team.name}</span>
+            <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800">
+              {team.name}
+            </span>
             <span
               className={cn(
                 'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium',
@@ -141,6 +200,9 @@ function TeamCard({
           <Building2 className="size-3 shrink-0" />
           <span className="truncate">{team.officeName ?? 'Đội công ty'}</span>
         </div>
+
+        {/* Row 3: waste tag badges — Cleanup only */}
+        {team.teamType === 'Cleanup' ? <WasteTagBadgeRow tags={team.wasteTags} /> : null}
       </button>
 
       <AnimatePresence initial={false} mode="sync">
@@ -161,17 +223,19 @@ function TeamCard({
                 </div>
                 <span className="text-xs text-slate-500">{formatDate(team.createdAt)}</span>
               </div>
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  onAddMember();
-                }}
-                className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
-              >
-                <Plus className="size-3" />
-                Thêm thành viên
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    onAddMember();
+                  }}
+                  className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
+                >
+                  <Plus className="size-3" />
+                  Thêm thành viên
+                </button>
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -196,24 +260,12 @@ function TeamCard({
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   Thành viên ({membersLoading ? '…' : members.length})
                 </p>
-                {!membersLoading && members.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      setShowMemberActions(prev => !prev);
-                    }}
-                    className={`flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg transition ${
-                      showMemberActions
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                    title="Quản lý thành viên"
-                    aria-pressed={showMemberActions}
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </button>
-                )}
+                <TeamCardActionsMenu
+                  onEdit={onEdit}
+                  canRemoveMember={!membersLoading && members.length > 0}
+                  showMemberActions={showMemberActions}
+                  onToggleRemoveMember={() => setShowMemberActions(prev => !prev)}
+                />
               </div>
 
               {membersLoading ? (
@@ -308,17 +360,35 @@ export function TeamFilterDropdowns({
   statusFilter,
   teamTypeFilter,
   availableFilter,
+  wasteTagFilter,
   onStatusChange,
   onTeamTypeChange,
   onAvailableChange,
+  onWasteTagChange,
 }: {
   statusFilter: StatusFilter;
   teamTypeFilter: TeamTypeFilter;
   availableFilter: AvailableFilter;
+  wasteTagFilter: string[];
   onStatusChange: (v: StatusFilter) => void;
   onTeamTypeChange: (v: TeamTypeFilter) => void;
   onAvailableChange: (v: AvailableFilter) => void;
+  onWasteTagChange: (v: string[]) => void;
 }) {
+  const [tagDropOpen, setTagDropOpen] = useState(false);
+  const { data: catalogTags, isPending: tagsLoading } = useCatalogWasteTags(tagDropOpen);
+
+  const toggleTag = (tagId: string) => {
+    onWasteTagChange(
+      wasteTagFilter.includes(tagId)
+        ? wasteTagFilter.filter(id => id !== tagId)
+        : [...wasteTagFilter, tagId]
+    );
+  };
+
+  const tagBtnLabel =
+    wasteTagFilter.length === 0 ? 'Loại rác thải' : `Loại rác thải (${wasteTagFilter.length})`;
+
   return (
     <>
       <DropdownMenu>
@@ -386,22 +456,84 @@ export function TeamFilterDropdowns({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Waste tag multi-filter */}
+      <DropdownMenu open={tagDropOpen} onOpenChange={setTagDropOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              FILTER_BTN_CLASS,
+              wasteTagFilter.length > 0 && 'border-emerald-400 text-emerald-700'
+            )}
+          >
+            <Tag className="size-3 opacity-70" aria-hidden />
+            {tagBtnLabel}
+            <ChevronDown className="size-3.5 opacity-60" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-52 p-1">
+          {tagsLoading ? (
+            <div className="flex items-center justify-center gap-2 px-2 py-3 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              Đang tải…
+            </div>
+          ) : !catalogTags?.length ? (
+            <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+              Không có loại rác thải
+            </div>
+          ) : (
+            <>
+              {wasteTagFilter.length > 0 ? (
+                <DropdownMenuItem
+                  onSelect={() => onWasteTagChange([])}
+                  className="cursor-pointer text-xs text-muted-foreground"
+                >
+                  Xóa bộ lọc
+                </DropdownMenuItem>
+              ) : null}
+              {catalogTags.map(tag => {
+                const checked = wasteTagFilter.includes(tag.id);
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={tag.id}
+                    checked={checked}
+                    onCheckedChange={() => toggleTag(tag.id)}
+                    onSelect={e => e.preventDefault()}
+                    className="cursor-pointer text-xs"
+                  >
+                    {tag.nameVi}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
 
 type BoardViewProps = {
-  teams: TeamListItem[];
-  isLoading: boolean;
+  cleanupTeams: TeamListItem[];
+  inspectionTeams: TeamListItem[];
+  cleanupPagination: ClientPagination;
+  inspectionPagination: ClientPagination;
+  cleanupLoading: boolean;
+  inspectionLoading: boolean;
   isFetching: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   statusFilter: StatusFilter;
   teamTypeFilter: TeamTypeFilter;
   availableFilter: AvailableFilter;
+  wasteTagFilter: string[];
   onStatusChange: (value: StatusFilter) => void;
   onTeamTypeChange: (value: TeamTypeFilter) => void;
   onAvailableChange: (value: AvailableFilter) => void;
+  onWasteTagChange: (value: string[]) => void;
   cleanupPage: number;
   inspectionPage: number;
   onCleanupPageChange: (page: number) => void;
@@ -413,17 +545,23 @@ type BoardViewProps = {
 };
 
 export function BoardView({
-  teams,
-  isLoading,
+  cleanupTeams: cleanupSource,
+  inspectionTeams: inspectionSource,
+  cleanupPagination,
+  inspectionPagination,
+  cleanupLoading,
+  inspectionLoading,
   isFetching,
   search,
   onSearchChange,
   statusFilter,
   teamTypeFilter,
   availableFilter,
+  wasteTagFilter,
   onStatusChange,
   onTeamTypeChange,
   onAvailableChange,
+  onWasteTagChange,
   cleanupPage,
   inspectionPage,
   onCleanupPageChange,
@@ -434,55 +572,21 @@ export function BoardView({
   onViewModeChange,
 }: BoardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<EditTeamTarget | null>(null);
 
   const showCleanup = teamTypeFilter === 'all' || teamTypeFilter === 'Cleanup';
   const showInspection = teamTypeFilter === 'all' || teamTypeFilter === 'Inspection';
-  const isDualColumn = showCleanup && showInspection;
 
-  const cleanupSource = useMemo(() => {
-    if (!isDualColumn) {
-      return teamTypeFilter === 'Cleanup' ? teams : [];
-    }
-    return teams.filter(t => t.teamType === 'Cleanup');
-  }, [teams, isDualColumn, teamTypeFilter]);
-
-  const inspectionSource = useMemo(() => {
-    if (!isDualColumn) {
-      return teamTypeFilter === 'Inspection' ? teams : [];
-    }
-    return teams.filter(t => t.teamType === 'Inspection');
-  }, [teams, isDualColumn, teamTypeFilter]);
-
-  const cleanupFiltered = useMemo(
+  const cleanupTeams = useMemo(
     () => filterTeamsBySearch(cleanupSource, search),
     [cleanupSource, search]
   );
-  const inspectionFiltered = useMemo(
+  const inspectionTeams = useMemo(
     () => filterTeamsBySearch(inspectionSource, search),
     [inspectionSource, search]
   );
 
-  const cleanupTeams = useMemo(
-    () => paginateClient(cleanupFiltered, cleanupPage, BOARD_COLUMN_PAGE_SIZE),
-    [cleanupFiltered, cleanupPage]
-  );
-  const inspectionTeams = useMemo(
-    () => paginateClient(inspectionFiltered, inspectionPage, BOARD_COLUMN_PAGE_SIZE),
-    [inspectionFiltered, inspectionPage]
-  );
-
-  const cleanupPagination = useMemo(
-    () => buildClientPagination(cleanupFiltered.length, cleanupPage, BOARD_COLUMN_PAGE_SIZE),
-    [cleanupFiltered.length, cleanupPage]
-  );
-
-  const inspectionPagination = useMemo(
-    () => buildClientPagination(inspectionFiltered.length, inspectionPage, BOARD_COLUMN_PAGE_SIZE),
-    [inspectionFiltered.length, inspectionPage]
-  );
-
-  const cleanupLoading = isLoading && showCleanup;
-  const inspLoading = isLoading && showInspection;
+  const inspLoading = inspectionLoading;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -497,11 +601,11 @@ export function BoardView({
               placeholder="Tìm tên đội..."
               className={cn(
                 'h-8 w-full border-slate-200 bg-white pl-9 text-sm shadow-none',
-                isFetching && !isLoading && 'pr-8'
+                isFetching && !cleanupLoading && !inspLoading && 'pr-8'
               )}
               aria-label="Tìm tên đội"
             />
-            {isFetching && !isLoading ? (
+            {isFetching && !cleanupLoading && !inspLoading ? (
               <Loader2
                 className="absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-slate-400"
                 aria-hidden
@@ -512,9 +616,11 @@ export function BoardView({
             statusFilter={statusFilter}
             teamTypeFilter={teamTypeFilter}
             availableFilter={availableFilter}
+            wasteTagFilter={wasteTagFilter}
             onStatusChange={onStatusChange}
             onTeamTypeChange={onTeamTypeChange}
             onAvailableChange={onAvailableChange}
+            onWasteTagChange={onWasteTagChange}
           />
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
@@ -558,17 +664,10 @@ export function BoardView({
 
             <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto px-3 pb-3">
               {cleanupLoading ? (
-                <div className="flex gap-3">
-                  <div className="flex flex-1 flex-col gap-3">
-                    {[1, 3].map(i => (
-                      <TeamCardSkeleton key={i} />
-                    ))}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-3">
-                    {[2, 4].map(i => (
-                      <TeamCardSkeleton key={i} />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map(i => (
+                    <TeamCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : cleanupTeams.length === 0 ? (
                 <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-sm text-slate-500">
@@ -576,64 +675,36 @@ export function BoardView({
                   <span>Không có đội nào</span>
                 </div>
               ) : (
-                <div className="flex gap-3">
-                  <div className="flex flex-1 flex-col gap-3">
-                    {cleanupTeams
-                      .filter((_, i) => i % 2 === 0)
-                      .map(team => (
-                        <TeamCard
-                          key={team.id}
-                          team={team}
-                          isExpanded={expandedId === team.id}
-                          onToggle={() =>
-                            setExpandedId(prev => (prev === team.id ? null : team.id))
-                          }
-                          onAddMember={() =>
-                            onAddMember({
-                              id: team.id,
-                              name: team.name,
-                              teamType: team.teamType,
-                            })
-                          }
-                        />
-                      ))}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-3">
-                    {cleanupTeams
-                      .filter((_, i) => i % 2 !== 0)
-                      .map(team => (
-                        <TeamCard
-                          key={team.id}
-                          team={team}
-                          isExpanded={expandedId === team.id}
-                          onToggle={() =>
-                            setExpandedId(prev => (prev === team.id ? null : team.id))
-                          }
-                          onAddMember={() =>
-                            onAddMember({
-                              id: team.id,
-                              name: team.name,
-                              teamType: team.teamType,
-                            })
-                          }
-                        />
-                      ))}
-                  </div>
+                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                  {cleanupTeams.map(team => (
+                    <TeamCard
+                      key={team.id}
+                      team={team}
+                      isExpanded={expandedId === team.id}
+                      onToggle={() => setExpandedId(prev => (prev === team.id ? null : team.id))}
+                      onAddMember={() =>
+                        onAddMember({
+                          id: team.id,
+                          name: team.name,
+                          teamType: team.teamType,
+                        })
+                      }
+                      onEdit={() => setEditTarget(toEditTeamTarget(team))}
+                    />
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Cleanup pagination — độc lập theo cột */}
-            {!cleanupLoading ? (
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
-                {cleanupPagination.totalPages > 1 ? (
-                  <PaginationSimple
-                    page={cleanupPage}
-                    totalPages={cleanupPagination.totalPages}
-                    onPageChange={onCleanupPageChange}
-                    className="w-auto"
-                  />
-                ) : null}
+            {!cleanupLoading && cleanupPagination.totalPages > 1 ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-border px-3 py-2">
+                <PaginationSimple
+                  page={cleanupPage}
+                  totalPages={cleanupPagination.totalPages}
+                  onPageChange={onCleanupPageChange}
+                  className="w-auto"
+                />
               </div>
             ) : null}
           </div>
@@ -668,17 +739,10 @@ export function BoardView({
 
             <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto px-3 pb-3">
               {inspLoading ? (
-                <div className="flex gap-3">
-                  <div className="flex flex-1 flex-col gap-3">
-                    {[1, 3].map(i => (
-                      <TeamCardSkeleton key={i} />
-                    ))}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-3">
-                    {[2, 4].map(i => (
-                      <TeamCardSkeleton key={i} />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map(i => (
+                    <TeamCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : inspectionTeams.length === 0 ? (
                 <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-sm text-slate-500">
@@ -686,69 +750,47 @@ export function BoardView({
                   <span>Không có đội nào</span>
                 </div>
               ) : (
-                <div className="flex gap-3">
-                  <div className="flex flex-1 flex-col gap-3">
-                    {inspectionTeams
-                      .filter((_, i) => i % 2 === 0)
-                      .map(team => (
-                        <TeamCard
-                          key={team.id}
-                          team={team}
-                          isExpanded={expandedId === team.id}
-                          onToggle={() =>
-                            setExpandedId(prev => (prev === team.id ? null : team.id))
-                          }
-                          onAddMember={() =>
-                            onAddMember({
-                              id: team.id,
-                              name: team.name,
-                              teamType: team.teamType,
-                            })
-                          }
-                        />
-                      ))}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-3">
-                    {inspectionTeams
-                      .filter((_, i) => i % 2 !== 0)
-                      .map(team => (
-                        <TeamCard
-                          key={team.id}
-                          team={team}
-                          isExpanded={expandedId === team.id}
-                          onToggle={() =>
-                            setExpandedId(prev => (prev === team.id ? null : team.id))
-                          }
-                          onAddMember={() =>
-                            onAddMember({
-                              id: team.id,
-                              name: team.name,
-                              teamType: team.teamType,
-                            })
-                          }
-                        />
-                      ))}
-                  </div>
+                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                  {inspectionTeams.map(team => (
+                    <TeamCard
+                      key={team.id}
+                      team={team}
+                      isExpanded={expandedId === team.id}
+                      onToggle={() => setExpandedId(prev => (prev === team.id ? null : team.id))}
+                      onAddMember={() =>
+                        onAddMember({
+                          id: team.id,
+                          name: team.name,
+                          teamType: team.teamType,
+                        })
+                      }
+                      onEdit={() => setEditTarget(toEditTeamTarget(team))}
+                    />
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Inspection pagination — độc lập theo cột */}
-            {!inspLoading ? (
-              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-3 py-2">
-                {inspectionPagination.totalPages > 1 ? (
-                  <PaginationSimple
-                    page={inspectionPage}
-                    totalPages={inspectionPagination.totalPages}
-                    onPageChange={onInspectionPageChange}
-                    className="w-auto"
-                  />
-                ) : null}
+            {!inspLoading && inspectionPagination.totalPages > 1 ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-border px-3 py-2">
+                <PaginationSimple
+                  page={inspectionPage}
+                  totalPages={inspectionPagination.totalPages}
+                  onPageChange={onInspectionPageChange}
+                  className="w-auto"
+                />
               </div>
             ) : null}
           </div>
         ) : null}
       </div>
+
+      <EditTeamDialog
+        open={editTarget != null}
+        team={editTarget}
+        onClose={() => setEditTarget(null)}
+      />
     </div>
   );
 }

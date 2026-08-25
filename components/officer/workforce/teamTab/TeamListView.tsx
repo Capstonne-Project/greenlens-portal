@@ -22,17 +22,21 @@ import {
 } from '@/components/ui/table';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
-import { Loader2, MoreHorizontal, Search, Users } from 'lucide-react';
+import { Loader2, MoreHorizontal, Pencil, Search, Users } from 'lucide-react';
+import { useState } from 'react';
 import { WorkforceViewModeSwitch, type WorkforceViewMode } from '../WorkforceToolbarActions';
 import { TeamFilterDropdowns } from './TeamBoardView';
+import { EditTeamDialog } from './TeamTabDialogs';
 import {
   formatDate,
   TABLE_HEAD_CLASS,
+  toEditTeamTarget,
   TYPE_DOT,
   TYPE_LABEL,
   type AddMemberTeamTarget,
   type AvailableFilter,
   type ClientPagination,
+  type EditTeamTarget,
   type StatusFilter,
   type TeamTypeFilter,
 } from './teamTab.shared';
@@ -76,9 +80,11 @@ export type TeamListViewProps = {
   statusFilter: StatusFilter;
   teamTypeFilter: TeamTypeFilter;
   availableFilter: AvailableFilter;
+  wasteTagFilter: string[];
   onStatusChange: (value: StatusFilter) => void;
   onTeamTypeChange: (value: TeamTypeFilter) => void;
   onAvailableChange: (value: AvailableFilter) => void;
+  onWasteTagChange: (value: string[]) => void;
   isLoading: boolean;
   isFetching: boolean;
   isError: boolean;
@@ -104,9 +110,11 @@ export function TeamListView({
   statusFilter,
   teamTypeFilter,
   availableFilter,
+  wasteTagFilter,
   onStatusChange,
   onTeamTypeChange,
   onAvailableChange,
+  onWasteTagChange,
   isLoading,
   isFetching,
   isError,
@@ -125,6 +133,8 @@ export function TeamListView({
   viewMode,
   onViewModeChange,
 }: TeamListViewProps) {
+  const [editTarget, setEditTarget] = useState<EditTeamTarget | null>(null);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Search + filters (trái) + export + view mode (phải) */}
@@ -153,9 +163,11 @@ export function TeamListView({
             statusFilter={statusFilter}
             teamTypeFilter={teamTypeFilter}
             availableFilter={availableFilter}
+            wasteTagFilter={wasteTagFilter}
             onStatusChange={onStatusChange}
             onTeamTypeChange={onTeamTypeChange}
             onAvailableChange={onAvailableChange}
+            onWasteTagChange={onWasteTagChange}
           />
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <WorkforceViewModeSwitch value={viewMode} onChange={onViewModeChange} />
@@ -285,6 +297,10 @@ export function TeamListView({
                           <DropdownMenuItem onClick={() => onDetailTeam(team)}>
                             Xem chi tiết
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setEditTarget(toEditTeamTarget(team))}>
+                            <Pencil className="mr-1.5 size-3.5" />
+                            Chỉnh sửa
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
                               onAddMember({
@@ -320,6 +336,12 @@ export function TeamListView({
           ) : null}
         </div>
       </div>
+
+      <EditTeamDialog
+        open={editTarget != null}
+        team={editTarget}
+        onClose={() => setEditTarget(null)}
+      />
     </div>
   );
 }
