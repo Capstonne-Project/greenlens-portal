@@ -1,6 +1,7 @@
 'use client';
 
 import { CompanyContractHistoryDrawer } from '@/components/officer/companies/CompanyContractHistoryDrawer';
+import { CompanyAssignAreaDialog } from '@/components/officer/companies/CompanyCreatePageClient';
 import { CompanyRenewContractDialog } from '@/components/officer/companies/CompanyRenewContractDialog';
 import { CompanySuspendDialog } from '@/components/officer/companies/CompanySuspendDialog';
 import {
@@ -25,7 +26,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useCompanyDetail, useReactivateCompany } from '@/hooks/useCompany';
-import type { CompanyDetail, CompanyStatus } from '@/lib/api/models/company';
+import type { CompanyDetail, CompanyListItem, CompanyStatus } from '@/lib/api/models/company';
 import { cn } from '@/lib/utils';
 import { getCompanyMutationError } from '@/utils/companyErrors';
 import { ArrowLeft, History, Loader2, MapPin, RefreshCw, RotateCcw } from 'lucide-react';
@@ -381,6 +382,7 @@ export function CompanyDetailClient({ companyId }: { companyId: string }) {
   const [renewOpen, setRenewOpen] = useState(false);
   const [reactivateOpen, setReactivateOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
+  const [assignAreaOpen, setAssignAreaOpen] = useState(false);
 
   const canSuspend = data?.status === 'Active';
   const canReactivate = data?.status === 'Suspended';
@@ -461,6 +463,18 @@ export function CompanyDetailClient({ companyId }: { companyId: string }) {
                 >
                   <RefreshCw className="size-3.5" aria-hidden />
                   Gia hạn
+                </Button>
+              ) : null}
+              {data ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 border-sky-200 text-sky-800 hover:bg-sky-50"
+                  onClick={() => setAssignAreaOpen(true)}
+                >
+                  <MapPin className="size-3.5" aria-hidden />
+                  Gán địa bàn
                 </Button>
               ) : null}
               {canSuspend ? (
@@ -591,6 +605,31 @@ export function CompanyDetailClient({ companyId }: { companyId: string }) {
         }
         onClose={() => setSuspendOpen(false)}
         onSuspended={() => void refetch()}
+      />
+
+      <CompanyAssignAreaDialog
+        open={assignAreaOpen}
+        assignCompany={
+          data
+            ? ({
+                id: data.id,
+                name: data.name,
+                contractNumber: data.contractNumber,
+                contractType: data.contractType,
+                status: data.status,
+                contractStartDate: data.contractStartDate,
+                contractEndDate: data.contractEndDate,
+                taxCode: data.taxCode,
+                phone: data.phone,
+                email: data.email,
+                serviceAreaCount: data.serviceAreas.length,
+                staffCount: data.staffCount,
+                createdAt: data.createdAt,
+              } satisfies CompanyListItem)
+            : null
+        }
+        onClose={() => setAssignAreaOpen(false)}
+        onAssigned={() => void refetch()}
       />
 
       {isPending ? (
