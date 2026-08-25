@@ -4,11 +4,13 @@ import {
   fetchAdminBadges,
   toggleAdminBadge,
   updateAdminBadge,
+  updateAdminBadgeThreshold,
 } from '@/lib/api/services/fetchAdminBadge';
 import type {
   AdminBadgesParams,
   ToggleAdminBadgeInput,
   UpdateAdminBadgeInput,
+  UpdateAdminBadgeThresholdInput,
 } from '@/lib/api/models/adminBadge';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -51,6 +53,15 @@ export function useToggleAdminBadge() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ToggleAdminBadgeInput }) =>
       toggleAdminBadge(id, body),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useUpdateAdminBadgeThreshold() {
+  const invalidate = useInvalidateAdminBadges();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateAdminBadgeThresholdInput }) =>
+      updateAdminBadgeThreshold(id, body),
     onSuccess: () => invalidate(),
   });
 }

@@ -111,8 +111,8 @@ export function AdminOverviewDashboard() {
           <OverviewPerformanceBars companies={companyPerformance} officers={officerPerformance} />
         </div>
 
-        {/* Column 2 — trend + alerts */}
-        <div className="min-h-0 md:col-span-1 lg:col-span-5 lg:col-start-4 lg:row-start-1">
+        {/* Column 2 — trend + pollution + alerts */}
+        <div className="min-h-0 self-start md:col-span-1 lg:col-span-5 lg:col-start-4 lg:row-start-1">
           <OverviewReportTrend points={reportTrend} />
         </div>
         <div className="min-h-0 md:col-span-1 lg:col-span-5 lg:col-start-4 lg:row-start-2">

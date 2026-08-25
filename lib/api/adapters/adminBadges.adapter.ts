@@ -2,6 +2,7 @@ import type {
   AdminBadgeListDataDto,
   ToggleAdminBadgeBodyDto,
   UpdateAdminBadgeBodyDto,
+  UpdateAdminBadgeThresholdBodyDto,
 } from '@/lib/api/dto/adminBadge.dto';
 import { mapAdminBadgeListDataDto } from '@/lib/api/mappers/adminBadge.mapper';
 import type {
@@ -9,6 +10,7 @@ import type {
   AdminBadgesParams,
   ToggleAdminBadgeInput,
   UpdateAdminBadgeInput,
+  UpdateAdminBadgeThresholdInput,
 } from '@/lib/api/models/adminBadge';
 import apiService from '@/lib/api/core';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
@@ -56,4 +58,13 @@ export async function adaptToggleAdminBadge(
 ): Promise<void> {
   const payload: ToggleAdminBadgeBodyDto = { isActive: body.isActive };
   await apiService.patch(`/v1/admin/badges/${encodeURIComponent(id)}/toggle`, payload);
+}
+
+/** PATCH /v1/admin/badges/{id}/thresholds */
+export async function adaptUpdateAdminBadgeThreshold(
+  id: string,
+  body: UpdateAdminBadgeThresholdInput
+): Promise<void> {
+  const payload: UpdateAdminBadgeThresholdBodyDto = { threshold: body.threshold };
+  await apiService.patch(`/v1/admin/badges/${encodeURIComponent(id)}/thresholds`, payload);
 }

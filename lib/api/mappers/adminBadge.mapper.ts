@@ -21,6 +21,7 @@ export function mapAdminBadgeDto(dto: AdminBadgeItemDto): AdminBadge {
     requiredPoints: optionalNumber(dto.requiredPoints),
     requiredReportCount: optionalNumber(dto.requiredReportCount),
     requiredStreakDays: optionalNumber(dto.requiredStreakDays),
+    requiredActionCount: optionalNumber(dto.requiredActionCount),
     createdAt: dto.createdAt?.trim() ? dto.createdAt.trim() : null,
   };
 }

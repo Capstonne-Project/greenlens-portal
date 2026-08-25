@@ -3,6 +3,10 @@
 import { BadgeCard } from '@/components/admin/badges/BadgeCard';
 import { BadgeFormDialog, type BadgeFormValues } from '@/components/admin/badges/BadgeFormDialog';
 import { BadgeIconPreviewDialog } from '@/components/admin/badges/BadgeIconPreviewDialog';
+import {
+  BadgeThresholdDialog,
+  type BadgeThresholdFormValues,
+} from '@/components/admin/badges/BadgeThresholdDialog';
 import { BadgeToggleDialog } from '@/components/admin/badges/BadgeToggleDialog';
 import {
   AdminFilterSearch,
@@ -13,6 +17,7 @@ import {
   useAdminBadgesList,
   useToggleAdminBadge,
   useUpdateAdminBadge,
+  useUpdateAdminBadgeThreshold,
 } from '@/hooks/useAdminBadges';
 import type { AdminBadge } from '@/lib/api/models/adminBadge';
 import { ADMIN_BADGES_PAGE_SIZE } from '@/lib/constants/adminBadges';
@@ -34,6 +39,7 @@ export function AdminBadgesView() {
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
 
   const [editBadge, setEditBadge] = useState<AdminBadge | null>(null);
+  const [thresholdBadge, setThresholdBadge] = useState<AdminBadge | null>(null);
   const [previewBadge, setPreviewBadge] = useState<AdminBadge | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [toggleTarget, setToggleTarget] = useState<{
@@ -58,6 +64,7 @@ export function AdminBadgesView() {
   const pagination = listQuery.data?.pagination;
 
   const updateMutation = useUpdateAdminBadge();
+  const thresholdMutation = useUpdateAdminBadgeThreshold();
   const toggleMutation = useToggleAdminBadge();
 
   const setQuery = useCallback(
@@ -125,7 +132,22 @@ export function AdminBadgesView() {
     );
   };
 
+  const handleUpdateThreshold = (values: BadgeThresholdFormValues) => {
+    if (!thresholdBadge) return;
+    thresholdMutation.mutate(
+      { id: thresholdBadge.id, body: { threshold: values.threshold } },
+      {
+        onSuccess: () => {
+          toast.success('Đã cập nhật ngưỡng huy hiệu.');
+          setThresholdBadge(null);
+        },
+        onError: err => toast.error(getAdminBadgeMutationError(err, 'Không thể cập nhật ngưỡng.')),
+      }
+    );
+  };
+
   const formBusy = updateMutation.isPending;
+  const thresholdBusy = thresholdMutation.isPending;
   const isPending = listQuery.isPending;
   const isError = listQuery.isError;
   const error = listQuery.error;
@@ -193,9 +215,11 @@ export function AdminBadgesView() {
                 key={badge.id}
                 badge={badge}
                 onEdit={setEditBadge}
+                onEditThreshold={setThresholdBadge}
                 onToggle={requestToggle}
                 onPreviewIcon={setPreviewBadge}
                 toggleBusy={togglingId === badge.id && toggleMutation.isPending}
+                thresholdBusy={thresholdBadge?.id === badge.id && thresholdMutation.isPending}
               />
             ))}
           </div>
@@ -237,6 +261,13 @@ export function AdminBadgesView() {
         busy={formBusy}
         onClose={() => setEditBadge(null)}
         onSubmit={handleUpdate}
+      />
+      <BadgeThresholdDialog
+        open={Boolean(thresholdBadge)}
+        badge={thresholdBadge}
+        busy={thresholdBusy}
+        onClose={() => setThresholdBadge(null)}
+        onSubmit={handleUpdateThreshold}
       />
       <BadgeToggleDialog
         badge={toggleTarget?.badge ?? null}
