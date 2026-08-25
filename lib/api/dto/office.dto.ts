@@ -92,6 +92,15 @@ export type LeoMyReportsStatusDto =
 /** Swagger query `severity`. */
 export type LeoMyReportsSeverityDto = 'Low' | 'Medium' | 'High' | 'Critical';
 
+/** Waste tag gắn trên team — trả về trong assignments[].teamWasteTags. */
+export interface LeoReportAssignmentWasteTagDto {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  iconUrl: string | null;
+}
+
 export interface LeoMyReportAssignmentDto {
   assignmentId: string;
   teamId: string;
@@ -107,6 +116,8 @@ export interface LeoMyReportAssignmentDto {
   completedAt?: string | null;
   progressUpdatedAt?: string | null;
   isCompanyTeam?: boolean;
+  /** Waste tags của team được gán — Cleanup teams only. */
+  teamWasteTags?: LeoReportAssignmentWasteTagDto[];
   beforeImageUrls?: string[];
   afterImageUrls?: string[];
 }

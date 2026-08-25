@@ -7,6 +7,7 @@ import {
   adaptRemoveTeamMember,
   adaptTeamDetail,
   adaptTeamsList,
+  adaptUpdateTeam,
 } from '@/lib/api/adapters/teams.adapter';
 import type {
   AddTeamMemberInput,
@@ -16,6 +17,8 @@ import type {
   TeamMembership,
   TeamsList,
   TeamsListParams,
+  UpdateTeamInput,
+  UpdatedTeam,
 } from '@/lib/api/models/team';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
@@ -32,6 +35,8 @@ export type {
   TeamsList,
   TeamsListParams,
   TeamType,
+  UpdateTeamInput,
+  UpdatedTeam,
 } from '@/lib/api/models/team';
 
 export async function fetchTeams(params?: TeamsListParams): Promise<ApiEnvelope<TeamsList>> {
@@ -53,6 +58,13 @@ export async function addTeamMember(
   return adaptAddTeamMember(teamId, body);
 }
 
+export async function updateTeam(
+  id: string,
+  body: UpdateTeamInput
+): Promise<ApiEnvelope<UpdatedTeam>> {
+  return adaptUpdateTeam(id, body);
+}
+
 export async function removeTeamMember(
   teamId: string,
   userId: string
@@ -64,6 +76,7 @@ const teamService = {
   fetchTeams,
   fetchTeamDetail,
   createTeam,
+  updateTeam,
   addTeamMember,
   removeTeamMember,
 };

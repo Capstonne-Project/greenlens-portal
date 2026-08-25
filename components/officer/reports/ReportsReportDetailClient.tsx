@@ -265,6 +265,13 @@ function mapAssignmentToProgressView(
     progressPercent: assignment.progressPercent ?? 0,
     progressNote,
     progressUpdatedAt,
+    teamWasteTags: (assignment.teamWasteTags ?? []).map(t => ({
+      tagId: t.tagId,
+      code: t.code,
+      nameVi: t.nameVi,
+      nameEn: t.nameEn ?? null,
+      iconUrl: t.iconUrl ?? null,
+    })),
     members: [],
     progressUpdates: hasProgress
       ? [

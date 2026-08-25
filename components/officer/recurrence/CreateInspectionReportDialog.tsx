@@ -117,7 +117,7 @@ interface CreateInspectionReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reportId: string;
-  /** Navigate sau — hiện chỉ đóng dialog (chưa có route). */
+  /** Override navigate “Xem chi tiết”. Mặc định: `/officer/inspections/[id]`. */
   onViewDetail?: (payload: { reportId: string; inspectionId: string }) => void;
 }
 
@@ -376,8 +376,16 @@ export function CreateInspectionReportDialog({
         primaryAction={{
           label: 'Xem chi tiết',
           onClick: () => {
-            onViewDetail?.({ reportId, inspectionId: createdInspectionId });
+            const inspectionId = createdInspectionId.trim();
+            if (onViewDetail) {
+              onViewDetail({ reportId, inspectionId });
+              finishFlow();
+              return;
+            }
             finishFlow();
+            if (inspectionId) {
+              router.push(`/officer/inspections/${encodeURIComponent(inspectionId)}`);
+            }
           },
         }}
       />

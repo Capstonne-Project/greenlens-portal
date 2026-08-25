@@ -1,6 +1,7 @@
 'use client';
 
 import { ValidatedInput } from '@/components/common/ValidatedField';
+import { WasteTagSelectChip } from '@/components/common/WasteTagSelectChip';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,9 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Field, FieldDescription, FieldGroup } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
 import { useCreateCompanyTeam } from '@/hooks/useCompany';
+import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getCompanyMutationError } from '@/utils/companyUi';
 import { faUserGroup } from '@fortawesome/free-solid-svg-icons';
@@ -23,7 +25,6 @@ import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-/** Company chỉ có đội dọn dẹp — cố định trên UI (parity officer CreateTeamDialog). */
 const COMPANY_TEAM_TYPE_LABEL = 'Đội Dọn dẹp';
 
 const TEAM_NAME_MIN = 3;
@@ -36,6 +37,7 @@ const createCompanyTeamSchema = z.object({
     .min(1, 'Vui lòng nhập tên đội')
     .min(TEAM_NAME_MIN, `Tên đội phải có ít nhất ${TEAM_NAME_MIN} ký tự`)
     .max(TEAM_NAME_MAX, `Tên đội không được quá ${TEAM_NAME_MAX} ký tự`),
+  wasteTagIds: z.array(z.string()).min(1, 'Đội dọn dẹp phải chọn ít nhất 1 loại rác thải'),
 });
 
 type CreateCompanyTeamFormValues = z.infer<typeof createCompanyTeamSchema>;
@@ -47,30 +49,47 @@ interface CompanyTeamCreateDialogProps {
 
 export function CompanyTeamCreateDialog({ open, onClose }: CompanyTeamCreateDialogProps) {
   const createTeam = useCreateCompanyTeam();
+  const { data: catalogTags, isPending: tagsLoading } = useCatalogWasteTags(open);
 
   const {
     register,
     handleSubmit,
     reset,
     control,
-    formState: { errors },
+    setValue,
+    formState: { errors, isSubmitted, touchedFields, dirtyFields },
   } = useForm<CreateCompanyTeamFormValues>({
     ...REALTIME_FORM_OPTIONS,
     resolver: zodResolver(createCompanyTeamSchema),
-    defaultValues: { name: '' },
+    defaultValues: { name: '', wasteTagIds: [] },
   });
 
   const isBusy = createTeam.isPending;
   const nameValue = useWatch({ control, name: 'name', defaultValue: '' }) ?? '';
+  const selectedTagIds = (useWatch({ control, name: 'wasteTagIds' }) ?? []) as string[];
+
+  const nameError =
+    errors.name && (touchedFields.name || dirtyFields.name || isSubmitted)
+      ? errors.name.message
+      : undefined;
+
+  const wasteTagError = isSubmitted && errors.wasteTagIds ? errors.wasteTagIds.message : undefined;
 
   const closeDialog = () => {
-    reset({ name: '' });
+    reset({ name: '', wasteTagIds: [] });
     onClose();
+  };
+
+  const toggleTag = (tagId: string) => {
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter(id => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setValue('wasteTagIds', next, { shouldValidate: isSubmitted, shouldDirty: true });
   };
 
   const onSubmit = handleSubmit(values => {
     createTeam.mutate(
-      { name: values.name },
+      { name: values.name, wasteTagIds: values.wasteTagIds },
       {
         onSuccess: env => {
           toast.success(env.message ?? 'Đã tạo đội mới.');
@@ -134,9 +153,38 @@ export function CompanyTeamCreateDialog({ open, onClose }: CompanyTeamCreateDial
                   value={nameValue}
                   minLength={TEAM_NAME_MIN}
                   maxLength={TEAM_NAME_MAX}
-                  error={errors.name?.message}
+                  error={nameError}
                   className="h-9 rounded-md"
                 />
+              </Field>
+
+              <Field>
+                <Label>
+                  Loại rác thải{' '}
+                  <span className="text-xs font-normal text-muted-foreground">(bắt buộc)</span>
+                </Label>
+                <FieldDescription>Chọn các loại rác thải đội này phụ trách</FieldDescription>
+
+                {tagsLoading ? (
+                  <div className="flex h-10 items-center gap-2 rounded-md border border-input px-3 text-sm text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    Đang tải danh sách…
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 rounded-md border border-input p-3">
+                    {(catalogTags ?? []).map(tag => (
+                      <WasteTagSelectChip
+                        key={tag.id}
+                        tag={tag}
+                        selected={selectedTagIds.includes(tag.id)}
+                        disabled={isBusy}
+                        onToggle={toggleTag}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {wasteTagError ? <FieldError>{wasteTagError}</FieldError> : null}
               </Field>
             </FieldGroup>
           </div>

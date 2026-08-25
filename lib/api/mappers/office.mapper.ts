@@ -5,6 +5,7 @@ import type {
   LeoMyReportItemDto,
   LeoMyReportsDataDto,
   LeoOfficePaginationDto,
+  LeoReportAssignmentWasteTagDto,
   LeoWardBoundaryDto,
   OfficeDetailDto,
   OfficeDto,
@@ -22,6 +23,7 @@ import type {
   LeoMyReportItem,
   LeoMyReportsData,
   LeoReportAssignmentStatus,
+  LeoReportAssignmentWasteTag,
   LeoWardBoundary,
   Office,
   OfficeDetail,
@@ -135,6 +137,18 @@ function mapLeoMyReportAssignedCompanyDto(
   };
 }
 
+function mapLeoReportAssignmentWasteTagDto(
+  dto: LeoReportAssignmentWasteTagDto
+): LeoReportAssignmentWasteTag {
+  return {
+    tagId: dto.tagId,
+    code: dto.code,
+    nameVi: dto.nameVi,
+    nameEn: dto.nameEn,
+    iconUrl: dto.iconUrl ?? null,
+  };
+}
+
 function mapLeoMyReportAssignmentDto(dto: LeoMyReportAssignmentDto): LeoMyReportAssignment {
   return {
     assignmentId: dto.assignmentId,
@@ -151,6 +165,7 @@ function mapLeoMyReportAssignmentDto(dto: LeoMyReportAssignmentDto): LeoMyReport
     completedAt: dto.completedAt ?? null,
     progressUpdatedAt: dto.progressUpdatedAt ?? null,
     isCompanyTeam: Boolean(dto.isCompanyTeam),
+    teamWasteTags: (dto.teamWasteTags ?? []).map(mapLeoReportAssignmentWasteTagDto),
     beforeImageUrls: dto.beforeImageUrls ?? [],
     afterImageUrls: dto.afterImageUrls ?? [],
   };

@@ -4,6 +4,7 @@
 import {
   adaptAddCompanyTeamMember,
   adaptArchiveCompanyTeam,
+  adaptCompanyTeamDetail,
   adaptDeleteCompanyTeam,
   adaptAssignCompanyTeam,
   adaptReassignCompanyTeam,
@@ -18,9 +19,9 @@ import {
   adaptMyCompany,
   adaptMyCompanyContractHistory,
   adaptMyCompanyKpi,
-  adaptRenameCompanyTeam,
   adaptRemoveCompanyTeamMember,
   adaptUpdateCompanyStaffStatus,
+  adaptUpdateCompanyTeam,
 } from '@/lib/api/adapters/company.adapter';
 import {
   adaptCompaniesList,
@@ -55,6 +56,7 @@ import type {
   CompanyStaffList,
   CompanyStaffListParams,
   CompanyTeam,
+  CompanyTeamDetail,
   CompanyTeamMembership,
   CompanyTeamsList,
   CompanyTeamsListParams,
@@ -68,12 +70,12 @@ import type {
   MyCompanyKpi,
   MyCompanyKpiParams,
   MyWardCompanies,
-  RenameCompanyTeamInput,
   RenewCompanyContractInput,
   RenewCompanyContractResult,
   SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
+  UpdateCompanyTeamInput,
 } from '@/lib/api/models/company';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
@@ -86,6 +88,7 @@ export type {
   CompaniesList,
   CompaniesListParams,
   CompanyAssignmentDetail,
+  CompanyAssignmentDispatchSource,
   CompanyAssignmentListItem,
   CompanyAssignmentMedia,
   CompanyAssignmentProgressSummary,
@@ -93,6 +96,7 @@ export type {
   CompanyAssignmentsParams,
   CompanyAssignmentStatus,
   CompanyAssignmentTeamDetail,
+  CompanyAssignmentTeamWasteTag,
   CompanyAssignmentTimelineEntry,
   CompanyAssignmentWasteTag,
   CompanyContractPeriod,
@@ -113,11 +117,14 @@ export type {
   CompanyStatus,
   COMPANIES_PAGE_SIZE,
   CompanyTeam,
+  CompanyTeamDetail,
+  CompanyTeamDetailMember,
   CompanyTeamListItem,
   CompanyTeamMembership,
   CompanyTeamOption,
   CompanyTeamsList,
   CompanyTeamsListParams,
+  CompanyTeamWasteTag,
   CreateCompanyInput,
   CreateCompanyStaffInput,
   CreateCompanyStaffResult,
@@ -129,12 +136,12 @@ export type {
   MyCompanyKpiParams,
   MyWardCompanies,
   MyWardCompanyItem,
-  RenameCompanyTeamInput,
   RenewCompanyContractInput,
   RenewCompanyContractResult,
   SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
+  UpdateCompanyTeamInput,
 } from '@/lib/api/models/company';
 
 /** GET /v1/companies — danh sách công ty DVMT (phân trang, tìm kiếm). */
@@ -289,11 +296,18 @@ export async function createCompanyTeam(
   return adaptCreateCompanyTeam(body);
 }
 
-export async function renameCompanyTeam(
+/** PUT /v1/teams/company-teams/{id} — cập nhật tên + wasteTagIds.
+ *  200: "Đã cập nhật" | 403: Team không thuộc công ty | 404: Không tìm thấy team. */
+export async function updateCompanyTeam(
   id: string,
-  body: RenameCompanyTeamInput
-): Promise<ApiEnvelope<string | null>> {
-  return adaptRenameCompanyTeam(id, body);
+  body: UpdateCompanyTeamInput
+): Promise<ApiEnvelope<string>> {
+  return adaptUpdateCompanyTeam(id, body);
+}
+
+/** GET /v1/teams/company-teams/{id} — chi tiết đội công ty. */
+export async function fetchCompanyTeamDetail(id: string): Promise<ApiEnvelope<CompanyTeamDetail>> {
+  return adaptCompanyTeamDetail(id);
 }
 
 /** PUT /v1/teams/company-teams/{id}/archive — đóng/mở team công ty. */
@@ -399,7 +413,6 @@ const companyApi = {
   assignCompanyStaffTeam,
   fetchCompanyTeams,
   createCompanyTeam,
-  renameCompanyTeam,
   archiveCompanyTeam,
   deleteCompanyTeam,
   fetchMyCompanyContractHistory,

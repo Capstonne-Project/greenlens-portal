@@ -1,5 +1,6 @@
 import type {
   ReportAssignmentDto,
+  ReportAssignmentHistoryItemDto,
   ReportDetailDto,
   ReportMediaDto,
   ReportMergedChildDto,
@@ -11,6 +12,7 @@ import type {
 } from '@/lib/api/dto/report.dto';
 import type {
   ReportAssignment,
+  ReportAssignmentHistoryItem,
   ReportDetail,
   ReportMedia,
   ReportMergedChild,
@@ -46,6 +48,38 @@ function mapAssignmentDto(dto: ReportAssignmentDto): ReportAssignment {
     progressPercent: dto.progressPercent ?? 0,
     progressNote: dto.progressNote?.trim() || null,
     progressUpdatedAt: dto.progressUpdatedAt || null,
+    teamWasteTags: (dto.teamWasteTags ?? []).map(mapWasteTagDto),
+  };
+}
+
+function mapCurrentAssignmentDto(
+  dto: ReportAssignmentDto | null | undefined
+): ReportAssignment | null {
+  if (!dto) return null;
+  return mapAssignmentDto(dto);
+}
+
+function mapAssignmentHistoryItemDto(
+  dto: ReportAssignmentHistoryItemDto
+): ReportAssignmentHistoryItem {
+  return {
+    assignmentId: dto.assignmentId,
+    teamId: dto.teamId,
+    teamName: dto.teamName,
+    teamType: dto.teamType,
+    status: dto.status,
+    note: dto.note?.trim() || null,
+    declineReason: dto.declineReason?.trim() || null,
+    assignedAt: dto.assignedAt,
+    startedAt: dto.startedAt || null,
+    completedAt: dto.completedAt || null,
+    assignedById: dto.assignedById || null,
+    assignedByName: dto.assignedByName?.trim() || null,
+    progressPercent: dto.progressPercent ?? 0,
+    progressNote: dto.progressNote?.trim() || null,
+    progressUpdatedAt: dto.progressUpdatedAt || null,
+    isCurrent: Boolean(dto.isCurrent),
+    teamWasteTags: (dto.teamWasteTags ?? []).map(mapWasteTagDto),
   };
 }
 
@@ -162,6 +196,8 @@ export function mapReportDetailDto(dto: ReportDetailDto): Omit<ReportDetail, 'st
     assignedOfficeId: dto.assignedOfficeId ?? null,
     media: (dto.media ?? []).map(mapReportMediaDto),
     assignments: (dto.assignments ?? []).map(mapAssignmentDto),
+    currentAssignment: mapCurrentAssignmentDto(dto.currentAssignment),
+    assignmentHistory: (dto.assignmentHistory ?? []).map(mapAssignmentHistoryItemDto),
     wasteTags: (dto.wasteTags ?? []).map(mapWasteTagDto),
     aiSuggestedWasteTagCodes: dto.aiSuggestedWasteTagCodes ?? null,
     createdAt: dto.createdAt,

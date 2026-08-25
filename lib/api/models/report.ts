@@ -17,7 +17,7 @@ export interface ReportMedia {
   sizeBytes: number;
 }
 
-/** GET /v1/reports/{id} — `data.assignments[]` */
+/** GET /v1/reports/{id} — `data.assignments[]` & `data.currentAssignment` */
 export interface ReportAssignment {
   id: string;
   teamId: string;
@@ -31,6 +31,29 @@ export interface ReportAssignment {
   progressPercent: number;
   progressNote: string | null;
   progressUpdatedAt: string | null;
+  /** Waste tags của team được gán — Cleanup teams only. */
+  teamWasteTags: ReportWasteTag[];
+}
+
+/** GET /v1/reports/{id} — `data.assignmentHistory[]` */
+export interface ReportAssignmentHistoryItem {
+  assignmentId: string;
+  teamId: string;
+  teamName: string;
+  teamType: string;
+  status: string;
+  note: string | null;
+  declineReason: string | null;
+  assignedAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  assignedById: string | null;
+  assignedByName: string | null;
+  progressPercent: number;
+  progressNote: string | null;
+  progressUpdatedAt: string | null;
+  isCurrent: boolean;
+  teamWasteTags: ReportWasteTag[];
 }
 
 /** GET /v1/reports/{id} — `data.wasteTags[]` */
@@ -121,6 +144,8 @@ export interface ReportDetail {
   assignedOfficeId: string | null;
   media: ReportMedia[];
   assignments: ReportAssignment[];
+  currentAssignment: ReportAssignment | null;
+  assignmentHistory: ReportAssignmentHistoryItem[];
   wasteTags: ReportWasteTag[];
   aiSuggestedWasteTagCodes: string | null;
   createdAt: string;

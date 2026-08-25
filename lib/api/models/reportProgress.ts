@@ -49,6 +49,15 @@ export interface ReportProgressUpdate {
   images: ReportProgressImage[];
 }
 
+/** Waste tag gắn trên team — trả về trong assignment.teamWasteTags. */
+export interface ReportProgressWasteTag {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string | null;
+  iconUrl: string | null;
+}
+
 export interface ReportProgressAssignment {
   assignmentId: string;
   teamId: string;
@@ -70,6 +79,7 @@ export interface ReportProgressAssignment {
   progressPercent: number;
   progressNote: string | null;
   progressUpdatedAt: string | null;
+  teamWasteTags: ReportProgressWasteTag[];
   members: ReportProgressMember[];
   progressUpdates: ReportProgressUpdate[];
 }
