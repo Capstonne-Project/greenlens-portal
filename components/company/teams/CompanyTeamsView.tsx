@@ -13,7 +13,6 @@ import {
   type CompanyTeamDeleteTarget,
 } from '@/components/company/teams/CompanyTeamDeleteDialog';
 import { CompanyTeamCreateDialog } from '@/components/company/teams/CompanyTeamCreateDialog';
-import { CompanyTeamRenameDialog } from '@/components/company/teams/CompanyTeamRenameDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,8 +41,10 @@ import {
   useCompanyTeamsList,
   useDeleteCompanyTeam,
   useMyCompany,
+  useUpdateCompanyTeam,
 } from '@/hooks/useCompany';
-import type { CompanyTeamListItem } from '@/lib/api/models/company';
+import { useCatalogWasteTags } from '@/hooks/useWasteTags';
+import type { CompanyTeamListItem, UpdateCompanyTeamInput } from '@/lib/api/models/company';
 import { cn } from '@/lib/utils';
 import {
   formatCompanyDate,
@@ -65,26 +66,65 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
+import { ValidatedInput } from '@/components/common/ValidatedField';
+import {
+  WasteTagBadge,
+  WasteTagBadgeRow,
+  WasteTagSelectChip,
+} from '@/components/common/WasteTagSelectChip';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Field, FieldError, FieldGroup } from '@/components/ui/field';
+import { Label } from '@/components/ui/label';
+import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { AnimatePresence, motion } from 'motion/react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
 type ActiveFilter = 'all' | 'active' | 'inactive';
 export type CompanyTeamsViewMode = 'board' | 'list';
 
-/** 2 hàng × 4 cột (xl) — parity mật độ officer (2 bảng × 2 masonry). */
-const BOARD_PAGE_SIZE = 8;
-const LIST_PAGE_SIZE = 10;
-/** Load tối đa cho board/list client filter (parity officer workforce). */
-const FETCH_PAGE_SIZE = 100;
+type CompanyTeamEditTarget = {
+  id: string;
+  name: string;
+  wasteTags: CompanyTeamListItem['wasteTags'];
+};
+
+const TEAM_NAME_MIN = 3;
+const TEAM_NAME_MAX = 100;
+
+const editCompanyTeamSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Vui lòng nhập tên đội')
+    .min(TEAM_NAME_MIN, `Tên đội phải có ít nhất ${TEAM_NAME_MIN} ký tự`)
+    .max(TEAM_NAME_MAX, `Tên đội không được quá ${TEAM_NAME_MAX} ký tự`),
+  wasteTagIds: z.array(z.string()).min(1, 'Đội dọn dẹp phải chọn ít nhất 1 loại rác thải'),
+});
+
+type EditCompanyTeamFormValues = z.infer<typeof editCompanyTeamSchema>;
+
+/** Board + list đều gọi API với pageSize 10. */
+const TEAMS_PAGE_SIZE = 10;
+/** Load staff khi expand card — không phải list đội. */
+const STAFF_FETCH_PAGE_SIZE = 100;
 
 const CARD_EXPAND_TRANSITION = {
   duration: 0.28,
   ease: [0.22, 1, 0.36, 1] as const,
 };
 
-/** 1 → 2 → 3 → 4 cột; items-start tránh card expand kéo cao cả hàng.
- *  Breakpoint theo bề rộng nội dung (có sidebar company): ~4 cột ≈ officer 2 bảng × 2 masonry. */
+/** 1 → 2 → 3 → 4 cột; items-start để mở 1 card không kéo cao các card cùng hàng. */
 const BOARD_GRID_CLASS =
   'grid grid-cols-1 items-start gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4';
 
@@ -105,23 +145,6 @@ function getInitials(name: string): string {
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
-
-function paginateClient<T>(items: T[], page: number, pageSize: number): T[] {
-  const start = (page - 1) * pageSize;
-  return items.slice(start, start + pageSize);
-}
-
-function buildClientPagination(totalItems: number, page: number, pageSize: number) {
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  return {
-    page,
-    pageSize,
-    totalItems,
-    totalPages,
-    hasPrev: page > 1,
-    hasNext: page < totalPages,
-  };
 }
 
 function TeamCardSkeleton() {
@@ -158,7 +181,7 @@ function TeamExpandedMembers({
   const { data: staffData, isLoading: membersLoading } = useCompanyStaffList(
     {
       page: 1,
-      pageSize: FETCH_PAGE_SIZE,
+      pageSize: STAFF_FETCH_PAGE_SIZE,
     },
     { enabled }
   );
@@ -238,12 +261,12 @@ function TeamExpandedMembers({
 
 function TeamCardMenu({
   team,
-  onRename,
+  onEdit,
   onArchive,
   onDelete,
 }: {
   team: CompanyTeamListItem;
-  onRename: () => void;
+  onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }) {
@@ -262,16 +285,19 @@ function TeamCardMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-        <DropdownMenuItem onClick={onRename}>
+        <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
           <Pencil className="mr-2 size-3.5" />
-          Đổi tên
+          Chỉnh sửa
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onArchive}>
+        <DropdownMenuItem onClick={onArchive} className="cursor-pointer">
           <Power className="mr-2 size-3.5" />
           {team.isActive ? 'Vô hiệu hoá' : 'Kích hoạt'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+        <DropdownMenuItem
+          className="cursor-pointer text-destructive focus:text-destructive"
+          onClick={onDelete}
+        >
           <Trash2 className="mr-2 size-3.5" />
           Xóa đội
         </DropdownMenuItem>
@@ -286,20 +312,20 @@ function CompanyTeamCard({
   isExpanded,
   queryEnabled = true,
   onToggle,
-  onRename,
   onArchive,
   onDelete,
   onAddMember,
+  onEdit,
 }: {
   team: CompanyTeamListItem;
   companyName: string;
   isExpanded: boolean;
   queryEnabled?: boolean;
   onToggle: () => void;
-  onRename: () => void;
   onArchive: () => void;
   onDelete: () => void;
   onAddMember: () => void;
+  onEdit: () => void;
 }) {
   const canAddMember = team.isActive;
   const affiliationLine = formatCompanyTeamAffiliationLine(companyName);
@@ -307,7 +333,7 @@ function CompanyTeamCard({
   return (
     <div
       className={cn(
-        'flex min-w-0 w-full flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-md',
+        'flex h-auto min-w-0 w-full flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-md',
         isExpanded ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-border'
       )}
     >
@@ -344,6 +370,8 @@ function CompanyTeamCard({
           <Building2 className="size-3 shrink-0" />
           <span className="truncate">{affiliationLine}</span>
         </div>
+
+        <WasteTagBadgeRow tags={team.wasteTags} />
       </button>
 
       <AnimatePresence initial={false} mode="sync">
@@ -366,19 +394,21 @@ function CompanyTeamCard({
                   {formatCompanyDate(team.createdAt)}
                 </span>
               </div>
-              {canAddMember ? (
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation();
-                    onAddMember();
-                  }}
-                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
-                >
-                  <Plus className="size-3" />
-                  Thêm thành viên
-                </button>
-              ) : null}
+              <div className="flex items-center gap-1">
+                {canAddMember ? (
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      onAddMember();
+                    }}
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    <Plus className="size-3" />
+                    Thêm thành viên
+                  </button>
+                ) : null}
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -398,7 +428,7 @@ function CompanyTeamCard({
               actions={
                 <TeamCardMenu
                   team={team}
-                  onRename={onRename}
+                  onEdit={onEdit}
                   onArchive={onArchive}
                   onDelete={onDelete}
                 />
@@ -426,18 +456,20 @@ export function CompanyTeamsView({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<CompanyTeamArchiveTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CompanyTeamDeleteTarget | null>(null);
   const [addMemberTarget, setAddMemberTarget] = useState<CompanyTeamAddMemberTarget | null>(null);
+  const [editTarget, setEditTarget] = useState<CompanyTeamEditTarget | null>(null);
 
   const isActiveParam =
     activeFilter === 'all' ? undefined : activeFilter === 'active' ? true : false;
 
+  const listPage = viewMode === 'board' ? boardPage : page;
+
   const { data, isPending, isError, isFetching, refetch } = useCompanyTeamsList(
     {
-      page: 1,
-      pageSize: FETCH_PAGE_SIZE,
+      page: listPage,
+      pageSize: TEAMS_PAGE_SIZE,
       isActive: isActiveParam,
     },
     { enabled }
@@ -447,6 +479,20 @@ export function CompanyTeamsView({
 
   const archiveTeam = useArchiveCompanyTeam();
   const deleteTeam = useDeleteCompanyTeam();
+
+  const pagination = data?.pagination ?? {
+    page: listPage,
+    pageSize: TEAMS_PAGE_SIZE,
+    totalItems: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrev: false,
+  };
+
+  const boardPageSafe = data
+    ? Math.min(boardPage, Math.max(1, data.pagination.totalPages))
+    : boardPage;
+  const pageSafe = data ? Math.min(page, Math.max(1, data.pagination.totalPages)) : page;
 
   const allTeams = useMemo(() => data?.items ?? [], [data?.items]);
 
@@ -458,20 +504,8 @@ export function CompanyTeamsView({
     );
   }, [allTeams, debouncedSearch]);
 
-  const boardTeams = useMemo(
-    () => paginateClient(filtered, boardPage, BOARD_PAGE_SIZE),
-    [filtered, boardPage]
-  );
-  const boardPagination = useMemo(
-    () => buildClientPagination(filtered.length, boardPage, BOARD_PAGE_SIZE),
-    [filtered.length, boardPage]
-  );
-
-  const listTeams = useMemo(() => paginateClient(filtered, page, LIST_PAGE_SIZE), [filtered, page]);
-  const listPagination = useMemo(
-    () => buildClientPagination(filtered.length, page, LIST_PAGE_SIZE),
-    [filtered.length, page]
-  );
+  const boardTeams = filtered;
+  const listTeams = filtered;
 
   const resetPages = () => {
     setPage(1);
@@ -600,7 +634,7 @@ export function CompanyTeamsView({
             <span className="size-2.5 rounded-full bg-emerald-500" />
             <h3 className="text-sm font-semibold text-slate-800">Đội xử lý</h3>
             <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 px-1.5 text-[11px] font-semibold text-slate-500">
-              {isPending ? '…' : boardPagination.totalItems}
+              {isPending ? '…' : pagination.totalItems}
             </span>
           </div>
 
@@ -640,7 +674,6 @@ export function CompanyTeamsView({
                     queryEnabled={enabled}
                     isExpanded={expandedId === team.id}
                     onToggle={() => setExpandedId(prev => (prev === team.id ? null : team.id))}
-                    onRename={() => setRenameTarget({ id: team.id, name: team.name })}
                     onAddMember={() => setAddMemberTarget({ id: team.id, name: team.name })}
                     onArchive={() =>
                       setArchiveTarget({
@@ -656,17 +689,24 @@ export function CompanyTeamsView({
                         memberCount: team.memberCount,
                       })
                     }
+                    onEdit={() =>
+                      setEditTarget({
+                        id: team.id,
+                        name: team.name,
+                        wasteTags: team.wasteTags,
+                      })
+                    }
                   />
                 ))}
               </div>
             )}
           </div>
 
-          {boardPagination.totalPages > 1 ? (
+          {pagination.totalPages > 1 ? (
             <div className="flex shrink-0 justify-center border-t border-border px-3 py-2">
               <PaginationSimple
-                page={boardPage}
-                totalPages={boardPagination.totalPages}
+                page={boardPageSafe}
+                totalPages={pagination.totalPages}
                 onPageChange={setBoardPage}
                 className="w-auto"
               />
@@ -721,6 +761,13 @@ export function CompanyTeamsView({
                         <p className="mt-0.5 truncate text-[11px] text-slate-500">
                           {formatCompanyTeamAffiliationLine(companyName)}
                         </p>
+                        {team.wasteTags.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {team.wasteTags.map(tag => (
+                              <WasteTagBadge key={tag.tagId} tag={tag} />
+                            ))}
+                          </div>
+                        ) : null}
                       </TableCell>
                       <TableCell className="hidden px-3 py-2 md:table-cell">
                         <span className="inline-flex items-center gap-1.5 text-xs text-slate-700">
@@ -768,9 +815,16 @@ export function CompanyTeamsView({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setRenameTarget({ id: team.id, name: team.name })}
+                              onClick={() =>
+                                setEditTarget({
+                                  id: team.id,
+                                  name: team.name,
+                                  wasteTags: team.wasteTags,
+                                })
+                              }
                             >
-                              Đổi tên
+                              <Pencil className="mr-1.5 size-3.5" />
+                              Chỉnh sửa
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() =>
@@ -805,11 +859,11 @@ export function CompanyTeamsView({
               </TableBody>
             </Table>
           </div>
-          {listPagination.totalPages > 1 ? (
+          {pagination.totalPages > 1 ? (
             <div className="flex shrink-0 justify-center border-t border-slate-100 px-3 py-2">
               <PaginationSimple
-                page={page}
-                totalPages={listPagination.totalPages}
+                page={pageSafe}
+                totalPages={pagination.totalPages}
                 onPageChange={setPage}
                 className="w-auto"
               />
@@ -824,12 +878,6 @@ export function CompanyTeamsView({
         open={Boolean(addMemberTarget)}
         team={addMemberTarget}
         onClose={() => setAddMemberTarget(null)}
-      />
-
-      <CompanyTeamRenameDialog
-        open={Boolean(renameTarget)}
-        team={renameTarget}
-        onClose={() => setRenameTarget(null)}
       />
 
       <CompanyTeamArchiveDialog
@@ -851,6 +899,195 @@ export function CompanyTeamsView({
           if (!deleteTeam.isPending) setDeleteTarget(null);
         }}
       />
+
+      <CompanyTeamEditDialog
+        open={editTarget != null}
+        team={editTarget}
+        onClose={() => setEditTarget(null)}
+      />
     </div>
+  );
+}
+
+function CompanyTeamEditDialog({
+  open,
+  team,
+  onClose,
+}: {
+  open: boolean;
+  team: CompanyTeamEditTarget | null;
+  onClose: () => void;
+}) {
+  const updateTeamMutation = useUpdateCompanyTeam();
+  const { data: catalogTags, isPending: tagsLoading } = useCatalogWasteTags(open);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    setValue,
+    formState: { errors, isSubmitted, touchedFields, dirtyFields },
+  } = useForm<EditCompanyTeamFormValues>({
+    ...REALTIME_FORM_OPTIONS,
+    resolver: zodResolver(editCompanyTeamSchema),
+    defaultValues: { name: '', wasteTagIds: [] },
+  });
+
+  useEffect(() => {
+    if (open && team) {
+      reset({
+        name: team.name,
+        wasteTagIds: team.wasteTags.map(t => t.tagId),
+      });
+    }
+  }, [open, team, reset]);
+
+  const isBusy = updateTeamMutation.isPending;
+  const nameValue = useWatch({ control, name: 'name', defaultValue: '' }) ?? '';
+  const selectedTagIds = (useWatch({ control, name: 'wasteTagIds' }) ?? []) as string[];
+
+  const nameError =
+    errors.name && (touchedFields.name || dirtyFields.name || isSubmitted)
+      ? errors.name.message
+      : undefined;
+
+  const wasteTagError = isSubmitted && errors.wasteTagIds ? errors.wasteTagIds.message : undefined;
+
+  const closeDialog = () => {
+    reset({ name: '', wasteTagIds: [] });
+    onClose();
+  };
+
+  const toggleTag = (tagId: string) => {
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter(id => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setValue('wasteTagIds', next, { shouldValidate: isSubmitted, shouldDirty: true });
+  };
+
+  const onSubmit = handleSubmit(async values => {
+    if (!team) return;
+    try {
+      const body: UpdateCompanyTeamInput = {
+        name: values.name,
+        wasteTagIds: values.wasteTagIds,
+      };
+      const res = await updateTeamMutation.mutateAsync({ id: team.id, body });
+      toast.success(res.message ?? 'Đã cập nhật thông tin đội.');
+      closeDialog();
+    } catch (err) {
+      toast.error(getCompanyMutationError(err, 'Không thể cập nhật đội. Vui lòng thử lại.'));
+    }
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && !isBusy) closeDialog();
+      }}
+    >
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        onInteractOutside={e => {
+          if (isBusy) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isBusy) e.preventDefault();
+        }}
+      >
+        <form onSubmit={onSubmit} className="flex flex-col">
+          <div className="space-y-4 p-6 md:p-8">
+            <DialogHeader className="pr-8 text-left">
+              <DialogTitle className="flex items-center gap-2.5">
+                <Pencil className="size-4 shrink-0 text-foreground" aria-hidden />
+                Chỉnh sửa đội
+              </DialogTitle>
+              <DialogDescription>
+                Cập nhật thông tin đội{' '}
+                <span className="font-semibold text-foreground">{team?.name}</span>.
+              </DialogDescription>
+            </DialogHeader>
+
+            <FieldGroup>
+              <Field>
+                <Label>Loại đội</Label>
+                <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground">
+                  <span
+                    className="inline-block size-2.5 shrink-0 rounded-full bg-emerald-500"
+                    aria-hidden
+                  />
+                  <span className="font-medium">Đội Dọn dẹp</span>
+                </div>
+              </Field>
+
+              <Field>
+                <Label htmlFor="company-edit-team-name">Tên đội</Label>
+                <ValidatedInput
+                  id="company-edit-team-name"
+                  placeholder="Nhập tên đội"
+                  disabled={isBusy}
+                  {...register('name')}
+                  value={nameValue}
+                  minLength={TEAM_NAME_MIN}
+                  maxLength={TEAM_NAME_MAX}
+                  error={nameError}
+                  className="h-9 rounded-md"
+                />
+              </Field>
+
+              <Field>
+                <Label>
+                  Loại rác thải{' '}
+                  <span className="text-xs font-normal text-muted-foreground">(bắt buộc)</span>
+                </Label>
+
+                {tagsLoading ? (
+                  <div className="flex h-10 items-center gap-2 rounded-md border border-input px-3 text-sm text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    Đang tải danh sách…
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 rounded-md border border-input p-3">
+                    {(catalogTags ?? []).map(tag => (
+                      <WasteTagSelectChip
+                        key={tag.id}
+                        tag={tag}
+                        selected={selectedTagIds.includes(tag.id)}
+                        disabled={isBusy}
+                        onToggle={toggleTag}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {wasteTagError ? <FieldError>{wasteTagError}</FieldError> : null}
+              </Field>
+            </FieldGroup>
+          </div>
+
+          <DialogFooter className="gap-2 border-t border-border bg-slate-50 px-6 py-4 sm:space-x-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isBusy}
+              onClick={closeDialog}
+              className="h-9"
+            >
+              Huỷ
+            </Button>
+            <Button
+              type="submit"
+              disabled={isBusy}
+              className="h-9 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {isBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
