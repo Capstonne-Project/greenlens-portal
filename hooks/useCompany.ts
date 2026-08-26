@@ -525,9 +525,10 @@ export function useAddCompanyTeamMember() {
   return useMutation({
     mutationFn: ({ teamId, body }: { teamId: string; body: AddCompanyTeamMemberInput }) =>
       addCompanyTeamMember(teamId, body),
-    onSuccess: () => {
+    onSuccess: (_data, { teamId }) => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamDetail(teamId) });
       queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
     },
   });
@@ -539,9 +540,10 @@ export function useRemoveCompanyTeamMember() {
   return useMutation({
     mutationFn: ({ teamId, userId }: RemoveCompanyTeamMemberInput) =>
       removeCompanyTeamMember(teamId, userId),
-    onSuccess: () => {
+    onSuccess: (_data, { teamId }) => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamDetail(teamId) });
       queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
     },
   });

@@ -7,7 +7,7 @@ import {
 import {
   CompanyTeamAddMemberDialog,
   type CompanyTeamAddMemberTarget,
-} from '@/components/company/teams/CompanyTeamAddMemberDialog';
+} from '@/components/company/staff/CompanyTeamAddMemberDialog';
 import {
   CompanyTeamDeleteDialog,
   type CompanyTeamDeleteTarget,
@@ -37,7 +37,7 @@ import UsersIcon from '@/components/ui/users-icon';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import {
   useArchiveCompanyTeam,
-  useCompanyStaffList,
+  useCompanyTeamDetail,
   useCompanyTeamsList,
   useDeleteCompanyTeam,
   useMyCompany,
@@ -116,8 +116,6 @@ type EditCompanyTeamFormValues = z.infer<typeof editCompanyTeamSchema>;
 
 /** Board + list đều gọi API với pageSize 10. */
 const TEAMS_PAGE_SIZE = 10;
-/** Load staff khi expand card — không phải list đội. */
-const STAFF_FETCH_PAGE_SIZE = 100;
 
 const CARD_EXPAND_TRANSITION = {
   duration: 0.28,
@@ -178,22 +176,13 @@ function TeamExpandedMembers({
   canAddMember: boolean;
   enabled?: boolean;
 }) {
-  const { data: staffData, isLoading: membersLoading } = useCompanyStaffList(
-    {
-      page: 1,
-      pageSize: STAFF_FETCH_PAGE_SIZE,
-    },
-    { enabled }
+  const { data: detail, isLoading: membersLoading } = useCompanyTeamDetail(
+    enabled ? teamId : null
   );
 
-  const members = useMemo(() => {
-    const list = (staffData?.items ?? []).filter(s => s.teamId === teamId);
-    return [...list].sort((a, b) => {
-      const aLead = a.position === 'Team Leader' ? 1 : 0;
-      const bLead = b.position === 'Team Leader' ? 1 : 0;
-      return bLead - aLead;
-    });
-  }, [staffData?.items, teamId]);
+  const members = [...(detail?.members ?? [])].sort(
+    (a, b) => Number(b.isLeader) - Number(a.isLeader)
+  );
 
   return (
     <div className="border-t border-border bg-muted/20 px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4 sm:pt-3">
@@ -219,26 +208,23 @@ function TeamExpandedMembers({
         <p className="py-2 text-center text-xs text-slate-500">Chưa có thành viên</p>
       ) : (
         <ul className="space-y-2">
-          {members.map(m => {
-            const isLeader = m.position === 'Team Leader';
-            return (
-              <li key={m.userId} className="flex items-center gap-2.5">
-                <div
-                  className={cn(
-                    'flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
-                    isLeader ? 'bg-amber-400' : 'bg-slate-300'
-                  )}
-                >
-                  {getInitials(m.fullName)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-slate-800">{m.fullName}</p>
-                  <p className="truncate text-[11px] text-slate-500">{m.email}</p>
-                </div>
-                {isLeader ? <Crown className="size-3.5 shrink-0 text-amber-400" /> : null}
-              </li>
-            );
-          })}
+          {members.map(m => (
+            <li key={m.userId} className="flex items-center gap-2.5">
+              <div
+                className={cn(
+                  'flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
+                  m.isLeader ? 'bg-amber-400' : 'bg-slate-300'
+                )}
+              >
+                {getInitials(m.fullName)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-slate-800">{m.fullName}</p>
+                <p className="truncate text-[11px] text-slate-500">{m.email}</p>
+              </div>
+              {m.isLeader ? <Crown className="size-3.5 shrink-0 text-amber-400" /> : null}
+            </li>
+          ))}
         </ul>
       )}
 
