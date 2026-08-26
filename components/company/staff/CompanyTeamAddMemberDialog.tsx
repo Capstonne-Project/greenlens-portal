@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useAddCompanyTeamMember, useCompanyStaffList } from '@/hooks/useCompany';
+import { useAddCompanyTeamMember, useCompanyStaffList, useCompanyTeamDetail } from '@/hooks/useCompany';
 import { cn } from '@/lib/utils';
 import { getCompanyMutationError } from '@/utils/companyUi';
 import { faUserGroup } from '@fortawesome/free-solid-svg-icons';
@@ -67,6 +67,9 @@ export function CompanyTeamAddMemberDialog({
   const addMember = useAddCompanyTeamMember();
   const [staffSelectOpen, setStaffSelectOpen] = useState(false);
 
+  /** Lazy: chỉ fetch detail khi dialog mở — dùng members[].isLeader (không dựa position staff). */
+  const { data: teamDetail } = useCompanyTeamDetail(open && team ? team.id : null);
+
   const {
     data: staffData,
     isPending: staffLoading,
@@ -82,10 +85,10 @@ export function CompanyTeamAddMemberDialog({
     return items.filter(s => s.isActive && !s.teamId);
   }, [staffData?.items]);
 
-  const hasLeader = useMemo(() => {
-    if (!team) return false;
-    return (staffData?.items ?? []).some(s => s.teamId === team.id && s.position === 'Team Leader');
-  }, [staffData?.items, team]);
+  const hasLeader = useMemo(
+    () => (teamDetail?.members ?? []).some(m => m.isLeader),
+    [teamDetail?.members]
+  );
 
   const {
     control,

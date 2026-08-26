@@ -13,6 +13,7 @@ import {
   ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -352,7 +353,7 @@ export function AdminNotificationTemplatesView() {
               {listQuery.isPending ? (
                 <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, rowSlotClass)}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-full px-6 py-3 text-center">
-                    <Loader2 className="mx-auto size-5 animate-spin text-slate-400" aria-hidden />
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
                   </TableCell>
                 </TableRow>
               ) : listQuery.isError ? (

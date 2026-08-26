@@ -16,8 +16,6 @@ type AdminUserSummaryStripProps = {
   onPageCount: number;
   verifiedOnPage: number;
   unverifiedOnPage: number;
-  roleHint: string;
-  pageLabel?: string;
   className?: string;
 };
 
@@ -31,18 +29,13 @@ export function AdminUserSummaryStrip({
   onPageCount,
   verifiedOnPage,
   unverifiedOnPage,
-  roleHint,
-  pageLabel,
   className,
 }: AdminUserSummaryStripProps) {
-  const totalHint = [roleHint, pageLabel].filter(Boolean).join(' · ');
-
   const items: AdminUserSummaryItem[] = [
     {
       key: 'total',
       label: 'Tổng người dùng',
       value: formatCount(totalItems),
-      hint: totalHint,
       icon: Users,
       iconClassName: 'text-emerald-700',
       accentClassName: 'bg-emerald-500/10',
@@ -84,23 +77,23 @@ export function AdminUserSummaryStrip({
       {items.map(item => {
         const Icon = item.icon;
         return (
-          <article key={item.key} className="flex items-center gap-2.5 bg-card px-2.5 py-2">
+          <article key={item.key} className="flex items-center gap-3 bg-card px-4 py-3.5">
             <div
               className={cn(
-                'flex size-8 shrink-0 items-center justify-center rounded-md',
+                'flex size-9 shrink-0 items-center justify-center rounded-md',
                 item.accentClassName
               )}
               aria-hidden
             >
-              <Icon className={cn('size-3.5', item.iconClassName)} />
+              <Icon className={cn('size-4', item.iconClassName)} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-medium text-muted-foreground">{item.label}</p>
-              <p className="text-lg font-bold tabular-nums leading-none tracking-tight">
+              <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums leading-none tracking-tight">
                 {item.value}
               </p>
               {item.hint ? (
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground/80">{item.hint}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground/80">{item.hint}</p>
               ) : null}
             </div>
           </article>

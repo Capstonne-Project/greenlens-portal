@@ -7,6 +7,7 @@
  */
 
 import UsersGroupIcon from '@/components/ui/users-group-icon';
+import { WasteTagBadge } from '@/components/common/WasteTagSelectChip';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -19,16 +20,18 @@ import {
 } from '@/components/ui/dialog';
 import {
   useAssignCompanyTeam,
-  useCompanyTeamOptions,
+  useCompanyTeamsList,
   useReassignCompanyTeam,
 } from '@/hooks/useCompany';
+import { useReportDetail } from '@/hooks/useReport';
+import type { CompanyTeamListItem } from '@/lib/api/models/company';
 import { createIdempotencyKeyStore } from '@/lib/api/idempotency';
 import { cn } from '@/lib/utils';
 import { getCompanyMutationError } from '@/utils/companyUi';
 import { isReassignReasonValid, REASSIGN_REASON_MIN_LENGTH } from '@/utils/reportAssignments';
 import { faClipboardList, faUserPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -50,12 +53,6 @@ interface CompanyAssignTeamDialogProps {
   oldTeamId?: string | null;
   oldTeamName?: string | null;
 }
-
-type TeamOption = {
-  id: string;
-  name: string;
-  memberCount: number;
-};
 
 function SelectionListShell({
   loading,
@@ -93,11 +90,17 @@ function TeamRow({
   team,
   checked,
   onToggle,
+  matchedTagIds,
 }: {
-  team: TeamOption;
+  team: CompanyTeamListItem;
   checked: boolean;
   onToggle: () => void;
+  /** Set of tag IDs that match the report — empty khi không có reportId. */
+  matchedTagIds: ReadonlySet<string>;
 }) {
+  const hasMatch = matchedTagIds.size > 0 && team.wasteTagMatchCount > 0;
+  const hasTags = team.wasteTags.length > 0;
+
   return (
     <label
       className={cn(
@@ -111,10 +114,35 @@ function TeamRow({
           <UsersGroupIcon size={16} className="text-foreground" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-foreground">{team.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="min-w-0 truncate text-sm font-semibold text-foreground">{team.name}</p>
+            {hasMatch && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                <Check className="size-3" />
+                {team.wasteTagMatchCount} phù hợp
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
             {team.memberCount} thành viên
           </p>
+          {hasTags ? (
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {team.wasteTags.map(tag => (
+                <WasteTagBadge
+                  key={tag.tagId}
+                  tag={tag}
+                  tone={
+                    matchedTagIds.size === 0
+                      ? 'default'
+                      : matchedTagIds.has(tag.tagId)
+                        ? 'match'
+                        : 'muted'
+                  }
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </label>
@@ -138,13 +166,32 @@ export function CompanyAssignTeamDialog({
   const assignIdempotencyKeyRef = useRef(createIdempotencyKeyStore());
   const isReassign = mode === 'reassign';
 
-  /** Chỉ gọi GET /v1/teams/company-teams khi mở dialog — chỉ đội active. */
-  const { options: rawTeams, isPending: teamsLoading } = useCompanyTeamOptions({
-    enabled: open,
+  /** GET /v1/teams/company-teams — truyền reportId để sort theo wasteTagMatchCount desc. */
+  const { data: teamsData, isPending: teamsLoading } = useCompanyTeamsList(
+    {
+      page: 1,
+      pageSize: 100,
+      isActive: true,
+      ...(reportId ? { reportId } : {}),
+    },
+    { enabled: open }
+  );
+
+  const { data: reportDetail } = useReportDetail(reportId ?? '', {
+    enabled: open && Boolean(reportId),
   });
+
+  /** Tag IDs của báo cáo — dùng để highlight tag trùng trên từng team. */
+  const reportWasteTagIds = useMemo<ReadonlySet<string>>(() => {
+    const tags = reportDetail?.wasteTags;
+    if (!tags?.length) return new Set();
+    return new Set(tags.map(t => t.tagId));
+  }, [reportDetail?.wasteTags]);
+
   const assign = useAssignCompanyTeam();
   const reassign = useReassignCompanyTeam();
 
+  const rawTeams = teamsData?.items ?? [];
   const teams = useMemo(() => {
     if (!isReassign || !oldTeamId) return rawTeams;
     return rawTeams.filter(t => t.id !== oldTeamId);
@@ -314,6 +361,7 @@ export function CompanyAssignTeamDialog({
                         team={team}
                         checked={selectedTeamIds.has(team.id)}
                         onToggle={() => toggleTeam(team.id)}
+                        matchedTagIds={reportWasteTagIds}
                       />
                     </li>
                   ))}

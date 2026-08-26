@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { GooeyInput } from '@/components/ui/gooey-input';
 import HotelIcon from '@/components/ui/hotel-icon';
 import { MovingBorderButton } from '@/components/ui/moving-border';
@@ -677,8 +678,8 @@ export function CompaniesPageClient() {
               {isPending ? (
                 <TableRow className={ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
-                    <Loader2
-                      className="mx-auto size-8 animate-spin text-slate-400"
+                    <GreenLensLookupSpinner
+                      className="mx-auto size-8"
                       aria-label="Đang tải danh sách"
                     />
                   </TableCell>
@@ -753,7 +754,7 @@ export function CompaniesPageClient() {
               aria-busy
               aria-live="polite"
             >
-              <Loader2 className="size-6 animate-spin text-slate-400" aria-label="Đang cập nhật" />
+              <GreenLensLookupSpinner className="size-6" aria-label="Đang cập nhật" />
             </div>
           ) : null}
         </div>

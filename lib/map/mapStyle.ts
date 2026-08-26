@@ -2,15 +2,15 @@ import type { Map as MaplibreMap, StyleSpecification } from 'maplibre-gl';
 
 const GOONG_MAPTILES_KEY = process.env.NEXT_PUBLIC_GOONG_MAPTILES_KEY;
 
-/** OpenStreetMap raster fallback — dùng khi chưa cấu hình Goong Maptiles key. */
+/** OpenStreetMap-based raster fallback — Carto CDN (tile.openstreetmap.org thường bị chặn/timeout từ browser). */
 export const OSM_LIGHT_STYLE: StyleSpecification = {
   version: 8,
   sources: {
     osm: {
       type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tiles: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
       tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       maxzoom: 19,
     },
   },

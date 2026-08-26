@@ -89,6 +89,27 @@ export type AddMemberFormValues = z.infer<typeof addMemberSchema>;
 
 export type LeoCreateTeamType = 'Cleanup' | 'Inspection';
 
+/**
+ * Schema tạo đội — conditional theo teamType:
+ * - Cleanup  → wasteTagIds bắt buộc ≥ 1
+ * - Inspection → wasteTagIds không cần (bỏ qua khi gửi)
+ */
+export function buildCreateTeamSchema(teamType: LeoCreateTeamType) {
+  return z.object({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Vui lòng nhập tên đội')
+      .min(TEAM_NAME_MIN, `Tên đội phải có ít nhất ${TEAM_NAME_MIN} ký tự`)
+      .max(TEAM_NAME_MAX, `Tên đội không được quá ${TEAM_NAME_MAX} ký tự`),
+    wasteTagIds:
+      teamType === 'Cleanup'
+        ? z.array(z.string()).min(1, 'Đội dọn dẹp phải chọn ít nhất 1 loại rác thải')
+        : z.array(z.string()),
+  });
+}
+
+/** Giữ lại để không break import cũ — dùng buildCreateTeamSchema(teamType) khi cần wasteTagIds. */
 export const createTeamSchema = z.object({
   name: z
     .string()
@@ -96,9 +117,56 @@ export const createTeamSchema = z.object({
     .min(1, 'Vui lòng nhập tên đội')
     .min(TEAM_NAME_MIN, `Tên đội phải có ít nhất ${TEAM_NAME_MIN} ký tự`)
     .max(TEAM_NAME_MAX, `Tên đội không được quá ${TEAM_NAME_MAX} ký tự`),
+  wasteTagIds: z.array(z.string()).default([]),
 });
 
-export type CreateTeamFormValues = z.infer<typeof createTeamSchema>;
+export type CreateTeamFormValues = {
+  name: string;
+  wasteTagIds: string[];
+};
+
+/**
+ * Schema chỉnh sửa đội — conditional theo teamType:
+ * - Cleanup  → wasteTagIds bắt buộc ≥ 1 (replace toàn bộ tag)
+ * - Inspection → wasteTagIds không hiển thị (gửi → BE trả 422)
+ */
+export function buildEditTeamSchema(teamType: LeoCreateTeamType) {
+  return z.object({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Vui lòng nhập tên đội')
+      .min(TEAM_NAME_MIN, `Tên đội phải có ít nhất ${TEAM_NAME_MIN} ký tự`)
+      .max(TEAM_NAME_MAX, `Tên đội không được quá ${TEAM_NAME_MAX} ký tự`),
+    wasteTagIds:
+      teamType === 'Cleanup'
+        ? z.array(z.string()).min(1, 'Đội dọn dẹp phải chọn ít nhất 1 loại rác thải')
+        : z.array(z.string()),
+  });
+}
+
+export type EditTeamFormValues = {
+  name: string;
+  wasteTagIds: string[];
+};
+
+export type EditTeamTarget = {
+  id: string;
+  name: string;
+  teamType: TeamListItem['teamType'];
+  wasteTags: TeamListItem['wasteTags'];
+};
+
+export function toEditTeamTarget(
+  team: Pick<TeamListItem, 'id' | 'name' | 'teamType' | 'wasteTags'>
+): EditTeamTarget {
+  return {
+    id: team.id,
+    name: team.name,
+    teamType: team.teamType,
+    wasteTags: team.wasteTags,
+  };
+}
 
 export function teamTypeToStaffRole(teamType: string): OfficeStaffAssignRole | undefined {
   if (teamType === 'Cleanup') return 'Cleaner';
@@ -180,6 +248,7 @@ export function applyTeamListFilters(
     statusFilter: StatusFilter;
     teamTypeFilter: TeamTypeFilter;
     availableFilter: AvailableFilter;
+    wasteTagFilter?: string[];
   }
 ): TeamsListParams {
   const next = { ...params };
@@ -188,14 +257,16 @@ export function applyTeamListFilters(
   if (filters.teamTypeFilter !== 'all') next.teamType = filters.teamTypeFilter;
   if (filters.availableFilter === 'available') next.isAvailable = true;
   if (filters.availableFilter === 'busy') next.isAvailable = false;
+  if (filters.wasteTagFilter?.length) next.wasteTagIds = filters.wasteTagFilter;
   return next;
 }
 
-/** Một query key ổn định cho board + list — mode chỉ đổi UI, không đổi fetch. */
+/** Một query filters ổn định — `page` / `pageSize` gắn ở chỗ gọi hook. */
 export function buildSharedTeamsQueryParams(filters: {
   statusFilter: StatusFilter;
   teamTypeFilter: TeamTypeFilter;
   availableFilter: AvailableFilter;
+  wasteTagFilter?: string[];
 }): TeamsListParams {
-  return applyTeamListFilters({ page: 1, pageSize: PAGE_SIZE }, filters);
+  return applyTeamListFilters({}, filters);
 }

@@ -15,6 +15,7 @@ import {
   AuditActorPicker,
   AuditEntityIdPicker,
 } from '@/components/admin/audit-logs/AuditEntityPickers';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -404,7 +405,7 @@ export function AdminAuditLogsView() {
               {listQuery.isPending ? (
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={8} className="h-40 px-6 py-4 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" aria-hidden />
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
                   </TableCell>
                 </TableRow>
               ) : listQuery.isError ? (

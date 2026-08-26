@@ -16,6 +16,7 @@ import {
   faScroll,
   faShield,
   faShieldHalved,
+  faSliders,
   faTags,
   faTrophy,
   faUserGroup,
@@ -66,6 +67,7 @@ export function getAdminShellNavConfig(): MapShellNavConfig {
     // Hệ thống
     item('notification-templates', 'Mẫu thông báo', '/admin/notification-templates', faBell),
     item('spam-suspects', 'Nghi spam', '/admin/spam-suspects', faShieldHalved),
+    item('system-settings', 'Cấu hình hệ thống', '/admin/system-settings', faSliders),
     item('audit-logs', 'Nhật ký kiểm toán', '/admin/audit-logs', faScroll),
   ];
 

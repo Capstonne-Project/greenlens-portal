@@ -66,8 +66,8 @@ export function BadgeFormDialog({ open, badge, busy, onClose, onSubmit }: BadgeF
       {badge && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Mã <span className="font-mono font-medium text-foreground">{badge.code}</span> và ngưỡng
-            điểm/báo cáo không thể đổi từ màn này.
+            Mã <span className="font-mono font-medium text-foreground">{badge.code}</span> — sửa
+            tên, mô tả và icon. Ngưỡng eligibility chỉnh qua nút &quot;Sửa ngưỡng&quot; trên thẻ.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

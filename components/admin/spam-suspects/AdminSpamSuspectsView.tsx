@@ -12,6 +12,7 @@ import {
 } from '@/components/admin/shared/adminDataTableChrome';
 import { ValidatedNumberInput } from '@/components/common/ValidatedField';
 import { useSpamSuspectsList } from '@/hooks/useSpamSuspects';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -24,7 +25,11 @@ import {
 } from '@/components/ui/table';
 import { SpamSuspectSummaryStrip } from '@/components/admin/spam-suspects/SpamSuspectSummaryStrip';
 import type { SpamSuspectsListParams, SpamSuspectsPagination } from '@/lib/api/models/spamSuspect';
-import { SPAM_SUSPECT_DEFAULTS, SPAM_SUSPECTS_PAGE_SIZE } from '@/lib/constants/spamSuspects';
+import {
+  SPAM_SUSPECT_DEFAULTS,
+  SPAM_SUSPECT_SYSTEM_DEFAULT_MIN_REPORTS_PER_HOUR,
+  SPAM_SUSPECTS_PAGE_SIZE,
+} from '@/lib/constants/spamSuspects';
 import { cn } from '@/lib/utils';
 import {
   formatSuspectMetric,
@@ -32,7 +37,7 @@ import {
   suspectBanBadgeClass,
   suspectBanLabel,
 } from '@/utils/spamSuspectUi';
-import { Filter, Loader2, RotateCcw } from 'lucide-react';
+import { Filter, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const COLUMN_COUNT = 6;
@@ -54,24 +59,28 @@ function parseThreshold(raw: string, fallback: number): number {
 
 export function AdminSpamSuspectsView() {
   const [page, setPage] = useState(1);
+  const [useSystemMinReportsPerHour, setUseSystemMinReportsPerHour] = useState(true);
   const [minReportsPerHour, setMinReportsPerHour] = useState(
-    String(SPAM_SUSPECT_DEFAULTS.minReportsPerHour)
+    String(SPAM_SUSPECT_SYSTEM_DEFAULT_MIN_REPORTS_PER_HOUR)
   );
   const [minRejected7Days, setMinRejected7Days] = useState(
     String(SPAM_SUSPECT_DEFAULTS.minRejected7Days)
   );
   const [minAiFlagged, setMinAiFlagged] = useState(String(SPAM_SUSPECT_DEFAULTS.minAiFlagged));
 
-  const params = useMemo<SpamSuspectsListParams>(
-    () => ({
+  const params = useMemo<SpamSuspectsListParams>(() => {
+    const parsedMinReports = parseThreshold(
+      minReportsPerHour,
+      SPAM_SUSPECT_SYSTEM_DEFAULT_MIN_REPORTS_PER_HOUR
+    );
+    return {
       page,
       pageSize: SPAM_SUSPECTS_PAGE_SIZE,
-      minReportsPerHour: parseThreshold(minReportsPerHour, SPAM_SUSPECT_DEFAULTS.minReportsPerHour),
+      ...(useSystemMinReportsPerHour ? {} : { minReportsPerHour: parsedMinReports }),
       minRejected7Days: parseThreshold(minRejected7Days, SPAM_SUSPECT_DEFAULTS.minRejected7Days),
       minAiFlagged: parseThreshold(minAiFlagged, SPAM_SUSPECT_DEFAULTS.minAiFlagged),
-    }),
-    [minAiFlagged, minRejected7Days, minReportsPerHour, page]
-  );
+    };
+  }, [minAiFlagged, minRejected7Days, minReportsPerHour, page, useSystemMinReportsPerHour]);
 
   const listQuery = useSpamSuspectsList(params);
   const items = listQuery.data?.items ?? [];
@@ -79,7 +88,8 @@ export function AdminSpamSuspectsView() {
   const aiThreshold = params.minAiFlagged ?? SPAM_SUSPECT_DEFAULTS.minAiFlagged;
 
   const resetFilters = () => {
-    setMinReportsPerHour(String(SPAM_SUSPECT_DEFAULTS.minReportsPerHour));
+    setUseSystemMinReportsPerHour(true);
+    setMinReportsPerHour(String(SPAM_SUSPECT_SYSTEM_DEFAULT_MIN_REPORTS_PER_HOUR));
     setMinRejected7Days(String(SPAM_SUSPECT_DEFAULTS.minRejected7Days));
     setMinAiFlagged(String(SPAM_SUSPECT_DEFAULTS.minAiFlagged));
     setPage(1);
@@ -94,8 +104,8 @@ export function AdminSpamSuspectsView() {
     <div className="w-full min-w-0 space-y-6">
       <header className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
-          Phát hiện tài khoản có dấu hiệu spam: gửi &gt;{SPAM_SUSPECT_DEFAULTS.minReportsPerHour}
-          /giờ, từ chối &gt;{SPAM_SUSPECT_DEFAULTS.minRejected7Days}/7 ngày, AI gắn cờ ≥
+          Phát hiện tài khoản có dấu hiệu spam: gửi vượt ngưỡng/giờ (mặc định lấy từ cấu hình hệ
+          thống), từ chối &gt;{SPAM_SUSPECT_DEFAULTS.minRejected7Days}/7 ngày, AI gắn cờ ≥
           {SPAM_SUSPECT_DEFAULTS.minAiFlagged}. Chỉ xem — không khóa tài khoản từ màn này.
         </p>
       </header>
@@ -117,18 +127,39 @@ export function AdminSpamSuspectsView() {
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto] xl:items-end">
           <div className="space-y-2">
-            <label htmlFor="spam-min-hour" className="text-sm font-medium">
-              Báo cáo / giờ (tối thiểu)
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="spam-min-hour" className="text-sm font-medium">
+                Báo cáo / giờ (tối thiểu)
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={useSystemMinReportsPerHour}
+                  onChange={e => {
+                    setUseSystemMinReportsPerHour(e.target.checked);
+                    setPage(1);
+                  }}
+                  className="size-3.5 rounded border-border text-emerald-700"
+                />
+                Dùng cấu hình hệ thống
+              </label>
+            </div>
             <ValidatedNumberInput
               id="spam-min-hour"
               min={0}
               value={minReportsPerHour}
+              disabled={useSystemMinReportsPerHour}
               onChange={e => {
                 setMinReportsPerHour(e.target.value);
                 setPage(1);
               }}
             />
+            {useSystemMinReportsPerHour ? (
+              <p className="text-xs text-muted-foreground">
+                Ngưỡng lấy từ <code className="font-mono">submit_max_per_hour</code> (module rate
+                limits).
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <label htmlFor="spam-min-reject" className="text-sm font-medium">
@@ -234,7 +265,7 @@ export function AdminSpamSuspectsView() {
               {listQuery.isPending && !listQuery.data ? (
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={COLUMN_COUNT} className="h-40 px-6 py-4 text-center">
-                    <Loader2 className="mx-auto size-6 animate-spin text-slate-400" />
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
                   </TableCell>
                 </TableRow>
               ) : listQuery.isError ? (

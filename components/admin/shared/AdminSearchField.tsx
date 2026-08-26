@@ -60,9 +60,11 @@ export function AdminSearchField({
 
   return (
     <div className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
-      <label htmlFor={inputId} className="text-xs font-medium text-muted-foreground">
-        {label}
-      </label>
+      {label ? (
+        <label htmlFor={inputId} className="text-xs font-medium text-muted-foreground">
+          {label}
+        </label>
+      ) : null}
       <div className="relative min-w-0">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"

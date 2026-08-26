@@ -1,6 +1,7 @@
 'use client';
 
 import { ValidatedInput } from '@/components/common/ValidatedField';
+import { WasteTagSelectChip } from '@/components/common/WasteTagSelectChip';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,7 +23,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useOfficeStaffList } from '@/hooks/useLeoOffices';
-import { useAddTeamMember, useCreateTeam, useTeamDetail } from '@/hooks/useTeams';
+import { useAddTeamMember, useCreateTeam, useTeamDetail, useUpdateTeam } from '@/hooks/useTeams';
+import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
@@ -30,13 +32,14 @@ import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { faUserGroup } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, Crown, Loader2, Trash2, UserPlus, X } from 'lucide-react';
+import { Building2, Crown, Loader2, Pencil, Trash2, UserPlus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import {
   addMemberSchema,
   buildAddMemberStaffParams,
-  createTeamSchema,
+  buildCreateTeamSchema,
+  buildEditTeamSchema,
   getInitials,
   PAGE_SIZE,
   TEAM_NAME_MAX,
@@ -46,6 +49,8 @@ import {
   TYPE_LABEL,
   type AddMemberFormValues,
   type CreateTeamFormValues,
+  type EditTeamFormValues,
+  type EditTeamTarget,
   type LeoCreateTeamType,
 } from './teamTab.shared';
 
@@ -59,30 +64,46 @@ export function CreateTeamDialog({
   onClose: () => void;
 }) {
   const createTeamMutation = useCreateTeam();
+  const isCleanup = teamType === 'Cleanup';
+
+  const { data: catalogTags, isPending: tagsLoading } = useCatalogWasteTags(open && isCleanup);
+
+  const schema = useMemo(() => buildCreateTeamSchema(teamType), [teamType]);
 
   const {
     register,
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors, isSubmitted, touchedFields, dirtyFields },
   } = useForm<CreateTeamFormValues>({
     ...REALTIME_FORM_OPTIONS,
-    resolver: zodResolver(createTeamSchema),
-    defaultValues: { name: '' },
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', wasteTagIds: [] },
   });
 
   const isBusy = createTeamMutation.isPending;
   const nameValue = useWatch({ control, name: 'name', defaultValue: '' }) ?? '';
-  /** Chỉ hiện lỗi Zod sau khi đã tương tác hoặc submit — không đỏ khi vừa mở dialog. */
+  const selectedTagIds = (useWatch({ control, name: 'wasteTagIds' }) ?? []) as string[];
+
   const nameError =
     errors.name && (touchedFields.name || dirtyFields.name || isSubmitted)
       ? errors.name.message
       : undefined;
 
+  const wasteTagError = isSubmitted && errors.wasteTagIds ? errors.wasteTagIds.message : undefined;
+
   const closeDialog = () => {
-    reset({ name: '' });
+    reset({ name: '', wasteTagIds: [] });
     onClose();
+  };
+
+  const toggleTag = (tagId: string) => {
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter(id => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setValue('wasteTagIds', next, { shouldValidate: isSubmitted, shouldDirty: true });
   };
 
   const onSubmit = handleSubmit(async values => {
@@ -90,6 +111,7 @@ export function CreateTeamDialog({
       const res = await createTeamMutation.mutateAsync({
         name: values.name,
         teamType,
+        ...(isCleanup ? { wasteTagIds: values.wasteTagIds ?? [] } : {}),
       });
       toastApiSuccess(res, 'Đã tạo đội mới.');
       closeDialog();
@@ -157,6 +179,37 @@ export function CreateTeamDialog({
                   className="h-9 rounded-md"
                 />
               </Field>
+
+              {isCleanup ? (
+                <Field>
+                  <Label>
+                    Loại rác thải{' '}
+                    <span className="text-xs font-normal text-muted-foreground">(bắt buộc)</span>
+                  </Label>
+                  <FieldDescription>Chọn các loại rác thải đội này phụ trách</FieldDescription>
+
+                  {tagsLoading ? (
+                    <div className="flex h-10 items-center gap-2 rounded-md border border-input px-3 text-sm text-muted-foreground">
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                      Đang tải danh sách…
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 rounded-md border border-input p-3">
+                      {(catalogTags ?? []).map(tag => (
+                        <WasteTagSelectChip
+                          key={tag.id}
+                          tag={tag}
+                          selected={selectedTagIds.includes(tag.id)}
+                          disabled={isBusy}
+                          onToggle={toggleTag}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {wasteTagError ? <FieldError>{wasteTagError}</FieldError> : null}
+                </Field>
+              ) : null}
             </FieldGroup>
           </div>
 
@@ -636,5 +689,200 @@ export function TeamDetailDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+export function EditTeamDialog({
+  open,
+  team,
+  onClose,
+}: {
+  open: boolean;
+  team: EditTeamTarget | null;
+  onClose: () => void;
+}) {
+  const updateTeamMutation = useUpdateTeam();
+  const teamType = (team?.teamType ?? 'Inspection') as LeoCreateTeamType;
+  const isCleanup = teamType === 'Cleanup';
+
+  const { data: catalogTags, isPending: tagsLoading } = useCatalogWasteTags(open && isCleanup);
+
+  const schema = useMemo(() => buildEditTeamSchema(teamType), [teamType]);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    setValue,
+    formState: { errors, isSubmitted, touchedFields, dirtyFields },
+  } = useForm<EditTeamFormValues>({
+    ...REALTIME_FORM_OPTIONS,
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', wasteTagIds: [] },
+  });
+
+  useEffect(() => {
+    if (open && team) {
+      reset({
+        name: team.name,
+        wasteTagIds: team.wasteTags.map(t => t.tagId),
+      });
+    }
+  }, [open, team, reset]);
+
+  const isBusy = updateTeamMutation.isPending;
+  const nameValue = useWatch({ control, name: 'name', defaultValue: '' }) ?? '';
+  const selectedTagIds = (useWatch({ control, name: 'wasteTagIds' }) ?? []) as string[];
+
+  const nameError =
+    errors.name && (touchedFields.name || dirtyFields.name || isSubmitted)
+      ? errors.name.message
+      : undefined;
+
+  const wasteTagError = isSubmitted && errors.wasteTagIds ? errors.wasteTagIds.message : undefined;
+
+  const closeDialog = () => {
+    reset({ name: '', wasteTagIds: [] });
+    onClose();
+  };
+
+  const toggleTag = (tagId: string) => {
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter(id => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setValue('wasteTagIds', next, { shouldValidate: isSubmitted, shouldDirty: true });
+  };
+
+  const onSubmit = handleSubmit(async values => {
+    if (!team) return;
+    try {
+      const res = await updateTeamMutation.mutateAsync({
+        id: team.id,
+        body: {
+          name: values.name,
+          ...(isCleanup ? { wasteTagIds: values.wasteTagIds } : {}),
+        },
+      });
+      toastApiSuccess(res, 'Đã cập nhật thông tin đội.');
+      closeDialog();
+    } catch (err) {
+      toastApiError(err, 'Không thể cập nhật đội. Vui lòng thử lại.');
+    }
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && !isBusy) closeDialog();
+      }}
+    >
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        onInteractOutside={e => {
+          if (isBusy) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isBusy) e.preventDefault();
+        }}
+      >
+        <form onSubmit={onSubmit} className="flex flex-col">
+          <div className="space-y-4 p-6 md:p-8">
+            <DialogHeader className="pr-8 text-left">
+              <DialogTitle className="flex items-center gap-2.5">
+                <Pencil className="size-4 shrink-0 text-foreground" aria-hidden />
+                Chỉnh sửa đội
+              </DialogTitle>
+              <DialogDescription>
+                Cập nhật thông tin đội{' '}
+                <span className="font-semibold text-foreground">{team?.name}</span>.
+              </DialogDescription>
+            </DialogHeader>
+
+            <FieldGroup>
+              <Field>
+                <Label>Loại đội</Label>
+                <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground">
+                  <span
+                    className={cn(
+                      'inline-block size-2.5 shrink-0 rounded-full',
+                      TYPE_DOT[teamType] ?? 'bg-slate-300'
+                    )}
+                    aria-hidden
+                  />
+                  <span className="font-medium">{TYPE_LABEL[teamType] ?? teamType}</span>
+                </div>
+              </Field>
+
+              <Field>
+                <Label htmlFor="edit-team-name">Tên đội</Label>
+                <ValidatedInput
+                  id="edit-team-name"
+                  placeholder="Nhập tên đội"
+                  disabled={isBusy}
+                  {...register('name')}
+                  value={nameValue}
+                  minLength={TEAM_NAME_MIN}
+                  maxLength={TEAM_NAME_MAX}
+                  error={nameError}
+                  className="h-9 rounded-md"
+                />
+              </Field>
+
+              {isCleanup ? (
+                <Field>
+                  <Label>
+                    Loại rác thải{' '}
+                    <span className="text-xs font-normal text-muted-foreground">(bắt buộc)</span>
+                  </Label>
+
+                  {tagsLoading ? (
+                    <div className="flex h-10 items-center gap-2 rounded-md border border-input px-3 text-sm text-muted-foreground">
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                      Đang tải danh sách…
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 rounded-md border border-input p-3">
+                      {(catalogTags ?? []).map(tag => (
+                        <WasteTagSelectChip
+                          key={tag.id}
+                          tag={tag}
+                          selected={selectedTagIds.includes(tag.id)}
+                          disabled={isBusy}
+                          onToggle={toggleTag}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {wasteTagError ? <FieldError>{wasteTagError}</FieldError> : null}
+                </Field>
+              ) : null}
+            </FieldGroup>
+          </div>
+
+          <DialogFooter className="gap-2 border-t border-border bg-slate-50 px-6 py-4 sm:space-x-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isBusy}
+              onClick={closeDialog}
+              className="h-9"
+            >
+              Huỷ
+            </Button>
+            <Button
+              type="submit"
+              disabled={isBusy}
+              className="h-9 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {isBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

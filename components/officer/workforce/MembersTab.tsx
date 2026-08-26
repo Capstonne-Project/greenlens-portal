@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { MovingBorderButton } from '@/components/ui/moving-border';
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import {
   Table,
@@ -575,7 +576,7 @@ export function MembersTab() {
               {isLoadingMembers ? (
                 <TableRow>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 text-center">
-                    <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
                   </TableCell>
                 </TableRow>
               ) : isError ? (

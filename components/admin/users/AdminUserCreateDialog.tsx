@@ -10,6 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useCreateAdminUser } from '@/hooks/useAdminUsers';
 import {
   ADMIN_USER_ASSIGNABLE_ROLES,
@@ -20,7 +28,7 @@ import { getAdminUserMutationError } from '@/utils/adminUserErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -60,6 +68,7 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
     handleSubmit,
     reset,
     watch,
+    control,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
@@ -104,9 +113,6 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
     );
   });
 
-  const selectClass =
-    'h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
-
   return (
     <Dialog
       open={open}
@@ -136,7 +142,8 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
               </DialogDescription>
             </DialogHeader>
 
-            <Field label="Email">
+            <div className="space-y-2">
+              <Label>Email</Label>
               <ValidatedInput
                 type="email"
                 autoComplete="off"
@@ -146,8 +153,10 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
                 maxLength={254}
                 error={errors.email?.message}
               />
-            </Field>
-            <Field label="Mật khẩu">
+            </div>
+
+            <div className="space-y-2">
+              <Label>Mật khẩu</Label>
               <div className="relative">
                 <ValidatedInput
                   type={showPassword ? 'text' : 'password'}
@@ -159,9 +168,11 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
                   maxLength={128}
                   error={errors.password?.message}
                 />
-                <button
+                <Button
                   type="button"
-                  className="absolute right-2 top-0 flex h-11 items-center rounded-md px-1 text-muted-foreground hover:text-foreground"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-0 size-9 text-muted-foreground"
                   onClick={() => setShowPassword(v => !v)}
                   aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   aria-pressed={showPassword}
@@ -171,10 +182,12 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
                   ) : (
                     <Eye className="size-4" aria-hidden />
                   )}
-                </button>
+                </Button>
               </div>
-            </Field>
-            <Field label="Họ tên">
+            </div>
+
+            <div className="space-y-2">
+              <Label>Họ tên</Label>
               <ValidatedInput
                 type="text"
                 {...register('fullName')}
@@ -183,19 +196,32 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
                 maxLength={160}
                 error={errors.fullName?.message}
               />
-            </Field>
-            <Field label="Vai trò">
-              <select className={selectClass} {...register('role')}>
-                {ADMIN_USER_ASSIGNABLE_ROLES.map(r => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Vai trò</Label>
+              <Controller
+                control={control}
+                name="role"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Chọn vai trò" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ADMIN_USER_ASSIGNABLE_ROLES.map(r => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
               {errors.role ? (
                 <p className="text-xs font-medium text-destructive">{errors.role.message}</p>
               ) : null}
-            </Field>
+            </div>
           </div>
 
           <DialogFooter className="gap-2 border-t border-border bg-slate-50 px-8 py-5 sm:space-x-0 md:px-10">
@@ -220,14 +246,5 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground">{label}</label>
-      {children}
-    </div>
   );
 }

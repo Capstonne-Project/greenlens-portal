@@ -5,12 +5,14 @@ import {
   adaptAdminBadges,
   adaptToggleAdminBadge,
   adaptUpdateAdminBadge,
+  adaptUpdateAdminBadgeThreshold,
 } from '@/lib/api/adapters/adminBadges.adapter';
 import type {
   AdminBadgeList,
   AdminBadgesParams,
   ToggleAdminBadgeInput,
   UpdateAdminBadgeInput,
+  UpdateAdminBadgeThresholdInput,
 } from '@/lib/api/models/adminBadge';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
@@ -22,6 +24,7 @@ export type {
   AdminBadgeSortBy,
   ToggleAdminBadgeInput,
   UpdateAdminBadgeInput,
+  UpdateAdminBadgeThresholdInput,
 } from '@/lib/api/models/adminBadge';
 
 export async function fetchAdminBadges(
@@ -38,9 +41,17 @@ export async function toggleAdminBadge(id: string, body: ToggleAdminBadgeInput):
   return adaptToggleAdminBadge(id, body);
 }
 
+export async function updateAdminBadgeThreshold(
+  id: string,
+  body: UpdateAdminBadgeThresholdInput
+): Promise<void> {
+  return adaptUpdateAdminBadgeThreshold(id, body);
+}
+
 const adminBadgeApi = {
   fetchAdminBadges,
   updateAdminBadge,
+  updateAdminBadgeThreshold,
   toggleAdminBadge,
 };
 

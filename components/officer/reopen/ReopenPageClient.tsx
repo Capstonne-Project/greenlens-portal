@@ -4,9 +4,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Copy, Eye, ImageIcon, Loader2, RotateCcw } from 'lucide-react';
+import { Check, Copy, Eye, ImageIcon, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -556,7 +557,7 @@ export function ReopenPageClient() {
       <div className="min-h-0 flex-1 overflow-auto px-2 py-1 [scrollbar-gutter:stable] md:hidden">
         {isPending ? (
           <div className="flex h-40 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-slate-400" />
+            <GreenLensLookupSpinner className="size-8" />
           </div>
         ) : isError ? (
           <div className="flex h-40 flex-col items-center justify-center gap-2 px-4 text-center">
@@ -617,7 +618,7 @@ export function ReopenPageClient() {
               {isPending ? (
                 <TableRow className={ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
-                    <Loader2 className="mx-auto size-8 animate-spin text-slate-400" />
+                    <GreenLensLookupSpinner className="mx-auto size-8" />
                   </TableCell>
                 </TableRow>
               ) : isError ? (

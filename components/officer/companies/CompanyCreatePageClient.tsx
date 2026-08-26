@@ -25,7 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCreateCompany, useUpdateCompanyServiceAreas } from '@/hooks/useCompany';
+import {
+  useCompanyDetail,
+  useCreateCompany,
+  useUpdateCompanyServiceAreas,
+} from '@/hooks/useCompany';
 import { ensureMyOfficesData } from '@/hooks/useDepartments';
 import {
   COMPANY_CONTRACT_TYPES,
@@ -49,7 +53,14 @@ import {
   User,
   UserCog,
 } from 'lucide-react';
-import { useEffect, useState, type ComponentProps, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -156,7 +167,7 @@ export function CompanyCreatePageClient() {
 
   const [createdResult, setCreatedResult] = useState<CreatedCompany | null>(null);
   const [copied, setCopied] = useState(false);
-  const [wardCode, setWardCode] = useState('');
+  const [wardCodes, setWardCodes] = useState<string[]>([]);
   const [wardError, setWardError] = useState<string | undefined>();
   const [departmentMeta, setDepartmentMeta] = useState<OfficeWardDepartmentMeta | null>(null);
   const [wardLoadError, setWardLoadError] = useState(false);
@@ -206,8 +217,6 @@ export function CompanyCreatePageClient() {
       return;
     }
 
-    const trimmedWard = wardCode.trim();
-
     createMutation.mutate(
       {
         name: values.name.trim(),
@@ -222,7 +231,7 @@ export function CompanyCreatePageClient() {
         contractEndDate: resolveContractEndDate(values.contractType, values.contractEndDate),
         managerFullName: values.managerFullName.trim(),
         managerEmail: values.managerEmail.trim(),
-        ...(trimmedWard ? { wardCodes: [trimmedWard] } : {}),
+        ...(wardCodes.length ? { wardCodes } : {}),
       },
       {
         onSuccess: envelope => {
@@ -274,7 +283,7 @@ export function CompanyCreatePageClient() {
             </CardContent>
           ) : (
             <>
-              <CardHeader className="space-y-1 border-b border-slate-100 px-6 pb-5 pt-6">
+              <CardHeader className="space-y-1 border-b border-slate-100 px-6 pb-5 pt-1">
                 <CardTitle className="text-xl font-bold">Thêm doanh nghiệp DVMT</CardTitle>
                 <CardDescription>
                   Nhập thông tin công ty và tài khoản quản lý để lưu hồ sơ.
@@ -293,13 +302,14 @@ export function CompanyCreatePageClient() {
                   >
                     <OfficeWardSelect
                       id="company-create-service-area"
-                      value={wardCode}
-                      onChange={v => {
-                        setWardCode(v);
+                      multiple
+                      value={wardCodes}
+                      onChange={codes => {
+                        setWardCodes(codes);
                         setWardError(undefined);
                       }}
                       active
-                      placeholder="Chọn văn phòng MT phường/xã"
+                      placeholder="Chọn một hoặc nhiều văn phòng MT phường/xã"
                       searchPlaceholder="Tìm phường, xã hoặc tên văn phòng…"
                       disabled={isPending}
                       onDepartmentMeta={setDepartmentMeta}
@@ -539,32 +549,43 @@ function CompanyAssignAreaDialogForm({
   onClose: () => void;
   onAssigned?: () => void;
 }) {
-  const [wardCode, setWardCode] = useState('');
+  const [wardCodesDraft, setWardCodesDraft] = useState<string[] | null>(null);
   const [wardError, setWardError] = useState<string | undefined>();
   const [wardLoadError, setWardLoadError] = useState(false);
 
+  const {
+    data: detail,
+    isPending: isLoadingAreas,
+    isError: isAreasError,
+  } = useCompanyDetail(assignCompany.id);
   const updateServiceAreasMutation = useUpdateCompanyServiceAreas();
-  const isPending = updateServiceAreasMutation.isPending;
+  const isSaving = updateServiceAreasMutation.isPending;
+
+  const initialLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const area of detail?.serviceAreas ?? []) {
+      const name = area.wardName.trim() || area.wardCode;
+      if (area.wardCode) labels[area.wardCode] = name;
+    }
+    return labels;
+  }, [detail]);
+
+  const wardCodes =
+    wardCodesDraft ?? detail?.serviceAreas.map(area => area.wardCode).filter(Boolean) ?? [];
 
   const handleAssignSubmit = (e: FormEvent) => {
     e.preventDefault();
-
-    const trimmed = wardCode.trim();
-    if (!trimmed) {
-      setWardError('Vui lòng chọn địa bàn vận hành (phường/xã)');
-      return;
-    }
+    if (isLoadingAreas && !detail) return;
 
     setWardError(undefined);
     updateServiceAreasMutation.mutate(
       {
         companyId: assignCompany.id,
-        body: { wardCodes: [trimmed] },
+        body: { wardCodes },
       },
       {
         onSuccess: () => {
           toast.success('Đã cập nhật địa bàn phụ trách.');
-          // Close first, then refetch — avoids Dialog RemoveScroll racing with list re-render
           onClose();
           window.setTimeout(() => onAssigned?.(), 0);
         },
@@ -573,6 +594,8 @@ function CompanyAssignAreaDialogForm({
       }
     );
   };
+
+  const selectDisabled = isSaving || (isLoadingAreas && !detail);
 
   return (
     <>
@@ -589,22 +612,35 @@ function CompanyAssignAreaDialogForm({
           label="Gán địa bàn vận hành (phường/xã)"
           error={
             wardError ??
-            (wardLoadError ? 'Không tải được danh sách văn phòng cấp phường/xã.' : undefined)
+            (isAreasError
+              ? 'Không tải được địa bàn hiện có của doanh nghiệp.'
+              : wardLoadError
+                ? 'Không tải được danh sách văn phòng cấp phường/xã.'
+                : undefined)
           }
         >
-          <OfficeWardSelect
-            id="company-assign-service-area"
-            value={wardCode}
-            onChange={v => {
-              setWardCode(v);
-              setWardError(undefined);
-            }}
-            active
-            placeholder="Chọn văn phòng MT phường/xã"
-            searchPlaceholder="Tìm phường, xã hoặc tên văn phòng…"
-            disabled={isPending}
-            onLoadError={setWardLoadError}
-          />
+          {isLoadingAreas && !detail ? (
+            <div className="flex h-10 items-center gap-2 rounded-lg border border-input px-3 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Đang tải địa bàn hiện có…
+            </div>
+          ) : (
+            <OfficeWardSelect
+              id="company-assign-service-area"
+              multiple
+              value={wardCodes}
+              onChange={codes => {
+                setWardCodesDraft(codes);
+                setWardError(undefined);
+              }}
+              active
+              initialLabels={initialLabels}
+              placeholder="Chọn một hoặc nhiều văn phòng MT phường/xã"
+              searchPlaceholder="Tìm phường, xã hoặc tên văn phòng…"
+              disabled={selectDisabled}
+              onLoadError={setWardLoadError}
+            />
+          )}
         </FormField>
 
         <FormField label="Tên doanh nghiệp">
@@ -619,10 +655,10 @@ function CompanyAssignAreaDialogForm({
 
         <Button
           type="submit"
-          disabled={isPending}
+          disabled={selectDisabled}
           className="h-11 w-full bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800"
         >
-          {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+          {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
           Lưu địa bàn
         </Button>
       </form>

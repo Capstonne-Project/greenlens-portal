@@ -25,9 +25,10 @@ import {
   fetchMyCompanyContractHistory,
   fetchMyCompanyKpi,
   fetchMyWardCompanies,
-  renameCompanyTeam,
   removeCompanyTeamMember,
   suspendCompany,
+  updateCompanyTeam,
+  fetchCompanyTeamDetail,
   reactivateCompany,
   renewCompanyContract,
   updateCompanyServiceAreas,
@@ -57,12 +58,13 @@ import type {
   MyCompanyContractHistory,
   MyCompanyKpi,
   MyCompanyKpiParams,
-  RenameCompanyTeamInput,
+  CompanyTeamDetail,
   RemoveCompanyTeamMemberInput,
   RenewCompanyContractInput,
   SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
   UpdateCompanyStaffStatusInput,
+  UpdateCompanyTeamInput,
 } from '@/lib/api/models/company';
 import { assignmentListMissingThumbnailIds } from '@/lib/api/mappers/companyAssignment.mapper';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
@@ -233,6 +235,7 @@ export const companyKeys = {
   profile: () => [...companyKeys.all, 'profile'] as const,
   staff: (params: CompanyStaffListParams) => [...companyKeys.all, 'staff', params] as const,
   teams: (params: CompanyTeamsListParams) => [...companyKeys.all, 'teams', params] as const,
+  teamDetail: (id: string) => [...companyKeys.all, 'teams', 'detail', id] as const,
   teamOptions: () => [...companyKeys.all, 'teams', 'options'] as const,
   queue: (params: CompanyQueueParams) => [...companyKeys.all, 'queue', params] as const,
   /** Overview header “N hàng đợi” CTA — not sidebar badge. */
@@ -522,9 +525,10 @@ export function useAddCompanyTeamMember() {
   return useMutation({
     mutationFn: ({ teamId, body }: { teamId: string; body: AddCompanyTeamMemberInput }) =>
       addCompanyTeamMember(teamId, body),
-    onSuccess: () => {
+    onSuccess: (_data, { teamId }) => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamDetail(teamId) });
       queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
     },
   });
@@ -536,9 +540,10 @@ export function useRemoveCompanyTeamMember() {
   return useMutation({
     mutationFn: ({ teamId, userId }: RemoveCompanyTeamMemberInput) =>
       removeCompanyTeamMember(teamId, userId),
-    onSuccess: () => {
+    onSuccess: (_data, { teamId }) => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamDetail(teamId) });
       queryClient.invalidateQueries({ queryKey: companyKeys.profile() });
     },
   });
@@ -554,15 +559,27 @@ export function useCreateCompanyTeam() {
   });
 }
 
-export function useRenameCompanyTeam() {
+/** PUT /v1/teams/company-teams/{id} — cập nhật tên + wasteTagIds. */
+export function useUpdateCompanyTeam() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: RenameCompanyTeamInput }) =>
-      renameCompanyTeam(id, body),
-    onSuccess: () => {
+    mutationFn: ({ id, body }: { id: string; body: UpdateCompanyTeamInput }) =>
+      updateCompanyTeam(id, body),
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'teams'] });
-      queryClient.invalidateQueries({ queryKey: [...companyKeys.all, 'staff'] });
+      queryClient.invalidateQueries({ queryKey: companyKeys.teamDetail(id) });
     },
+  });
+}
+
+/** GET /v1/teams/company-teams/{id} — chi tiết đội công ty. */
+export function useCompanyTeamDetail(id: string | null) {
+  return useQuery({
+    queryKey: companyKeys.teamDetail(id ?? ''),
+    queryFn: () => fetchCompanyTeamDetail(id!),
+    select: (envelope: ApiEnvelope<CompanyTeamDetail>) => envelope.data,
+    enabled: Boolean(id),
+    staleTime: STALE_MS,
   });
 }
 

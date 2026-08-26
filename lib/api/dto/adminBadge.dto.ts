@@ -9,7 +9,12 @@ export interface AdminBadgeItemDto {
   requiredPoints?: number;
   requiredReportCount?: number;
   requiredStreakDays?: number;
+  requiredActionCount?: number;
   createdAt?: string | null;
+}
+
+export interface UpdateAdminBadgeThresholdBodyDto {
+  threshold: number;
 }
 
 export interface AdminBadgePaginationDto {

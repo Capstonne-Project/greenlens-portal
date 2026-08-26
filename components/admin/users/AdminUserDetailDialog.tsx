@@ -2,12 +2,16 @@
 
 import { AdminUserChangeRoleDialog } from '@/components/admin/users/AdminUserChangeRoleDialog';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAdminUserDetail, useToggleBanAdminUser } from '@/hooks/useAdminUsers';
 import { useLockGamificationUser } from '@/hooks/useGamification';
 import type { AdminUserDetail } from '@/lib/api/models/adminUser';
 import { resolveApiToastMessage } from '@/utils/apiToastMessage';
 import { getAdminUserMutationError, isAdminUserNotFound } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
+import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { Loader2, ScrollText, ShieldBan, Trophy, UserCog } from 'lucide-react';
 import Image from 'next/image';
@@ -18,7 +22,6 @@ import { toast } from 'sonner';
 interface AdminUserDetailDialogProps {
   userId: string | null;
   onClose: () => void;
-  /** Called with loaded detail; if omitted, dialog opens change-role itself. */
   onChangeRole?: (user: AdminUserDetail) => void;
 }
 
@@ -141,22 +144,14 @@ export function AdminUserDetailDialog({
                 : getAdminUserMutationError(error, 'Không tải được chi tiết người dùng.')}
             </p>
             {!notFound ? (
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                className="text-sm font-medium text-emerald-700 hover:underline"
-              >
+              <Button variant="link" onClick={() => void refetch()} className="text-emerald-700">
                 Thử lại
-              </button>
+              </Button>
             ) : null}
             <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={close}
-                className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-              >
+              <Button variant="outline" onClick={close}>
                 Đóng
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -164,26 +159,25 @@ export function AdminUserDetailDialog({
         {data ? (
           <div className="space-y-5">
             <div className="flex items-start gap-4">
-              {data.avatarUrl ? (
-                <div className="relative size-14 shrink-0 overflow-hidden rounded-full ring-2 ring-emerald-600/15">
-                  <Image src={data.avatarUrl} alt="" fill sizes="56px" className="object-cover" />
-                </div>
-              ) : (
-                <div
-                  className="flex size-14 shrink-0 items-center justify-center rounded-full bg-emerald-600/15 text-sm font-bold text-emerald-900"
-                  aria-hidden
-                >
+              <Avatar className="size-14 ring-2 ring-emerald-600/15">
+                {data.avatarUrl ? (
+                  <AvatarImage asChild src={data.avatarUrl}>
+                    <Image src={data.avatarUrl} alt="" fill sizes="56px" className="object-cover" />
+                  </AvatarImage>
+                ) : null}
+                <AvatarFallback className="bg-emerald-600/15 text-sm font-bold text-emerald-900">
                   {initialsFromName(data.fullName || data.email)}
-                </div>
-              )}
+                </AvatarFallback>
+              </Avatar>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-semibold text-foreground">{data.fullName}</p>
                 <p className="mt-0.5 truncate text-sm text-muted-foreground">{data.email}</p>
-                <span
-                  className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${roleBadgeClasses(data.role)}`}
+                <Badge
+                  variant="outline"
+                  className={cn('mt-2 text-xs font-medium', roleBadgeClasses(data.role))}
                 >
                   {roleDisplayVi(data.role)}
-                </span>
+                </Badge>
               </div>
             </div>
 
@@ -201,30 +195,27 @@ export function AdminUserDetailDialog({
             </dl>
 
             <div className="flex flex-wrap justify-end gap-2 pt-1">
-              <Link
-                href={`/admin/audit-logs?entityType=User&entityId=${encodeURIComponent(data.id)}`}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
-                onClick={close}
-              >
-                <ScrollText className="size-4" aria-hidden />
-                Nhật ký
-              </Link>
-              <button
-                type="button"
-                onClick={close}
-                className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-              >
+              <Button variant="outline" asChild className="border-emerald-200 text-emerald-800 hover:bg-emerald-50">
+                <Link
+                  href={`/admin/audit-logs?entityType=User&entityId=${encodeURIComponent(data.id)}`}
+                  onClick={close}
+                >
+                  <ScrollText className="size-4" aria-hidden />
+                  Nhật ký
+                </Link>
+              </Button>
+              <Button variant="outline" onClick={close}>
                 Đóng
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline"
                 onClick={handleToggleBan}
                 disabled={toggleBan.isPending}
-                className={`inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium disabled:opacity-60 ${
+                className={
                   isBanned
                     ? 'border-lime-300 bg-lime-50 text-lime-900 hover:bg-lime-100'
                     : 'border-red-200 bg-red-50 text-red-900 hover:bg-red-100'
-                }`}
+                }
               >
                 {toggleBan.isPending ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -232,13 +223,13 @@ export function AdminUserDetailDialog({
                   <ShieldBan className="size-4" aria-hidden />
                 )}
                 {isBanned ? 'Bỏ cấm' : 'Cấm tài khoản'}
-              </button>
+              </Button>
               {data.role === 'Citizen' ? (
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
                   onClick={handleLockGamification}
                   disabled={lockGamification.isPending}
-                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 text-sm font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-60"
+                  className="border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100"
                 >
                   {lockGamification.isPending ? (
                     <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -246,16 +237,15 @@ export function AdminUserDetailDialog({
                     <Trophy className="size-4" aria-hidden />
                   )}
                   Khóa điểm thưởng
-                </button>
+                </Button>
               ) : null}
-              <button
-                type="button"
+              <Button
                 onClick={handleChangeRole}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
+                className="bg-emerald-700 text-white hover:bg-emerald-800"
               >
                 <UserCog className="size-4" aria-hidden />
                 Đổi vai trò
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}

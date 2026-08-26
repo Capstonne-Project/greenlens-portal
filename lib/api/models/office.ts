@@ -124,6 +124,15 @@ export interface LeoMyReportAssignedCompany {
   dispatchedAt: string;
 }
 
+/** Waste tag gắn trên team — trả về trong assignments[].teamWasteTags. */
+export interface LeoReportAssignmentWasteTag {
+  tagId: string;
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  iconUrl: string | null;
+}
+
 /** Một assignment trong `LeoMyReportItem.assignments[]`. */
 export interface LeoMyReportAssignment {
   assignmentId: string;
@@ -140,6 +149,8 @@ export interface LeoMyReportAssignment {
   completedAt: string | null;
   progressUpdatedAt: string | null;
   isCompanyTeam: boolean;
+  /** Waste tags của team được gán — Cleanup teams only. */
+  teamWasteTags: LeoReportAssignmentWasteTag[];
   beforeImageUrls: string[];
   afterImageUrls: string[];
 }
