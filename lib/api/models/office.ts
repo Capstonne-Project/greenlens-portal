@@ -124,7 +124,7 @@ export interface LeoMyReportAssignedCompany {
   dispatchedAt: string;
 }
 
-/** Waste tag gắn trên team — trả về trong assignments[].teamWasteTags. */
+/** Waste tag gắn trên team — Swagger: `WasteTagSummaryDto`. */
 export interface LeoReportAssignmentWasteTag {
   tagId: string;
   code: string;
@@ -133,7 +133,7 @@ export interface LeoReportAssignmentWasteTag {
   iconUrl: string | null;
 }
 
-/** Một assignment trong `LeoMyReportItem.assignments[]`. */
+/** Một assignment — Swagger: `AssignmentProgressItem`. */
 export interface LeoMyReportAssignment {
   assignmentId: string;
   teamId: string;
@@ -155,7 +155,7 @@ export interface LeoMyReportAssignment {
   afterImageUrls: string[];
 }
 
-/** Item báo cáo LEO quản lý (kèm `assignments[]`). */
+/** Item báo cáo LEO — Swagger: `OfficeReportItem`. */
 export interface LeoMyReportItem {
   id: string;
   code: string;
@@ -187,7 +187,7 @@ export interface LeoMyReportItem {
   assignments: LeoMyReportAssignment[];
 }
 
-/** `data` envelope của GET /v1/offices/my/reports. */
+/** `data` envelope — Swagger: `GetOfficeReportsResponse`. */
 export interface LeoMyReportsData {
   localOfficeId: string;
   localOfficeName: string;
@@ -211,7 +211,7 @@ export interface LeoWardBoundary {
 
 /**
  * Gợi ý sort phổ biến (Swagger `sortBy` là string tự do).
- * `code, status, severity, priority, createdAt, assignmentCount`
+ * `code, status, severity, priority, createdAt, assignmentCount, assignedAt`
  * (mặc định BE: mới nhất).
  */
 export type LeoMyReportsSortBy =
@@ -220,7 +220,8 @@ export type LeoMyReportsSortBy =
   | 'severity'
   | 'priority'
   | 'createdAt'
-  | 'assignmentCount';
+  | 'assignmentCount'
+  | 'assignedAt';
 
 export const LEO_MY_REPORTS_TEAM_SCOPES = ['All', 'Company', 'Community'] as const;
 
@@ -244,7 +245,7 @@ export interface LeoMyReportsParams {
   /** ISO date-time (`string($date-time)`). */
   toDate?: string;
   /** Swagger: plain string — dùng `LeoMyReportsSortBy` làm gợi ý giá trị. */
-  sortBy?: string;
+  sortBy?: LeoMyReportsSortBy | string;
   sortDesc?: boolean;
   /** All | Company | Community — bỏ trống = All. */
   teamScope?: LeoMyReportsTeamScope;

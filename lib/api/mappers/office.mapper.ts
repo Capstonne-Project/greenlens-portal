@@ -1,11 +1,15 @@
 import type { Geometry } from 'geojson';
 import type {
+  AssignmentProgressItemDto,
+  GetOfficeReportsResponseDto,
   LeoMyReportAssignedCompanyDto,
   LeoMyReportAssignmentDto,
   LeoMyReportItemDto,
   LeoMyReportsDataDto,
   LeoOfficePaginationDto,
-  LeoReportAssignmentWasteTagDto,
+  OfficeAssignedCompanyItemDto,
+  OfficeReportItemDto,
+  WasteTagSummaryDto,
   LeoWardBoundaryDto,
   OfficeDetailDto,
   OfficeDto,
@@ -127,34 +131,34 @@ function mapAssignmentStatus(value: string | undefined): LeoReportAssignmentStat
 }
 
 function mapLeoMyReportAssignedCompanyDto(
-  dto: LeoMyReportAssignedCompanyDto | null | undefined
+  dto: OfficeAssignedCompanyItemDto | LeoMyReportAssignedCompanyDto | null | undefined
 ): LeoMyReportAssignedCompany | null {
   if (!dto?.companyId) return null;
   return {
     companyId: dto.companyId,
-    companyName: dto.companyName,
-    dispatchedAt: dto.dispatchedAt,
+    companyName: dto.companyName?.trim() ?? '',
+    dispatchedAt: dto.dispatchedAt ?? '',
   };
 }
 
-function mapLeoReportAssignmentWasteTagDto(
-  dto: LeoReportAssignmentWasteTagDto
-): LeoReportAssignmentWasteTag {
+function mapWasteTagSummaryDto(dto: WasteTagSummaryDto): LeoReportAssignmentWasteTag {
   return {
     tagId: dto.tagId,
-    code: dto.code,
-    nameVi: dto.nameVi,
-    nameEn: dto.nameEn,
+    code: dto.code?.trim() ?? '',
+    nameVi: dto.nameVi?.trim() ?? '',
+    nameEn: dto.nameEn?.trim() ?? '',
     iconUrl: dto.iconUrl ?? null,
   };
 }
 
-function mapLeoMyReportAssignmentDto(dto: LeoMyReportAssignmentDto): LeoMyReportAssignment {
+function mapAssignmentProgressItemDto(
+  dto: AssignmentProgressItemDto | LeoMyReportAssignmentDto
+): LeoMyReportAssignment {
   return {
     assignmentId: dto.assignmentId,
     teamId: dto.teamId,
-    teamName: dto.teamName,
-    teamType: dto.teamType,
+    teamName: dto.teamName?.trim() ?? '',
+    teamType: dto.teamType?.trim() ?? '',
     status: mapAssignmentStatus(dto.status),
     progressPercent: dto.progressPercent,
     progressNote: dto.progressNote ?? null,
@@ -165,26 +169,26 @@ function mapLeoMyReportAssignmentDto(dto: LeoMyReportAssignmentDto): LeoMyReport
     completedAt: dto.completedAt ?? null,
     progressUpdatedAt: dto.progressUpdatedAt ?? null,
     isCompanyTeam: Boolean(dto.isCompanyTeam),
-    teamWasteTags: (dto.teamWasteTags ?? []).map(mapLeoReportAssignmentWasteTagDto),
+    teamWasteTags: (dto.teamWasteTags ?? []).map(mapWasteTagSummaryDto),
     beforeImageUrls: dto.beforeImageUrls ?? [],
     afterImageUrls: dto.afterImageUrls ?? [],
   };
 }
 
-function mapLeoMyReportItemDto(dto: LeoMyReportItemDto): LeoMyReportItem {
+function mapOfficeReportItemDto(dto: OfficeReportItemDto | LeoMyReportItemDto): LeoMyReportItem {
   return {
     id: dto.id,
-    code: dto.code,
-    categoryCode: dto.categoryCode,
-    categoryName: dto.categoryName,
+    code: dto.code?.trim() ?? '',
+    categoryCode: dto.categoryCode?.trim() ?? '',
+    categoryName: dto.categoryName?.trim() ?? '',
     severity: dto.severity,
     status: dto.status,
     latitude: dto.latitude,
     longitude: dto.longitude,
-    address: dto.address,
-    wardCode: dto.wardCode,
-    reporterId: dto.reporterId,
-    reporterName: dto.reporterName,
+    address: dto.address?.trim() ?? '',
+    wardCode: dto.wardCode?.trim() ?? '',
+    reporterId: dto.reporterId?.trim() ?? '',
+    reporterName: dto.reporterName?.trim() ?? '',
     description: dto.description ?? null,
     assignmentCount: dto.assignmentCount,
     priorityScore: dto.priorityScore,
@@ -199,7 +203,7 @@ function mapLeoMyReportItemDto(dto: LeoMyReportItemDto): LeoMyReportItem {
     slaResolveDueAt: dto.slaResolveDueAt ?? null,
     thumbnails: dto.thumbnails ?? [],
     assignedCompany: mapLeoMyReportAssignedCompanyDto(dto.assignedCompany),
-    assignments: (dto.assignments ?? []).map(mapLeoMyReportAssignmentDto),
+    assignments: (dto.assignments ?? []).map(mapAssignmentProgressItemDto),
   };
 }
 
@@ -214,13 +218,15 @@ function mapLeoPagination(dto: LeoOfficePaginationDto): PaginationMeta {
   };
 }
 
-export function mapLeoMyReportsDataDto(data: LeoMyReportsDataDto): LeoMyReportsData {
+export function mapLeoMyReportsDataDto(
+  data: GetOfficeReportsResponseDto | LeoMyReportsDataDto
+): LeoMyReportsData {
   return {
     localOfficeId: data.localOfficeId,
-    localOfficeName: data.localOfficeName,
-    wardCode: data.wardCode,
-    wardName: data.wardName,
-    items: (data.items ?? []).map(mapLeoMyReportItemDto),
+    localOfficeName: data.localOfficeName?.trim() ?? '',
+    wardCode: data.wardCode?.trim() ?? '',
+    wardName: data.wardName?.trim() ?? '',
+    items: (data.items ?? []).map(mapOfficeReportItemDto),
     pagination: mapLeoPagination(data.pagination),
   };
 }
