@@ -8,7 +8,11 @@ import { usePathname } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faRightToBracket } from '@fortawesome/free-solid-svg-icons';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
-import { getActiveNavId, isFontAwesomeNavIcon } from '@/lib/constants/mapShellNav';
+import {
+  getActiveNavId,
+  getBrandHomeHref,
+  isFontAwesomeNavIcon,
+} from '@/lib/constants/mapShellNav';
 import { APP_LOGO_MARK_SRC } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import {
@@ -263,7 +267,11 @@ export function MapLeftSidebar({ config }: MapLeftSidebarProps) {
         </button>
       ) : null}
 
-      <div className={mapSidebarLogoClass(expanded)}>
+      <Link
+        href={getBrandHomeHref(config)}
+        className={cn(mapSidebarLogoClass(expanded), 'text-inherit no-underline')}
+        aria-label={`${config.brand.name} — trang chủ`}
+      >
         <div className="flex size-6 shrink-0 items-center justify-center text-white">
           <Image
             src={APP_LOGO_MARK_SRC}
@@ -283,7 +291,7 @@ export function MapLeftSidebar({ config }: MapLeftSidebarProps) {
             {config.brand.tagline}
           </span>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex w-full flex-col pt-1" aria-label="Menu chính">
         {config.mainNav.map(item =>
