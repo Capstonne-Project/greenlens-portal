@@ -134,7 +134,9 @@ export async function adaptAddCompanyTeamMember(
 
 /**
  * DELETE /v1/teams/company-teams/{teamId}/members/{userId}
- * [CompanyManager] — 200: envelope data string; 404: không tìm thấy thành viên hoặc team.
+ * [CompanyManager] Xóa nhân viên khỏi team công ty.
+ * User vẫn thuộc công ty (CompanyStaff không đổi) — chỉ rời team.
+ * 200: Đã xóa (data string); 404: Không tìm thấy thành viên hoặc team.
  */
 export async function adaptRemoveCompanyTeamMember(
   teamId: string,
@@ -201,7 +203,8 @@ export async function adaptArchiveCompanyTeam(
 
 /**
  * DELETE /v1/teams/company-teams/{id}
- * [CompanyManager] Soft delete — dữ liệu không mất nhưng team không còn hiện trên hệ thống.
+ * [CompanyManager] Soft Delete team công ty.
+ * Dữ liệu team không bị mất nhưng không còn xuất hiện trên hệ thống.
  * 200: Đã xóa (data string); 404: Không tìm thấy team.
  */
 export async function adaptDeleteCompanyTeam(id: string): Promise<ApiEnvelope<string>> {
