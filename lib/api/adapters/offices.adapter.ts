@@ -1,7 +1,7 @@
 import type {
   AssignOfficeOfficerBodyDto,
   CreateOfficeBodyDto,
-  LeoMyReportsDataDto,
+  GetOfficeReportsResponseDto,
   LeoWardBoundaryDto,
   OfficeDetailDto,
   OfficeDto,
@@ -123,7 +123,7 @@ function buildLeoMyReportsQuery(params?: LeoMyReportsParams): Record<string, unk
 export async function adaptFetchLeoMyReports(
   params?: LeoMyReportsParams
 ): Promise<ApiEnvelope<LeoMyReportsData>> {
-  const res = await apiService.get<ApiEnvelope<LeoMyReportsDataDto>>(
+  const res = await apiService.get<ApiEnvelope<GetOfficeReportsResponseDto>>(
     '/v1/offices/my/reports',
     buildLeoMyReportsQuery(params),
     {

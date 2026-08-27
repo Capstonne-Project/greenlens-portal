@@ -31,6 +31,14 @@ import type {
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
+  AssignmentProgressItemDto,
+  GetOfficeReportsResponseDto,
+  OfficeAssignedCompanyItemDto,
+  OfficeReportItemDto,
+  WasteTagSummaryDto,
+} from '@/lib/api/dto/office.dto';
+
+export type {
   AssignOfficeOfficerInput,
   CreateOfficeInput,
   LeoMyReportAssignment,

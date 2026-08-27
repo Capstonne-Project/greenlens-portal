@@ -57,6 +57,12 @@ import { useMemo, useState } from 'react';
 const LEO_BOARD_PAGE_SIZE = 10;
 const LEO_LIST_PAGE_SIZE = 10;
 
+/** Theo dõi xử lý — sort theo thời điểm phân công gần nhất (`assignments[].assignedAt`). */
+const LEO_TRACKING_REPORTS_SORT = {
+  sortBy: 'assignedAt' as const,
+  sortDesc: true,
+};
+
 /**
  * Board grid — cột cố định theo breakpoint để 1 card không kéo full hàng.
  * Không hardcode px; chiều cao card = aspect thumb + body line-clamp đồng nhất.
@@ -80,6 +86,15 @@ const LEO_VIEW_TOGGLE_CLASS = (active: boolean) =>
   );
 
 const EMPTY_LEO_ITEMS: LeoMyReportItem[] = [];
+
+/** Sắp xếp assignments theo `assignedAt` mới nhất — dùng khi hiển thị đội trên card/list. */
+function sortAssignmentsByAssignedAtDesc(
+  assignments: LeoMyReportAssignment[]
+): LeoMyReportAssignment[] {
+  return [...assignments].sort(
+    (a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime()
+  );
+}
 
 const AVATAR_PALETTE = [
   'bg-orange-200 text-orange-800',
@@ -327,7 +342,7 @@ function ProjectCard({
     REPORT_STATUS_BADGE_CLASSES[item.status as keyof typeof REPORT_STATUS_BADGE_CLASSES] ??
     'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/80';
 
-  const visibleTeams = item.assignments.slice(0, 3);
+  const visibleTeams = sortAssignmentsByAssignedAtDesc(item.assignments).slice(0, 3);
   const extraTeams = Math.max(0, item.assignments.length - visibleTeams.length);
   const teamTooltipItems = visibleTeams.map((assignment, index) => ({
     id: index + 1,
@@ -482,7 +497,7 @@ function ProjectListRow({ item, onOpen }: { item: LeoMyReportItem; onOpen: () =>
   const description = item.description?.trim() ?? '';
   const assignedCompanyName = item.assignedCompany?.companyName?.trim() ?? '';
   const thumb = (item.thumbnails ?? []).find(Boolean);
-  const visibleTeams = item.assignments.slice(0, 3);
+  const visibleTeams = sortAssignmentsByAssignedAtDesc(item.assignments).slice(0, 3);
   const extraTeams = Math.max(0, item.assignments.length - visibleTeams.length);
 
   return (
@@ -702,8 +717,7 @@ export function LeoTrackingPageClient({
     {
       page,
       pageSize,
-      sortBy: 'createdAt',
-      sortDesc: true,
+      ...LEO_TRACKING_REPORTS_SORT,
       search: debouncedSearch || undefined,
       /** `all` → multi `?status=InProgress&status=Resolved`; filter cụ thể → 1 status. */
       status: statusFilter,

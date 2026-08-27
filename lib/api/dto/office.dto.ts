@@ -69,7 +69,7 @@ export interface AssignOfficeOfficerBodyDto {
 
 /**
  * GET /v1/offices/my/reports — items[].assignments[]
- * Mỗi report có thể có nhiều assignment (re-assign / multi-team).
+ * Swagger: `AssignmentProgressItem` — mỗi report có thể có nhiều assignment (re-assign / multi-team).
  */
 export type LeoReportAssignmentStatusDto =
   | 'Assigned'
@@ -92,20 +92,25 @@ export type LeoMyReportsStatusDto =
 /** Swagger query `severity`. */
 export type LeoMyReportsSeverityDto = 'Low' | 'Medium' | 'High' | 'Critical';
 
-/** Waste tag gắn trên team — trả về trong assignments[].teamWasteTags. */
-export interface LeoReportAssignmentWasteTagDto {
+/** GET /v1/offices/my/reports — assignments[].teamWasteTags[] — Swagger: `WasteTagSummaryDto`. */
+export interface WasteTagSummaryDto {
   tagId: string;
-  code: string;
-  nameVi: string;
-  nameEn: string;
-  iconUrl: string | null;
+  code?: string | null;
+  nameVi?: string | null;
+  nameEn?: string | null;
+  iconUrl?: string | null;
 }
 
-export interface LeoMyReportAssignmentDto {
+/** @deprecated Dùng `WasteTagSummaryDto`. */
+export type LeoReportAssignmentWasteTagDto = WasteTagSummaryDto;
+
+/** GET /v1/offices/my/reports — items[].assignments[] — Swagger: `AssignmentProgressItem`. */
+export interface AssignmentProgressItemDto {
   assignmentId: string;
   teamId: string;
-  teamName: string;
-  teamType: string;
+  teamName?: string | null;
+  teamType?: string | null;
+  isCompanyTeam: boolean;
   status: LeoReportAssignmentStatusDto;
   progressPercent: number;
   progressNote?: string | null;
@@ -115,34 +120,38 @@ export interface LeoMyReportAssignmentDto {
   startedAt?: string | null;
   completedAt?: string | null;
   progressUpdatedAt?: string | null;
-  isCompanyTeam?: boolean;
-  /** Waste tags của team được gán — Cleanup teams only. */
-  teamWasteTags?: LeoReportAssignmentWasteTagDto[];
-  beforeImageUrls?: string[];
-  afterImageUrls?: string[];
+  teamWasteTags?: WasteTagSummaryDto[] | null;
+  beforeImageUrls?: string[] | null;
+  afterImageUrls?: string[] | null;
 }
 
-/** GET /v1/offices/my/reports — items[].assignedCompany */
-export interface LeoMyReportAssignedCompanyDto {
+/** @deprecated Dùng `AssignmentProgressItemDto`. */
+export type LeoMyReportAssignmentDto = AssignmentProgressItemDto;
+
+/** GET /v1/offices/my/reports — items[].assignedCompany — Swagger: `OfficeAssignedCompanyItem`. */
+export interface OfficeAssignedCompanyItemDto {
   companyId: string;
-  companyName: string;
-  dispatchedAt: string;
+  companyName?: string | null;
+  dispatchedAt?: string | null;
 }
 
-/** GET /v1/offices/my/reports — item */
-export interface LeoMyReportItemDto {
+/** @deprecated Dùng `OfficeAssignedCompanyItemDto`. */
+export type LeoMyReportAssignedCompanyDto = OfficeAssignedCompanyItemDto;
+
+/** GET /v1/offices/my/reports — item — Swagger: `OfficeReportItem`. */
+export interface OfficeReportItemDto {
   id: string;
-  code: string;
-  categoryCode: string;
-  categoryName: string;
+  code?: string | null;
+  categoryCode?: string | null;
+  categoryName?: string | null;
   severity: LeoMyReportsSeverityDto;
   status: LeoMyReportsStatusDto;
   latitude: number;
   longitude: number;
-  address: string;
-  wardCode: string;
-  reporterId: string;
-  reporterName: string;
+  address?: string | null;
+  wardCode?: string | null;
+  reporterId?: string | null;
+  reporterName?: string | null;
   description?: string | null;
   assignmentCount: number;
   priorityScore: number;
@@ -155,11 +164,13 @@ export interface LeoMyReportItemDto {
   resolvedAt?: string | null;
   closedAt?: string | null;
   slaResolveDueAt?: string | null;
-  /** Thumbnail URLs for report media (Swagger: string[]). */
-  thumbnails?: string[];
-  assignedCompany?: LeoMyReportAssignedCompanyDto | null;
-  assignments: LeoMyReportAssignmentDto[];
+  thumbnails?: string[] | null;
+  assignedCompany?: OfficeAssignedCompanyItemDto | null;
+  assignments?: AssignmentProgressItemDto[] | null;
 }
+
+/** @deprecated Dùng `OfficeReportItemDto`. */
+export type LeoMyReportItemDto = OfficeReportItemDto;
 
 export interface LeoOfficePaginationDto {
   page: number;
@@ -170,15 +181,18 @@ export interface LeoOfficePaginationDto {
   hasPrev: boolean;
 }
 
-/** GET /v1/offices/my/reports — data envelope */
-export interface LeoMyReportsDataDto {
+/** GET /v1/offices/my/reports — data envelope — Swagger: `GetOfficeReportsResponse`. */
+export interface GetOfficeReportsResponseDto {
   localOfficeId: string;
-  localOfficeName: string;
-  wardCode: string;
-  wardName: string;
-  items: LeoMyReportItemDto[];
+  localOfficeName?: string | null;
+  wardCode?: string | null;
+  wardName?: string | null;
+  items?: OfficeReportItemDto[] | null;
   pagination: LeoOfficePaginationDto;
 }
+
+/** @deprecated Dùng `GetOfficeReportsResponseDto`. */
+export type LeoMyReportsDataDto = GetOfficeReportsResponseDto;
 
 /** GET /v1/offices/my/ward-boundary — data envelope */
 export interface LeoWardBoundaryDto {
