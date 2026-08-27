@@ -28,6 +28,7 @@ import {
   useVerifyCommunityCleanup,
 } from '@/hooks/useCommunityCleanup';
 import type {
+  CommunityCleanupFacebookPage,
   CommunityCleanupParticipant,
   CommunityCleanupStatus,
 } from '@/lib/api/models/communityCleanup';
@@ -37,7 +38,7 @@ import {
   communityCleanupStatusLabelVi,
 } from '@/lib/constants/communityCleanupStatus';
 import { cn } from '@/lib/utils';
-import { takeCommunityCleanupFacebookPageUrl } from '@/utils/communityCleanupFacebookPost';
+import { takeCommunityCleanupFacebookPostHighlight } from '@/utils/communityCleanupFacebookPost';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -528,7 +529,7 @@ function EventInfoCard({
   googleMapsUrl,
   participants,
   isParticipantsPending,
-  facebookPageUrl,
+  facebookPage,
   highlightFacebookPost,
 }: {
   detail: NonNullable<ReturnType<typeof useCommunityCleanupDetail>['data']>;
@@ -538,15 +539,16 @@ function EventInfoCard({
   googleMapsUrl: string;
   participants: CommunityCleanupParticipant[];
   isParticipantsPending: boolean;
-  facebookPageUrl?: string | null;
+  facebookPage?: CommunityCleanupFacebookPage | null;
   highlightFacebookPost?: boolean;
 }) {
   const facebookPostRef = useRef<HTMLDivElement>(null);
+  const facebookHref = facebookPage?.href?.trim() || null;
 
   useEffect(() => {
-    if (!highlightFacebookPost || !facebookPageUrl) return;
+    if (!highlightFacebookPost || !facebookHref) return;
     facebookPostRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [highlightFacebookPost, facebookPageUrl]);
+  }, [highlightFacebookPost, facebookHref]);
 
   return (
     <div className="flex flex-col">
@@ -598,7 +600,7 @@ function EventInfoCard({
           </p>
         ) : null}
 
-        {facebookPageUrl ? (
+        {facebookHref && facebookPage?.label ? (
           <div
             ref={facebookPostRef}
             className={cn(
@@ -610,13 +612,13 @@ function EventInfoCard({
               Link bài đăng Facebook
             </p>
             <a
-              href={facebookPageUrl}
+              href={facebookHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 inline-flex max-w-full items-start gap-1.5 break-all text-sm font-medium text-foreground underline-offset-2 hover:underline"
+              className="mt-1 inline-flex max-w-full items-start gap-1.5 text-sm font-medium text-foreground underline underline-offset-2 hover:text-[#1877F2]"
             >
               <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-[#1877F2]" aria-hidden />
-              <span>{facebookPageUrl}</span>
+              <span>{facebookPage.label}</span>
             </a>
           </div>
         ) : null}
@@ -763,28 +765,19 @@ function DetailShell({
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
-  const [facebookPostUi, setFacebookPostUi] = useState(() => {
-    const stashed =
-      typeof window !== 'undefined' ? takeCommunityCleanupFacebookPageUrl(eventId) : null;
-    return {
-      pageUrl: stashed,
-      highlight: Boolean(stashed),
-    };
-  });
+  const [highlightFacebookPost, setHighlightFacebookPost] = useState(() =>
+    typeof window !== 'undefined' ? takeCommunityCleanupFacebookPostHighlight(eventId) : false
+  );
 
   useEffect(() => {
-    if (!facebookPostUi.highlight) return;
-    const timer = window.setTimeout(
-      () => setFacebookPostUi(prev => ({ ...prev, highlight: false })),
-      3400
-    );
+    if (!highlightFacebookPost) return;
+    const timer = window.setTimeout(() => setHighlightFacebookPost(false), 3400);
     return () => window.clearTimeout(timer);
-  }, [facebookPostUi.highlight]);
+  }, [highlightFacebookPost]);
 
-  const revealFacebookPageUrl = (pageUrl: string | null) => {
+  const revealFacebookPost = () => {
     setShareOpen(false);
-    if (!pageUrl) return;
-    setFacebookPostUi({ pageUrl, highlight: true });
+    setHighlightFacebookPost(true);
   };
 
   const { data: participants, isPending: isParticipantsPending } = useCommunityCleanupParticipants(
@@ -971,7 +964,7 @@ function DetailShell({
           startsAt={detail.startsAt}
           endsAt={detail.endsAt}
           headline="Chia sẻ chương trình"
-          onFacebookShareSuccess={({ pageUrl }) => revealFacebookPageUrl(pageUrl)}
+          onFacebookShareSuccess={revealFacebookPost}
         />
       ) : null}
 
@@ -1041,8 +1034,8 @@ function DetailShell({
             googleMapsUrl={googleMapsUrl}
             participants={participants?.items ?? []}
             isParticipantsPending={isParticipantsPending}
-            facebookPageUrl={facebookPostUi.pageUrl}
-            highlightFacebookPost={facebookPostUi.highlight}
+            facebookPage={detail.facebookPage}
+            highlightFacebookPost={highlightFacebookPost}
           />
         </aside>
 

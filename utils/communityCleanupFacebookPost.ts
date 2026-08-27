@@ -1,28 +1,27 @@
-/** Session stash — truyền URL bài FB Page từ create-flow sang màn detail. */
+/** Session stash — highlight link FB Page sau khi share (create-flow → detail). */
 
-const STORAGE_PREFIX = 'gl:community-cleanup-fb-post:';
+const STORAGE_PREFIX = 'gl:community-cleanup-fb-highlight:';
 
-export function stashCommunityCleanupFacebookPageUrl(eventId: string, pageUrl: string): void {
+export function stashCommunityCleanupFacebookPostHighlight(eventId: string): void {
   const id = eventId.trim();
-  const url = pageUrl.trim();
-  if (!id || !url || typeof sessionStorage === 'undefined') return;
+  if (!id || typeof sessionStorage === 'undefined') return;
   try {
-    sessionStorage.setItem(`${STORAGE_PREFIX}${id}`, url);
+    sessionStorage.setItem(`${STORAGE_PREFIX}${id}`, '1');
   } catch {
     /* quota / private mode — bỏ qua */
   }
 }
 
-/** Đọc và xóa URL đã stash (một lần). */
-export function takeCommunityCleanupFacebookPageUrl(eventId: string): string | null {
+/** Đọc và xóa cờ highlight đã stash (một lần). */
+export function takeCommunityCleanupFacebookPostHighlight(eventId: string): boolean {
   const id = eventId.trim();
-  if (!id || typeof sessionStorage === 'undefined') return null;
+  if (!id || typeof sessionStorage === 'undefined') return false;
   try {
     const key = `${STORAGE_PREFIX}${id}`;
-    const value = sessionStorage.getItem(key);
-    if (value) sessionStorage.removeItem(key);
-    return value?.trim() || null;
+    const had = sessionStorage.getItem(key) === '1';
+    if (had) sessionStorage.removeItem(key);
+    return had;
   } catch {
-    return null;
+    return false;
   }
 }

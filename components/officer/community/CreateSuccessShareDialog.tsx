@@ -11,7 +11,10 @@ import {
 } from '@/components/ui/dialog';
 import { FacebookIcon } from '@/components/ui/svgs/facebookIcon';
 import { Twitter } from '@/components/ui/svgs/twitter';
-import { useShareCommunityCleanupFacebookPage } from '@/hooks/useCommunityCleanup';
+import {
+  communityCleanupKeys,
+  useShareCommunityCleanupFacebookPage,
+} from '@/hooks/useCommunityCleanup';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { CommunityCleanupShare } from '@/lib/api/models/communityCleanup';
 import { cn } from '@/lib/utils';
@@ -21,6 +24,7 @@ import {
 } from '@/utils/communityCleanupSharePost';
 import { CheckCircle2, Copy, Download, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useMemo } from 'react';
 import { toast } from 'sonner';
 
@@ -28,10 +32,6 @@ export function hasCommunityCleanupShare(share: CommunityCleanupShare | null | u
   if (!share) return false;
   return share.url.trim().length > 0;
 }
-
-export type CommunityCleanupFacebookShareSuccess = {
-  pageUrl: string | null;
-};
 
 export interface CreateSuccessShareDialogProps {
   open: boolean;
@@ -58,7 +58,7 @@ export interface CreateSuccessShareDialogProps {
   /** Chỉ dùng với `footerVariant="create"`. */
   onViewDetail?: () => void;
   /** Gọi khi đăng Facebook Page thành công — parent đóng dialog / hiện SuccessDialog. */
-  onFacebookShareSuccess?: (result: CommunityCleanupFacebookShareSuccess) => void;
+  onFacebookShareSuccess?: () => void;
 }
 
 function safeHttpUrl(url: string): string | null {
@@ -167,6 +167,7 @@ export function CreateSuccessShareDialog({
   onFacebookShareSuccess,
 }: CreateSuccessShareDialogProps) {
   const imageUrl = share.imageUrl?.trim() || thumbnailUrl?.trim() || null;
+  const queryClient = useQueryClient();
   const shareFacebookPage = useShareCommunityCleanupFacebookPage();
 
   const postBody = useMemo(
@@ -203,12 +204,12 @@ export function CreateSuccessShareDialog({
     if (!id || shareFacebookPage.isPending) return;
 
     shareFacebookPage.mutate(id, {
-      onSuccess: envelope => {
+      onSuccess: async envelope => {
         const result = envelope.data;
         if (result.success) {
           toastApiSuccess(envelope, 'Đã đăng chương trình lên Facebook Page.');
-          const pageUrl = safeHttpUrl(result.pageUrl ?? '');
-          onFacebookShareSuccess?.({ pageUrl });
+          await queryClient.refetchQueries({ queryKey: communityCleanupKeys.detail(id) });
+          onFacebookShareSuccess?.();
           return;
         }
         toast.error(

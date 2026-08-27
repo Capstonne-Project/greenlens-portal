@@ -49,6 +49,13 @@ export interface CommunityCleanupShare {
   hashtags: string[];
 }
 
+/** Facebook Page post metadata — GET /v1/community-cleanups/{eventId}. */
+export interface CommunityCleanupFacebookPage {
+  href: string;
+  label: string;
+  sharedAt: string;
+}
+
 export interface CommunityCleanupEventDetail {
   id: string;
   reportId: string;
@@ -82,6 +89,7 @@ export interface CommunityCleanupEventDetail {
   mediaSummary: CommunityCleanupMediaSummary;
   media: CommunityCleanupMedia;
   share: CommunityCleanupShare;
+  facebookPage: CommunityCleanupFacebookPage | null;
 }
 
 /** POST /v1/reports/{reportId}/community-cleanups */

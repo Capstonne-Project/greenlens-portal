@@ -64,6 +64,13 @@ export interface CommunityCleanupShareDto {
   hashtags: string[];
 }
 
+/** Facebook Page post metadata — GET /v1/community-cleanups/{eventId}. */
+export interface CommunityCleanupFacebookPageDto {
+  href: string;
+  label: string;
+  sharedAt: string;
+}
+
 /**
  * Detail shape — POST .../community-cleanups (201),
  * GET /v1/community-cleanups/{eventId},
@@ -102,6 +109,7 @@ export interface CommunityCleanupEventDetailDto {
   mediaSummary: CommunityCleanupMediaSummaryDto;
   media: CommunityCleanupMediaDto;
   share: CommunityCleanupShareDto;
+  facebookPage: CommunityCleanupFacebookPageDto | null;
 }
 
 export interface PaginationMetaDto {
