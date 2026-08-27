@@ -28,6 +28,7 @@ import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
+import { restoreBodyPointerEvents } from '@/lib/utils/radixUi';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { faUserGroup } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -600,10 +601,15 @@ export function TeamDetailDialog({
     (a, b) => Number(b.isLeader) - Number(a.isLeader)
   );
 
+  const handleClose = () => {
+    onClose();
+    restoreBodyPointerEvents();
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className="relative w-full max-w-md rounded-lg border border-border bg-card shadow-2xl"
@@ -627,7 +633,7 @@ export function TeamDetailDialog({
           </span>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="ml-1 shrink-0 cursor-pointer rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <X className="size-4" />

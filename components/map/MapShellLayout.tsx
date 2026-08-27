@@ -22,6 +22,11 @@ export function MapShellLayout({ config, children }: MapShellLayoutProps) {
   const isMapRoute = pathname === '/officer/map' || pathname.startsWith('/officer/map/');
   const isDashboardRoute =
     pathname === '/officer/dashboard' || pathname.startsWith('/officer/dashboard/');
+  /** Viewport-fit pages — scroll chỉ trong bảng/cột nội bộ, không scroll cả panel shell. */
+  const isViewportFitRoute =
+    isDashboardRoute ||
+    pathname === '/officer/workforce' ||
+    pathname.startsWith('/officer/workforce/');
 
   if (isMapRoute) {
     return (
@@ -39,7 +44,7 @@ export function MapShellLayout({ config, children }: MapShellLayoutProps) {
       <AppSidebar config={config} />
       <MapShellContent
         variant="panel"
-        overflow={isDashboardRoute ? 'hidden' : 'auto'}
+        overflow={isViewportFitRoute ? 'hidden' : 'auto'}
         panelTone={isDashboardRoute ? 'deo-overview' : 'default'}
       >
         {children}

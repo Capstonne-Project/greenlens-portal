@@ -181,7 +181,7 @@ export function TeamTab() {
   };
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {detailTeam && (
         <TeamDetailDialog
           team={detailTeam}
@@ -268,6 +268,6 @@ export function TeamTab() {
           onViewModeChange={setViewMode}
         />
       )}
-    </>
+    </div>
   );
 }
