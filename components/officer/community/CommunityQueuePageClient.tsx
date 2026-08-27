@@ -1,18 +1,8 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
-import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
-import {
-  CommunityCleanupDetailClient,
-  type CommunityCleanupBackContext,
-} from './CommunityCleanupDetailClient';
-import type { CommunityCleanupStatus } from '@/lib/api/models/communityCleanup';
-import {
-  goBackWithListSoftReload,
-  softReloadNotificationDestination,
-} from '@/utils/notificationNavigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 function QueueFallback() {
   return (
@@ -29,62 +19,30 @@ const CommunityQueueBoard = dynamic(
   { ssr: false, loading: QueueFallback }
 );
 
-const COMMUNITY_QUEUE_TABS = new Set<string>([
-  'All',
-  'OpenForJoin',
-  'JoinClosed',
-  'InProgress',
-  'PendingVerification',
-  'Completed',
-  'Cancelled',
-]);
-
-function communityListHref(eventId: string, status?: CommunityCleanupStatus) {
-  const params = new URLSearchParams();
-  params.set('highlight', eventId);
-  if (status && COMMUNITY_QUEUE_TABS.has(status)) {
-    params.set('tab', status);
-  }
-  return `/officer/community?${params.toString()}`;
-}
-
-/** ACL LEO do proxy — không render Access Denied trên client. */
+/**
+ * List hub — `/officer/community`.
+ * Detail sống ở `/officer/community/[eventId]` (không overlay state trên cùng URL).
+ * Legacy `?eventId=` → redirect sang path detail để reload chỉ call API detail.
+ */
 export function CommunityQueuePageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
-  const [detailId, setDetailId] = useState<string | null>(null);
-  const detailFromQuery = searchParams.get('eventId')?.trim() || null;
-  const activeDetailId = detailFromQuery ?? detailId;
+  const legacyEventId = searchParams.get('eventId')?.trim() || null;
 
-  const handleOpenDetail = (id: string) => setDetailId(id);
+  useEffect(() => {
+    if (!legacyEventId) return;
+    router.replace(`/officer/community/${encodeURIComponent(legacyEventId)}`);
+  }, [legacyEventId, router]);
 
-  const handleBackFromDetail = (ctx?: CommunityCleanupBackContext) => {
-    const id = activeDetailId;
-    const listHref = id ? communityListHref(id, ctx?.status) : '/officer/community';
-
-    if (detailFromQuery) {
-      goBackWithListSoftReload({
-        router,
-        queryClient,
-        from: null,
-        fallbackHref: listHref,
-        method: 'replace',
-      });
-      return;
-    }
-    void softReloadNotificationDestination(queryClient, '/officer/community');
-    setDetailId(null);
-    if (id) router.replace(listHref, { scroll: false });
-  };
-
-  if (activeDetailId) {
-    return <CommunityCleanupDetailClient eventId={activeDetailId} onBack={handleBackFromDetail} />;
+  if (legacyEventId) {
+    return <QueueFallback />;
   }
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <CommunityQueueBoard onOpenDetail={handleOpenDetail} />
+      <CommunityQueueBoard
+        onOpenDetail={id => router.push(`/officer/community/${encodeURIComponent(id)}`)}
+      />
     </div>
   );
 }
