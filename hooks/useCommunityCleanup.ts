@@ -167,7 +167,11 @@ export function useCancelCommunityCleanup() {
  * [LEO] đăng chương trình lên Facebook Page (ảnh + caption).
  */
 export function useShareCommunityCleanupFacebookPage() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (eventId: string) => shareCommunityCleanupFacebookPage(eventId),
+    onSuccess: (_data, eventId) => {
+      void queryClient.invalidateQueries({ queryKey: communityCleanupKeys.detail(eventId) });
+    },
   });
 }

@@ -1,5 +1,6 @@
 import type {
   CommunityCleanupEventDetailDto,
+  CommunityCleanupFacebookPageDto,
   CommunityCleanupFacebookPageShareResultDto,
   CommunityCleanupListItemDto,
   CommunityCleanupListResponseDto,
@@ -13,6 +14,7 @@ import type {
 } from '@/lib/api/dto/communityCleanup.dto';
 import type {
   CommunityCleanupEventDetail,
+  CommunityCleanupFacebookPage,
   CommunityCleanupFacebookPageShareResult,
   CommunityCleanupList,
   CommunityCleanupListItem,
@@ -57,6 +59,17 @@ export function mapCommunityCleanupShareDto(
     twitterShareUrl: dto.twitterShareUrl ?? '',
     linkedInShareUrl: dto.linkedInShareUrl ?? '',
     hashtags: dto.hashtags ?? [],
+  };
+}
+
+export function mapCommunityCleanupFacebookPageDto(
+  dto: CommunityCleanupFacebookPageDto | null | undefined
+): CommunityCleanupFacebookPage | null {
+  if (!dto?.href?.trim()) return null;
+  return {
+    href: dto.href.trim(),
+    label: dto.label?.trim() || 'Facebook Page',
+    sharedAt: dto.sharedAt ?? '',
   };
 }
 
@@ -111,6 +124,7 @@ export function mapCommunityCleanupEventDetailDto(
       afterImageUrls: dto.media.afterImageUrls,
     },
     share: mapCommunityCleanupShareDto(dto.share),
+    facebookPage: mapCommunityCleanupFacebookPageDto(dto.facebookPage),
   };
 }
 

@@ -32,7 +32,7 @@ import type { TeamMember } from '@/lib/api/services/fetchTeam';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
 import { navigateAfterOverlayClose } from '@/lib/utils/radixUi';
-import { stashCommunityCleanupFacebookPageUrl } from '@/utils/communityCleanupFacebookPost';
+import { stashCommunityCleanupFacebookPostHighlight } from '@/utils/communityCleanupFacebookPost';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   CalendarClock,
@@ -447,10 +447,10 @@ export function CreateCommunityCleanupDialog({
     finalizeCreateFlow({ navigateToDetail: true });
   };
 
-  const handleFacebookShareSuccess = ({ pageUrl }: { pageUrl: string | null }) => {
+  const handleFacebookShareSuccess = () => {
     const eventId = createdEvent?.id?.trim() ?? '';
-    if (eventId && pageUrl) {
-      stashCommunityCleanupFacebookPageUrl(eventId, pageUrl);
+    if (eventId) {
+      stashCommunityCleanupFacebookPostHighlight(eventId);
     }
     shareFlowRef.current = true;
     setCreatedEvent(null);
