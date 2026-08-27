@@ -45,6 +45,7 @@ import { getWasteTagFaIcon } from '@/lib/constants/adminWasteTags';
 import { REPORT_SEVERITY_LABEL_VI } from '@/lib/constants/reportActions';
 import { normalizeReportStatus, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { navigateAfterOverlayClose } from '@/lib/utils/radixUi';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   AlertTriangle,
@@ -752,7 +753,9 @@ export function CompanyAssignReportDetailClient({
   const handleSuccessDialogChange = (open: boolean) => {
     if (!open) {
       setSuccessOpen(false);
-      goBackToList();
+      navigateAfterOverlayClose(() => {
+        goBackToList();
+      });
     }
   };
 

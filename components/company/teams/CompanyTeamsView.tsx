@@ -41,11 +41,13 @@ import {
   useCompanyTeamsList,
   useDeleteCompanyTeam,
   useMyCompany,
+  useRemoveCompanyTeamMember,
   useUpdateCompanyTeam,
 } from '@/hooks/useCompany';
 import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import type { CompanyTeamListItem, UpdateCompanyTeamInput } from '@/lib/api/models/company';
 import { cn } from '@/lib/utils';
+import { deferOpenFromMenu } from '@/lib/utils/radixUi';
 import {
   formatCompanyDate,
   formatCompanyTeamAffiliationLine,
@@ -74,6 +76,7 @@ import {
 } from '@/components/common/WasteTagSelectChip';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -85,7 +88,7 @@ import { Label } from '@/components/ui/label';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -122,9 +125,9 @@ const CARD_EXPAND_TRANSITION = {
   ease: [0.22, 1, 0.36, 1] as const,
 };
 
-/** 1 → 2 → 3 → 4 cột; items-start để mở 1 card không kéo cao các card cùng hàng. */
+/** 1 → 2 → 3 → 4 cột; stretch = đồng bộ chiều cao card thu gọn trong cùng hàng. */
 const BOARD_GRID_CLASS =
-  'grid grid-cols-1 items-start gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4';
+  'grid grid-cols-1 items-stretch gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4';
 
 const FILTER_BTN_CLASS =
   'h-8 shrink-0 cursor-pointer gap-[0.35rem] border-slate-300 bg-white text-[0.8125rem] font-medium text-brand shadow-none outline-none ring-0 ring-offset-0 focus:border-slate-300 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-slate-300 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 active:border-slate-300 active:outline-none data-[state=open]:border-slate-300 data-[state=open]:ring-0';
@@ -147,8 +150,8 @@ function getInitials(name: string): string {
 
 function TeamCardSkeleton() {
   return (
-    <div className="min-w-0 animate-pulse overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className="space-y-2.5 p-3 sm:space-y-3 sm:p-4">
+    <div className="flex h-full min-w-0 animate-pulse flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex-1 space-y-2.5 p-3 sm:space-y-3 sm:p-4">
         <div className="h-4 w-3/4 rounded bg-muted" />
         <div className="h-4 w-20 rounded-full bg-muted" />
         <div className="h-3 w-1/2 rounded bg-muted" />
@@ -163,34 +166,141 @@ function TeamCardSkeleton() {
   );
 }
 
+function CompanyRemoveMemberConfirmDialog({
+  open,
+  memberName,
+  submitting,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  memberName: string;
+  submitting: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && !submitting) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-md" onClick={e => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+              <Trash2 className="size-4 text-destructive" aria-hidden />
+            </span>
+            Xóa thành viên
+          </DialogTitle>
+          <DialogDescription>
+            Bạn có chắc muốn xóa <span className="font-medium text-foreground">{memberName}</span>{' '}
+            khỏi đội này? Nhân viên vẫn thuộc công ty — chỉ rời đội.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              className="cursor-pointer"
+            >
+              Huỷ
+            </Button>
+          </DialogClose>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={submitting}
+            onClick={onConfirm}
+            className="cursor-pointer"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Đang xóa...
+              </>
+            ) : (
+              'Xóa khỏi đội'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function TeamExpandedMembers({
   teamId,
-  actions,
+  team,
+  onEdit,
+  onArchive,
+  onDelete,
   onAddMember,
   canAddMember,
   enabled = true,
 }: {
   teamId: string;
-  actions?: ReactNode;
+  team: CompanyTeamListItem;
+  onEdit: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
   onAddMember: () => void;
   canAddMember: boolean;
   enabled?: boolean;
 }) {
-  const { data: detail, isLoading: membersLoading } = useCompanyTeamDetail(
-    enabled ? teamId : null
-  );
+  const { data: detail, isLoading: membersLoading } = useCompanyTeamDetail(enabled ? teamId : null);
+  const removeMember = useRemoveCompanyTeamMember();
+  const [showMemberActions, setShowMemberActions] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<{
+    userId: string;
+    fullName: string;
+  } | null>(null);
 
   const members = [...(detail?.members ?? [])].sort(
     (a, b) => Number(b.isLeader) - Number(a.isLeader)
   );
 
+  const handleConfirmRemove = () => {
+    if (!memberToRemove) return;
+    removeMember.mutate(
+      { teamId, userId: memberToRemove.userId },
+      {
+        onSuccess: env => {
+          toast.success(env.message?.trim() || `Đã xóa ${memberToRemove.fullName} khỏi đội`);
+          setMemberToRemove(null);
+          setShowMemberActions(false);
+        },
+        onError: err => toast.error(getCompanyMutationError(err, 'Không thể xóa thành viên')),
+      }
+    );
+  };
+
   return (
     <div className="border-t border-border bg-muted/20 px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4 sm:pt-3">
+      <CompanyRemoveMemberConfirmDialog
+        open={memberToRemove != null}
+        memberName={memberToRemove?.fullName ?? ''}
+        submitting={removeMember.isPending}
+        onConfirm={handleConfirmRemove}
+        onClose={() => setMemberToRemove(null)}
+      />
+
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Thành viên ({membersLoading ? '…' : members.length})
         </p>
-        {actions}
+        <TeamCardMenu
+          team={team}
+          onEdit={onEdit}
+          onArchive={onArchive}
+          onDelete={onDelete}
+          canRemoveMember={!membersLoading && members.length > 0}
+          showMemberActions={showMemberActions}
+          onToggleRemoveMember={() => setShowMemberActions(prev => !prev)}
+        />
       </div>
       {membersLoading ? (
         <div className="space-y-2.5">
@@ -223,6 +333,20 @@ function TeamExpandedMembers({
                 <p className="truncate text-[11px] text-slate-500">{m.email}</p>
               </div>
               {m.isLeader ? <Crown className="size-3.5 shrink-0 text-amber-400" /> : null}
+              {showMemberActions ? (
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setMemberToRemove({ userId: m.userId, fullName: m.fullName });
+                  }}
+                  className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                  title="Xóa thành viên"
+                  aria-label={`Xóa ${m.fullName} khỏi đội`}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -250,11 +374,17 @@ function TeamCardMenu({
   onEdit,
   onArchive,
   onDelete,
+  canRemoveMember,
+  showMemberActions,
+  onToggleRemoveMember,
 }: {
   team: CompanyTeamListItem;
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  canRemoveMember: boolean;
+  showMemberActions: boolean;
+  onToggleRemoveMember: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -280,6 +410,19 @@ function TeamCardMenu({
           {team.isActive ? 'Vô hiệu hoá' : 'Kích hoạt'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={!canRemoveMember}
+          onClick={onToggleRemoveMember}
+          className={cn(
+            'cursor-pointer',
+            showMemberActions
+              ? 'font-medium text-brand focus:text-brand'
+              : 'text-destructive focus:text-destructive'
+          )}
+        >
+          <Trash2 className="mr-2 size-3.5" />
+          {showMemberActions ? 'Huỷ xoá thành viên' : 'Xóa thành viên'}
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer text-destructive focus:text-destructive"
           onClick={onDelete}
@@ -317,111 +460,102 @@ function CompanyTeamCard({
   const affiliationLine = formatCompanyTeamAffiliationLine(companyName);
 
   return (
-    <div
-      className={cn(
-        'flex h-auto min-w-0 w-full flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-md',
-        isExpanded ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-border'
-      )}
-    >
-      {/* Body — parity officer TeamCard (full-width expand hit area) */}
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full cursor-pointer flex-col gap-3 p-3 text-left transition-colors hover:bg-muted/20 sm:p-4"
+    <div className={cn('relative h-full min-w-0 w-full', isExpanded && 'z-20')}>
+      {/* Shell cố định chiều cao hàng — panel mở nối liền (không khe hở) */}
+      <div
+        className={cn(
+          'flex h-full min-w-0 w-full flex-col overflow-hidden border bg-card transition-[border-color,box-shadow,border-radius] duration-200',
+          isExpanded
+            ? 'rounded-t-lg rounded-b-none border-b-0 border-emerald-200 shadow-none'
+            : 'rounded-lg border-border shadow-sm hover:shadow-md'
+        )}
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-            <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800">
-              {team.name}
-            </span>
-            <span
-              className={cn(
-                'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium',
-                team.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-              )}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex w-full flex-1 cursor-pointer flex-col gap-3 p-3 text-left transition-colors hover:bg-muted/20 sm:p-4"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800">
+                {team.name}
+              </span>
+              <span
+                className={cn(
+                  'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                  team.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                )}
+              >
+                {team.isActive ? '● Hoạt động' : '● Tạm dừng'}
+              </span>
+            </div>
+            <motion.span
+              animate={{ rotate: isExpanded ? 180 : 0 }}
+              transition={{ duration: 0.22, ease: CARD_EXPAND_TRANSITION.ease }}
+              className="mt-0.5 inline-flex shrink-0"
             >
-              {team.isActive ? '● Hoạt động' : '● Tạm dừng'}
+              <ChevronDown className="size-4 text-slate-400" />
+            </motion.span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <Building2 className="size-3 shrink-0" />
+            <span className="truncate">{affiliationLine}</span>
+          </div>
+
+          <WasteTagBadgeRow tags={team.wasteTags} />
+        </button>
+
+        <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 sm:px-4 sm:py-2.5">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 text-xs text-slate-500">
+              <Users className="size-3.5 shrink-0" />
+              <span>{team.memberCount}</span>
+            </div>
+            <span className="truncate text-xs text-slate-500">
+              {formatCompanyDate(team.createdAt)}
             </span>
           </div>
-          <motion.span
-            animate={{ rotate: isExpanded ? 180 : 0 }}
-            transition={{ duration: 0.22, ease: CARD_EXPAND_TRANSITION.ease }}
-            className="mt-0.5 inline-flex shrink-0"
-          >
-            <ChevronDown className="size-4 text-slate-400" />
-          </motion.span>
+          <div className="flex items-center gap-1">
+            {canAddMember ? (
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  onAddMember();
+                }}
+                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
+              >
+                <Plus className="size-3" />
+                Thêm thành viên
+              </button>
+            ) : null}
+          </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-slate-600">
-          <Building2 className="size-3 shrink-0" />
-          <span className="truncate">{affiliationLine}</span>
-        </div>
-
-        <WasteTagBadgeRow tags={team.wasteTags} />
-      </button>
-
-      <AnimatePresence initial={false} mode="sync">
-        {!isExpanded ? (
-          <motion.div
-            key="footer"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={CARD_EXPAND_TRANSITION}
-            className="overflow-hidden"
-          >
-            <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 sm:px-4 sm:py-2.5">
-              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-1 text-xs text-slate-500">
-                  <Users className="size-3.5 shrink-0" />
-                  <span>{team.memberCount}</span>
-                </div>
-                <span className="truncate text-xs text-slate-500">
-                  {formatCompanyDate(team.createdAt)}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                {canAddMember ? (
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      onAddMember();
-                    }}
-                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
-                  >
-                    <Plus className="size-3" />
-                    Thêm thành viên
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </motion.div>
-        ) : (
+      <AnimatePresence initial={false}>
+        {isExpanded ? (
           <motion.div
             key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={CARD_EXPAND_TRANSITION}
-            className="overflow-hidden"
+            className="absolute inset-x-0 top-full z-20 -mt-px overflow-hidden rounded-b-lg border border-t-0 border-emerald-200 bg-card shadow-md"
           >
             <TeamExpandedMembers
               teamId={team.id}
+              team={team}
               onAddMember={onAddMember}
               canAddMember={canAddMember}
               enabled={queryEnabled && isExpanded}
-              actions={
-                <TeamCardMenu
-                  team={team}
-                  onEdit={onEdit}
-                  onArchive={onArchive}
-                  onDelete={onDelete}
-                />
-              }
+              onEdit={onEdit}
+              onArchive={onArchive}
+              onDelete={onDelete}
             />
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );
@@ -660,27 +794,35 @@ export function CompanyTeamsView({
                     queryEnabled={enabled}
                     isExpanded={expandedId === team.id}
                     onToggle={() => setExpandedId(prev => (prev === team.id ? null : team.id))}
-                    onAddMember={() => setAddMemberTarget({ id: team.id, name: team.name })}
+                    onAddMember={() =>
+                      deferOpenFromMenu(() => setAddMemberTarget({ id: team.id, name: team.name }))
+                    }
                     onArchive={() =>
-                      setArchiveTarget({
-                        id: team.id,
-                        name: team.name,
-                        isActive: team.isActive,
-                      })
+                      deferOpenFromMenu(() =>
+                        setArchiveTarget({
+                          id: team.id,
+                          name: team.name,
+                          isActive: team.isActive,
+                        })
+                      )
                     }
                     onDelete={() =>
-                      setDeleteTarget({
-                        id: team.id,
-                        name: team.name,
-                        memberCount: team.memberCount,
-                      })
+                      deferOpenFromMenu(() =>
+                        setDeleteTarget({
+                          id: team.id,
+                          name: team.name,
+                          memberCount: team.memberCount,
+                        })
+                      )
                     }
                     onEdit={() =>
-                      setEditTarget({
-                        id: team.id,
-                        name: team.name,
-                        wasteTags: team.wasteTags,
-                      })
+                      deferOpenFromMenu(() =>
+                        setEditTarget({
+                          id: team.id,
+                          name: team.name,
+                          wasteTags: team.wasteTags,
+                        })
+                      )
                     }
                   />
                 ))}
@@ -802,11 +944,13 @@ export function CompanyTeamsView({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               onClick={() =>
-                                setEditTarget({
-                                  id: team.id,
-                                  name: team.name,
-                                  wasteTags: team.wasteTags,
-                                })
+                                deferOpenFromMenu(() =>
+                                  setEditTarget({
+                                    id: team.id,
+                                    name: team.name,
+                                    wasteTags: team.wasteTags,
+                                  })
+                                )
                               }
                             >
                               <Pencil className="mr-1.5 size-3.5" />
@@ -814,11 +958,13 @@ export function CompanyTeamsView({
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() =>
-                                setArchiveTarget({
-                                  id: team.id,
-                                  name: team.name,
-                                  isActive: team.isActive,
-                                })
+                                deferOpenFromMenu(() =>
+                                  setArchiveTarget({
+                                    id: team.id,
+                                    name: team.name,
+                                    isActive: team.isActive,
+                                  })
+                                )
                               }
                             >
                               {team.isActive ? 'Vô hiệu hoá' : 'Kích hoạt'}
@@ -827,11 +973,13 @@ export function CompanyTeamsView({
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               onClick={() =>
-                                setDeleteTarget({
-                                  id: team.id,
-                                  name: team.name,
-                                  memberCount: team.memberCount,
-                                })
+                                deferOpenFromMenu(() =>
+                                  setDeleteTarget({
+                                    id: team.id,
+                                    name: team.name,
+                                    memberCount: team.memberCount,
+                                  })
+                                )
                               }
                             >
                               Xóa đội

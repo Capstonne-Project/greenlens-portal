@@ -62,6 +62,7 @@ import { getTeamTypeClasses, getTeamTypeLabel } from '@/lib/constants/adminTeams
 import { ASSIGNMENT_STATUS_LABEL } from '@/lib/constants/reportAssignment';
 import { REPORT_STATUS_BADGE_CLASSES, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { navigateAfterOverlayClose } from '@/lib/utils/radixUi';
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -1182,7 +1183,9 @@ export function ReopenDetailClient({ id, onBack }: ReopenDetailClientProps) {
       setApproveOpen(false);
       // Đảm bảo queue Phân công (Verified/Rejected/Reopened) refetch trước khi highlight.
       await queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
-      router.push(`/officer/assign?${new URLSearchParams({ highlightReportId: id }).toString()}`);
+      navigateAfterOverlayClose(() => {
+        router.push(`/officer/assign?${new URLSearchParams({ highlightReportId: id }).toString()}`);
+      });
     } catch (error) {
       toastApiError(error, 'Không thể xác nhận yêu cầu mở lại.');
     }
@@ -1205,7 +1208,9 @@ export function ReopenDetailClient({ id, onBack }: ReopenDetailClientProps) {
       if (onBack) {
         onBack();
       } else {
-        router.push('/officer/reopen');
+        navigateAfterOverlayClose(() => {
+          router.push('/officer/reopen');
+        });
       }
     } catch (error) {
       toastApiError(error, 'Không thể từ chối yêu cầu mở lại.');
