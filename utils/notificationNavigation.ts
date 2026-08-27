@@ -6,6 +6,7 @@ import { reportKeys } from '@/hooks/useReport';
 import { teamKeys } from '@/hooks/useTeams';
 import { withOfficerFromQuery } from '@/utils/officerNavigation';
 import type { QueryClient } from '@tanstack/react-query';
+import { navigateAfterOverlayClose, releaseOverlayLock } from '@/lib/utils/radixUi';
 
 /** Query params không quyết định “cùng màn hình” (deep-link phụ). */
 /** `from` / `_r` không đổi đích; `highlight*` là deep-link nên phải so sánh. */
@@ -90,7 +91,14 @@ function buildNotificationBackTarget(targetHref: string): string | null {
   const trackingMatch = pathname.match(/^\/officer\/tracking\/([^/]+)/);
   if (trackingMatch?.[1]) return '/officer/tracking';
 
-  /** Overlay detail trên cùng route list. */
+  /** Path detail — `/officer/community/{eventId}` (enterprise route; không overlay query). */
+  const communityDetailMatch = pathname.match(/^\/officer\/community\/([^/]+)/);
+  if (communityDetailMatch?.[1]) {
+    const eventId = decodeURIComponent(communityDetailMatch[1]);
+    return `/officer/community?highlight=${encodeURIComponent(eventId)}`;
+  }
+
+  /** Legacy overlay `?eventId=` — vẫn hỗ trợ soft-back. */
   if (pathname.startsWith('/officer/community') && url.searchParams.get('eventId')?.trim()) {
     const eventId = url.searchParams.get('eventId')!.trim();
     return `/officer/community?highlight=${encodeURIComponent(eventId)}`;
@@ -133,8 +141,11 @@ function invalidateListsForPath(queryClient: QueryClient, pathname: string): Pro
     inv(officerKeys.queue());
   } else if (pathname.startsWith('/officer/reopen')) {
     inv(officerKeys.reopenRequests());
+  } else if (/^\/officer\/community\/[^/]+/.test(pathname)) {
+    /** Detail route — queue không mount; detail invalidate ở invalidateDestination. */
   } else if (pathname.startsWith('/officer/community')) {
-    inv(communityCleanupKeys.all);
+    inv([...communityCleanupKeys.all, 'office-queue']);
+    inv(communityCleanupKeys.queueStats());
   } else if (pathname.startsWith('/officer/workforce')) {
     inv(teamKeys.all);
     inv(leoOfficesKeys.myStaff());
@@ -224,7 +235,12 @@ function invalidateDestination(queryClient: QueryClient, href: string): Promise<
     tasks.push(queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() }));
   }
 
-  if (pathname.startsWith('/officer/community') && eventId) {
+  const communityDetailMatch = pathname.match(/^\/officer\/community\/([^/]+)/);
+  if (communityDetailMatch?.[1]) {
+    const id = decodeURIComponent(communityDetailMatch[1]);
+    tasks.push(queryClient.invalidateQueries({ queryKey: communityCleanupKeys.detail(id) }));
+    tasks.push(queryClient.invalidateQueries({ queryKey: communityCleanupKeys.participants(id) }));
+  } else if (pathname.startsWith('/officer/community') && eventId) {
     tasks.push(queryClient.invalidateQueries({ queryKey: communityCleanupKeys.detail(eventId) }));
     tasks.push(
       queryClient.invalidateQueries({ queryKey: communityCleanupKeys.participants(eventId) })
@@ -282,6 +298,7 @@ export function navigateFromNotification(options: {
   if (isSameNotificationDestination(pathname, search, href)) {
     void softReloadNotificationDestination(queryClient, href, pathname).finally(() => {
       router.refresh();
+      releaseOverlayLock();
     });
     return;
   }
@@ -297,6 +314,8 @@ export function navigateFromNotification(options: {
    */
   void softReloadNotificationDestination(queryClient, nextHref, pathname);
   router.push(nextHref);
+  // Sheet/Dialog may still be tearing down — clear stuck body pointer-events.
+  releaseOverlayLock();
 }
 
 /**
@@ -316,9 +335,11 @@ export function goBackWithListSoftReload(options: {
   const { router, queryClient, from, fallbackHref, method = 'push' } = options;
   const href = (from && from.trim()) || fallbackHref;
   void softReloadNotificationDestination(queryClient, href);
-  if (method === 'replace' && router.replace) {
-    router.replace(href, { scroll: false });
-    return;
-  }
-  router.push(href);
+  navigateAfterOverlayClose(() => {
+    if (method === 'replace' && router.replace) {
+      router.replace(href, { scroll: false });
+      return;
+    }
+    router.push(href);
+  });
 }

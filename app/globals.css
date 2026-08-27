@@ -367,6 +367,26 @@
   animation: media-step-pulse 1.35s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/** Spotlight nhẹ — URL bài Facebook vừa đăng trên detail community cleanup. */
+@keyframes fb-post-spotlight {
+  0% {
+    box-shadow: 0 0 0 0 rgb(24 119 242 / 40%);
+    background-color: rgb(232 241 255 / 95%);
+  }
+  40% {
+    box-shadow: 0 0 0 10px rgb(24 119 242 / 0%);
+    background-color: rgb(232 241 255 / 70%);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(24 119 242 / 0%);
+    background-color: rgb(232 241 255 / 55%);
+  }
+}
+
+@utility animate-fb-post-spotlight {
+  animation: fb-post-spotlight 1.1s ease-out 3;
+}
+
 @utility rounded-card {
   border-radius: 5px;
 }

@@ -6,7 +6,17 @@ import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+/**
+ * Default `modal={false}` avoids body `pointer-events: none` while the menu is open.
+ * That lock races with Dialog/Select and freezes the page after close (Radix #3317).
+ * Pass `modal` explicitly when a menu must trap outside interaction.
+ */
+function DropdownMenu({
+  modal = false,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>) {
+  return <DropdownMenuPrimitive.Root modal={modal} {...props} />;
+}
 
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 

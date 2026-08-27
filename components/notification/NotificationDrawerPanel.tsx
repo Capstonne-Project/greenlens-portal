@@ -14,6 +14,7 @@ import {
   type NotificationPortal,
 } from '@/utils/notificationUi';
 import { navigateFromNotification } from '@/utils/notificationNavigation';
+import { deferOpenFromMenu, releaseOverlayLock } from '@/lib/utils/radixUi';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -128,16 +129,20 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
     return () => window.clearTimeout(timer);
   }, [isDrawerOpen, highlightedNotificationId, isPending, items.length, clearHighlight]);
 
-  /** Click row → mở đích; from=hub module đích + highlight; soft-invalidate list (không F5). */
+  /** Click row → đóng Sheet rồi mới navigate (tránh body pointer-events: none kẹt). */
   const handleSelect = (item: NotificationItem) => {
     clearHighlight();
     closeDrawer();
-    navigateFromNotification({
-      router,
-      queryClient,
-      href: resolveNotificationHref(portal, item),
-      pathname,
-      search: searchParams.toString(),
+    releaseOverlayLock();
+    deferOpenFromMenu(() => {
+      releaseOverlayLock();
+      navigateFromNotification({
+        router,
+        queryClient,
+        href: resolveNotificationHref(portal, item),
+        pathname,
+        search: searchParams.toString(),
+      });
     });
   };
 
@@ -159,11 +164,15 @@ export function NotificationDrawerPanel({ portal }: NotificationDrawerPanelProps
   const handleOpenPreferences = () => {
     setHeaderMenuOpen(false);
     closeDrawer();
-    if (links.preferencesHref) {
-      router.push(links.preferencesHref);
-      return;
-    }
-    toast.message('Cài đặt thông báo chưa khả dụng trên portal này');
+    releaseOverlayLock();
+    deferOpenFromMenu(() => {
+      releaseOverlayLock();
+      if (links.preferencesHref) {
+        router.push(links.preferencesHref);
+        return;
+      }
+      toast.message('Cài đặt thông báo chưa khả dụng trên portal này');
+    });
   };
 
   const handleFilterChange = (next: ReadFilter) => {

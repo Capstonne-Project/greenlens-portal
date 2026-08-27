@@ -27,6 +27,7 @@ import { useTeamsList } from '@/hooks/useTeams';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { toastApiError } from '@/lib/api/toast';
 import { cn } from '@/lib/utils';
+import { navigateAfterOverlayClose } from '@/lib/utils/radixUi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -370,7 +371,9 @@ export function CreateInspectionReportDialog({
             finishFlow();
             const params = new URLSearchParams({ tab: 'inspections' });
             if (id) params.set('highlight', id);
-            router.push(`/officer/recurrence?${params.toString()}`);
+            navigateAfterOverlayClose(() => {
+              router.push(`/officer/recurrence?${params.toString()}`);
+            });
           },
         }}
         primaryAction={{
@@ -384,7 +387,9 @@ export function CreateInspectionReportDialog({
             }
             finishFlow();
             if (inspectionId) {
-              router.push(`/officer/inspections/${encodeURIComponent(inspectionId)}`);
+              navigateAfterOverlayClose(() => {
+                router.push(`/officer/inspections/${encodeURIComponent(inspectionId)}`);
+              });
             }
           },
         }}

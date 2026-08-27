@@ -72,6 +72,7 @@ import { getWasteTagFaIcon } from '@/lib/constants/adminWasteTags';
 import { pollutionCategoryLabelVi } from '@/lib/constants/pollutionCategories';
 import { normalizeReportQueueStatus, reportStatusLabelVi } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { navigateAfterOverlayClose } from '@/lib/utils/radixUi';
 import { withOfficerFromQuery } from '@/utils/officerNavigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -1856,7 +1857,9 @@ export function VerifyDetailClient({
 
   const handleAssignAfterVerify = () => {
     setSuccessOpen(false);
-    router.push(`/officer/assign?highlightReportId=${encodeURIComponent(detail.id)}`);
+    navigateAfterOverlayClose(() => {
+      router.push(`/officer/assign?highlightReportId=${encodeURIComponent(detail.id)}`);
+    });
   };
 
   const handleAssigned = () => {

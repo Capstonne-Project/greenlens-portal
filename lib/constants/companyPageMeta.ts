@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Scroll,
   Settings,
+  Shield,
   User,
   Users,
   UsersRound,
@@ -88,6 +89,11 @@ export const companyPageMeta: Record<string, CompanyPageMeta> = {
     title: 'Cài đặt thông báo',
     description: 'Tùy chỉnh loại thông báo và kênh nhận trong cổng công ty.',
     icon: Bell,
+  },
+  '/company/settings/privacy': {
+    title: 'Quyền riêng tư',
+    description: 'Chính sách quyền riêng tư của GreenLens Portal.',
+    icon: Shield,
   },
   '/company/settings/media-lab': {
     title: 'Media API Lab',

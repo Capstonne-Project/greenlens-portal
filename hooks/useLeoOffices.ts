@@ -6,6 +6,7 @@ import {
   fetchOfficeStaff,
   lookupOfficeStaff,
   recruitOfficeStaff,
+  releaseOfficeStaff,
 } from '@/lib/api/services/fetchOffice';
 import { extractApiErrorCode } from '@/lib/api/core';
 import type {
@@ -228,6 +229,21 @@ export function useRecruitOfficeStaff() {
       if (body.teamId) {
         void queryClient.invalidateQueries({ queryKey: teamKeys.detail(body.teamId) });
       }
+    },
+  });
+}
+
+/**
+ * DELETE /v1/offices/my/staff/{userId}
+ * [LEO] Release nhân sự về Citizen — gỡ khỏi phường/team, role → Citizen.
+ */
+export function useReleaseOfficeStaff() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => releaseOfficeStaff(userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myStaff() });
+      void queryClient.invalidateQueries({ queryKey: teamKeys.all });
     },
   });
 }

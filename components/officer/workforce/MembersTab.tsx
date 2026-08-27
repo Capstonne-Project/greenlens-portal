@@ -8,10 +8,12 @@ import {
   ChevronDown,
   Loader2,
   Mail,
+  MoreHorizontal,
   Phone,
   Plus,
   Search,
   Shield,
+  UserMinus,
   Users,
 } from 'lucide-react';
 
@@ -19,9 +21,19 @@ import { RecruitStaffDialog } from './RecruitStaffDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -38,14 +50,16 @@ import {
 } from '@/components/ui/table';
 import UsersIcon from '@/components/ui/users-icon';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useOfficeStaffList } from '@/hooks/useLeoOffices';
+import { useOfficeStaffList, useReleaseOfficeStaff } from '@/hooks/useLeoOffices';
 import { useOutsideClick } from '@/hooks/useOutsideClick';
+import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type {
   OfficeStaffAssignRole,
   OfficeStaffListParams,
   OfficeStaffMember,
 } from '@/lib/api/models/office';
 import { cn } from '@/lib/utils';
+import { deferOpenFromMenu, restoreBodyPointerEvents } from '@/lib/utils/radixUi';
 import { formatJoinedDateVi } from '@/utils/officerTracking';
 
 const MEMBERS_PER_PAGE = 10;
@@ -69,7 +83,7 @@ const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'team', label: 'Đội', className: 'min-w-[140px]' },
   { key: 'role', label: 'Vai trò', className: 'w-[130px]' },
   { key: 'joined', label: 'Ngày tham gia', className: 'w-[120px]' },
-  { key: 'actions', label: '', className: 'w-[88px]' },
+  { key: 'actions', label: '', className: 'w-[120px]' },
 ];
 
 type HasTeamFilter = 'all' | 'true' | 'false';
@@ -239,18 +253,87 @@ function CloseIcon() {
   );
 }
 
+function ReleaseStaffConfirmDialog({
+  open,
+  member,
+  submitting,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  member: OfficeStaffMember | null;
+  submitting: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && !submitting) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-md" onClick={e => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+              <UserMinus className="size-4 text-destructive" aria-hidden />
+            </span>
+            Release về Citizen
+          </DialogTitle>
+          <DialogDescription>
+            Release{' '}
+            <span className="font-medium text-foreground">{member?.fullName ?? 'nhân sự'}</span>{' '}
+            khỏi phường? Vai trò sẽ về Citizen, rời mọi đội và không còn thuộc LocalOffice.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              className="cursor-pointer"
+            >
+              Huỷ
+            </Button>
+          </DialogClose>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={submitting}
+            onClick={onConfirm}
+            className="cursor-pointer"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Đang release...
+              </>
+            ) : (
+              'Release'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function StaffProfileExpandPanel({
   member,
   colorClass,
   layoutKey,
   panelRef,
   onClose,
+  onRelease,
 }: {
   member: OfficeStaffMember;
   colorClass: string;
   layoutKey: string;
   panelRef: RefObject<HTMLDivElement | null>;
   onClose: () => void;
+  onRelease: () => void;
 }) {
   const infoRows = buildStaffInfoRows(member);
   const teamLabel = member.teamName?.trim() || 'Chưa có đội';
@@ -350,6 +433,16 @@ function StaffProfileExpandPanel({
               })}
             </ul>
           </section>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full cursor-pointer border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={onRelease}
+          >
+            <UserMinus className="size-3.5" aria-hidden />
+            Release về Citizen
+          </Button>
         </motion.div>
       </div>
     </motion.div>
@@ -367,6 +460,8 @@ export function MembersTab() {
   const [memberPage, setMemberPage] = useState(1);
   const [recruitOpen, setRecruitOpen] = useState(false);
   const [active, setActive] = useState<OfficeStaffMember | null>(null);
+  const [releaseTarget, setReleaseTarget] = useState<OfficeStaffMember | null>(null);
+  const releaseStaff = useReleaseOfficeStaff();
 
   const staffParams = useMemo(
     () => buildStaffParams(memberPage, debouncedSearch, hasTeamFilter, roleFilter),
@@ -386,6 +481,18 @@ export function MembersTab() {
 
   useOutsideClick(panelRef, () => setActive(null));
 
+  const handleConfirmRelease = async () => {
+    if (!releaseTarget) return;
+    try {
+      const res = await releaseStaff.mutateAsync(releaseTarget.userId);
+      toastApiSuccess(res, `Đã release ${releaseTarget.fullName} về Citizen.`);
+      if (active?.userId === releaseTarget.userId) setActive(null);
+      setReleaseTarget(null);
+    } catch (err) {
+      toastApiError(err, 'Không thể release nhân sự. Vui lòng thử lại.');
+    }
+  };
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') setActive(null);
@@ -394,13 +501,14 @@ export function MembersTab() {
     if (active) {
       document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = '';
     }
 
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = '';
+      restoreBodyPointerEvents();
     };
   }, [active]);
 
@@ -428,7 +536,7 @@ export function MembersTab() {
     ] ?? AVATAR_COLORS[0];
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="mb-6 shrink-0">
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <div className="relative w-72 max-w-full sm:w-80">
@@ -514,6 +622,16 @@ export function MembersTab() {
         onRecruited={() => setMemberPage(1)}
       />
 
+      <ReleaseStaffConfirmDialog
+        open={Boolean(releaseTarget)}
+        member={releaseTarget}
+        submitting={releaseStaff.isPending}
+        onConfirm={() => void handleConfirmRelease()}
+        onClose={() => {
+          if (!releaseStaff.isPending) setReleaseTarget(null);
+        }}
+      />
+
       <AnimatePresence>
         {active ? (
           <motion.div
@@ -549,13 +667,14 @@ export function MembersTab() {
               layoutKey={`${active.userId}-${id}`}
               panelRef={panelRef}
               onClose={() => setActive(null)}
+              onRelease={() => deferOpenFromMenu(() => setReleaseTarget(active))}
             />
           </div>
         ) : null}
       </AnimatePresence>
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]">
-        <div className="flex-1 overflow-auto [&_table]:border-collapse">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/4%)]">
+        <div className="min-h-0 flex-1 overflow-auto [&_table]:border-collapse">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -654,17 +773,49 @@ export function MembersTab() {
                         {formatJoinedDateVi(member.createdAt)}
                       </TableCell>
                       <TableCell className="px-3 py-2">
-                        <motion.button
-                          type="button"
-                          layoutId={`button-${layoutKey}`}
-                          className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-emerald-500 hover:text-white"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setActive(member);
-                          }}
-                        >
-                          Chi tiết
-                        </motion.button>
+                        <div className="flex items-center justify-end gap-1">
+                          <motion.button
+                            type="button"
+                            layoutId={`button-${layoutKey}`}
+                            className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-emerald-500 hover:text-white"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setActive(member);
+                            }}
+                          >
+                            Chi tiết
+                          </motion.button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-7 shrink-0 text-slate-500 hover:bg-muted hover:text-slate-700"
+                                onClick={e => e.stopPropagation()}
+                                aria-label={`Thao tác ${member.fullName}`}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                              <DropdownMenuItem
+                                onClick={() => deferOpenFromMenu(() => setActive(member))}
+                                className="cursor-pointer"
+                              >
+                                Chi tiết
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="cursor-pointer text-destructive focus:text-destructive"
+                                onClick={() => deferOpenFromMenu(() => setReleaseTarget(member))}
+                              >
+                                <UserMinus className="mr-2 size-3.5" />
+                                Release về Citizen
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -687,6 +838,6 @@ export function MembersTab() {
           </div>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

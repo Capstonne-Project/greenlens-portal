@@ -12,6 +12,7 @@ import { useMarkAllNotificationsRead, useNotificationsList } from '@/hooks/useNo
 import type { NotificationItem } from '@/lib/api/models/notification';
 import { NOTIFICATION_PAGE_SIZE } from '@/lib/api/models/notification';
 import { cn } from '@/lib/utils';
+import { navigateAfterOverlayClose } from '@/lib/utils/radixUi';
 import {
   getNotificationDrawerLinks,
   getNotificationMutationError,
@@ -104,7 +105,9 @@ export function NotificationInboxView({ portal }: NotificationInboxViewProps) {
   const handleOpenPreferences = () => {
     setHeaderMenuOpen(false);
     if (links.preferencesHref) {
-      router.push(links.preferencesHref);
+      navigateAfterOverlayClose(() => {
+        router.push(links.preferencesHref!);
+      });
       return;
     }
     toast.message('Cài đặt thông báo chưa khả dụng trên portal này');

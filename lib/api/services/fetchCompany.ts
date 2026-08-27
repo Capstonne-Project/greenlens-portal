@@ -320,7 +320,8 @@ export async function archiveCompanyTeam(
 
 /**
  * DELETE /v1/teams/company-teams/{id}
- * [CompanyManager] Soft delete team công ty.
+ * [CompanyManager] Soft Delete team công ty.
+ * Dữ liệu team không bị mất nhưng không còn xuất hiện trên hệ thống.
  */
 export async function deleteCompanyTeam(id: string): Promise<ApiEnvelope<string>> {
   if (!id.trim()) {

@@ -203,3 +203,16 @@ export async function adaptLookupOfficeStaff(
   );
   return mapApiEnvelope(res.data, mapOfficeStaffLookupDataDto);
 }
+
+/**
+ * DELETE /v1/offices/my/staff/{userId}
+ * [LEO] Release nhân sự về Citizen.
+ * Gỡ Cleaner/Inspector khỏi phường, role → Citizen, rời mọi team, clear LocalOfficeId.
+ * 200: Đã release (data string); 403: User không thuộc phường của bạn.
+ */
+export async function adaptReleaseOfficeStaff(userId: string): Promise<ApiEnvelope<string>> {
+  const res = await apiService.delete<ApiEnvelope<string>>(
+    `/v1/offices/my/staff/${encodeURIComponent(userId)}`
+  );
+  return res.data;
+}

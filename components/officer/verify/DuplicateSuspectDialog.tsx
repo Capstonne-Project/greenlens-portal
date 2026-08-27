@@ -57,6 +57,7 @@ import {
   type ReportStatus,
 } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { navigateAfterOverlayClose } from '@/lib/utils/radixUi';
 import { COMPARE_MAP_FRAME_HEIGHT } from '@/components/officer/verify/compareMapFrame';
 
 const CompareReportsMap = dynamic(
@@ -1223,7 +1224,9 @@ function DuplicateSuspectDialogBody({
       onResolved?.();
       const nextHref = postMergeParentHref(parentId, parentStatus);
       if (nextHref) {
-        router.push(nextHref);
+        navigateAfterOverlayClose(() => {
+          router.push(nextHref);
+        });
       }
     } catch (error) {
       toastApiError(error, 'Không thể gộp báo cáo trùng lặp.');

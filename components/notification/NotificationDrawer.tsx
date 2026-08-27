@@ -1,10 +1,11 @@
 'use client';
 
-import { useNotificationUiStore } from '@/lib/store/notificationUiStore';
-import { resolveNotificationPortal } from '@/utils/notificationUi';
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
-import { usePathname } from 'next/navigation';
 import { NotificationDrawerPanel } from './NotificationDrawerPanel';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { useNotificationUiStore } from '@/lib/store/notificationUiStore';
+import { releaseOverlayLock } from '@/lib/utils/radixUi';
+import { resolveNotificationPortal } from '@/utils/notificationUi';
+import { usePathname } from 'next/navigation';
 
 /**
  * Drawer trượt từ phải — mount 1 lần trong AppSidebar.
@@ -20,7 +21,10 @@ export function NotificationDrawer() {
     <Sheet
       open={isOpen}
       onOpenChange={open => {
-        if (!open) closeDrawer();
+        if (!open) {
+          closeDrawer();
+          releaseOverlayLock();
+        }
       }}
     >
       <SheetContent

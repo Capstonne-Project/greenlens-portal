@@ -6,6 +6,10 @@ import {
   type ReportPreviewHandler,
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
+import {
+  CreateSuccessShareDialog,
+  hasCommunityCleanupShare,
+} from '@/components/officer/community/CreateSuccessShareDialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +37,7 @@ import {
   communityCleanupStatusLabelVi,
 } from '@/lib/constants/communityCleanupStatus';
 import { cn } from '@/lib/utils';
+import { takeCommunityCleanupFacebookPageUrl } from '@/utils/communityCleanupFacebookPost';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -40,11 +45,12 @@ import {
   ImageIcon,
   Loader2,
   RefreshCw,
+  Share2,
   XCircle,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const ReportLocationMap = dynamic(
@@ -522,6 +528,8 @@ function EventInfoCard({
   googleMapsUrl,
   participants,
   isParticipantsPending,
+  facebookPageUrl,
+  highlightFacebookPost,
 }: {
   detail: NonNullable<ReturnType<typeof useCommunityCleanupDetail>['data']>;
   progressPercent: number;
@@ -530,7 +538,16 @@ function EventInfoCard({
   googleMapsUrl: string;
   participants: CommunityCleanupParticipant[];
   isParticipantsPending: boolean;
+  facebookPageUrl?: string | null;
+  highlightFacebookPost?: boolean;
 }) {
+  const facebookPostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!highlightFacebookPost || !facebookPageUrl) return;
+    facebookPostRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [highlightFacebookPost, facebookPageUrl]);
+
   return (
     <div className="flex flex-col">
       {/* Ảnh + tiêu đề + mô tả — giới hạn chiều cao để không tràn ra ngoài cột */}
@@ -579,6 +596,29 @@ function EventInfoCard({
           <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
             {detail.description}
           </p>
+        ) : null}
+
+        {facebookPageUrl ? (
+          <div
+            ref={facebookPostRef}
+            className={cn(
+              'mt-3 rounded-lg border border-[#1877F2]/30 bg-[#E8F1FF]/70 px-3 py-2.5 dark:border-[#1877F2]/40 dark:bg-[#1877F2]/10',
+              highlightFacebookPost && 'animate-fb-post-spotlight'
+            )}
+          >
+            <p className="text-[11px] font-semibold tracking-wide text-[#1877F2] uppercase">
+              Link bài đăng Facebook
+            </p>
+            <a
+              href={facebookPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex max-w-full items-start gap-1.5 break-all text-sm font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-[#1877F2]" aria-hidden />
+              <span>{facebookPageUrl}</span>
+            </a>
+          </div>
         ) : null}
       </div>
 
@@ -722,6 +762,30 @@ function DetailShell({
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [shareOpen, setShareOpen] = useState(false);
+  const [facebookPostUi, setFacebookPostUi] = useState(() => {
+    const stashed =
+      typeof window !== 'undefined' ? takeCommunityCleanupFacebookPageUrl(eventId) : null;
+    return {
+      pageUrl: stashed,
+      highlight: Boolean(stashed),
+    };
+  });
+
+  useEffect(() => {
+    if (!facebookPostUi.highlight) return;
+    const timer = window.setTimeout(
+      () => setFacebookPostUi(prev => ({ ...prev, highlight: false })),
+      3400
+    );
+    return () => window.clearTimeout(timer);
+  }, [facebookPostUi.highlight]);
+
+  const revealFacebookPageUrl = (pageUrl: string | null) => {
+    setShareOpen(false);
+    if (!pageUrl) return;
+    setFacebookPostUi({ pageUrl, highlight: true });
+  };
 
   const { data: participants, isPending: isParticipantsPending } = useCommunityCleanupParticipants(
     eventId,
@@ -857,6 +921,7 @@ function DetailShell({
   };
 
   const canModerate = detail.status === 'PendingVerification';
+  const canShare = hasCommunityCleanupShare(detail.share);
   const hasMeetingPoint = detail.meetingLatitude != null && detail.meetingLongitude != null;
   const mapLat = hasMeetingPoint ? detail.meetingLatitude! : detail.reportLatitude;
   const mapLng = hasMeetingPoint ? detail.meetingLongitude! : detail.reportLongitude;
@@ -892,6 +957,24 @@ function DetailShell({
         isSubmitting={rejectMutation.isPending}
       />
 
+      {canShare ? (
+        <CreateSuccessShareDialog
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          eventId={eventId}
+          title={detail.title}
+          share={detail.share}
+          thumbnailUrl={detail.thumbnailUrl}
+          description={detail.description}
+          meetingNote={detail.meetingNote}
+          reportAddress={detail.reportAddress}
+          startsAt={detail.startsAt}
+          endsAt={detail.endsAt}
+          headline="Chia sẻ chương trình"
+          onFacebookShareSuccess={({ pageUrl }) => revealFacebookPageUrl(pageUrl)}
+        />
+      ) : null}
+
       {/* Thanh hành động — dính trên khi cuộn để nút duyệt luôn trong tầm tay */}
       <div className="sticky top-0 z-20 -mx-4 mb-6 flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-background/85 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <Button
@@ -905,27 +988,43 @@ function DetailShell({
           Quay lại
         </Button>
 
-        {canModerate ? (
+        {canShare || canModerate ? (
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              onClick={() => setRejectOpen(true)}
-            >
-              <XCircle className="mr-1.5 size-4" />
-              Từ chối
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 bg-brand text-brand-foreground hover:bg-brand-dark"
-              onClick={() => setVerifyOpen(true)}
-            >
-              <CheckCircle2 className="mr-1.5 size-4" />
-              Duyệt hoàn thành
-            </Button>
+            {canShare ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setShareOpen(true)}
+              >
+                <Share2 className="mr-1.5 size-4" />
+                Chia sẻ
+              </Button>
+            ) : null}
+            {canModerate ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setRejectOpen(true)}
+                >
+                  <XCircle className="mr-1.5 size-4" />
+                  Từ chối
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 bg-brand text-brand-foreground hover:bg-brand-dark"
+                  onClick={() => setVerifyOpen(true)}
+                >
+                  <CheckCircle2 className="mr-1.5 size-4" />
+                  Duyệt hoàn thành
+                </Button>
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -942,6 +1041,8 @@ function DetailShell({
             googleMapsUrl={googleMapsUrl}
             participants={participants?.items ?? []}
             isParticipantsPending={isParticipantsPending}
+            facebookPageUrl={facebookPostUi.pageUrl}
+            highlightFacebookPost={facebookPostUi.highlight}
           />
         </aside>
 

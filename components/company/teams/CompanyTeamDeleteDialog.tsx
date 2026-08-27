@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { restoreBodyPointerEvents } from '@/lib/utils/radixUi';
 import { Loader2, Trash2, X } from 'lucide-react';
 
 export type CompanyTeamDeleteTarget = {
@@ -24,9 +26,22 @@ export function CompanyTeamDeleteDialog({
   onConfirm,
   onClose,
 }: CompanyTeamDeleteDialogProps) {
+  useEffect(() => {
+    if (!open) {
+      restoreBodyPointerEvents();
+      return;
+    }
+    return () => restoreBodyPointerEvents();
+  }, [open]);
+
   if (!open || !team) return null;
 
   const hasMembers = team.memberCount > 0;
+
+  const handleClose = () => {
+    onClose();
+    restoreBodyPointerEvents();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -35,7 +50,7 @@ export function CompanyTeamDeleteDialog({
         className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
         aria-label="Đóng"
         disabled={submitting}
-        onClick={onClose}
+        onClick={handleClose}
       />
       <div
         role="alertdialog"
@@ -50,11 +65,11 @@ export function CompanyTeamDeleteDialog({
             </span>
             <div>
               <h2 id="team-delete-title" className="text-lg font-semibold">
-                Xóa đội
+                Xóa đội (Soft Delete)
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Xóa mềm đội <span className="font-semibold text-foreground">{team.name}</span>? Đội
-                sẽ không còn xuất hiện trên hệ thống (dữ liệu vẫn được lưu).
+                Soft delete đội <span className="font-semibold text-foreground">{team.name}</span>?
+                Dữ liệu không bị mất nhưng đội sẽ không còn xuất hiện trên hệ thống.
               </p>
               {hasMembers ? (
                 <p className="mt-2 text-sm font-medium text-red-700">
@@ -65,7 +80,7 @@ export function CompanyTeamDeleteDialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={submitting}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-50"
             aria-label="Đóng"
@@ -77,7 +92,7 @@ export function CompanyTeamDeleteDialog({
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={submitting}
             className="rounded-xl border border-emerald-100 px-4 py-2 text-sm font-medium hover:bg-emerald-50 dark:border-border"
           >
