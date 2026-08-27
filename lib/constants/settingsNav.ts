@@ -17,6 +17,12 @@ function buildSettingsNav(
       href: `${rolePrefix}/settings/notifications`,
       icon: 'bell',
     },
+    {
+      id: 'privacy',
+      label: 'Quyền riêng tư',
+      href: `${rolePrefix}/settings/privacy`,
+      icon: 'shield',
+    },
   ];
 
   if (options?.includeMediaLab) {

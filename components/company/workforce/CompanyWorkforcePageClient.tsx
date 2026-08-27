@@ -282,7 +282,7 @@ function WorkforceTabPanel({
       transition={transition}
       className={cn(
         'flex h-full w-full min-h-0 flex-1 flex-col overflow-hidden',
-        isActive ? 'relative z-10' : 'pointer-events-none absolute inset-x-0 top-0 z-0'
+        isActive ? 'relative z-10' : 'pointer-events-none invisible absolute inset-x-0 top-0 z-0'
       )}
       aria-hidden={!isActive}
       {...(!isActive ? { inert: true } : {})}

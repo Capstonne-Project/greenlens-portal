@@ -18,6 +18,7 @@ import { useCatalogWasteTags } from '@/hooks/useWasteTags';
 import { toastApiError, toastApiSuccess } from '@/lib/api/toast';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
+import { deferOpenFromMenu } from '@/lib/utils/radixUi';
 import {
   Building2,
   ChevronDown,
@@ -159,95 +160,87 @@ function TeamCard({
   };
 
   return (
-    <div
-      className={cn(
-        'flex h-auto flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-[border-color,box-shadow] duration-200 hover:shadow-md',
-        isExpanded ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-border'
-      )}
-    >
-      {/* Card body — click to expand */}
-      <button
-        type="button"
-        onClick={handleToggle}
-        className="flex w-full cursor-pointer flex-col gap-3 p-4 text-left transition-colors hover:bg-muted/20"
+    <div className={cn('relative h-full min-w-0', isExpanded && 'z-20')}>
+      {/* Shell giữ chiều cao hàng — panel mở nối liền (không khe hở) */}
+      <div
+        className={cn(
+          'flex h-full min-w-0 flex-col overflow-hidden border bg-card transition-[border-color,box-shadow,border-radius] duration-200',
+          isExpanded
+            ? 'rounded-t-lg rounded-b-none border-b-0 border-emerald-200 shadow-none'
+            : 'rounded-lg border-border shadow-sm hover:shadow-md'
+        )}
       >
-        {/* Row 1: name + status + chevron */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-            <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800">
-              {team.name}
-            </span>
-            <span
-              className={cn(
-                'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium',
-                availability.className
-              )}
-            >
-              {availability.label}
-            </span>
-          </div>
-          <motion.span
-            animate={{ rotate: isExpanded ? 180 : 0 }}
-            transition={{ duration: 0.22, ease: CARD_EXPAND_TRANSITION.ease }}
-            className="mt-0.5 inline-flex shrink-0"
-          >
-            <ChevronDown className="size-4 text-slate-400" />
-          </motion.span>
-        </div>
-
-        {/* Row 2: office */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-600">
-          <Building2 className="size-3 shrink-0" />
-          <span className="truncate">{team.officeName ?? 'Đội công ty'}</span>
-        </div>
-
-        {/* Row 3: waste tag badges — Cleanup only */}
-        {team.teamType === 'Cleanup' ? <WasteTagBadgeRow tags={team.wasteTags} /> : null}
-      </button>
-
-      <AnimatePresence initial={false} mode="sync">
-        {!isExpanded ? (
-          <motion.div
-            key="footer"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={CARD_EXPAND_TRANSITION}
-            className="overflow-hidden"
-          >
-            <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 text-xs text-slate-500">
-                  <Users className="size-3.5" />
-                  <span>{team.memberCount}</span>
-                </div>
-                <span className="text-xs text-slate-500">{formatDate(team.createdAt)}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation();
-                    onAddMember();
-                  }}
-                  className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
-                >
-                  <Plus className="size-3" />
-                  Thêm thành viên
-                </button>
-              </div>
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="flex w-full flex-1 cursor-pointer flex-col gap-3 p-4 text-left transition-colors hover:bg-muted/20"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800">
+                {team.name}
+              </span>
+              <span
+                className={cn(
+                  'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                  availability.className
+                )}
+              >
+                {availability.label}
+              </span>
             </div>
-          </motion.div>
-        ) : (
+            <motion.span
+              animate={{ rotate: isExpanded ? 180 : 0 }}
+              transition={{ duration: 0.22, ease: CARD_EXPAND_TRANSITION.ease }}
+              className="mt-0.5 inline-flex shrink-0"
+            >
+              <ChevronDown className="size-4 text-slate-400" />
+            </motion.span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <Building2 className="size-3 shrink-0" />
+            <span className="truncate">{team.officeName ?? 'Đội công ty'}</span>
+          </div>
+
+          {team.teamType === 'Cleanup' ? <WasteTagBadgeRow tags={team.wasteTags} /> : null}
+        </button>
+
+        <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-xs text-slate-500">
+              <Users className="size-3.5" />
+              <span>{team.memberCount}</span>
+            </div>
+            <span className="text-xs text-slate-500">{formatDate(team.createdAt)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation();
+                onAddMember();
+              }}
+              className="flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-emerald-700 transition hover:bg-emerald-50"
+            >
+              <Plus className="size-3" />
+              Thêm thành viên
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {isExpanded ? (
           <motion.div
             key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={CARD_EXPAND_TRANSITION}
-            className="overflow-hidden"
+            className="absolute inset-x-0 top-full z-20 -mt-px overflow-hidden rounded-b-lg border border-t-0 border-emerald-200 bg-card shadow-md"
           >
-            <div className="border-t border-border bg-muted/20 px-4 pb-4 pt-3">
+            <div className="bg-muted/20 px-4 pb-4 pt-3">
               <RemoveMemberConfirmDialog
                 open={memberToRemove != null}
                 memberName={memberToRemove?.fullName ?? ''}
@@ -329,7 +322,7 @@ function TeamCard({
               </button>
             </div>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );
@@ -337,8 +330,8 @@ function TeamCard({
 
 function TeamCardSkeleton() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className="space-y-3 p-4">
+    <div className="flex h-full min-w-0 animate-pulse flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex-1 space-y-3 p-4">
         <div className="h-4 w-3/4 rounded bg-muted" />
         <div className="flex gap-1.5">
           <div className="h-4 w-16 rounded-full bg-muted" />
@@ -589,7 +582,7 @@ export function BoardView({
   const inspLoading = inspectionLoading;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Search + filters (trái) + export + view mode (phải) */}
       <header className="mb-6 shrink-0">
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -628,16 +621,16 @@ export function BoardView({
         </div>
       </header>
 
-      {/* Kanban columns — always fill remaining height (0 or N cards) */}
+      {/* Kanban columns — fill remaining height; scroll only inside each column */}
       <div
         className={cn(
-          'grid min-h-0 flex-1 gap-4',
+          'grid min-h-0 flex-1 gap-4 overflow-hidden',
           showCleanup && showInspection ? 'grid-cols-2' : 'grid-cols-1'
         )}
       >
         {/* ── Left: Cleanup ── */}
         {showCleanup ? (
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-muted/30">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-muted/30">
             <div className="flex shrink-0 items-center gap-2 px-4 py-3.5">
               <span className="size-2.5 rounded-full bg-emerald-500" />
               <h3 className="text-sm font-semibold text-slate-800">Đội Dọn dẹp</h3>
@@ -662,9 +655,9 @@ export function BoardView({
               </div>
             </div>
 
-            <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+            <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
               {cleanupLoading ? (
-                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2">
                   {[1, 2, 3, 4].map(i => (
                     <TeamCardSkeleton key={i} />
                   ))}
@@ -675,7 +668,7 @@ export function BoardView({
                   <span>Không có đội nào</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2">
                   {cleanupTeams.map(team => (
                     <TeamCard
                       key={team.id}
@@ -689,7 +682,7 @@ export function BoardView({
                           teamType: team.teamType,
                         })
                       }
-                      onEdit={() => setEditTarget(toEditTeamTarget(team))}
+                      onEdit={() => deferOpenFromMenu(() => setEditTarget(toEditTeamTarget(team)))}
                     />
                   ))}
                 </div>
@@ -712,7 +705,7 @@ export function BoardView({
 
         {/* ── Right: Inspection ── */}
         {showInspection ? (
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-muted/30">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-muted/30">
             <div className="flex shrink-0 items-center gap-2 px-4 py-3.5">
               <span className="size-2.5 rounded-full bg-blue-500" />
               <h3 className="text-sm font-semibold text-slate-800">Đội Thanh tra</h3>
@@ -737,9 +730,9 @@ export function BoardView({
               </div>
             </div>
 
-            <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+            <div className="scrollbar-smooth min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
               {inspLoading ? (
-                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2">
                   {[1, 2, 3, 4].map(i => (
                     <TeamCardSkeleton key={i} />
                   ))}
@@ -750,7 +743,7 @@ export function BoardView({
                   <span>Không có đội nào</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2">
                   {inspectionTeams.map(team => (
                     <TeamCard
                       key={team.id}
@@ -764,7 +757,7 @@ export function BoardView({
                           teamType: team.teamType,
                         })
                       }
-                      onEdit={() => setEditTarget(toEditTeamTarget(team))}
+                      onEdit={() => deferOpenFromMenu(() => setEditTarget(toEditTeamTarget(team)))}
                     />
                   ))}
                 </div>

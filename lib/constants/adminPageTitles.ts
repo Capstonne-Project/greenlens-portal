@@ -25,6 +25,7 @@ export function getAdminPageTitle(pathname: string): string {
   if (pathname === '/admin/settings' || pathname === '/admin/settings/account')
     return 'Cài đặt tài khoản';
   if (pathname === '/admin/settings/notifications') return 'Cài đặt thông báo';
+  if (pathname === '/admin/settings/privacy') return 'Quyền riêng tư';
   if (pathname === '/admin/notifications' || pathname.startsWith('/admin/notifications/'))
     return 'Thông báo';
   if (pathname === '/admin/departments') return 'Sở TNMT · Cấp tỉnh';

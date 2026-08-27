@@ -10,7 +10,7 @@ import { ChevronDown } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import type { MapShellNavConfig, MapShellNavItem } from '@/lib/constants/mapShellNav';
-import { isFontAwesomeNavIcon } from '@/lib/constants/mapShellNav';
+import { getBrandHomeHref, isFontAwesomeNavIcon } from '@/lib/constants/mapShellNav';
 import { APP_LOGO_MARK_SRC, APP_NAME } from '@/lib/constants/brand';
 import { useAuthStore } from '@/lib/store/authStore';
 import { MapSidebarUserProfile } from '@/components/common/SidebarUserProfile';
@@ -247,23 +247,24 @@ function NavDropdown({
 }
 
 /** Single logo row — no Logo/LogoIcon swap (remount causes jump) */
-function SidebarLogo() {
+function SidebarLogo({ homeHref }: { homeHref: string }) {
   const { open, animate } = useSidebar();
   const showLabel = !animate || open;
 
   return (
     <Link
-      href="/"
+      href={homeHref}
       className="relative z-20 flex items-center gap-2 px-2 py-2 text-sm font-normal text-black no-underline"
+      aria-label={`${APP_NAME} — trang chủ`}
     >
-      <div className="flex size-5 shrink-0 items-center justify-center">
+      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full">
         <Image
           src={APP_LOGO_MARK_SRC}
           alt=""
-          width={20}
-          height={20}
+          width={28}
+          height={28}
           priority
-          className="object-contain"
+          className="size-full object-cover"
           unoptimized
         />
       </div>
@@ -292,13 +293,14 @@ export function AppSidebar({
   const activeId = resolveActiveNavId(pathname, config);
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const { notifications, settings } = config.systemNav;
+  const brandHomeHref = getBrandHomeHref(config);
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
       <SidebarBody className="justify-between gap-4">
         {/* Top scrolls when Users (or any) dropdown expands — never paint over systemNav. */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <SidebarLogo />
+          <SidebarLogo homeHref={brandHomeHref} />
           <nav
             className="mt-8 flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto scrollbar-hide"
             aria-label="Menu chính"

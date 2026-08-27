@@ -192,6 +192,23 @@ function withSection(item: MapShellNavItem, sectionLabel: string): MapShellNavIt
   return { ...item, sectionLabel };
 }
 
+/**
+ * Home href cho logo/brand sidebar:
+ * ưu tiên nav Bản đồ (`id: map`), không có thì Tổng quan (`overview` | `dashboard`),
+ * cuối cùng item đầu trong mainNav.
+ */
+export function getBrandHomeHref(config: MapShellNavConfig): string {
+  const mapItem = config.mainNav.find(item => item.id === 'map');
+  if (mapItem) return mapItem.href;
+
+  const overviewItem = config.mainNav.find(
+    item => item.id === 'overview' || item.id === 'dashboard'
+  );
+  if (overviewItem) return overviewItem.href;
+
+  return config.mainNav[0]?.href ?? '/';
+}
+
 /** Sidebar map shell — nav chính theo role (DEO / LEO). */
 export function getMapShellNavForRole(
   systemRole: UserRole | string | undefined

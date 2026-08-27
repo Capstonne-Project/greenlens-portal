@@ -534,7 +534,10 @@ export function useAddCompanyTeamMember() {
   });
 }
 
-/** DELETE /v1/teams/company-teams/{teamId}/members/{userId} — rời đội (CompanyManager). */
+/**
+ * DELETE /v1/teams/company-teams/{teamId}/members/{userId}
+ * [CompanyManager] Xóa nhân viên khỏi team — vẫn thuộc công ty, chỉ rời team.
+ */
 export function useRemoveCompanyTeamMember() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -615,7 +618,10 @@ export function useArchiveCompanyTeam() {
   });
 }
 
-/** DELETE /v1/teams/company-teams/{id} — soft delete team [CompanyManager]. */
+/**
+ * DELETE /v1/teams/company-teams/{id}
+ * [CompanyManager] Soft Delete — team không còn hiện trên hệ thống (dữ liệu vẫn lưu).
+ */
 export function useDeleteCompanyTeam() {
   const queryClient = useQueryClient();
   return useMutation({

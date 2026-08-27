@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { restoreBodyPointerEvents } from '@/lib/utils/radixUi';
 import { Loader2, Power, X } from 'lucide-react';
 
 export type CompanyTeamArchiveTarget = {
@@ -24,9 +26,22 @@ export function CompanyTeamArchiveDialog({
   onConfirm,
   onClose,
 }: CompanyTeamArchiveDialogProps) {
+  useEffect(() => {
+    if (!open) {
+      restoreBodyPointerEvents();
+      return;
+    }
+    return () => restoreBodyPointerEvents();
+  }, [open]);
+
   if (!open || !team) return null;
 
   const isDeactivating = team.isActive;
+
+  const handleClose = () => {
+    onClose();
+    restoreBodyPointerEvents();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -35,7 +50,7 @@ export function CompanyTeamArchiveDialog({
         className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
         aria-label="Đóng"
         disabled={submitting}
-        onClick={onClose}
+        onClick={handleClose}
       />
       <div
         role="alertdialog"
@@ -84,7 +99,7 @@ export function CompanyTeamArchiveDialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={submitting}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-50"
             aria-label="Đóng"
@@ -96,7 +111,7 @@ export function CompanyTeamArchiveDialog({
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={submitting}
             className="rounded-xl border border-emerald-100 px-4 py-2 text-sm font-medium hover:bg-emerald-50 disabled:opacity-50 dark:border-border"
           >

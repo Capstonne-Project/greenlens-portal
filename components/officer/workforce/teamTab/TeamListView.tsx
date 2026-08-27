@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import type { TeamListItem } from '@/lib/api/models/team';
 import { cn } from '@/lib/utils';
+import { deferOpenFromMenu } from '@/lib/utils/radixUi';
 import { Loader2, MoreHorizontal, Pencil, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import { WorkforceViewModeSwitch, type WorkforceViewMode } from '../WorkforceToolbarActions';
@@ -136,7 +137,7 @@ export function TeamListView({
   const [editTarget, setEditTarget] = useState<EditTeamTarget | null>(null);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Search + filters (trái) + export + view mode (phải) */}
       <header className="mb-6 shrink-0">
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -294,20 +295,28 @@ export function TeamListView({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onDetailTeam(team)}>
+                          <DropdownMenuItem
+                            onClick={() => deferOpenFromMenu(() => onDetailTeam(team))}
+                          >
                             Xem chi tiết
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setEditTarget(toEditTeamTarget(team))}>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              deferOpenFromMenu(() => setEditTarget(toEditTeamTarget(team)))
+                            }
+                          >
                             <Pencil className="mr-1.5 size-3.5" />
                             Chỉnh sửa
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
-                              onAddMember({
-                                id: team.id,
-                                name: team.name,
-                                teamType: team.teamType,
-                              })
+                              deferOpenFromMenu(() =>
+                                onAddMember({
+                                  id: team.id,
+                                  name: team.name,
+                                  teamType: team.teamType,
+                                })
+                              )
                             }
                           >
                             Phân công thành viên

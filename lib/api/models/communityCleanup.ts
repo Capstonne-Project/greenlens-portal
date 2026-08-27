@@ -1,5 +1,7 @@
 /** FE models — chương trình dọn cộng đồng (Community Cleanup). */
 
+import type { ReportSeverity } from '@/lib/api/models/report';
+
 export type CommunityCleanupStatus =
   | 'OpenForJoin'
   | 'JoinClosed'
@@ -27,6 +29,26 @@ export interface CommunityCleanupMedia {
   afterImageUrls: string[];
 }
 
+export type CommunityCleanupParticipantRole = 'Leader' | 'Member';
+
+export type CommunityCleanupParticipantStatus = 'Joined' | 'CheckedIn' | 'Withdrawn' | 'NoShow';
+
+export interface CommunityCleanupMyParticipation {
+  status: CommunityCleanupParticipantStatus;
+  joinedAt: string;
+  role: CommunityCleanupParticipantRole;
+}
+
+export interface CommunityCleanupShare {
+  url: string;
+  caption: string;
+  imageUrl: string | null;
+  facebookShareUrl: string;
+  twitterShareUrl: string;
+  linkedInShareUrl: string;
+  hashtags: string[];
+}
+
 export interface CommunityCleanupEventDetail {
   id: string;
   reportId: string;
@@ -34,6 +56,8 @@ export interface CommunityCleanupEventDetail {
   status: CommunityCleanupStatus;
   title: string;
   description: string | null;
+  reportDescription: string;
+  reportImageUrls: string[];
   leader: CommunityCleanupLeader;
   joinOpensAt: string;
   joinClosesAt: string | null;
@@ -51,10 +75,13 @@ export interface CommunityCleanupEventDetail {
   reportLongitude: number;
   reportAddress: string | null;
   categoryName: string;
+  severity: ReportSeverity;
   thumbnailUrl: string | null;
+  myParticipation: CommunityCleanupMyParticipation | null;
   isLeader: boolean;
   mediaSummary: CommunityCleanupMediaSummary;
   media: CommunityCleanupMedia;
+  share: CommunityCleanupShare;
 }
 
 /** POST /v1/reports/{reportId}/community-cleanups */
@@ -115,10 +142,6 @@ export interface CommunityCleanupOfficeQueueParams {
   status?: CommunityCleanupStatus | CommunityCleanupStatus[];
 }
 
-export type CommunityCleanupParticipantRole = 'Leader' | 'Member';
-
-export type CommunityCleanupParticipantStatus = 'Joined' | 'CheckedIn' | 'Withdrawn' | 'NoShow';
-
 export interface CommunityCleanupParticipant {
   userId: string;
   fullName: string;
@@ -139,4 +162,38 @@ export interface CommunityCleanupQueueStats {
   countsByStatus: Partial<Record<CommunityCleanupStatus, number>>;
   totalParticipants: number;
   totalMediaCount: number;
+}
+
+/**
+ * POST /v1/community-cleanups/{eventId}/share/facebook-page — [LEO] kết quả đăng Facebook Page.
+ */
+export interface CommunityCleanupFacebookPageShareResult {
+  attempted: boolean;
+  success: boolean;
+  postId: string | null;
+  pageUrl: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
+/**
+ * GET /v1/public/community-cleanups/{eventId} — public preview (OG / share landing).
+ * No Authorization required. Cancelled program → 404.
+ */
+export interface CommunityCleanupPublicPreview {
+  id: string;
+  title: string;
+  description: string | null;
+  status: CommunityCleanupStatus;
+  startsAt: string;
+  endsAt: string | null;
+  joinClosesAt: string | null;
+  maxParticipants: number;
+  participantCount: number;
+  spotsLeft: number;
+  meetingNote: string | null;
+  categoryName: string;
+  reportAddress: string | null;
+  thumbnailUrl: string | null;
+  share: CommunityCleanupShare;
 }

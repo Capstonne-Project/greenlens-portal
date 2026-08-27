@@ -1,22 +1,28 @@
 import type {
   CommunityCleanupEventDetailDto,
+  CommunityCleanupFacebookPageShareResultDto,
   CommunityCleanupListResponseDto,
   CommunityCleanupParticipantsResponseDto,
+  CommunityCleanupPublicPreviewDto,
   CommunityCleanupQueueStatsResponseDto,
   CommunityCleanupReasonBodyDto,
   CreateCommunityCleanupBodyDto,
 } from '@/lib/api/dto/communityCleanup.dto';
 import {
   mapCommunityCleanupEventDetailDto,
+  mapCommunityCleanupFacebookPageShareResultDto,
   mapCommunityCleanupListResponseDto,
   mapCommunityCleanupParticipantsResponseDto,
+  mapCommunityCleanupPublicPreviewDto,
   mapCommunityCleanupQueueStatsResponseDto,
 } from '@/lib/api/mappers/communityCleanup.mapper';
 import type {
   CommunityCleanupEventDetail,
+  CommunityCleanupFacebookPageShareResult,
   CommunityCleanupList,
   CommunityCleanupOfficeQueueParams,
   CommunityCleanupParticipantsList,
+  CommunityCleanupPublicPreview,
   CommunityCleanupQueueStats,
   CreateCommunityCleanupInput,
 } from '@/lib/api/models/communityCleanup';
@@ -46,6 +52,21 @@ export async function adaptCreateCommunityCleanup(
     payload
   );
   return mapApiEnvelope(res.data, mapCommunityCleanupEventDetailDto);
+}
+
+/**
+ * GET /v1/reports/{reportId}/community-cleanup — [auth] chương trình active của report.
+ * BR-CMU-003: tối đa 1 active/report; `data=null` nếu chưa có — không phải lỗi.
+ */
+export async function adaptGetReportCommunityCleanup(
+  reportId: string
+): Promise<ApiEnvelope<CommunityCleanupEventDetail | null>> {
+  const res = await apiService.get<ApiEnvelope<CommunityCleanupEventDetailDto | null>>(
+    `/v1/reports/${reportId}/community-cleanup`
+  );
+  return mapApiEnvelope(res.data, data =>
+    data == null ? null : mapCommunityCleanupEventDetailDto(data)
+  );
 }
 
 /** GET /v1/community-cleanups/office-queue — [LEO] hàng đợi chương trình cộng đồng theo office. */
@@ -125,4 +146,30 @@ export async function adaptRejectCommunityVerification(
 export async function adaptCancelCommunityCleanup(eventId: string, reason: string): Promise<void> {
   const payload: CommunityCleanupReasonBodyDto = { reason: reason.trim() };
   await apiService.post(`/v1/community-cleanups/${eventId}/cancel`, payload);
+}
+
+/**
+ * GET /v1/public/community-cleanups/{eventId} — public preview for OG / share landing.
+ * No Authorization required. Cancelled program → 404.
+ */
+export async function adaptGetPublicCommunityCleanup(
+  eventId: string
+): Promise<ApiEnvelope<CommunityCleanupPublicPreview>> {
+  const res = await apiService.get<ApiEnvelope<CommunityCleanupPublicPreviewDto>>(
+    `/v1/public/community-cleanups/${eventId}`
+  );
+  return mapApiEnvelope(res.data, mapCommunityCleanupPublicPreviewDto);
+}
+
+/**
+ * POST /v1/community-cleanups/{eventId}/share/facebook-page —
+ * [LEO] đăng chương trình lên Facebook Page (ảnh + caption từ share payload).
+ */
+export async function adaptShareCommunityCleanupFacebookPage(
+  eventId: string
+): Promise<ApiEnvelope<CommunityCleanupFacebookPageShareResult>> {
+  const res = await apiService.post<ApiEnvelope<CommunityCleanupFacebookPageShareResultDto>>(
+    `/v1/community-cleanups/${eventId}/share/facebook-page`
+  );
+  return mapApiEnvelope(res.data, mapCommunityCleanupFacebookPageShareResultDto);
 }

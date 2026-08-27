@@ -8,6 +8,7 @@ import {
   adaptOfficeDetail,
   adaptOfficesList,
   adaptRecruitOfficeStaff,
+  adaptReleaseOfficeStaff,
   adaptUpdateOffice,
 } from '@/lib/api/adapters/offices.adapter';
 import type {
@@ -149,6 +150,17 @@ export async function recruitOfficeStaff(
   return adaptRecruitOfficeStaff(body);
 }
 
+/**
+ * DELETE /v1/offices/my/staff/{userId}
+ * [LEO] Release nhân sự về Citizen — gỡ khỏi phường/team, role → Citizen.
+ */
+export async function releaseOfficeStaff(userId: string): Promise<ApiEnvelope<string>> {
+  if (!userId.trim()) {
+    throw new Error('Thiếu userId');
+  }
+  return adaptReleaseOfficeStaff(userId.trim());
+}
+
 /** GET /v1/offices/my/ward-boundary — ranh giới phường LEO đang quản lý (suy từ JWT). */
 export async function fetchLeoWardBoundary(): Promise<ApiEnvelope<LeoWardBoundary>> {
   return adaptFetchLeoWardBoundary();
@@ -165,5 +177,6 @@ export default {
   fetchOfficeStaff,
   lookupOfficeStaff,
   recruitOfficeStaff,
+  releaseOfficeStaff,
   fetchLeoWardBoundary,
 };

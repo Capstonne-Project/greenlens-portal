@@ -35,6 +35,7 @@ import {
 import { useOutsideClick } from '@/hooks/useOutsideClick';
 import type { CompanyStaffItem, CreateCompanyStaffResult } from '@/lib/api/models/company';
 import { cn } from '@/lib/utils';
+import { deferOpenFromMenu, restoreBodyPointerEvents } from '@/lib/utils/radixUi';
 import { formatCompanyDate, getCompanyMutationError } from '@/utils/companyUi';
 import {
   Briefcase,
@@ -399,13 +400,14 @@ export function CompanyStaffView({ enabled = true }: { enabled?: boolean }) {
     if (active) {
       document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = '';
     }
 
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = '';
+      restoreBodyPointerEvents();
     };
   }, [active]);
 
@@ -746,7 +748,7 @@ export function CompanyStaffView({ enabled = true }: { enabled?: boolean }) {
                                 {hasTeam ? (
                                   <DropdownMenuItem
                                     className="cursor-pointer"
-                                    onClick={() => setLeaveTarget(member)}
+                                    onClick={() => deferOpenFromMenu(() => setLeaveTarget(member))}
                                   >
                                     <UserMinus className="mr-2 size-3.5" />
                                     Rời đội
@@ -754,7 +756,7 @@ export function CompanyStaffView({ enabled = true }: { enabled?: boolean }) {
                                 ) : (
                                   <DropdownMenuItem
                                     className="cursor-pointer"
-                                    onClick={() => setAssignTarget(member)}
+                                    onClick={() => deferOpenFromMenu(() => setAssignTarget(member))}
                                   >
                                     <UserPlus className="mr-2 size-3.5" />
                                     Gán đội

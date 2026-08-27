@@ -133,6 +133,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Public share landing — Facebook OG crawler must not hit /login.
+  if (pathname === '/c' || pathname.startsWith('/c/')) {
+    return NextResponse.next();
+  }
+
+  // Public Privacy Policy — Meta App Live URL; no auth required.
+  if (pathname === '/privacy' || pathname.startsWith('/privacy/')) {
+    return NextResponse.next();
+  }
+
   for (const { prefix, role: required } of PROTECTED) {
     if (pathname.startsWith(prefix)) {
       if (!token) {

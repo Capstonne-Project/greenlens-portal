@@ -95,7 +95,7 @@ export function LeoWorkforcePageClient() {
     : { type: 'spring' as const, stiffness: 420, damping: 36, mass: 0.85 };
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="mb-3 shrink-0">
         <div className="border-b border-slate-200 pb-3">
           <div className="flex items-center gap-2">
@@ -115,10 +115,10 @@ export function LeoWorkforcePageClient() {
       <Tabs
         value={activeTab}
         onValueChange={value => setTab(parseTab(value))}
-        className="flex min-h-0 flex-1 flex-col gap-3"
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden"
       >
         <LayoutGroup id="leo-workforce-tabs">
-          <TabsList className="inline-flex h-auto w-fit items-stretch gap-0 overflow-hidden rounded-md bg-slate-100 p-0">
+          <TabsList className="inline-flex h-auto w-fit shrink-0 items-stretch gap-0 overflow-hidden rounded-md bg-slate-100 p-0">
             {tabItems.map((tab, index) => {
               const isActive = activeTab === tab.value;
               const isFirst = index === 0;
@@ -176,7 +176,7 @@ export function LeoWorkforcePageClient() {
           </TabsList>
         </LayoutGroup>
 
-        <div className="relative mt-0 min-h-0 flex-1">
+        <div className="relative mt-0 min-h-0 flex-1 overflow-hidden">
           {mounted.teams ? (
             <WorkforceTabPanel
               tab="teams"
@@ -202,7 +202,7 @@ export function LeoWorkforcePageClient() {
           ) : null}
         </div>
       </Tabs>
-    </>
+    </div>
   );
 }
 
@@ -236,8 +236,8 @@ function WorkforceTabPanel({
       }}
       transition={transition}
       className={cn(
-        'flex w-full min-h-0 flex-1 flex-col',
-        isActive ? 'relative z-10' : 'pointer-events-none absolute inset-x-0 top-0 z-0'
+        'absolute inset-0 flex min-h-0 w-full flex-col overflow-hidden',
+        isActive ? 'z-10' : 'pointer-events-none invisible z-0'
       )}
       aria-hidden={!isActive}
       {...(!isActive ? { inert: true } : {})}

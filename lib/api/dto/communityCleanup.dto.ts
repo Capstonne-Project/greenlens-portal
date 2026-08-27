@@ -1,5 +1,7 @@
 /** Khớp BE `/v1/reports/{reportId}/community-cleanups` + `/v1/community-cleanups`. */
 
+import type { ReportSeverityDto } from '@/lib/api/dto/report.dto';
+
 /** POST /v1/reports/{reportId}/community-cleanups */
 export interface CreateCommunityCleanupBodyDto {
   title: string;
@@ -41,13 +43,32 @@ export interface CommunityCleanupMediaDto {
   afterImageUrls: string[];
 }
 
+export type CommunityCleanupParticipantRoleDto = 'Leader' | 'Member';
+
+export type CommunityCleanupParticipantStatusDto = 'Joined' | 'CheckedIn' | 'Withdrawn' | 'NoShow';
+
 export interface CommunityCleanupMyParticipationDto {
-  status: string;
+  status: CommunityCleanupParticipantStatusDto;
   joinedAt: string;
-  role: string;
+  role: CommunityCleanupParticipantRoleDto;
 }
 
-/** POST .../community-cleanups — 201 data / GET {eventId} — 200 data */
+/** Share payload — create/detail responses. */
+export interface CommunityCleanupShareDto {
+  url: string;
+  caption: string;
+  imageUrl: string | null;
+  facebookShareUrl: string;
+  twitterShareUrl: string;
+  linkedInShareUrl: string;
+  hashtags: string[];
+}
+
+/**
+ * Detail shape — POST .../community-cleanups (201),
+ * GET /v1/community-cleanups/{eventId},
+ * GET /v1/reports/{reportId}/community-cleanup (data may be null).
+ */
 export interface CommunityCleanupEventDetailDto {
   id: string;
   reportId: string;
@@ -55,6 +76,8 @@ export interface CommunityCleanupEventDetailDto {
   status: CommunityCleanupStatusDto;
   title: string;
   description: string | null;
+  reportDescription: string;
+  reportImageUrls: string[];
   leader: CommunityCleanupLeaderDto;
   joinOpensAt: string;
   joinClosesAt: string | null;
@@ -72,11 +95,13 @@ export interface CommunityCleanupEventDetailDto {
   reportLongitude: number;
   reportAddress: string | null;
   categoryName: string;
+  severity: ReportSeverityDto;
   thumbnailUrl: string | null;
   myParticipation: CommunityCleanupMyParticipationDto | null;
   isLeader: boolean;
   mediaSummary: CommunityCleanupMediaSummaryDto;
   media: CommunityCleanupMediaDto;
+  share: CommunityCleanupShareDto;
 }
 
 export interface PaginationMetaDto {
@@ -114,10 +139,6 @@ export interface CommunityCleanupListResponseDto {
   pagination: PaginationMetaDto;
 }
 
-export type CommunityCleanupParticipantRoleDto = 'Leader' | 'Member';
-
-export type CommunityCleanupParticipantStatusDto = 'Joined' | 'CheckedIn' | 'Withdrawn' | 'NoShow';
-
 /** GET /v1/community-cleanups/{eventId}/participants */
 export interface CommunityCleanupParticipantDto {
   userId: string;
@@ -149,4 +170,39 @@ export interface CommunityCleanupQueueStatsResponseDto {
   countsByStatus: CommunityCleanupStatusCountDto[];
   totalParticipants: number;
   totalMediaCount: number;
+}
+
+/**
+ * POST /v1/community-cleanups/{eventId}/share/facebook-page — [LEO] đăng lên Facebook Page.
+ * Kết quả đăng Page (BE gọi Meta Graph API POST /photos).
+ */
+export interface CommunityCleanupFacebookPageShareResultDto {
+  attempted: boolean;
+  success: boolean;
+  postId: string | null;
+  pageUrl: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
+/**
+ * GET /v1/public/community-cleanups/{eventId} — public preview (OG / share landing).
+ * No Authorization required. Cancelled program → 404.
+ */
+export interface CommunityCleanupPublicPreviewDto {
+  id: string;
+  title: string;
+  description: string | null;
+  status: CommunityCleanupStatusDto;
+  startsAt: string;
+  endsAt: string | null;
+  joinClosesAt: string | null;
+  maxParticipants: number;
+  participantCount: number;
+  spotsLeft: number;
+  meetingNote: string | null;
+  categoryName: string;
+  reportAddress: string | null;
+  thumbnailUrl: string | null;
+  share: CommunityCleanupShareDto;
 }

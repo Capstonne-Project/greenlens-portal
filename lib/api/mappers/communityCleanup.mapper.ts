@@ -1,21 +1,64 @@
 import type {
   CommunityCleanupEventDetailDto,
+  CommunityCleanupFacebookPageShareResultDto,
   CommunityCleanupListItemDto,
   CommunityCleanupListResponseDto,
+  CommunityCleanupMyParticipationDto,
   CommunityCleanupParticipantDto,
   CommunityCleanupParticipantsResponseDto,
+  CommunityCleanupPublicPreviewDto,
   CommunityCleanupQueueStatsResponseDto,
+  CommunityCleanupShareDto,
   PaginationMetaDto,
 } from '@/lib/api/dto/communityCleanup.dto';
 import type {
   CommunityCleanupEventDetail,
+  CommunityCleanupFacebookPageShareResult,
   CommunityCleanupList,
   CommunityCleanupListItem,
+  CommunityCleanupMyParticipation,
   CommunityCleanupParticipant,
   CommunityCleanupParticipantsList,
+  CommunityCleanupPublicPreview,
   CommunityCleanupQueueStats,
+  CommunityCleanupShare,
   PaginationMeta,
 } from '@/lib/api/models/communityCleanup';
+
+export function mapCommunityCleanupMyParticipationDto(
+  dto: CommunityCleanupMyParticipationDto
+): CommunityCleanupMyParticipation {
+  return {
+    status: dto.status,
+    joinedAt: dto.joinedAt,
+    role: dto.role,
+  };
+}
+
+export function mapCommunityCleanupShareDto(
+  dto: CommunityCleanupShareDto | null | undefined
+): CommunityCleanupShare {
+  if (!dto) {
+    return {
+      url: '',
+      caption: '',
+      imageUrl: null,
+      facebookShareUrl: '',
+      twitterShareUrl: '',
+      linkedInShareUrl: '',
+      hashtags: [],
+    };
+  }
+  return {
+    url: dto.url ?? '',
+    caption: dto.caption ?? '',
+    imageUrl: dto.imageUrl ?? null,
+    facebookShareUrl: dto.facebookShareUrl ?? '',
+    twitterShareUrl: dto.twitterShareUrl ?? '',
+    linkedInShareUrl: dto.linkedInShareUrl ?? '',
+    hashtags: dto.hashtags ?? [],
+  };
+}
 
 export function mapCommunityCleanupEventDetailDto(
   dto: CommunityCleanupEventDetailDto
@@ -27,6 +70,8 @@ export function mapCommunityCleanupEventDetailDto(
     status: dto.status,
     title: dto.title,
     description: dto.description,
+    reportDescription: dto.reportDescription,
+    reportImageUrls: dto.reportImageUrls,
     leader: {
       userId: dto.leader.userId,
       fullName: dto.leader.fullName,
@@ -49,7 +94,11 @@ export function mapCommunityCleanupEventDetailDto(
     reportLongitude: dto.reportLongitude,
     reportAddress: dto.reportAddress,
     categoryName: dto.categoryName,
+    severity: dto.severity,
     thumbnailUrl: dto.thumbnailUrl,
+    myParticipation: dto.myParticipation
+      ? mapCommunityCleanupMyParticipationDto(dto.myParticipation)
+      : null,
     isLeader: dto.isLeader,
     mediaSummary: {
       beforeCount: dto.mediaSummary.beforeCount,
@@ -61,6 +110,7 @@ export function mapCommunityCleanupEventDetailDto(
       progressImageUrls: dto.media.progressImageUrls,
       afterImageUrls: dto.media.afterImageUrls,
     },
+    share: mapCommunityCleanupShareDto(dto.share),
   };
 }
 
@@ -141,5 +191,42 @@ export function mapCommunityCleanupQueueStatsResponseDto(
     countsByStatus,
     totalParticipants: dto.totalParticipants,
     totalMediaCount: dto.totalMediaCount,
+  };
+}
+
+/** Maps public preview DTO — GET /v1/public/community-cleanups/{eventId}. */
+export function mapCommunityCleanupPublicPreviewDto(
+  dto: CommunityCleanupPublicPreviewDto
+): CommunityCleanupPublicPreview {
+  return {
+    id: dto.id,
+    title: dto.title,
+    description: dto.description,
+    status: dto.status,
+    startsAt: dto.startsAt,
+    endsAt: dto.endsAt,
+    joinClosesAt: dto.joinClosesAt,
+    maxParticipants: dto.maxParticipants,
+    participantCount: dto.participantCount,
+    spotsLeft: dto.spotsLeft,
+    meetingNote: dto.meetingNote,
+    categoryName: dto.categoryName,
+    reportAddress: dto.reportAddress,
+    thumbnailUrl: dto.thumbnailUrl,
+    share: mapCommunityCleanupShareDto(dto.share),
+  };
+}
+
+/** Maps Facebook Page share result — POST .../share/facebook-page. */
+export function mapCommunityCleanupFacebookPageShareResultDto(
+  dto: CommunityCleanupFacebookPageShareResultDto
+): CommunityCleanupFacebookPageShareResult {
+  return {
+    attempted: dto.attempted,
+    success: dto.success,
+    postId: dto.postId ?? null,
+    pageUrl: dto.pageUrl ?? null,
+    errorCode: dto.errorCode ?? null,
+    errorMessage: dto.errorMessage ?? null,
   };
 }
