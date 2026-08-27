@@ -8,14 +8,19 @@ import {
   adaptGetCommunityCleanupParticipants,
   adaptGetOfficeCommunityQueue,
   adaptGetOfficeCommunityQueueStats,
+  adaptGetPublicCommunityCleanup,
+  adaptGetReportCommunityCleanup,
   adaptRejectCommunityVerification,
+  adaptShareCommunityCleanupFacebookPage,
   adaptVerifyCommunityCleanup,
 } from '@/lib/api/adapters/communityCleanup.adapter';
 import type {
   CommunityCleanupEventDetail,
+  CommunityCleanupFacebookPageShareResult,
   CommunityCleanupList,
   CommunityCleanupOfficeQueueParams,
   CommunityCleanupParticipantsList,
+  CommunityCleanupPublicPreview,
   CommunityCleanupQueueStats,
   CreateCommunityCleanupInput,
 } from '@/lib/api/models/communityCleanup';
@@ -23,14 +28,18 @@ import type { ApiEnvelope } from '@/lib/api/types/envelope';
 
 export type {
   CommunityCleanupEventDetail,
+  CommunityCleanupFacebookPageShareResult,
   CommunityCleanupLeader,
   CommunityCleanupList,
   CommunityCleanupListItem,
   CommunityCleanupMediaSummary,
+  CommunityCleanupMyParticipation,
   CommunityCleanupOfficeQueueParams,
   CommunityCleanupParticipant,
   CommunityCleanupParticipantsList,
+  CommunityCleanupPublicPreview,
   CommunityCleanupQueueStats,
+  CommunityCleanupShare,
   CommunityCleanupStatus,
   CreateCommunityCleanupInput,
   PaginationMeta,
@@ -42,6 +51,16 @@ export async function createCommunityCleanup(
   body: CreateCommunityCleanupInput
 ): Promise<ApiEnvelope<CommunityCleanupEventDetail>> {
   return adaptCreateCommunityCleanup(reportId, body);
+}
+
+/**
+ * GET /v1/reports/{reportId}/community-cleanup — chương trình active của report.
+ * BR-CMU-003: `data=null` nếu chưa có — không phải lỗi.
+ */
+export async function getReportCommunityCleanup(
+  reportId: string
+): Promise<ApiEnvelope<CommunityCleanupEventDetail | null>> {
+  return adaptGetReportCommunityCleanup(reportId);
 }
 
 /** GET /v1/community-cleanups/office-queue — [LEO] hàng đợi chương trình cộng đồng. */
@@ -88,12 +107,35 @@ export async function cancelCommunityCleanup(eventId: string, reason: string): P
   return adaptCancelCommunityCleanup(eventId, reason);
 }
 
+/**
+ * GET /v1/public/community-cleanups/{eventId} — public preview for OG / share landing.
+ * No Authorization required. Cancelled program → 404.
+ */
+export async function getPublicCommunityCleanup(
+  eventId: string
+): Promise<ApiEnvelope<CommunityCleanupPublicPreview>> {
+  return adaptGetPublicCommunityCleanup(eventId);
+}
+
+/**
+ * POST /v1/community-cleanups/{eventId}/share/facebook-page —
+ * [LEO] đăng chương trình lên Facebook Page.
+ */
+export async function shareCommunityCleanupFacebookPage(
+  eventId: string
+): Promise<ApiEnvelope<CommunityCleanupFacebookPageShareResult>> {
+  return adaptShareCommunityCleanupFacebookPage(eventId);
+}
+
 const communityCleanupService = {
   createCommunityCleanup,
+  getReportCommunityCleanup,
   getOfficeCommunityQueue,
   getOfficeCommunityQueueStats,
   getCommunityCleanupDetail,
   getCommunityCleanupParticipants,
+  getPublicCommunityCleanup,
+  shareCommunityCleanupFacebookPage,
   verifyCommunityCleanup,
   rejectCommunityVerification,
   cancelCommunityCleanup,

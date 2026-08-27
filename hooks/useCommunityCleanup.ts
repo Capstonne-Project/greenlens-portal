@@ -9,7 +9,10 @@ import {
   getCommunityCleanupParticipants,
   getOfficeCommunityQueue,
   getOfficeCommunityQueueStats,
+  getPublicCommunityCleanup,
+  getReportCommunityCleanup,
   rejectCommunityVerification,
+  shareCommunityCleanupFacebookPage,
   verifyCommunityCleanup,
 } from '@/lib/api/services/fetchCommunityCleanup';
 import type {
@@ -25,6 +28,9 @@ export const communityCleanupKeys = {
     [...communityCleanupKeys.all, 'office-queue', params ?? {}] as const,
   queueStats: () => [...communityCleanupKeys.all, 'office-queue-stats'] as const,
   detail: (eventId: string) => [...communityCleanupKeys.all, 'detail', eventId] as const,
+  publicPreview: (eventId: string) =>
+    [...communityCleanupKeys.all, 'public-preview', eventId] as const,
+  byReport: (reportId: string) => [...communityCleanupKeys.all, 'by-report', reportId] as const,
   participants: (eventId: string, page?: number) =>
     [...communityCleanupKeys.all, 'participants', eventId, page ?? 1] as const,
 };
@@ -44,26 +50,42 @@ export function useCreateCommunityCleanup() {
       queryClient.invalidateQueries({ queryKey: officerKeys.detail(reportId) });
       queryClient.invalidateQueries({ queryKey: leoOfficesKeys.myReports() });
       queryClient.invalidateQueries({ queryKey: officerKeys.queue() });
+      queryClient.invalidateQueries({ queryKey: communityCleanupKeys.byReport(reportId) });
       queryClient.invalidateQueries({ queryKey: communityCleanupKeys.all });
     },
   });
 }
 
+/** GET /v1/reports/{reportId}/community-cleanup — chương trình active của report (data null nếu chưa có). */
+export function useReportCommunityCleanup(reportId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: communityCleanupKeys.byReport(reportId),
+    queryFn: async () => (await getReportCommunityCleanup(reportId)).data,
+    staleTime: DETAIL_STALE_MS,
+    enabled: options?.enabled ?? Boolean(reportId),
+  });
+}
+
 /** GET /v1/community-cleanups/office-queue — [LEO] hàng đợi chương trình cộng đồng. */
-export function useOfficeCommunityQueue(params?: CommunityCleanupOfficeQueueParams) {
+export function useOfficeCommunityQueue(
+  params?: CommunityCleanupOfficeQueueParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: communityCleanupKeys.queue(params),
     queryFn: async () => (await getOfficeCommunityQueue(params)).data,
     staleTime: QUEUE_STALE_MS,
+    enabled: options?.enabled ?? true,
   });
 }
 
 /** GET /v1/community-cleanups/office-queue/stats — [LEO] thống kê hàng đợi theo office. */
-export function useOfficeCommunityQueueStats() {
+export function useOfficeCommunityQueueStats(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: communityCleanupKeys.queueStats(),
     queryFn: async () => (await getOfficeCommunityQueueStats()).data,
     staleTime: QUEUE_STATS_STALE_MS,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -74,6 +96,17 @@ export function useCommunityCleanupDetail(eventId: string, options?: { enabled?:
     queryFn: async () => (await getCommunityCleanupDetail(eventId)).data,
     staleTime: DETAIL_STALE_MS,
     enabled: options?.enabled ?? Boolean(eventId),
+  });
+}
+
+/** GET /v1/public/community-cleanups/{eventId} — preview public (OG / landing). Cancelled → 404. */
+export function usePublicCommunityCleanup(eventId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: communityCleanupKeys.publicPreview(eventId),
+    queryFn: async () => (await getPublicCommunityCleanup(eventId)).data,
+    staleTime: 3 * 60 * 1000,
+    enabled: options?.enabled ?? Boolean(eventId),
+    retry: 1,
   });
 }
 
@@ -126,5 +159,15 @@ export function useCancelCommunityCleanup() {
       queryClient.invalidateQueries({ queryKey: communityCleanupKeys.detail(eventId) });
       queryClient.invalidateQueries({ queryKey: communityCleanupKeys.all });
     },
+  });
+}
+
+/**
+ * POST /v1/community-cleanups/{eventId}/share/facebook-page —
+ * [LEO] đăng chương trình lên Facebook Page (ảnh + caption).
+ */
+export function useShareCommunityCleanupFacebookPage() {
+  return useMutation({
+    mutationFn: (eventId: string) => shareCommunityCleanupFacebookPage(eventId),
   });
 }
