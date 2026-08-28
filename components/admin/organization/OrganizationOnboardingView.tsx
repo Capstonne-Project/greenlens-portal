@@ -1,6 +1,15 @@
 'use client';
 
 import { ValidatedInput, ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { ADMIN_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   useAssignOfficeOfficer,
   useChangeUserRole,
@@ -233,32 +242,35 @@ export function OrganizationOnboardingView() {
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-sm font-medium">Tỉnh / Thành phố</label>
-              <select
-                value={provinceCode}
-                onChange={e => setProvinceCode(e.target.value)}
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+              <Select
+                value={provinceCode || undefined}
+                onValueChange={setProvinceCode}
                 disabled={provincesPending}
               >
-                <option value="">— Chọn tỉnh/thành —</option>
-                {(provinces ?? []).map(p => (
-                  <option key={p.code} value={p.code}>
-                    {p.name} ({p.code})
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 w-full">
+                  <SelectValue placeholder="— Chọn tỉnh/thành —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(provinces ?? []).map(p => (
+                    <SelectItem key={p.code} value={p.code}>
+                      {p.name} ({p.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="mt-6 flex justify-end">
-            <button
+            <Button
               type="button"
               disabled={busy}
               onClick={handleCreateDepartment}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+              className={ADMIN_PRIMARY_BTN}
             >
               {createDepartment.isPending && <Loader2 className="size-4 animate-spin" />}
               Tạo ủy ban
               <ChevronRight className="size-4" />
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -283,40 +295,39 @@ export function OrganizationOnboardingView() {
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-sm font-medium">Phường / Xã</label>
-              <select
-                value={wardCode}
-                onChange={e => setWardCode(e.target.value)}
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+              <Select
+                value={wardCode || undefined}
+                onValueChange={setWardCode}
                 disabled={wardsPending || !effectiveProvince}
               >
-                <option value="">— Chọn phường/xã —</option>
-                {(wards ?? []).map(w => (
-                  <option key={w.code} value={w.code}>
-                    {w.unitAbbreviation ? `${w.unitAbbreviation} ` : ''}
-                    {w.name} ({w.code})
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 w-full">
+                  <SelectValue placeholder="— Chọn phường/xã —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(wards ?? []).map(w => (
+                    <SelectItem key={w.code} value={w.code}>
+                      {w.unitAbbreviation ? `${w.unitAbbreviation} ` : ''}
+                      {w.name} ({w.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="mt-6 flex justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-            >
+            <Button type="button" variant="outline" onClick={() => setStep(1)}>
               Quay lại
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={busy}
               onClick={handleCreateOffice}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+              className={ADMIN_PRIMARY_BTN}
             >
               {createOffice.isPending && <Loader2 className="size-4 animate-spin" />}
               Tạo phòng
               <ChevronRight className="size-4" />
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -348,10 +359,11 @@ export function OrganizationOnboardingView() {
               <ul>
                 {(userSearchResult?.items ?? []).map(u => (
                   <li key={u.id}>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
                       onClick={() => setSelectedUser(u)}
-                      className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm hover:bg-muted/50 ${
+                      className={`h-auto w-full justify-start px-4 py-3 text-left text-sm font-normal hover:bg-muted/50 ${
                         selectedUser?.id === u.id ? 'bg-emerald-50' : ''
                       }`}
                     >
@@ -362,7 +374,7 @@ export function OrganizationOnboardingView() {
                       <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs">
                         {roleDisplayVi(u.role)}
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -390,33 +402,29 @@ export function OrganizationOnboardingView() {
           )}
 
           <div className="mt-6 flex flex-wrap justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-            >
+            <Button type="button" variant="outline" onClick={() => setStep(2)}>
               Quay lại
-            </button>
+            </Button>
             <div className="flex flex-wrap gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 disabled={busy || !selectedUser}
                 onClick={() => void handlePromoteToLeo()}
-                className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-50"
               >
                 Chỉ đổi role → LEO
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 disabled={busy || !selectedUser}
                 onClick={() => void handleAssignOfficer()}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+                className={ADMIN_PRIMARY_BTN}
               >
                 {(changeRole.isPending || assignOfficer.isPending) && (
                   <Loader2 className="size-4 animate-spin" />
                 )}
                 Gán LEO phụ trách
-              </button>
+              </Button>
             </div>
           </div>
         </section>

@@ -1,5 +1,6 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedInput } from '@/components/common/ValidatedField';
 import { SearchableSelect } from '@/components/common/SearchableSelect';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
@@ -7,7 +8,6 @@ import { useCatalogProvinces, useCreateDepartment } from '@/hooks/useDepartments
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getDepartmentMutationError } from '@/utils/departmentErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -131,24 +131,15 @@ export function DepartmentCreateDialog({
             ) : null}
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-border pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={createMutation.isPending}
-            className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
-          >
-            Hủy
-          </button>
-          <button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-          >
-            {createMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Tạo ủy ban
-          </button>
-        </div>
+        <AdminDialogFooter
+          onCancel={onClose}
+          confirmType="submit"
+          confirmLabel="Tạo ủy ban"
+          confirmLoading={createMutation.isPending}
+          cancelDisabled={createMutation.isPending}
+          confirmDisabled={createMutation.isPending}
+          className="border-t border-border pt-4"
+        />
       </form>
     </OfficeDialogShell>
   );

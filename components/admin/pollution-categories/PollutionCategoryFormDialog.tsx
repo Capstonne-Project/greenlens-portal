@@ -1,11 +1,11 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -153,24 +153,15 @@ export function PollutionCategoryFormDialog({
             />
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-border pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
-          >
-            Hủy
-          </button>
-          <button
-            type="submit"
-            disabled={busy}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-          >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            {mode === 'create' ? 'Tạo danh mục' : 'Lưu thay đổi'}
-          </button>
-        </div>
+        <AdminDialogFooter
+          onCancel={onClose}
+          confirmType="submit"
+          confirmLabel={mode === 'create' ? 'Tạo danh mục' : 'Lưu thay đổi'}
+          confirmLoading={busy}
+          cancelDisabled={busy}
+          confirmDisabled={busy}
+          className="border-t border-border pt-4"
+        />
       </form>
     </OfficeDialogShell>
   );

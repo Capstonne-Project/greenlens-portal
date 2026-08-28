@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_TOOLBAR_CTA, ADMIN_TOOLBAR_SELECT } from '@/components/admin/shared/adminUiTokens';
 import {
   PenaltyFrameworkCreateDialog,
   type PenaltyFrameworkFormValues,
@@ -18,7 +19,9 @@ import {
   ADMIN_TABLE_PAGINATION_META,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
+import { Button } from '@/components/ui/button';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -240,14 +243,15 @@ export function AdminPenaltyFrameworksView() {
             </span>
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-800"
+          className={cn(ADMIN_TOOLBAR_CTA, 'gap-2 shadow-sm')}
         >
           <Plus className="size-4" aria-hidden />
           Tạo khung phạt
-        </button>
+        </Button>
       </header>
 
       <section className="rounded-2xl border border-border bg-white p-4 shadow-sm">
@@ -264,7 +268,10 @@ export function AdminPenaltyFrameworksView() {
                   resetToFirstPage();
                 }}
               >
-                <SelectTrigger id="penalty-category-filter" className="h-10 w-full rounded-lg">
+                <SelectTrigger
+                  id="penalty-category-filter"
+                  className={cn(ADMIN_TOOLBAR_SELECT, 'w-full rounded-lg')}
+                >
                   <SelectValue placeholder="Tất cả danh mục" />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={4}>
@@ -289,7 +296,10 @@ export function AdminPenaltyFrameworksView() {
                   resetToFirstPage();
                 }}
               >
-                <SelectTrigger id="penalty-level-filter" className="h-10 w-full rounded-lg">
+                <SelectTrigger
+                  id="penalty-level-filter"
+                  className={cn(ADMIN_TOOLBAR_SELECT, 'w-full rounded-lg')}
+                >
                   <SelectValue placeholder="Tất cả cấp" />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={4}>
@@ -317,22 +327,24 @@ export function AdminPenaltyFrameworksView() {
                   ['inactive', 'Ngưng'],
                 ] as const
               ).map(([value, label]) => (
-                <button
+                <Button
                   key={value}
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setStatus(value);
                     resetToFirstPage();
                   }}
                   className={cn(
-                    'rounded-md px-3 text-sm font-medium transition',
+                    'rounded-md px-3 text-sm font-medium',
                     status === value
-                      ? 'bg-emerald-700 text-white'
+                      ? 'bg-emerald-700 text-white hover:bg-emerald-700'
                       : 'text-muted-foreground hover:bg-muted'
                   )}
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -370,13 +382,9 @@ export function AdminPenaltyFrameworksView() {
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <p className="text-sm text-destructive">{errorMessage}</p>
-                    <button
-                      type="button"
-                      onClick={() => void listQuery.refetch()}
-                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
-                    >
-                      Thử lại
-                    </button>
+                    <div className="mt-2">
+                      <AdminRetryButton onClick={() => void listQuery.refetch()} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
@@ -486,20 +494,24 @@ export function AdminPenaltyFrameworksView() {
                       )}
                     >
                       <div className="inline-flex flex-wrap items-center justify-end gap-2">
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => setEditTarget(item)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
+                          className="h-auto gap-1.5 border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
                         >
                           <Pencil className="size-3.5" aria-hidden />
                           Sửa
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="sm"
                           disabled={togglingId === item.id}
                           onClick={() => handleToggle(item)}
                           className={cn(
-                            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-50',
+                            'h-auto gap-1.5 px-2.5 py-1.5 text-xs font-medium',
                             item.isActive
                               ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
                               : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
@@ -511,7 +523,7 @@ export function AdminPenaltyFrameworksView() {
                             <Power className="size-3.5" aria-hidden />
                           )}
                           {item.isActive ? 'Tắt' : 'Bật'}
-                        </button>
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

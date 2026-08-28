@@ -1,6 +1,8 @@
 'use client';
 
 import type { MapSummaryData } from '@/lib/api/services/fetchMap';
+import { ADMIN_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Info, Loader2 } from 'lucide-react';
 
@@ -41,7 +43,7 @@ function DailyBars({ dailyCounts }: { dailyCounts: MapSummaryData['dailyCounts']
               className="group relative flex min-w-0 flex-1 flex-col items-center justify-end"
               title={`${formatPeriodDate(point.date)}: ${point.count}`}
             >
-              <span className="pointer-events-none absolute -top-5 hidden rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background group-hover:block">
+              <span className="pointer-events-none absolute -top-5 hidden rounded bg-foreground px-1.5 py-0.5 text-xs font-medium text-background group-hover:block">
                 {point.count}
               </span>
               <div
@@ -56,7 +58,7 @@ function DailyBars({ dailyCounts }: { dailyCounts: MapSummaryData['dailyCounts']
         })}
       </div>
       {dailyCounts.length > 14 ? (
-        <div className="flex justify-between text-[10px] text-muted-foreground">
+        <div className="flex justify-between text-xs text-muted-foreground">
           <span>{dailyCounts[0]?.date.slice(5)}</span>
           <span>{dailyCounts[dailyCounts.length - 1]?.date.slice(5)}</span>
         </div>
@@ -83,19 +85,21 @@ export function AdminMapSummaryPanel({
         </div>
         <div className="flex w-fit rounded-lg border border-border bg-muted/30 p-0.5">
           {DAY_OPTIONS.map(option => (
-            <button
+            <Button
               key={option}
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => onDaysChange(option)}
               className={cn(
-                'rounded-md px-2.5 py-1 text-xs font-semibold transition',
+                'h-auto rounded-md px-2.5 py-1 text-xs font-semibold',
                 days === option
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? cn(ADMIN_PRIMARY_BTN, 'shadow-sm hover:bg-emerald-800')
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {option} ngày
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -108,7 +112,7 @@ export function AdminMapSummaryPanel({
 
       {summary ? (
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Kỳ thống kê
           </p>
           <p className="mt-1 text-sm font-medium text-foreground">
@@ -120,7 +124,7 @@ export function AdminMapSummaryPanel({
       ) : null}
 
       <div className="min-h-0 flex-1">
-        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Báo cáo theo ngày
         </p>
         {isLoading && !summary ? (
@@ -132,7 +136,7 @@ export function AdminMapSummaryPanel({
         )}
       </div>
 
-      <p className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0 text-emerald-600" aria-hidden />
         Pan hoặc zoom bản đồ để cập nhật số liệu và ghim trong khung nhìn hiện tại.
       </p>

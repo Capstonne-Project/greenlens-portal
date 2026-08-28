@@ -2,6 +2,7 @@
 
 import type { OfficeListItem } from '@/lib/api/models/office';
 import type { OfficeDepartmentGroup } from '@/utils/officeHierarchy';
+import { Button } from '@/components/ui/button';
 import { Building2, ChevronDown, ChevronRight, Pencil, UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -33,21 +34,25 @@ export function OfficesHierarchyList({ groups, onEdit, onAssign }: OfficesHierar
   return (
     <div className="px-4 sm:px-6">
       <div className="flex justify-end gap-2 border-b border-border py-3">
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="sm"
           onClick={expandAll}
-          className="text-xs font-medium text-emerald-700 hover:underline"
+          className="h-auto p-0 text-xs font-medium text-emerald-700"
         >
           Mở tất cả
-        </button>
+        </Button>
         <span className="text-border">|</span>
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="sm"
           onClick={collapseAll}
-          className="text-xs font-medium text-muted-foreground hover:underline"
+          className="h-auto p-0 text-xs font-medium text-muted-foreground"
         >
           Thu gọn
-        </button>
+        </Button>
       </div>
 
       <div className="divide-y divide-border">
@@ -55,10 +60,11 @@ export function OfficesHierarchyList({ groups, onEdit, onAssign }: OfficesHierar
           const isOpen = expanded.has(group.departmentId);
           return (
             <section key={group.departmentId}>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => toggle(group.departmentId)}
-                className="flex w-full items-center gap-3 py-4 text-left transition hover:bg-muted/40"
+                className="h-auto w-full justify-start gap-3 rounded-none py-4 text-left font-normal hover:bg-muted/40"
               >
                 <span className="text-muted-foreground">
                   {isOpen ? (
@@ -74,7 +80,7 @@ export function OfficesHierarchyList({ groups, onEdit, onAssign }: OfficesHierar
                     {group.wardCount} phường/xã · {group.onboardedCount} onboard
                   </span>
                 </span>
-              </button>
+              </Button>
 
               {isOpen && (
                 <div className="overflow-x-auto pb-4 pl-9">
@@ -113,22 +119,26 @@ export function OfficesHierarchyList({ groups, onEdit, onAssign }: OfficesHierar
                           </td>
                           <td className="py-2.5">
                             <div className="flex justify-end gap-0.5">
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon"
                                 title="Sửa tên"
                                 onClick={() => onEdit(office)}
-                                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+                                className="text-muted-foreground"
                               >
                                 <Pencil className="size-4" />
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon"
                                 title="Phân công LEO"
                                 onClick={() => onAssign(office)}
-                                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+                                className="text-muted-foreground"
                               >
                                 <UserPlus className="size-4" />
-                              </button>
+                              </Button>
                             </div>
                           </td>
                         </tr>

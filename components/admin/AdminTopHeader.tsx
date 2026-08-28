@@ -1,72 +1,47 @@
 'use client';
 
-import { NotificationHeaderBell } from '@/components/notification/NotificationHeaderBell';
 import { AdminOverviewHeaderBar } from '@/components/admin/overview/AdminOverviewHeaderBar';
-import { WasteTagsHeaderStats } from '@/components/admin/waste-tags/WasteTagsHeaderStats';
-import { getAdminPageTitle } from '@/lib/constants/adminPageTitles';
-import { useUiStore } from '@/lib/store/uiStore';
-import { Globe, Moon, Sun } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
 
-const iconButtonClass =
-  'inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40';
+import { ADMIN_PAGE_DESCRIPTION, ADMIN_PAGE_TITLE } from '@/components/admin/shared/adminUiTokens';
+
+import { WasteTagsHeaderStats } from '@/components/admin/waste-tags/WasteTagsHeaderStats';
+
+import { getAdminPageMeta } from '@/lib/constants/adminPageMeta';
+
+import { cn } from '@/lib/utils';
+
+import { usePathname } from 'next/navigation';
 
 export function AdminTopHeader() {
   const pathname = usePathname();
-  const title = getAdminPageTitle(pathname);
-  const theme = useUiStore(s => s.theme);
-  const toggleTheme = useUiStore(s => s.toggleTheme);
-  const locale = useUiStore(s => s.locale);
-  const toggleLocale = useUiStore(s => s.toggleLocale);
+
+  const { title, description, icon: Icon } = getAdminPageMeta(pathname);
+
   const isOverviewTab = pathname === '/admin';
+
   const isWasteTagsTab = pathname === '/admin/waste-tags';
 
-  const nextLocaleLabel = locale === 'vi' ? 'EN' : 'VN';
-
   return (
-    <header className="shrink-0 border-b border-[#e8e8e8] bg-app-panel pb-2">
-      <div className="flex h-14 items-center justify-between gap-4 md:h-16">
-        <HeaderBrand title={title} meta={isWasteTagsTab ? <WasteTagsHeaderStats /> : null} />
+    <header className="shrink-0 border-b border-border bg-app-panel pb-2">
+      <div className="pb-3 pt-1">
+        <div className="flex items-center gap-2">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-emerald-700">
+            <Icon className="size-7" aria-hidden />
+          </span>
 
-        <div className="flex shrink-0 items-center gap-2 border-l border-[#e8e8e8] pl-3 md:gap-2.5 md:pl-4">
-          <NotificationHeaderBell />
-          <button
-            type="button"
-            onClick={toggleLocale}
-            className={`${iconButtonClass} gap-1.5 px-2.5 text-xs font-semibold tracking-wide`}
-            aria-label={`Đổi ngôn ngữ, hiện tại ${locale === 'vi' ? 'Tiếng Việt' : 'English'}`}
-          >
-            <Globe className="size-[18px]" aria-hidden />
-            <span>{nextLocaleLabel}</span>
-          </button>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={iconButtonClass}
-            aria-label={theme === 'dark' ? 'Bật giao diện sáng' : 'Bật giao diện tối'}
-          >
-            {theme === 'dark' ? (
-              <Sun className="size-[18px]" aria-hidden />
-            ) : (
-              <Moon className="size-[18px]" aria-hidden />
-            )}
-          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+              <h1 className={cn(ADMIN_PAGE_TITLE)}>{title}</h1>
+
+              {isWasteTagsTab ? <WasteTagsHeaderStats /> : null}
+            </div>
+
+            <p className={ADMIN_PAGE_DESCRIPTION}>{description}</p>
+          </div>
         </div>
       </div>
 
       {isOverviewTab ? <AdminOverviewHeaderBar /> : null}
     </header>
-  );
-}
-
-function HeaderBrand({ title, meta }: { title: string; meta?: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      <h1 className="shrink-0 text-sm font-semibold tracking-tight text-foreground md:text-base">
-        {title}
-      </h1>
-      {meta}
-    </div>
   );
 }

@@ -1,6 +1,10 @@
 'use client';
 
 import {
+  ADMIN_PAGINATION_BTN,
+  ADMIN_TOOLBAR_SELECT,
+} from '@/components/admin/shared/adminUiTokens';
+import {
   ADMIN_TABLE_CLASS,
   ADMIN_TABLE_HEAD_CELL,
   ADMIN_TABLE_ROW_BORDER,
@@ -12,7 +16,9 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { TeamDetailDialog } from '@/components/admin/teams/TeamDetailDialog';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
+import { Button } from '@/components/ui/button';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -81,7 +87,7 @@ function formatDate(iso: string): string {
 function getTeamIconSurface(teamType: string): string {
   switch (teamType) {
     case 'Cleanup':
-      return 'bg-teal-700 text-white';
+      return 'bg-emerald-700 text-white';
     case 'Inspection':
       return 'bg-sky-700 text-white';
     case 'Response':
@@ -96,7 +102,7 @@ function getTeamIconSurface(teamType: string): string {
 function getTeamRail(teamType: string): string {
   switch (teamType) {
     case 'Cleanup':
-      return 'bg-teal-600';
+      return 'bg-emerald-600';
     case 'Inspection':
       return 'bg-sky-500';
     case 'Response':
@@ -145,7 +151,7 @@ function TeamColumn({
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
         <span className={`size-2.5 shrink-0 rounded-full ${dotClassName}`} aria-hidden />
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">
+        <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-muted-foreground">
           {totalCount}
         </span>
       </div>
@@ -165,24 +171,28 @@ function TeamColumn({
             Trang {page}/{totalPages}
           </span>
           <div className="flex gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={!hasPrev}
               onClick={() => onPageChange(page - 1)}
-              className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+              className={ADMIN_PAGINATION_BTN}
             >
               <ChevronLeft className="size-3.5" />
               Trước
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={!hasNext}
               onClick={() => onPageChange(page + 1)}
-              className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+              className={ADMIN_PAGINATION_BTN}
             >
               Sau
               <ChevronRight className="size-3.5" />
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
@@ -192,10 +202,11 @@ function TeamColumn({
 
 function TeamSpotlightCard({ team, onOpen }: TeamSpotlightCardProps) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={() => onOpen(team.id)}
-      className="group relative overflow-hidden rounded-xl border border-border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
+      className="group relative h-auto w-full justify-start overflow-hidden rounded-xl border border-border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-card hover:shadow-md"
     >
       <span
         className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${getTeamRail(team.teamType)}`}
@@ -225,7 +236,7 @@ function TeamSpotlightCard({ team, onOpen }: TeamSpotlightCardProps) {
           <span className="text-lg font-bold tabular-nums text-foreground">{team.memberCount}</span>
         </div>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -382,7 +393,7 @@ export function AdminTeamsView() {
         {/* Header */}
         <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:px-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white">
               <RadioTower className="size-5" />
             </span>
             <div className="min-w-0">
@@ -408,7 +419,7 @@ export function AdminTeamsView() {
                   label: 'Đang hoạt động',
                   value: activeTeams,
                   icon: Activity,
-                  tone: 'bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
+                  tone: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
                 },
                 {
                   label: 'Thành viên',
@@ -433,14 +444,16 @@ export function AdminTeamsView() {
                 </span>
               ))}
             </div>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => void refetch()}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground hover:bg-muted"
+              className="h-9 shrink-0 gap-2 text-xs font-semibold"
             >
               <RadioTower className="size-3.5" />
               Làm mới
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -465,7 +478,7 @@ export function AdminTeamsView() {
                   setQuery({ officeId: v === 'all' ? null : v, page: '1', ...resetBoardPages })
                 }
               >
-                <SelectTrigger id="team-office" className="h-10 rounded-lg">
+                <SelectTrigger id="team-office" className={cn(ADMIN_TOOLBAR_SELECT, 'rounded-lg')}>
                   <SelectValue placeholder="Tất cả văn phòng" />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={4}>
@@ -489,7 +502,7 @@ export function AdminTeamsView() {
                   setQuery({ type: v === 'all' ? null : v, page: '1', ...resetBoardPages })
                 }
               >
-                <SelectTrigger id="team-type" className="h-10 rounded-lg">
+                <SelectTrigger id="team-type" className={cn(ADMIN_TOOLBAR_SELECT, 'rounded-lg')}>
                   <SelectValue placeholder="Tất cả" />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={4}>
@@ -512,9 +525,11 @@ export function AdminTeamsView() {
                     ['all', 'Tất cả'],
                   ] as const
                 ).map(([value, label]) => (
-                  <button
+                  <Button
                     key={value}
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() =>
                       setQuery({
                         status: value === 'active' ? null : value,
@@ -522,43 +537,50 @@ export function AdminTeamsView() {
                         ...resetBoardPages,
                       })
                     }
-                    className={`rounded-md px-2.5 text-xs font-medium ${
+                    className={cn(
+                      'rounded-md px-2.5 text-xs font-medium',
                       activeFilter === value
                         ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
                         : 'text-muted-foreground hover:bg-muted'
-                    }`}
+                    )}
                   >
                     {label}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
               <div className="flex h-10 rounded-lg border border-border bg-background p-1">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setQuery({ view: null })}
                   title="Xem ô"
-                  className={`inline-flex items-center gap-1 rounded-md px-2.5 text-xs font-medium ${
+                  className={cn(
+                    'gap-1 rounded-md px-2.5 text-xs font-medium',
                     viewMode === 'cards'
                       ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
                       : 'text-muted-foreground hover:bg-muted'
-                  }`}
+                  )}
                 >
                   <LayoutGrid className="size-3.5" />Ô
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setQuery({ view: 'table' })}
                   title="Xem bảng"
-                  className={`inline-flex items-center gap-1 rounded-md px-2.5 text-xs font-medium ${
+                  className={cn(
+                    'gap-1 rounded-md px-2.5 text-xs font-medium',
                     viewMode === 'table'
                       ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
                       : 'text-muted-foreground hover:bg-muted'
-                  }`}
+                  )}
                 >
                   <Table2 className="size-3.5" />
                   Bảng
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -577,13 +599,9 @@ export function AdminTeamsView() {
             <p className="text-sm text-destructive">
               {(error as Error)?.message ?? 'Không tải được danh sách team.'}
             </p>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="mt-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              Thử lại
-            </button>
+            <div className="mt-2">
+              <AdminRetryButton onClick={() => void refetch()} />
+            </div>
           </div>
         )}
 
@@ -597,7 +615,7 @@ export function AdminTeamsView() {
                   <div className="grid gap-4 lg:grid-cols-2">
                     <TeamColumn
                       title="Đội dọn dẹp"
-                      dotClassName="bg-teal-600"
+                      dotClassName="bg-emerald-600"
                       teams={cleanupPageItems}
                       totalCount={cleanupBoardItems.length}
                       page={cleanupPagination.page}
@@ -657,24 +675,28 @@ export function AdminTeamsView() {
                     Trang {pagination.page}/{pagination.totalPages}
                   </span>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       disabled={!pagination.hasPrev}
                       onClick={() => setQuery({ page: String(page - 1) })}
-                      className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+                      className={ADMIN_PAGINATION_BTN}
                     >
                       <ChevronLeft className="size-3.5" />
                       Trước
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       disabled={!pagination.hasNext}
                       onClick={() => setQuery({ page: String(page + 1) })}
-                      className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs disabled:opacity-40"
+                      className={ADMIN_PAGINATION_BTN}
                     >
                       Sau
                       <ChevronRight className="size-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -775,7 +797,7 @@ export function AdminTeamsView() {
                           <span
                             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                               team.isActive
-                                ? 'bg-teal-50 text-teal-800'
+                                ? 'bg-emerald-50 text-emerald-800'
                                 : 'bg-muted text-muted-foreground'
                             }`}
                           >
@@ -794,15 +816,16 @@ export function AdminTeamsView() {
                           className={cn(adminTableCellPad('last'), 'text-right align-middle')}
                         >
                           <div className="inline-flex items-center justify-end">
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               title="Chi tiết"
                               onClick={() => setDetailId(team.id)}
-                              className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                               aria-label="Chi tiết team"
                             >
                               <Eye className="size-4" />
-                            </button>
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

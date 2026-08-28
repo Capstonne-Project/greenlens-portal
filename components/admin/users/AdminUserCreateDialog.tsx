@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_DIALOG_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
 import { ValidatedInput } from '@/components/common/ValidatedField';
 import { Button } from '@/components/ui/button';
 import {
@@ -228,11 +229,7 @@ export function AdminUserCreateDialog({ open, defaultRole, onClose }: AdminUserC
             <Button type="button" variant="outline" disabled={isBusy} onClick={onClose}>
               Hủy
             </Button>
-            <Button
-              type="submit"
-              disabled={isBusy}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
-            >
+            <Button type="submit" disabled={isBusy} className={ADMIN_DIALOG_PRIMARY_BTN}>
               {isBusy ? (
                 <>
                   <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />

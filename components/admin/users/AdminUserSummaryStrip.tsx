@@ -1,3 +1,4 @@
+import { ADMIN_SUMMARY_LABEL, ADMIN_SUMMARY_VALUE } from '@/components/admin/shared/adminUiTokens';
 import { cn } from '@/lib/utils';
 import { MailCheck, MailX, Rows3, Users, type LucideIcon } from 'lucide-react';
 
@@ -53,8 +54,8 @@ export function AdminUserSummaryStrip({
       label: 'Đã xác minh',
       value: String(verifiedOnPage),
       icon: MailCheck,
-      iconClassName: 'text-teal-700',
-      accentClassName: 'bg-teal-500/10',
+      iconClassName: 'text-emerald-600',
+      accentClassName: 'bg-emerald-500/10',
     },
     {
       key: 'unverified',
@@ -88,10 +89,8 @@ export function AdminUserSummaryStrip({
               <Icon className={cn('size-4', item.iconClassName)} />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-              <p className="mt-0.5 text-xl font-bold tabular-nums leading-none tracking-tight">
-                {item.value}
-              </p>
+              <p className={ADMIN_SUMMARY_LABEL}>{item.label}</p>
+              <p className={cn('mt-0.5', ADMIN_SUMMARY_VALUE)}>{item.value}</p>
               {item.hint ? (
                 <p className="mt-1 truncate text-xs text-muted-foreground/80">{item.hint}</p>
               ) : null}

@@ -1,5 +1,6 @@
 'use client';
 
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { useAuditLogsStats } from '@/hooks/useAuditLogs';
 import type { AuditLogsStatsParams } from '@/lib/api/models/auditLog';
 import { cn } from '@/lib/utils';
@@ -32,10 +33,7 @@ export function AuditLogStatsPanel({ params }: AuditLogStatsPanelProps) {
   if (statsQuery.isError) {
     return (
       <section className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-4 text-sm text-destructive">
-        Không tải được thống kê.{' '}
-        <button type="button" className="underline" onClick={() => void statsQuery.refetch()}>
-          Thử lại
-        </button>
+        Không tải được thống kê. <AdminRetryButton onClick={() => void statsQuery.refetch()} />
       </section>
     );
   }
@@ -75,7 +73,7 @@ export function AuditLogStatsPanel({ params }: AuditLogStatsPanelProps) {
                   className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-xs font-medium text-emerald-900"
                 >
                   {item.action}
-                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold">
+                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-bold">
                     {item.count}
                   </span>
                 </li>

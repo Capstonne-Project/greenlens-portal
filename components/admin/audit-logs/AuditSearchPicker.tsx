@@ -1,6 +1,7 @@
 'use client';
 
 import { ValidatedInput, ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { Button } from '@/components/ui/button';
 import { useOutsideClick } from '@/hooks/useOutsideClick';
 import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { cn } from '@/lib/utils';
@@ -106,30 +107,32 @@ export function AuditSearchPicker({
             {selected.sublabel ? (
               <p className="truncate text-xs text-emerald-900/65">{selected.sublabel}</p>
             ) : null}
-            <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
-              {selected.id}
-            </p>
+            <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">{selected.id}</p>
           </div>
           {selected.badge ? (
-            <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
+            <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
               {selected.badge}
             </span>
           ) : null}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={clear}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-emerald-800 hover:bg-emerald-100"
+            className="size-8 shrink-0 text-emerald-800 hover:bg-emerald-100"
             aria-label="Bỏ chọn"
           >
             <X className="size-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={() => setOpen(true)}
-            className="shrink-0 text-xs font-medium text-emerald-700 hover:underline"
+            className="h-auto shrink-0 p-0 text-xs font-medium text-emerald-700"
           >
             Đổi
-          </button>
+          </Button>
         </div>
         {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       </div>
@@ -160,14 +163,16 @@ export function AuditSearchPicker({
           className="pl-9 pr-9"
         />
         {search ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => setSearch('')}
-            className="absolute right-2 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+            className="absolute right-2 top-1/2 size-7 -translate-y-1/2 text-muted-foreground"
             aria-label="Xóa từ khóa"
           >
             <X className="size-3.5" />
-          </button>
+          </Button>
         ) : null}
       </div>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
@@ -185,11 +190,12 @@ export function AuditSearchPicker({
             <ul>
               {options.map(option => (
                 <li key={option.id}>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onMouseDown={e => e.preventDefault()}
                     onClick={() => pick(option)}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-emerald-50"
+                    className="h-auto w-full justify-between rounded-none px-3 py-2.5 text-left text-sm font-normal hover:bg-emerald-50"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{option.label}</span>
@@ -200,11 +206,11 @@ export function AuditSearchPicker({
                       ) : null}
                     </span>
                     {option.badge ? (
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                         {option.badge}
                       </span>
                     ) : null}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

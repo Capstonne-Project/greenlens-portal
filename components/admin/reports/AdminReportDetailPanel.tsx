@@ -3,6 +3,7 @@
 import { AdminReportStatusDialog } from '@/components/admin/reports/AdminReportStatusDialog';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
+import { Button } from '@/components/ui/button';
 import { useAdminReportDetail, useUnhideAdminReport } from '@/hooks/useAdminReports';
 import type { AdminReportListItem } from '@/lib/api/models/adminReport';
 import { isAdminReportMarkedHidden } from '@/lib/storage/adminHiddenReports';
@@ -67,14 +68,16 @@ export function AdminReportDetailPanel({
           <h2 id="report-detail-title" className="text-sm font-semibold">
             Chi tiết báo cáo
           </h2>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+            className="text-muted-foreground"
             aria-label="Đóng"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         </div>
 
         <div
@@ -177,21 +180,23 @@ export function AdminReportDetailPanel({
         {report || isHidden ? (
           <div className="space-y-2 border-t border-border p-4">
             {report ? (
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setStatusDialogOpen(true)}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted"
+                className="w-full"
               >
                 <RefreshCw className="size-4" aria-hidden />
                 Đổi status
-              </button>
+              </Button>
             ) : null}
             {isHidden ? (
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={onUnhide}
                 disabled={unhideReport.isPending}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+                className="w-full border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
               >
                 {unhideReport.isPending ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -199,7 +204,7 @@ export function AdminReportDetailPanel({
                   <Eye className="size-4" aria-hidden />
                 )}
                 Hiện lại
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}

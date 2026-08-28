@@ -4,6 +4,8 @@ import { ValidatedInput } from '@/components/common/ValidatedField';
 import { SearchableSelect } from '@/components/common/SearchableSelect';
 import { LeoUserPicker } from '@/components/admin/offices/LeoUserPicker';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { ADMIN_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
+import { Button } from '@/components/ui/button';
 import {
   OfficeOnboardingStepper,
   type OfficeOnboardingStep,
@@ -190,15 +192,10 @@ export function OfficeCreateDialog({ open, onClose, onCompleted }: OfficeCreateD
             </div>
           </div>
           <div className="mt-6 flex justify-end border-t border-border pt-4">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={goToStep2}
-              className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-700 px-6 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-            >
+            <Button type="button" disabled={busy} onClick={goToStep2} className={ADMIN_PRIMARY_BTN}>
               Tiếp tục
               <ChevronRight className="size-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -236,22 +233,13 @@ export function OfficeCreateDialog({ open, onClose, onCompleted }: OfficeCreateD
             </div>
           </div>
           <div className="mt-6 flex justify-between border-t border-border pt-4">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="h-11 rounded-lg border border-border px-5 text-sm font-medium hover:bg-muted"
-            >
+            <Button type="button" variant="outline" onClick={() => setStep(1)}>
               Quay lại
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={goToStep3}
-              className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-700 px-6 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-            >
+            </Button>
+            <Button type="button" disabled={busy} onClick={goToStep3} className={ADMIN_PRIMARY_BTN}>
               Tiếp tục
               <ChevronRight className="size-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -273,32 +261,22 @@ export function OfficeCreateDialog({ open, onClose, onCompleted }: OfficeCreateD
             inputId="office-create-leo-search"
           />
           <div className="mt-6 flex justify-between border-t border-border pt-4">
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              disabled={busy}
-              className="h-11 rounded-lg border border-border px-5 text-sm font-medium hover:bg-muted disabled:opacity-60"
-            >
+            <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={busy}>
               Quay lại
-            </button>
+            </Button>
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={busy}
-                className="h-11 rounded-lg border border-border px-5 text-sm font-medium hover:bg-muted disabled:opacity-60"
-              >
+              <Button type="button" variant="outline" onClick={handleClose} disabled={busy}>
                 Hủy
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 disabled={busy || !selectedUser}
                 onClick={() => void handleFinish()}
-                className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-700 px-6 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
+                className={ADMIN_PRIMARY_BTN}
               >
                 {busy && <Loader2 className="size-4 animate-spin" />}
                 Hoàn tất
-              </button>
+              </Button>
             </div>
           </div>
         </div>

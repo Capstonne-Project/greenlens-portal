@@ -26,7 +26,7 @@ export function DepartmentLiveSearch({
       inputClassName="bg-white dark:bg-zinc-950"
       footer={
         typeof resultCount === 'number' && value.trim() ? (
-          <p className="text-right text-[11px] text-muted-foreground">
+          <p className="text-right text-xs text-muted-foreground">
             <span className="font-medium text-foreground">{resultCount}</span> kết quả
           </p>
         ) : null

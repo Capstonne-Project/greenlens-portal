@@ -1,6 +1,7 @@
 'use client';
 
 import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { Button } from '@/components/ui/button';
 import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { useDeoUsers } from '@/hooks/useDepartments';
 import type { AdminUser } from '@/lib/api/models/adminUser';
@@ -55,10 +56,11 @@ export function DeoUserPicker({
         <ul>
           {items.map(u => (
             <li key={u.id}>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => onSelect(u)}
-                className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/50 ${
+                className={`h-auto w-full justify-between px-3 py-2.5 text-left text-sm font-normal hover:bg-muted/50 ${
                   selectedUser?.id === u.id ? 'bg-emerald-50' : ''
                 }`}
               >
@@ -69,7 +71,7 @@ export function DeoUserPicker({
                 <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">
                   {roleDisplayVi(u.role)}
                 </span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

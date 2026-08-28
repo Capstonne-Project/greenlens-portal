@@ -4,6 +4,8 @@ import {
   formatRelativeTimeVi,
   localizeDashboardText,
 } from '@/components/admin/overview/adminDashboardFormat';
+import { ADMIN_META_TEXT } from '@/components/admin/shared/adminUiTokens';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type {
   AdminCompanyPerformanceItem,
   AdminOfficerPerformanceItem,
@@ -45,18 +47,17 @@ function CardShell({
   children: ReactNode;
 }) {
   return (
-    <article
-      className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-border bg-card p-3 shadow-sm',
-        className
-      )}
+    <Card
+      className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-card p-0', className)}
     >
-      <header className="mb-2 shrink-0">
-        <h2 className="text-xs font-semibold text-foreground sm:text-sm">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-[10px] text-muted-foreground">{subtitle}</p> : null}
-      </header>
-      <div className="min-h-0 flex-1">{children}</div>
-    </article>
+      <CardHeader className="mb-0 shrink-0 space-y-0.5 p-3 pb-0">
+        <CardTitle className="text-xs font-semibold sm:text-sm">{title}</CardTitle>
+        {subtitle ? (
+          <CardDescription className={cn(ADMIN_META_TEXT, 'text-xs')}>{subtitle}</CardDescription>
+        ) : null}
+      </CardHeader>
+      <CardContent className="min-h-0 flex-1 p-3 pt-2">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -168,7 +169,7 @@ export function OverviewLifecycleFunnel({
           >
             {segments.map(seg => (
               <li key={seg.stage.stage}>
-                <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] sm:text-[11px]">
+                <div className="mb-0.5 flex items-center justify-between gap-2 text-xs">
                   <span className="inline-flex min-w-0 items-center gap-1.5">
                     <span
                       className="size-2 shrink-0 rounded-sm"
@@ -218,7 +219,7 @@ export function OverviewPollutionAnalytics({
         <EmptyHint text="Chưa có dữ liệu loại ô nhiễm" />
       ) : (
         <div className="flex h-[140px] gap-2 overflow-x-auto sm:h-[150px] sm:overflow-x-visible">
-          <div className="flex w-6 shrink-0 flex-col justify-between py-0.5 text-[9px] tabular-nums text-muted-foreground">
+          <div className="flex w-6 shrink-0 flex-col justify-between py-0.5 text-xs tabular-nums text-muted-foreground">
             {gridSteps.map(step => (
               <span key={step} className="text-right">
                 {Math.round(step * maxCount)}
@@ -245,7 +246,7 @@ export function OverviewPollutionAnalytics({
                     className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
                     title={`${item.category}: ${formatOverviewNumber(item.count)} báo cáo`}
                   >
-                    <span className="text-[9px] font-semibold tabular-nums text-foreground">
+                    <span className="text-xs font-semibold tabular-nums text-foreground">
                       {formatOverviewNumber(item.count)}
                     </span>
                     <span
@@ -255,7 +256,7 @@ export function OverviewPollutionAnalytics({
                         backgroundColor: POLLUTION_COLORS[index % POLLUTION_COLORS.length],
                       }}
                     />
-                    <span className="w-full truncate text-center text-[9px] text-muted-foreground">
+                    <span className="w-full truncate text-center text-xs text-muted-foreground">
                       {item.category}
                     </span>
                   </li>
@@ -324,11 +325,11 @@ export function OverviewStatusDonut({
               </g>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-[9px] uppercase text-muted-foreground">Tổng</p>
+              <p className="text-xs uppercase text-muted-foreground">Tổng</p>
               <p className="text-base font-bold tabular-nums">{formatOverviewNumber(total)}</p>
             </div>
           </div>
-          <ul className="min-w-0 flex-1 space-y-1.5 overflow-y-auto text-[10px]">
+          <ul className="min-w-0 flex-1 space-y-1.5 overflow-y-auto text-xs">
             {slices.map((slice, i) => (
               <li key={slice.status} className="flex items-center justify-between gap-2">
                 <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
@@ -392,7 +393,7 @@ export function OverviewQueueAging({ items }: { items: AdminQueueAgingItem[] | u
               )}
             </g>
           </svg>
-          <ul className="min-w-0 flex-1 space-y-1 text-[10px]">
+          <ul className="min-w-0 flex-1 space-y-1 text-xs">
             {buckets.map((b, i) => (
               <li key={b.range} className="flex justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5">
@@ -407,7 +408,7 @@ export function OverviewQueueAging({ items }: { items: AdminQueueAgingItem[] | u
               </li>
             ))}
             {oldest ? (
-              <li className="pt-1 text-[10px] text-muted-foreground">
+              <li className={cn('pt-1', ADMIN_META_TEXT)}>
                 Lâu nhất: <span className="font-semibold text-foreground">{oldest.range}</span>
               </li>
             ) : null}
@@ -452,17 +453,17 @@ export function OverviewResolutionBars({
                 key={bar.range}
                 className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
               >
-                <span className="text-[9px] font-semibold tabular-nums text-foreground">
+                <span className="text-xs font-semibold tabular-nums text-foreground">
                   {formatOverviewNumber(bar.count)}
                 </span>
                 <div
-                  className="w-full max-w-9 rounded-t bg-teal-600/85 transition-[height] duration-300"
+                  className="w-full max-w-9 rounded-t bg-emerald-700/85 transition-[height] duration-300"
                   style={{ height: barHeight }}
                   title={`${bar.range}: ${bar.count} báo cáo`}
                   role="img"
                   aria-label={`${bar.range}: ${bar.count}`}
                 />
-                <span className="w-full truncate text-center text-[9px] text-muted-foreground">
+                <span className="w-full truncate text-center text-xs text-muted-foreground">
                   {bar.range}
                 </span>
               </div>
@@ -496,14 +497,14 @@ export function OverviewRecentActivities({
               className="border-b border-border/60 pb-2 last:border-0 last:pb-0"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-semibold text-foreground">
                   {activityTypeLabel(item.type)}
                 </span>
-                <time className="shrink-0 text-[9px] text-muted-foreground" dateTime={item.time}>
+                <time className={cn('shrink-0', ADMIN_META_TEXT)} dateTime={item.time}>
                   {formatRelativeTimeVi(item.time)}
                 </time>
               </div>
-              <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
+              <p className={cn('mt-1 line-clamp-2 leading-snug', ADMIN_META_TEXT)}>
                 {localizeDashboardText(item.description)}
               </p>
             </li>
@@ -529,14 +530,14 @@ export function OverviewPerformanceBars({
 
   const renderRows = (rows: { id: string; name: string; score: number }[], colorClass: string) =>
     rows.length === 0 ? (
-      <p className="py-2 text-[10px] text-muted-foreground">Chưa có dữ liệu</p>
+      <p className={cn('py-2', ADMIN_META_TEXT)}>Chưa có dữ liệu</p>
     ) : (
       <ul className="space-y-1.5">
         {rows.map(row => {
           const score = Math.min(100, Math.max(0, row.score));
           return (
             <li key={row.id}>
-              <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px]">
+              <div className="mb-0.5 flex items-center justify-between gap-2 text-xs">
                 <span className="truncate text-foreground" title={row.name}>
                   {row.name || '—'}
                 </span>
@@ -558,7 +559,7 @@ export function OverviewPerformanceBars({
     <CardShell title="Hiệu suất xử lý" subtitle="Top doanh nghiệp và cán bộ theo điểm">
       <div className="grid gap-3 sm:grid-cols-2">
         <section>
-          <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Doanh nghiệp
           </h3>
           {renderRows(
@@ -571,7 +572,7 @@ export function OverviewPerformanceBars({
           )}
         </section>
         <section>
-          <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Cán bộ
           </h3>
           {renderRows(
@@ -676,7 +677,7 @@ export function OverviewReportTrend({
         <EmptyHint text="Chưa có dữ liệu xu hướng trong khoảng thời gian này" />
       ) : (
         <div className="flex flex-col gap-1 overflow-hidden">
-          <div className="flex shrink-0 items-center justify-end gap-3 text-[9px] text-muted-foreground">
+          <div className={cn('flex shrink-0 items-center justify-end gap-3', ADMIN_META_TEXT)}>
             <span className="inline-flex items-center gap-1">
               <span
                 className="size-2 rounded-full"
@@ -783,7 +784,7 @@ export function OverviewReportTrend({
                     x={xAt(index)}
                     y={height - 6}
                     textAnchor="middle"
-                    className="fill-muted-foreground text-[9px] tabular-nums"
+                    className="fill-muted-foreground text-xs tabular-nums"
                   >
                     {row.label}
                   </text>

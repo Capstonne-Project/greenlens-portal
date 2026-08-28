@@ -1,12 +1,12 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
 import {
   getWasteTagDeactivateBlockedMessage,
   isAdminCatalogInUse,
 } from '@/utils/adminCatalogGuards';
-import { Loader2 } from 'lucide-react';
 
 interface WasteTagToggleDialogProps {
   tag: WasteTag | null;
@@ -54,31 +54,16 @@ export function WasteTagToggleDialog({
               </>
             )}
           </p>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
-            >
-              {deactivateBlocked ? 'Đóng' : 'Hủy'}
-            </button>
-            {!deactivateBlocked ? (
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={busy}
-                className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium text-white disabled:opacity-60 ${
-                  deactivating
-                    ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                    : 'bg-emerald-700 hover:bg-emerald-800'
-                }`}
-              >
-                {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-                {deactivating ? 'Vô hiệu hóa' : 'Kích hoạt'}
-              </button>
-            ) : null}
-          </div>
+          <AdminDialogFooter
+            onCancel={onClose}
+            onConfirm={deactivateBlocked ? undefined : onConfirm}
+            cancelLabel={deactivateBlocked ? 'Đóng' : 'Hủy'}
+            confirmLabel={deactivating ? 'Vô hiệu hóa' : 'Kích hoạt'}
+            confirmLoading={busy}
+            cancelDisabled={busy}
+            confirmDisabled={busy}
+            confirmVariant={deactivating ? 'destructive' : 'default'}
+          />
         </div>
       )}
     </OfficeDialogShell>

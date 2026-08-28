@@ -3,6 +3,8 @@
 import { AdminReportStatusDialog } from '@/components/admin/reports/AdminReportStatusDialog';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { useAdminReportDetail, useUnhideAdminReport } from '@/hooks/useAdminReports';
 import { isAdminReportMarkedHidden } from '@/lib/storage/adminHiddenReports';
 import { cn } from '@/lib/utils';
@@ -66,11 +68,12 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
             Nội dung tạm không tải được từ máy chủ. Bạn vẫn có thể hiện lại từ đây hoặc từ danh
             sách.
           </p>
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={onUnhide}
             disabled={unhideReport.isPending}
-            className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+            className="mt-5 border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
           >
             {unhideReport.isPending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -78,7 +81,7 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
               <Eye className="size-4" aria-hidden />
             )}
             Hiện lại
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -87,10 +90,7 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
   if (isError || !data) {
     return (
       <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-6 text-sm text-destructive">
-        Không tải được báo cáo.{' '}
-        <button type="button" className="underline" onClick={() => refetch()}>
-          Thử lại
-        </button>
+        Không tải được báo cáo. <AdminRetryButton onClick={() => refetch()} />
       </div>
     );
   }
@@ -115,20 +115,17 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
         </Link>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setStatusDialogOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted"
-          >
+          <Button type="button" variant="outline" onClick={() => setStatusDialogOpen(true)}>
             <RefreshCw className="size-4" aria-hidden />
             Đổi status
-          </button>
+          </Button>
           {isHidden ? (
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onUnhide}
               disabled={unhideReport.isPending || isFetching}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+              className="border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
             >
               {unhideReport.isPending ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -136,7 +133,7 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
                 <Eye className="size-4" aria-hidden />
               )}
               Hiện lại
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -262,7 +259,7 @@ export function AdminReportDetailView({ reportId }: AdminReportDetailViewProps) 
                 className="inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-900"
               >
                 {tag.nameVi}
-                <span className="ml-1 font-mono text-[10px] text-emerald-700/70">{tag.code}</span>
+                <span className="ml-1 font-mono text-xs text-emerald-700/70">{tag.code}</span>
               </span>
             ))}
           </div>

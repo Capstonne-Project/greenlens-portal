@@ -12,6 +12,7 @@ import {
   type ReportStatus,
 } from '@/lib/constants/reportStatus';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { ArrowLeft, Maximize2 } from 'lucide-react';
 import type {
   Feature,
@@ -536,10 +537,12 @@ export function AdminDashboardGeographicMap({
 
         <div className="absolute top-2 right-2 z-10 flex max-w-[min(100%,300px)] flex-col items-end gap-1.5">
           {onToggleExpand ? (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={onToggleExpand}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/95 px-2 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur hover:bg-muted"
+              className="h-auto gap-1.5 rounded-md border-border bg-card/95 px-2 py-1 text-xs font-semibold shadow-sm backdrop-blur"
               aria-label={expanded ? 'Thu nhỏ bản đồ' : 'Phóng to bản đồ toàn màn hình'}
             >
               {expanded ? (
@@ -553,7 +556,7 @@ export function AdminDashboardGeographicMap({
                   Phóng to
                 </>
               )}
-            </button>
+            </Button>
           ) : null}
           {selectedProvince ? (
             <div className="flex items-center gap-1.5 rounded-md border border-border bg-card/95 px-2 py-1 text-xs shadow-sm backdrop-blur">
@@ -562,18 +565,20 @@ export function AdminDashboardGeographicMap({
               </span>
             </div>
           ) : null}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={handleResetNationwide}
-            className="rounded-md border border-border bg-card/95 px-2 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur hover:bg-muted"
+            className="h-auto rounded-md border-border bg-card/95 px-2 py-1 text-xs font-semibold shadow-sm backdrop-blur"
           >
             Toàn quốc
-          </button>
+          </Button>
         </div>
 
         {boundaryStatus === 'pending' ? (
           <div
-            className="pointer-events-none absolute top-2 left-1/2 z-10 -translate-x-1/2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur"
+            className="pointer-events-none absolute top-2 left-1/2 z-10 -translate-x-1/2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur"
             role="status"
           >
             Đang tải bản đồ tỉnh/thành Việt Nam…
@@ -582,7 +587,7 @@ export function AdminDashboardGeographicMap({
 
         {boundaryStatus === 'error' ? (
           <div
-            className="pointer-events-none absolute top-2 left-1/2 z-10 max-w-[min(100%-1rem,340px)] -translate-x-1/2 rounded-md border border-destructive/30 bg-card/95 px-2.5 py-1.5 text-center text-[11px] text-destructive shadow-sm backdrop-blur"
+            className="pointer-events-none absolute top-2 left-1/2 z-10 max-w-[min(100%-1rem,340px)] -translate-x-1/2 rounded-md border border-destructive/30 bg-card/95 px-2.5 py-1.5 text-center text-xs text-destructive shadow-sm backdrop-blur"
             role="status"
           >
             Không tải được ranh giới tỉnh — vẫn hiển thị điểm báo cáo nếu có
@@ -591,14 +596,14 @@ export function AdminDashboardGeographicMap({
 
         {!hasPoints && boundaryStatus === 'ready' ? (
           <div
-            className="pointer-events-none absolute top-12 left-1/2 z-10 max-w-[min(100%-1rem,320px)] -translate-x-1/2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-center text-[11px] text-muted-foreground shadow-sm backdrop-blur"
+            className="pointer-events-none absolute top-12 left-1/2 z-10 max-w-[min(100%-1rem,320px)] -translate-x-1/2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-center text-xs text-muted-foreground shadow-sm backdrop-blur"
             role="status"
           >
             Chưa có điểm báo cáo — tỉnh đang tô xám nhạt
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute right-2 bottom-8 z-10 rounded-md border border-border bg-card/95 px-2 py-1.5 text-[10px] shadow-sm backdrop-blur">
+        <div className="pointer-events-none absolute right-2 bottom-8 z-10 rounded-md border border-border bg-card/95 px-2 py-1.5 text-xs shadow-sm backdrop-blur">
           <p className="mb-1.5 font-semibold text-foreground">Mật độ theo tỉnh</p>
           <ul className="space-y-1 text-muted-foreground">
             {DENSITY_ZONES.map(zone => (
@@ -615,7 +620,7 @@ export function AdminDashboardGeographicMap({
         </div>
 
         {statusLegend.length > 0 ? (
-          <div className="pointer-events-none absolute bottom-8 left-2 z-10 max-w-[min(100%,220px)] rounded-md border border-border bg-card/95 px-2 py-1.5 text-[10px] shadow-sm backdrop-blur">
+          <div className="pointer-events-none absolute bottom-8 left-2 z-10 max-w-[min(100%,220px)] rounded-md border border-border bg-card/95 px-2 py-1.5 text-xs shadow-sm backdrop-blur">
             <p className="mb-1 font-semibold text-foreground">Trạng thái điểm báo cáo</p>
             <ul className="flex flex-wrap gap-x-2 gap-y-1">
               {statusLegend.map(status => (
@@ -634,7 +639,7 @@ export function AdminDashboardGeographicMap({
       </div>
 
       {!expanded ? (
-        <p className="mt-1.5 shrink-0 text-[10px] leading-snug text-muted-foreground">
+        <p className="mt-1.5 shrink-0 text-xs leading-snug text-muted-foreground">
           Bản đồ toàn quốc 34 tỉnh/thành (post-2025): Free GIS Data — tô màu theo số báo cáo trong
           tỉnh. Click tỉnh để focus · Toàn quốc để thu phóng lại. Bản đồ nền © OpenStreetMap.
         </p>

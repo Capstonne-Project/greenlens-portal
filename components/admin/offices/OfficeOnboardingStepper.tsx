@@ -81,9 +81,7 @@ export function OfficeOnboardingStepper({
                   >
                     {s.title}
                   </p>
-                  <p className="mt-0.5 hidden text-[10px] text-muted-foreground sm:block">
-                    {s.desc}
-                  </p>
+                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">{s.desc}</p>
                 </div>
               </li>
               {index < steps.length - 1 ? (

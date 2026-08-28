@@ -2,6 +2,9 @@
 
 import { ValidatedSearchInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+import { ADMIN_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
 import { useDepartmentDetail } from '@/hooks/useDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
@@ -71,13 +74,7 @@ export function DepartmentDetailDialog({
       {isError && (
         <div className="py-8 text-center">
           <p className="text-sm text-destructive">Không tải được chi tiết.</p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
-          >
-            Thử lại
-          </button>
+          <AdminRetryButton onClick={() => void refetch()} className="mt-2" />
         </div>
       )}
       {data && (
@@ -135,8 +132,9 @@ export function DepartmentDetailDialog({
                 )}
               </div>
               {onAssignOfficer ? (
-                <button
+                <Button
                   type="button"
+                  size="sm"
                   onClick={() =>
                     onAssignOfficer({
                       id: data.id,
@@ -150,11 +148,11 @@ export function DepartmentDetailDialog({
                       createdAt: data.createdAt,
                     })
                   }
-                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 text-sm font-medium text-white hover:bg-emerald-800"
+                  className={ADMIN_PRIMARY_BTN}
                 >
                   <UserRound className="size-4" />
                   {hasDeo ? 'Đổi DEO' : 'Gán DEO'}
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>
