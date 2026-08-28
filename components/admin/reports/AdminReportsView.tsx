@@ -1,9 +1,11 @@
 'use client';
 
+import { ADMIN_TOOLBAR_SELECT } from '@/components/admin/shared/adminUiTokens';
 import { ValidatedInput } from '@/components/common/ValidatedField';
 import { AdminReportDetailPanel } from '@/components/admin/reports/AdminReportDetailPanel';
 import { AdminReportHideDialog } from '@/components/admin/reports/AdminReportHideDialog';
 import { AdminReportSummaryStrip } from '@/components/admin/reports/AdminReportSummaryStrip';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
 import { ReportSeverityBars } from '@/components/admin/reports/ReportSeverityBars';
 import { ReportStatusBadge } from '@/components/admin/reports/ReportStatusBadge';
@@ -18,6 +20,7 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
+import { Button } from '@/components/ui/button';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -294,7 +297,10 @@ export function AdminReportsView() {
             value={categoryId || 'all'}
             onValueChange={v => setQuery({ categoryId: v === 'all' ? null : v, page: '1' })}
           >
-            <SelectTrigger className="h-10 w-[12rem] shrink-0 rounded-lg" aria-label="Loại ô nhiễm">
+            <SelectTrigger
+              className={cn(ADMIN_TOOLBAR_SELECT, 'w-[12rem] shrink-0 rounded-lg')}
+              aria-label="Loại ô nhiễm"
+            >
               <SelectValue placeholder="Loại: Tất cả" />
             </SelectTrigger>
             <SelectContent position="popper" sideOffset={4}>
@@ -316,31 +322,30 @@ export function AdminReportsView() {
             }
           />
 
-          <button
-            type="button"
-            disabled
-            className="ml-auto inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground"
-          >
+          <Button type="button" variant="outline" disabled className="ml-auto h-10 shrink-0 gap-2">
             <Download className="size-4" />
             Xuất CSV
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-border pb-2">
         {ADMIN_REPORT_STATUS_TABS.map(tab => (
-          <button
+          <Button
             key={tab.id}
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setQuery({ tab: tab.id === 'all' ? null : tab.id, page: '1' })}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-sm font-medium',
               statusTab === tab.id || (statusTab === '' && tab.id === 'all')
-                ? 'bg-emerald-600/15 text-emerald-900'
+                ? 'bg-emerald-600/15 text-emerald-900 hover:bg-emerald-600/15'
                 : 'text-muted-foreground hover:bg-muted'
-            }`}
+            )}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -381,13 +386,9 @@ export function AdminReportsView() {
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <p className="text-sm text-destructive">Không tải được danh sách báo cáo.</p>
-                    <button
-                      type="button"
-                      onClick={() => refetch()}
-                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
-                    >
-                      Thử lại
-                    </button>
+                    <div className="mt-2">
+                      <AdminRetryButton onClick={() => refetch()} />
+                    </div>
                     {error instanceof Error && (
                       <span className="mt-1 block text-xs text-slate-500">{error.message}</span>
                     )}
@@ -590,11 +591,13 @@ function renderAdminCell(
       return (
         <div className="inline-flex items-center gap-1">
           {hidden ? (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => onUnhide(report)}
               disabled={unhiding}
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+              className="h-auto gap-1 border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-900 hover:bg-emerald-100"
             >
               {unhiding ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -602,31 +605,33 @@ function renderAdminCell(
                 <Eye className="size-3.5" aria-hidden />
               )}
               Hiện lại
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setHideTarget(report)}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+              className="h-auto gap-1 px-2.5 py-1.5 text-xs font-medium text-muted-foreground"
             >
               <EyeOff className="size-3.5" aria-hidden />
               Ẩn
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => openDetail(report)}
-            className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+            className="h-auto px-2.5 py-1.5 text-xs font-medium"
           >
             Chi tiết
-          </button>
-          <Link
-            href={`/admin/reports/${report.id}`}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-            aria-label="Mở trang chi tiết"
-          >
-            <MoreHorizontal className="size-4" />
-          </Link>
+          </Button>
+          <Button type="button" variant="ghost" size="icon" asChild className="size-8">
+            <Link href={`/admin/reports/${report.id}`} aria-label="Mở trang chi tiết">
+              <MoreHorizontal className="size-4" />
+            </Link>
+          </Button>
         </div>
       );
   }

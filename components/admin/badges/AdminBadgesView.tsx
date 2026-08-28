@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_PAGINATION_BTN } from '@/components/admin/shared/adminUiTokens';
 import { BadgeCard } from '@/components/admin/badges/BadgeCard';
 import { BadgeFormDialog, type BadgeFormValues } from '@/components/admin/badges/BadgeFormDialog';
 import { BadgeIconPreviewDialog } from '@/components/admin/badges/BadgeIconPreviewDialog';
@@ -12,6 +13,8 @@ import {
   AdminFilterSearch,
   AdminFilterStatusToggle,
 } from '@/components/admin/shared/AdminFilterToolbar';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import {
   useAdminBadgesList,
@@ -191,13 +194,9 @@ export function AdminBadgesView() {
           <p className="text-sm text-destructive">
             {(error as Error)?.message ?? 'Không tải được danh sách huy hiệu.'}
           </p>
-          <button
-            type="button"
-            onClick={() => void listQuery.refetch()}
-            className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
-          >
-            Thử lại
-          </button>
+          <div className="mt-2">
+            <AdminRetryButton onClick={() => void listQuery.refetch()} />
+          </div>
         </div>
       )}
 
@@ -231,24 +230,28 @@ export function AdminBadgesView() {
                 {pagination.totalItems.toLocaleString('vi-VN')} huy hiệu
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   disabled={!pagination.hasPrev}
                   onClick={() => setQuery({ page: String(Math.max(1, page - 1)) })}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+                  className={ADMIN_PAGINATION_BTN}
                 >
                   <ChevronLeft className="size-3.5" aria-hidden />
                   Trước
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   disabled={!pagination.hasNext}
                   onClick={() => setQuery({ page: String(page + 1) })}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+                  className={ADMIN_PAGINATION_BTN}
                 >
                   Sau
                   <ChevronRight className="size-3.5" aria-hidden />
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}

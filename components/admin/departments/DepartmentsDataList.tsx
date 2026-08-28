@@ -1,6 +1,9 @@
 'use client';
 
+import { ADMIN_BADGE_TEXT, ADMIN_META_TEXT } from '@/components/admin/shared/adminUiTokens';
+import { Button } from '@/components/ui/button';
 import type { DepartmentListItem } from '@/lib/api/models/department';
+import { cn } from '@/lib/utils';
 import { Building2, Calendar, Eye, Landmark, MapPin, Pencil, Trash2 } from 'lucide-react';
 
 function formatCreatedAt(iso: string): string {
@@ -67,7 +70,7 @@ export function DepartmentsDataList({
             >
               <span
                 className={`absolute inset-y-2.5 left-0 w-0.5 rounded-full ${
-                  row.isActive ? 'bg-teal-700/70' : 'bg-zinc-300'
+                  row.isActive ? 'bg-emerald-700/70' : 'bg-zinc-300'
                 }`}
                 aria-hidden
               />
@@ -81,9 +84,9 @@ export function DepartmentsDataList({
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="truncate font-semibold text-foreground">{row.name}</h4>
                       <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                        className={`shrink-0 rounded-full px-2 py-0.5 uppercase tracking-wide ${ADMIN_BADGE_TEXT} ${
                           row.isActive
-                            ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-700/15 dark:bg-teal-950/50 dark:text-teal-300'
+                            ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-700/15 dark:bg-emerald-950/50 dark:text-emerald-300'
                             : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200/80 dark:bg-zinc-800 dark:text-zinc-400'
                         }`}
                       >
@@ -106,7 +109,7 @@ export function DepartmentsDataList({
 
                 <div className="flex items-center justify-between gap-4 border-t border-border/50 pt-3 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0">
                   <div className="flex min-w-[120px] flex-col gap-1.5">
-                    <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                    <div className={cn('flex items-center justify-between gap-2', ADMIN_META_TEXT)}>
                       <span className="inline-flex items-center gap-1 font-medium">
                         <Landmark className="size-3 text-zinc-400" aria-hidden />
                         Văn phòng
@@ -128,39 +131,48 @@ export function DepartmentsDataList({
                   </div>
 
                   <div className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:duration-200 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       title="Chi tiết"
                       onClick={() => onDetail(row.id)}
-                      className="inline-flex size-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                      className="size-9 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
                     >
                       <Eye className="size-4" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       title="Sửa"
                       onClick={() => onEdit(row)}
-                      className="inline-flex size-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                      className="size-9 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
                     >
                       <Pencil className="size-4" />
-                    </button>
+                    </Button>
                     {row.isActive ? (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         title="Vô hiệu hóa"
                         disabled={deactivatingId === row.id && isDeactivating}
                         onClick={() => onDeactivate(row)}
-                        className="inline-flex size-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                        className="size-9 text-zinc-400 hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="size-4" />
-                      </button>
+                      </Button>
                     ) : null}
                   </div>
                 </div>
               </div>
 
               <span
-                className="pointer-events-none absolute right-3 top-2 font-mono text-[10px] text-muted-foreground/40 tabular-nums"
+                className={cn(
+                  'pointer-events-none absolute right-3 top-2 font-mono tabular-nums text-muted-foreground/40',
+                  ADMIN_META_TEXT
+                )}
                 aria-hidden
               >
                 {String(index + 1).padStart(2, '0')}

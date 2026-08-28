@@ -1,6 +1,9 @@
 'use client';
 
+import { ADMIN_PAGINATION_BTN, ADMIN_TOOLBAR_CTA } from '@/components/admin/shared/adminUiTokens';
 import { WasteTagCatalogFlow } from '@/components/admin/waste-tags/WasteTagCatalogFlow';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import { WasteTagInactiveFlow } from '@/components/admin/waste-tags/WasteTagInactiveFlow';
 import { WasteTagLiveSearch } from '@/components/admin/waste-tags/WasteTagLiveSearch';
@@ -247,24 +250,28 @@ export function AdminWasteTagsView() {
         </span>
         {pagination.totalPages > 1 ? (
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={!pagination.hasPrev}
               onClick={() => setQuery({ page: String(pagination.page - 1) })}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+              className={ADMIN_PAGINATION_BTN}
             >
               <ChevronLeft className="size-3.5" />
               Trước
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={!pagination.hasNext}
               onClick={() => setQuery({ page: String(pagination.page + 1) })}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+              className={ADMIN_PAGINATION_BTN}
             >
               Sau
               <ChevronRight className="size-3.5" />
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -290,14 +297,15 @@ export function AdminWasteTagsView() {
           />
         </div>
 
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
+          className={ADMIN_TOOLBAR_CTA}
         >
           <Plus className="size-4" />
           Thêm thẻ rác thải
-        </button>
+        </Button>
       </section>
 
       {isPending && (
@@ -312,13 +320,9 @@ export function AdminWasteTagsView() {
           <p className="text-sm text-destructive">
             {(error as Error)?.message ?? 'Không tải được thẻ rác thải.'}
           </p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
-          >
-            Thử lại
-          </button>
+          <div className="mt-2">
+            <AdminRetryButton onClick={() => void refetch()} />
+          </div>
         </div>
       )}
 

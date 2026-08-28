@@ -1,3 +1,4 @@
+import { ADMIN_SUMMARY_LABEL, ADMIN_SUMMARY_VALUE } from '@/components/admin/shared/adminUiTokens';
 import { cn } from '@/lib/utils';
 import { Bot, Lock, Rows3, ShieldAlert, type LucideIcon } from 'lucide-react';
 
@@ -91,12 +92,10 @@ export function SpamSuspectSummaryStrip({
               <Icon className={cn('size-3.5', item.iconClassName)} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-medium text-muted-foreground">{item.label}</p>
-              <p className="text-lg font-bold tabular-nums leading-none tracking-tight">
-                {item.value}
-              </p>
+              <p className={ADMIN_SUMMARY_LABEL}>{item.label}</p>
+              <p className={ADMIN_SUMMARY_VALUE}>{item.value}</p>
               {item.hint ? (
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground/80">{item.hint}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground/80">{item.hint}</p>
               ) : null}
             </div>
           </article>

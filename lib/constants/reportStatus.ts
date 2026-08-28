@@ -120,3 +120,35 @@ export const OPEN_REPORT_STATUSES: ReportStatus[] = [
 ];
 
 export const MODERATION_REPORT_STATUSES: ReportStatus[] = ['Submitted'];
+
+/**
+ * BR-REP-020 — cạnh chuyển trạng thái hợp lệ (mở rộng Dispatched/Assigned/Reopened/PenaltyIssued).
+ * Terminal: Rejected, Duplicate, ClosedNoViolation.
+ */
+export const REPORT_STATUS_TRANSITIONS: Record<ReportStatus, readonly ReportStatus[]> = {
+  Submitted: ['Verified', 'Rejected'],
+  Verified: ['Dispatched', 'InProgress', 'Duplicate'],
+  Dispatched: ['Assigned', 'InProgress'],
+  Assigned: ['InProgress'],
+  InProgress: ['Resolved'],
+  Resolved: ['Closed', 'Reopened'],
+  Reopened: ['InProgress', 'Resolved'],
+  Closed: ['Reopened'],
+  Rejected: [],
+  Duplicate: [],
+  PenaltyIssued: ['Closed', 'ClosedNoViolation'],
+  ClosedNoViolation: [],
+};
+
+export function getAllowedReportStatusTargets(from: ReportStatus | string): ReportStatus[] {
+  const normalized = normalizeReportStatus(String(from));
+  return [...REPORT_STATUS_TRANSITIONS[normalized]];
+}
+
+export function isAllowedReportStatusTransition(
+  from: ReportStatus | string,
+  to: ReportStatus | string
+): boolean {
+  const normalizedTo = normalizeReportStatus(String(to));
+  return getAllowedReportStatusTargets(from).includes(normalizedTo);
+}

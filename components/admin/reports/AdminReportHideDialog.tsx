@@ -1,12 +1,13 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useHideAdminReport } from '@/hooks/useAdminReports';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { EyeOff, Loader2 } from 'lucide-react';
+import { EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -100,23 +101,13 @@ export function AdminReportHideDialog({
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={close}
-            className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-          >
-            Hủy
-          </button>
-          <button
-            type="submit"
-            disabled={hideReport.isPending}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-60"
-          >
-            {hideReport.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            Xác nhận ẩn
-          </button>
-        </div>
+        <AdminDialogFooter
+          onCancel={close}
+          confirmType="submit"
+          confirmLabel="Xác nhận ẩn"
+          confirmLoading={hideReport.isPending}
+          confirmDisabled={hideReport.isPending}
+        />
       </form>
     </OfficeDialogShell>
   );

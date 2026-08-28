@@ -1,31 +1,46 @@
 'use client';
 
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
+
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
+
 import type { SystemSettingItem } from '@/lib/api/models/adminSystemSettings';
+
 import {
   getSystemSettingDisplay,
   systemSettingFormValueToPatchValue,
   systemSettingValueToFormValue,
 } from '@/utils/adminSystemSettingsUi';
-import { Loader2 } from 'lucide-react';
 
 interface SystemSettingsConfirmDialogProps {
   open: boolean;
+
   moduleLabel: string;
+
   changedItems: SystemSettingItem[];
+
   formValues: Record<string, string>;
+
   busy?: boolean;
+
   onClose: () => void;
+
   onConfirm: () => void;
 }
 
 export function SystemSettingsConfirmDialog({
   open,
+
   moduleLabel,
+
   changedItems,
+
   formValues,
+
   busy,
+
   onClose,
+
   onConfirm,
 }: SystemSettingsConfirmDialogProps) {
   return (
@@ -38,58 +53,65 @@ export function SystemSettingsConfirmDialog({
     >
       <div className="space-y-4">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Bạn sắp thay đổi{' '}
-          <span className="font-semibold text-foreground">{changedItems.length}</span> thiết lập
+          Bạn sắp áp dụng{' '}
+          <span className="font-semibold text-foreground">{changedItems.length}</span> thay đổi
           trong nhóm <span className="font-semibold text-foreground">{moduleLabel}</span>. Thay đổi
-          có hiệu lực ngay và có thể ảnh hưởng bảng nghi spam, cảnh báo quá hạn hoặc giới hạn gửi
-          báo cáo.
+          có hiệu lực ngay sau khi xác nhận.
         </p>
 
         {changedItems.length > 0 ? (
-          <ul className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3 text-sm">
-            {changedItems.map(item => {
-              const display = getSystemSettingDisplay(item);
-              return (
-                <li key={item.key} className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground">{display.label}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">{display.key}</span>
-                  <span>
-                    <span className="text-muted-foreground">
-                      {systemSettingValueToFormValue(item) || item.defaultValue || '(trống)'}
-                    </span>
-                    <span className="mx-1.5 text-muted-foreground" aria-hidden>
-                      →
-                    </span>
-                    <span className="font-medium text-foreground">
-                      {systemSettingFormValueToPatchValue(item, formValues[item.key] ?? '') ||
-                        '(trống)'}
-                    </span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="max-h-56 overflow-y-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 bg-background text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border/60">
+                  <th className="pb-2 pr-3 font-semibold">Thiết lập</th>
+
+                  <th className="pb-2 pr-3 font-semibold">Trước</th>
+
+                  <th className="pb-2 font-semibold">Sau</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-border/60">
+                {changedItems.map(item => {
+                  const display = getSystemSettingDisplay(item);
+
+                  const before = systemSettingValueToFormValue(item) || '—';
+
+                  const after =
+                    systemSettingFormValueToPatchValue(item, formValues[item.key] ?? '') || '—';
+
+                  return (
+                    <tr key={item.key}>
+                      <td className="py-2.5 pr-3 align-top">
+                        <p className="font-medium text-foreground">{display.label}</p>
+
+                        <p className="font-mono text-xs text-muted-foreground">{display.key}</p>
+                      </td>
+
+                      <td className="py-2.5 pr-3 align-top font-mono text-xs text-muted-foreground">
+                        {before}
+                      </td>
+
+                      <td className="py-2.5 align-top font-mono text-xs font-semibold text-emerald-800">
+                        {after}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : null}
 
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
-          >
-            Hủy
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-          >
-            {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            Xác nhận lưu
-          </button>
-        </div>
+        <AdminDialogFooter
+          onCancel={onClose}
+          onConfirm={onConfirm}
+          cancelDisabled={busy}
+          confirmDisabled={busy}
+          confirmLoading={busy}
+          confirmLabel="Xác nhận lưu"
+        />
       </div>
     </OfficeDialogShell>
   );

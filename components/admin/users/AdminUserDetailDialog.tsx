@@ -1,5 +1,7 @@
 'use client';
 
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { ADMIN_DIALOG_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
 import { AdminUserChangeRoleDialog } from '@/components/admin/users/AdminUserChangeRoleDialog';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,7 +14,7 @@ import { resolveApiToastMessage } from '@/utils/apiToastMessage';
 import { getAdminUserMutationError, isAdminUserNotFound } from '@/utils/adminUserErrors';
 import { roleBadgeClasses, roleDisplayVi } from '@/utils/adminUserUi';
 import { cn } from '@/lib/utils';
-import axios from 'axios';
+import { isAxiosError } from '@/lib/api/core';
 import { Loader2, ScrollText, ShieldBan, Trophy, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -87,7 +89,7 @@ export function AdminUserDetailDialog({
         toast.success(envelope.data.message || 'Đã cập nhật trạng thái cấm.');
       },
       onError: err => {
-        if (axios.isAxiosError(err) && err.response?.status === 422) {
+        if (isAxiosError(err) && err.response?.status === 422) {
           toast.error('Không thể tự cấm tài khoản của chính mình.');
           return;
         }
@@ -115,7 +117,9 @@ export function AdminUserDetailDialog({
   };
 
   const isBanned =
-    banOverride != null && banOverride.userId === userId ? banOverride.isBanned : false;
+    banOverride != null && banOverride.userId === userId
+      ? banOverride.isBanned
+      : Boolean(data?.isBanned);
 
   const close = () => {
     setInternalChangeRole(false);
@@ -143,11 +147,7 @@ export function AdminUserDetailDialog({
                 ? 'Không tìm thấy người dùng.'
                 : getAdminUserMutationError(error, 'Không tải được chi tiết người dùng.')}
             </p>
-            {!notFound ? (
-              <Button variant="link" onClick={() => void refetch()} className="text-emerald-700">
-                Thử lại
-              </Button>
-            ) : null}
+            {!notFound ? <AdminRetryButton onClick={() => void refetch()} /> : null}
             <div className="flex justify-end pt-2">
               <Button variant="outline" onClick={close}>
                 Đóng
@@ -187,6 +187,7 @@ export function AdminUserDetailDialog({
                 label="Xác minh email"
                 value={data.isEmailVerified ? 'Đã xác minh' : 'Chưa xác minh'}
               />
+              <DetailRow label="Trạng thái tài khoản" value={isBanned ? 'Đã cấm' : 'Hoạt động'} />
               <DetailRow label="Ngày tạo" value={formatAdminDate(data.createdAt)} />
               {data.updatedAt != null ? (
                 <DetailRow label="Cập nhật" value={formatAdminDate(data.updatedAt)} />
@@ -195,7 +196,11 @@ export function AdminUserDetailDialog({
             </dl>
 
             <div className="flex flex-wrap justify-end gap-2 pt-1">
-              <Button variant="outline" asChild className="border-emerald-200 text-emerald-800 hover:bg-emerald-50">
+              <Button
+                variant="outline"
+                asChild
+                className="border-emerald-200 text-emerald-800 hover:bg-emerald-50"
+              >
                 <Link
                   href={`/admin/audit-logs?entityType=User&entityId=${encodeURIComponent(data.id)}`}
                   onClick={close}
@@ -239,10 +244,7 @@ export function AdminUserDetailDialog({
                   Khóa điểm thưởng
                 </Button>
               ) : null}
-              <Button
-                onClick={handleChangeRole}
-                className="bg-emerald-700 text-white hover:bg-emerald-800"
-              >
+              <Button onClick={handleChangeRole} className={ADMIN_DIALOG_PRIMARY_BTN}>
                 <UserCog className="size-4" aria-hidden />
                 Đổi vai trò
               </Button>

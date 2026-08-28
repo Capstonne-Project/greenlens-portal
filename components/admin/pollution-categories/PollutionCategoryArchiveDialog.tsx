@@ -1,12 +1,12 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import {
   getPollutionCategoryArchiveBlockedMessage,
   isAdminCatalogInUse,
 } from '@/utils/adminCatalogGuards';
-import { Loader2 } from 'lucide-react';
 
 interface PollutionCategoryArchiveDialogProps {
   category: PollutionCategory | null;
@@ -56,31 +56,16 @@ export function PollutionCategoryArchiveDialog({
               </>
             )}
           </p>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
-            >
-              {archiveBlocked ? 'Đóng' : 'Hủy'}
-            </button>
-            {!archiveBlocked ? (
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={busy}
-                className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium text-white disabled:opacity-60 ${
-                  deactivating
-                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                    : 'bg-emerald-700 hover:bg-emerald-800'
-                }`}
-              >
-                {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-                {deactivating ? 'Ngưng' : 'Kích hoạt'}
-              </button>
-            ) : null}
-          </div>
+          <AdminDialogFooter
+            onCancel={onClose}
+            onConfirm={archiveBlocked ? undefined : onConfirm}
+            cancelLabel={archiveBlocked ? 'Đóng' : 'Hủy'}
+            confirmLabel={deactivating ? 'Ngưng' : 'Kích hoạt'}
+            confirmLoading={busy}
+            cancelDisabled={busy}
+            confirmDisabled={busy}
+            confirmVariant={deactivating ? 'destructive' : 'default'}
+          />
         </div>
       )}
     </OfficeDialogShell>

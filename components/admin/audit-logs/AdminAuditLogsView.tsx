@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_TOOLBAR_SELECT } from '@/components/admin/shared/adminUiTokens';
 import {
   ADMIN_TABLE_CLASS,
   ADMIN_TABLE_HEAD_CELL,
@@ -11,11 +12,13 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { AuditLogStatsPanel } from '@/components/admin/audit-logs/AuditLogStatsPanel';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import {
   AuditActorPicker,
   AuditEntityIdPicker,
 } from '@/components/admin/audit-logs/AuditEntityPickers';
 import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
+import { Button } from '@/components/ui/button';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -180,11 +183,12 @@ export function AdminAuditLogsView() {
           Nhật ký kiểm toán chỉ đọc — truy vết ai thực hiện hành động gì, trên đối tượng nào và thời
           điểm nào.
         </p>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => void handleExport()}
           disabled={exportPending}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-sm font-medium text-emerald-800 transition hover:bg-emerald-50 disabled:opacity-60"
+          className="h-10 shrink-0 gap-2 border-emerald-200 text-emerald-800 hover:bg-emerald-50"
         >
           {exportPending ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -192,7 +196,7 @@ export function AdminAuditLogsView() {
             <Download className="size-4" aria-hidden />
           )}
           Export CSV
-        </button>
+        </Button>
       </header>
 
       <section className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
@@ -217,7 +221,10 @@ export function AdminAuditLogsView() {
               value={actorRole || 'all'}
               onValueChange={v => patchParams({ actorRole: v === 'all' ? null : v, page: '1' })}
             >
-              <SelectTrigger id="audit-role-filter" className="h-10 w-full rounded-lg">
+              <SelectTrigger
+                id="audit-role-filter"
+                className={cn(ADMIN_TOOLBAR_SELECT, 'w-full rounded-lg')}
+              >
                 <SelectValue placeholder="Tất cả vai trò" />
               </SelectTrigger>
               <SelectContent position="popper" sideOffset={4}>
@@ -245,7 +252,10 @@ export function AdminAuditLogsView() {
                 });
               }}
             >
-              <SelectTrigger id="audit-entity-filter" className="h-10 w-full rounded-lg">
+              <SelectTrigger
+                id="audit-entity-filter"
+                className={cn(ADMIN_TOOLBAR_SELECT, 'w-full rounded-lg')}
+              >
                 <SelectValue placeholder="Tất cả loại" />
               </SelectTrigger>
               <SelectContent position="popper" sideOffset={4}>
@@ -274,7 +284,10 @@ export function AdminAuditLogsView() {
               value={action || 'all'}
               onValueChange={v => patchParams({ action: v === 'all' ? null : v, page: '1' })}
             >
-              <SelectTrigger id="audit-action-filter" className="h-10 w-full rounded-lg">
+              <SelectTrigger
+                id="audit-action-filter"
+                className={cn(ADMIN_TOOLBAR_SELECT, 'w-full rounded-lg')}
+              >
                 <SelectValue placeholder="Tất cả action" />
               </SelectTrigger>
               <SelectContent position="popper" sideOffset={4} className="max-h-72">
@@ -322,7 +335,10 @@ export function AdminAuditLogsView() {
               value={String(pageSize)}
               onValueChange={v => patchParams({ pageSize: v, page: '1' })}
             >
-              <SelectTrigger id="audit-page-size" className="h-10 w-full rounded-lg">
+              <SelectTrigger
+                id="audit-page-size"
+                className={cn(ADMIN_TOOLBAR_SELECT, 'w-full rounded-lg')}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper" sideOffset={4}>
@@ -337,14 +353,15 @@ export function AdminAuditLogsView() {
         </div>
 
         <div className="mt-3 flex justify-end">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={resetFilters}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-medium text-emerald-800 transition hover:bg-emerald-50"
+            className="h-10 gap-2 border-emerald-200 text-emerald-800 hover:bg-emerald-50"
           >
             <RotateCcw className="size-4" aria-hidden />
             Đặt lại
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -412,13 +429,9 @@ export function AdminAuditLogsView() {
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={8} className="h-40 px-6 py-4 text-center">
                     <p className="text-sm text-destructive">{errorMessage}</p>
-                    <button
-                      type="button"
-                      onClick={() => void listQuery.refetch()}
-                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
-                    >
-                      Thử lại
-                    </button>
+                    <div className="mt-2">
+                      <AdminRetryButton onClick={() => void listQuery.refetch()} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
@@ -492,13 +505,18 @@ export function AdminAuditLogsView() {
                       {truncateUserAgent(item.userAgent)}
                     </TableCell>
                     <TableCell className={cn(adminTableCellPad('last'), 'align-middle text-right')}>
-                      <Link
-                        href={`/admin/audit-logs/${item.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50"
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="h-auto gap-1.5 border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
                       >
-                        <Eye className="size-3.5" aria-hidden />
-                        Chi tiết
-                      </Link>
+                        <Link href={`/admin/audit-logs/${item.id}`}>
+                          <Eye className="size-3.5" aria-hidden />
+                          Chi tiết
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

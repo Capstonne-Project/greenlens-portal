@@ -1,6 +1,9 @@
 'use client';
 
 import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
+import { ADMIN_TOOLBAR_CTA, ADMIN_TOOLBAR_LABEL } from '@/components/admin/shared/adminUiTokens';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface AdminFilterSearchProps {
   id: string;
@@ -28,7 +31,7 @@ export function AdminFilterSearch({
       value={value}
       onCommit={onCommit}
       placeholder={placeholder}
-      className={`min-w-[14rem] sm:w-72 ${className}`}
+      className={cn('min-w-[14rem] sm:w-72', className)}
     />
   );
 }
@@ -57,32 +60,32 @@ export function AdminFilterStatusToggle({
 }: AdminFilterStatusToggleProps) {
   return (
     <div className="flex shrink-0 flex-col gap-2">
-      <span className="text-sm font-medium leading-none">{label}</span>
-      <div className="flex h-10 rounded-lg border border-border bg-background p-1">
-        <button
+      <span className={ADMIN_TOOLBAR_LABEL}>{label}</span>
+      <div className="flex h-10 rounded-md border border-border bg-background p-1">
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onActive}
-          className={`rounded-md px-4 text-sm font-medium transition ${
-            isActive ? 'bg-emerald-700 text-white' : 'text-muted-foreground hover:bg-muted'
-          }`}
+          className={cn('h-8 flex-1 rounded-sm px-4 font-medium', isActive && ADMIN_TOOLBAR_CTA)}
         >
           {activeLabel}
           {activeBadge != null ? (
             <span className="ml-1 tabular-nums opacity-90">{activeBadge}</span>
           ) : null}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onInactive}
-          className={`rounded-md px-4 text-sm font-medium transition ${
-            !isActive ? 'bg-emerald-700 text-white' : 'text-muted-foreground hover:bg-muted'
-          }`}
+          className={cn('h-8 flex-1 rounded-sm px-4 font-medium', !isActive && ADMIN_TOOLBAR_CTA)}
         >
           {inactiveLabel}
           {inactiveBadge != null ? (
             <span className="ml-1 tabular-nums opacity-90">{inactiveBadge}</span>
           ) : null}
-        </button>
+        </Button>
       </div>
     </div>
   );

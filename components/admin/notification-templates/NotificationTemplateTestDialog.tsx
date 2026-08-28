@@ -1,8 +1,9 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedInput } from '@/components/common/ValidatedField';
-import { cn } from '@/lib/utils';
-import { Loader2, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 import { useState } from 'react';
 
 interface NotificationTemplateTestDialogProps {
@@ -32,9 +33,10 @@ function NotificationTemplateTestDialogContent({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
+      <Button
         type="button"
-        className="absolute inset-0 bg-black/40"
+        variant="ghost"
+        className="absolute inset-0 h-auto w-full rounded-none bg-black/40 p-0 hover:bg-black/40"
         aria-label="Đóng"
         disabled={busy}
         onClick={onClose}
@@ -45,15 +47,17 @@ function NotificationTemplateTestDialogContent({
             <h2 className="text-lg font-semibold">Gửi thử mẫu</h2>
             <p className="mt-1 text-sm text-muted-foreground">{templateTitle}</p>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             disabled={busy}
-            className="rounded-lg p-1.5 hover:bg-muted"
+            className="shrink-0 text-muted-foreground"
             aria-label="Đóng"
           >
             <X className="size-5" />
-          </button>
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,26 +77,14 @@ function NotificationTemplateTestDialogContent({
               placeholder="admin@greenlens.com.vn"
             />
           </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              className="rounded-lg border px-4 py-2 text-sm"
-            >
-              Huỷ
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'
-              )}
-            >
-              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              Gửi thử
-            </button>
-          </div>
+          <AdminDialogFooter
+            onCancel={onClose}
+            confirmType="submit"
+            confirmLabel="Gửi thử"
+            confirmLoading={busy}
+            cancelDisabled={busy}
+            confirmDisabled={busy}
+          />
         </form>
       </div>
     </div>

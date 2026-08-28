@@ -1,6 +1,7 @@
 'use client';
 
 import { GamificationConfigEditDialog } from '@/components/admin/gamification-configs/GamificationConfigEditDialog';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import {
   ADMIN_TABLE_CLASS,
   ADMIN_TABLE_HEAD_CELL,
@@ -12,6 +13,7 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
+import { Button } from '@/components/ui/button';
 import SaveIcon from '@/components/ui/save-icon';
 import {
   Table,
@@ -115,21 +117,22 @@ export function AdminGamificationConfigsView() {
             { id: 'inactive', label: 'Đã tắt', count: inactiveCount },
           ] as const
         ).map(tab => (
-          <button
+          <Button
             key={tab.id}
             type="button"
+            variant="outline"
             onClick={() => setStatusFilter(tab.id)}
             className={cn(
-              'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition',
+              'h-auto gap-2 rounded-full px-3 py-1.5 text-sm font-medium',
               statusFilter === tab.id
-                ? 'border-emerald-600/30 bg-emerald-600/10 text-emerald-900'
+                ? 'border-emerald-600/30 bg-emerald-600/10 text-emerald-900 hover:bg-emerald-600/10'
                 : 'border-border text-muted-foreground hover:bg-muted'
             )}
           >
             {tab.label}
             <span
               className={cn(
-                'inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
+                'inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums',
                 statusFilter === tab.id
                   ? 'bg-emerald-600/15 text-emerald-900'
                   : 'bg-muted text-muted-foreground'
@@ -137,7 +140,7 @@ export function AdminGamificationConfigsView() {
             >
               {tab.count}
             </span>
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -172,13 +175,9 @@ export function AdminGamificationConfigsView() {
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-40 px-6 py-4 text-center">
                     <p className="text-sm text-destructive">{errorMessage}</p>
-                    <button
-                      type="button"
-                      onClick={() => listQuery.refetch()}
-                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
-                    >
-                      Thử lại
-                    </button>
+                    <div className="mt-2">
+                      <AdminRetryButton onClick={() => listQuery.refetch()} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
@@ -210,9 +209,7 @@ export function AdminGamificationConfigsView() {
                       <p className="font-semibold text-foreground">
                         {gamificationActionLabel(item.actionType)}
                       </p>
-                      <p className="font-mono text-[11px] text-muted-foreground">
-                        {item.actionType}
-                      </p>
+                      <p className="font-mono text-xs text-muted-foreground">{item.actionType}</p>
                     </TableCell>
                     <TableCell
                       className={cn(
@@ -252,7 +249,7 @@ export function AdminGamificationConfigsView() {
                     >
                       <span
                         className={cn(
-                          'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                          'inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold',
                           item.isActive
                             ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
                             : 'border-border bg-muted text-muted-foreground'
@@ -277,14 +274,16 @@ export function AdminGamificationConfigsView() {
                         COLUMN_DEFS[5].className
                       )}
                     >
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => setEditTarget(item)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+                        className="h-auto gap-1.5 px-2.5 py-1.5 text-xs font-medium"
                       >
                         <Pencil className="size-3.5" aria-hidden />
                         Sửa
-                      </button>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

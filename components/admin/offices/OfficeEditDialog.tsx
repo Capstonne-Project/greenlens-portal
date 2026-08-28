@@ -1,11 +1,11 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedInput } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useUpdateOffice } from '@/hooks/useOffices';
 import type { OfficeListItem } from '@/lib/api/models/office';
 import { getAdminUserMutationError } from '@/utils/adminUserErrors';
-import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -66,24 +66,13 @@ function OfficeEditFormBody({
           maxLength={200}
         />
       </div>
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-        >
-          Hủy
-        </button>
-        <button
-          type="button"
-          disabled={updateOffice.isPending}
-          onClick={handleSave}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-        >
-          {updateOffice.isPending && <Loader2 className="size-4 animate-spin" />}
-          Lưu
-        </button>
-      </div>
+      <AdminDialogFooter
+        onCancel={onClose}
+        onConfirm={handleSave}
+        confirmLabel="Lưu"
+        confirmLoading={updateOffice.isPending}
+        confirmDisabled={updateOffice.isPending}
+      />
     </div>
   );
 }

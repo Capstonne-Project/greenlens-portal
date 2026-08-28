@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_DIALOG_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -136,9 +137,7 @@ function ChangeRoleForm({
               disabled={rolesLoading || changeRole.isPending}
             >
               <SelectTrigger id="admin-user-new-role" className="w-full">
-                <SelectValue
-                  placeholder={rolesLoading ? 'Đang tải vai trò…' : 'Chọn vai trò'}
-                />
+                <SelectValue placeholder={rolesLoading ? 'Đang tải vai trò…' : 'Chọn vai trò'} />
               </SelectTrigger>
               <SelectContent>
                 {roleOptions.map(r => (
@@ -166,7 +165,7 @@ function ChangeRoleForm({
         <Button
           type="submit"
           disabled={changeRole.isPending || rolesLoading}
-          className="bg-emerald-700 text-white hover:bg-emerald-800"
+          className={ADMIN_DIALOG_PRIMARY_BTN}
         >
           {changeRole.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
           Xác nhận đổi

@@ -1,7 +1,9 @@
 'use client';
 
+import { ADMIN_TOOLBAR_SELECT } from '@/components/admin/shared/adminUiTokens';
 import { NotificationTemplateFormDialog } from '@/components/admin/notification-templates/NotificationTemplateFormDialog';
 import { NotificationTemplateTestDialog } from '@/components/admin/notification-templates/NotificationTemplateTestDialog';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
 import {
   ADMIN_TABLE_CLASS,
@@ -14,6 +16,7 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
+import { Button } from '@/components/ui/button';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -218,7 +221,7 @@ export function AdminNotificationTemplatesView() {
         <p className="text-xs text-muted-foreground sm:max-w-md">
           Quản lý mẫu push/email — chỉnh sửa rồi xuất bản để hệ thống dùng.
         </p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>
             Trang:{' '}
             <strong className="font-semibold tabular-nums text-foreground">{items.length}</strong>
@@ -257,22 +260,24 @@ export function AdminNotificationTemplatesView() {
               { id: 'draft', label: 'Nháp' },
             ] as const
           ).map(tab => (
-            <button
+            <Button
               key={tab.id}
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setPublishFilter(tab.id);
                 setPage(1);
               }}
               className={cn(
-                'h-full rounded-md px-3 text-xs font-medium transition',
+                'h-full rounded-md px-3 text-xs font-medium',
                 publishFilter === tab.id
-                  ? 'bg-emerald-600/10 text-emerald-900'
+                  ? 'bg-emerald-600/10 text-emerald-900 hover:bg-emerald-600/10'
                   : 'text-muted-foreground hover:bg-muted'
               )}
             >
               {tab.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -294,7 +299,7 @@ export function AdminNotificationTemplatesView() {
             }}
           >
             <SelectTrigger
-              className="h-10 w-[9rem] rounded-lg text-xs"
+              className={cn(ADMIN_TOOLBAR_SELECT, 'w-[9rem] rounded-lg text-xs')}
               aria-label="Lọc theo kênh thông báo"
             >
               <SelectValue placeholder="Tất cả" />
@@ -360,13 +365,9 @@ export function AdminNotificationTemplatesView() {
                 <TableRow className={cn(ADMIN_TABLE_ROW_BORDER, rowSlotClass)}>
                   <TableCell colSpan={COLUMN_DEFS.length} className="h-full px-6 py-3 text-center">
                     <p className="text-sm text-destructive">{listErrorMessage}</p>
-                    <button
-                      type="button"
-                      onClick={() => listQuery.refetch()}
-                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
-                    >
-                      Thử lại
-                    </button>
+                    <div className="mt-2">
+                      <AdminRetryButton onClick={() => listQuery.refetch()} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
@@ -403,7 +404,7 @@ export function AdminNotificationTemplatesView() {
                           <p className="text-sm font-semibold leading-tight text-foreground">
                             {item.titleVi}
                           </p>
-                          <p className="font-mono text-[10px] leading-tight text-muted-foreground">
+                          <p className="font-mono text-xs leading-tight text-muted-foreground">
                             {item.templateKey}
                           </p>
                         </TableCell>
@@ -436,7 +437,7 @@ export function AdminNotificationTemplatesView() {
                         >
                           <span
                             className={cn(
-                              'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                              'inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold',
                               item.isPublished
                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
                                 : 'border-amber-200 bg-amber-50 text-amber-950'
@@ -452,7 +453,7 @@ export function AdminNotificationTemplatesView() {
                             COLUMN_DEFS[4].className
                           )}
                         >
-                          <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                          <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
                             Hoạt động
                           </span>
                         </TableCell>
@@ -473,11 +474,13 @@ export function AdminNotificationTemplatesView() {
                           )}
                         >
                           <div className="flex justify-end gap-1">
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               disabled={rowBusy || !item.isActive}
                               onClick={() => setTestTarget(item)}
-                              className="inline-flex size-7 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
+                              className="size-7"
                               aria-label="Thử gửi"
                               title="Thử gửi"
                             >
@@ -486,22 +489,26 @@ export function AdminNotificationTemplatesView() {
                               ) : (
                                 <Send className="size-3.5" aria-hidden />
                               )}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               disabled={rowBusy}
                               onClick={() => setEditId(item.id)}
-                              className="inline-flex size-7 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
+                              className="size-7"
                               aria-label="Sửa mẫu"
                               title="Sửa"
                             >
                               <Pencil className="size-3.5" aria-hidden />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               disabled={rowBusy || !item.isActive}
                               onClick={() => onTogglePublish(item)}
-                              className="inline-flex size-7 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-50"
+                              className="size-7"
                               aria-label={item.isPublished ? 'Gỡ xuất bản' : 'Xuất bản'}
                               title={item.isPublished ? 'Gỡ xuất bản' : 'Xuất bản'}
                             >
@@ -510,12 +517,14 @@ export function AdminNotificationTemplatesView() {
                               ) : (
                                 <Upload className="size-3.5" aria-hidden />
                               )}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               disabled={rowBusy || !item.isActive}
                               onClick={() => onDeactivate(item)}
-                              className="inline-flex size-7 items-center justify-center rounded-md border border-red-200 text-red-800 hover:bg-red-50 disabled:opacity-50"
+                              className="size-7 border border-red-200 text-red-800 hover:bg-red-50"
                               aria-label="Vô hiệu hóa mẫu"
                               title="Vô hiệu"
                             >
@@ -524,7 +533,7 @@ export function AdminNotificationTemplatesView() {
                               ) : (
                                 <Power className="size-3.5" aria-hidden />
                               )}
-                            </button>
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

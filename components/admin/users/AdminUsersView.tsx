@@ -12,7 +12,13 @@ import { AdminUserDeleteDialog } from '@/components/admin/users/AdminUserDeleteD
 import { AdminUserDetailDialog } from '@/components/admin/users/AdminUserDetailDialog';
 import { AdminUserEditDialog } from '@/components/admin/users/AdminUserEditDialog';
 import { AdminUserSummaryStrip } from '@/components/admin/users/AdminUserSummaryStrip';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { AdminSearchField } from '@/components/admin/shared/AdminSearchField';
+import {
+  ADMIN_BADGE_TEXT,
+  ADMIN_TOOLBAR_CTA,
+  ADMIN_TOOLBAR_SELECT,
+} from '@/components/admin/shared/adminUiTokens';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -185,7 +191,7 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
             >
               <SelectTrigger
                 id="verified-filter"
-                className="h-9 w-56"
+                className={cn(ADMIN_TOOLBAR_SELECT, 'w-56')}
                 aria-label="Trạng thái xác minh email"
               >
                 <SelectValue placeholder="Xác minh email: Tất cả" />
@@ -197,11 +203,7 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
               </SelectContent>
             </Select>
 
-            <Button
-              size="sm"
-              className="h-9 shrink-0 bg-emerald-700 text-white hover:bg-emerald-800"
-              onClick={() => setCreateOpen(true)}
-            >
+            <Button size="sm" className={ADMIN_TOOLBAR_CTA} onClick={() => setCreateOpen(true)}>
               + <span className="hidden sm:inline">Tạo tài khoản</span>
               <span className="sm:hidden">Tạo</span>
             </Button>
@@ -270,9 +272,7 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
                     <p className="text-sm text-destructive">
                       {getAdminUserMutationError(error, 'Không tải được danh sách người dùng.')}
                     </p>
-                    <Button variant="link" onClick={() => refetch()} className="mt-2 text-sky-700">
-                      Thử lại
-                    </Button>
+                    <AdminRetryButton onClick={() => refetch()} className="mt-2" />
                   </td>
                 </tr>
               ) : items.length === 0 ? (
@@ -305,7 +305,7 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
                                 />
                               </AvatarImage>
                             ) : null}
-                            <AvatarFallback className="bg-emerald-600/15 text-[10px] font-bold text-emerald-900">
+                            <AvatarFallback className="bg-emerald-600/15 text-xs font-bold text-emerald-900">
                               {initialsFromName(user.fullName || user.email)}
                             </AvatarFallback>
                           </Avatar>
@@ -325,7 +325,7 @@ export function AdminUsersView({ apiRole }: AdminUsersViewProps) {
                       <td className={cn(adminTableCellPadCompact('middle'), 'align-middle')}>
                         <Badge
                           variant="outline"
-                          className={cn('text-[11px] font-medium', roleBadgeClasses(user.role))}
+                          className={cn(ADMIN_BADGE_TEXT, roleBadgeClasses(user.role))}
                         >
                           {roleDisplayVi(user.role)}
                         </Badge>

@@ -15,6 +15,9 @@ import { OfficeCreateDialog } from '@/components/admin/offices/OfficeCreateDialo
 import { OfficeEditDialog } from '@/components/admin/offices/OfficeEditDialog';
 import { OfficeLiveSearch } from '@/components/admin/offices/OfficeLiveSearch';
 import { OfficesHierarchyList } from '@/components/admin/offices/OfficesHierarchyList';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { ADMIN_TOOLBAR_CTA } from '@/components/admin/shared/adminUiTokens';
+import { Button } from '@/components/ui/button';
 import { PaginationSimple } from '@/components/ui/pagination';
 import SaveIcon from '@/components/ui/save-icon';
 import {
@@ -126,12 +129,12 @@ export function AdminOfficesView() {
     <div className="w-full min-w-0">
       <section className="overflow-hidden rounded-card border border-border bg-card shadow-sm">
         <div className="relative border-b border-border bg-card">
-          <div className="absolute left-0 top-0 h-full w-0.5 bg-teal-700" aria-hidden />
+          <div className="absolute left-0 top-0 h-full w-0.5 bg-emerald-700" aria-hidden />
 
           <div className="relative px-4 py-5 sm:px-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 pl-2 sm:pl-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   Quản lý địa phương
                 </p>
                 <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
@@ -142,14 +145,15 @@ export function AdminOfficesView() {
                 </p>
               </div>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
                 onClick={() => setCreateOpen(true)}
-                className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-xl bg-teal-700 px-4 text-sm font-medium text-white transition hover:bg-teal-800"
+                className={cn(ADMIN_TOOLBAR_CTA, 'gap-1.5 self-start rounded-xl')}
               >
                 <Plus className="size-4" />
                 Tạo văn phòng
-              </button>
+              </Button>
             </div>
 
             <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 pl-2 text-sm sm:pl-3">
@@ -175,10 +179,10 @@ export function AdminOfficesView() {
               </span>
               <span className="inline-flex items-baseline gap-1.5 text-muted-foreground">
                 <CheckCircle2
-                  className="size-3.5 shrink-0 translate-y-px text-teal-700"
+                  className="size-3.5 shrink-0 translate-y-px text-emerald-700"
                   aria-hidden
                 />
-                <span className="text-lg font-semibold tabular-nums text-teal-800">
+                <span className="text-lg font-semibold tabular-nums text-emerald-800">
                   {onboardedTotal}
                 </span>
                 đã onboard
@@ -202,23 +206,26 @@ export function AdminOfficesView() {
               aria-label="Lọc onboard"
             >
               {ONBOARD_FILTERS.map(({ value, label }) => (
-                <button
+                <Button
                   key={value}
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() =>
                     setQuery({
                       onboarded: value === 'all' ? null : value,
                       page: '1',
                     })
                   }
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
+                  className={cn(
+                    'rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm',
                     onboardedFilter === value
                       ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
                       : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                  )}
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -227,30 +234,36 @@ export function AdminOfficesView() {
               role="group"
               aria-label="Hiển thị"
             >
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setQuery({ view: null, page: '1' })}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
+                className={cn(
+                  'gap-1 rounded-md px-2.5 text-xs font-medium sm:text-sm',
                   isHierarchy
                     ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
                     : 'text-muted-foreground'
-                }`}
+                )}
               >
                 <Layers className="size-3.5" />
                 Phân cấp
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setQuery({ view: 'table', page: '1' })}
-                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm ${
+                className={cn(
+                  'gap-1 rounded-md px-2.5 text-xs font-medium sm:text-sm',
                   !isHierarchy
                     ? 'bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900'
                     : 'text-muted-foreground'
-                }`}
+                )}
               >
                 <Table2 className="size-3.5" />
                 Bảng
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -267,13 +280,9 @@ export function AdminOfficesView() {
             <p className="text-sm text-destructive">
               {(error as Error)?.message ?? 'Không tải được danh sách.'}
             </p>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="mt-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              Thử lại
-            </button>
+            <div className="mt-2">
+              <AdminRetryButton onClick={() => void refetch()} />
+            </div>
           </div>
         )}
 
@@ -392,22 +401,24 @@ export function AdminOfficesView() {
                           className={cn(adminTableCellPad('last'), 'text-right align-middle')}
                         >
                           <div className="inline-flex items-center justify-end gap-1">
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setEditOffice(row)}
-                              className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                               aria-label="Sửa văn phòng"
                             >
                               <Pencil className="size-4" />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setAssignOffice(row)}
-                              className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                               aria-label="Gán LEO"
                             >
                               <UserPlus className="size-4" />
-                            </button>
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

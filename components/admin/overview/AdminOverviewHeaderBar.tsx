@@ -6,6 +6,8 @@ import {
   formatRatePercent,
   formatUpdatedAt,
 } from '@/components/admin/overview/adminDashboardFormat';
+import { ADMIN_META_TEXT, ADMIN_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
+import { Button } from '@/components/ui/button';
 import { useAdminOverview } from '@/hooks/useAdminOverview';
 import {
   ADMIN_OVERVIEW_DATE_PRESETS,
@@ -24,8 +26,8 @@ export function AdminOverviewHeaderBar() {
   const updatedAt = updatedAtMs > 0 ? new Date(updatedAtMs) : null;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-[#e8e8e8] pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-      <p className="min-w-0 flex-1 text-[10px] leading-snug text-muted-foreground sm:truncate sm:text-[11px]">
+    <div className="flex flex-col gap-2 border-t border-border pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <p className={cn(ADMIN_META_TEXT, 'min-w-0 flex-1 leading-snug sm:truncate')}>
         {overview
           ? `${updatedAt ? `Cập nhật ${formatUpdatedAt(updatedAt)}` : 'Đang đồng bộ…'}${
               isFetching ? ' · làm mới' : ''
@@ -42,33 +44,37 @@ export function AdminOverviewHeaderBar() {
           aria-label="Khoảng thời gian"
         >
           {ADMIN_OVERVIEW_DATE_PRESETS.map(option => (
-            <button
+            <Button
               key={option.value}
               type="button"
               role="radio"
               aria-checked={datePreset === option.value}
+              variant="ghost"
+              size="sm"
               onClick={() => setDatePreset(option.value)}
               className={cn(
-                'rounded-md px-2 py-1 text-[11px] font-semibold transition',
+                'h-8 rounded-md px-2 text-xs font-semibold',
                 datePreset === option.value
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? cn(ADMIN_PRIMARY_BTN, 'shadow-sm hover:bg-emerald-800')
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold transition hover:bg-muted disabled:opacity-60"
+          className="h-9 gap-1.5 text-xs font-semibold"
           aria-label="Làm mới dữ liệu"
         >
           <RefreshCw className={cn('size-3.5', isFetching && 'animate-spin')} aria-hidden />
           Làm mới
-        </button>
+        </Button>
       </div>
     </div>
   );

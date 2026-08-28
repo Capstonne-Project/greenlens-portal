@@ -1,9 +1,10 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedInput } from '@/components/common/ValidatedField';
+import { Button } from '@/components/ui/button';
 import type { BlockedWord } from '@/lib/api/models/blockedWord';
-import { cn } from '@/lib/utils';
-import { Loader2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export type BlockedWordFormValues = {
@@ -49,9 +50,10 @@ function BlockedWordFormDialogContent({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
+      <Button
         type="button"
-        className="absolute inset-0 bg-black/40"
+        variant="ghost"
+        className="absolute inset-0 h-auto w-full rounded-none bg-black/40 p-0 hover:bg-black/40"
         aria-label="Đóng"
         disabled={busy}
         onClick={onClose}
@@ -65,15 +67,17 @@ function BlockedWordFormDialogContent({
           <h2 className="text-lg font-semibold">
             {mode === 'create' ? 'Thêm từ cấm' : 'Sửa từ cấm'}
           </h2>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             disabled={busy}
-            className="rounded-lg p-1.5 hover:bg-muted disabled:opacity-50"
+            className="shrink-0 text-muted-foreground"
             aria-label="Đóng"
           >
             <X className="size-5" />
-          </button>
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -92,26 +96,14 @@ function BlockedWordFormDialogContent({
             />
           </div>
 
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              Huỷ
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50'
-              )}
-            >
-              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              {mode === 'create' ? 'Thêm' : 'Lưu'}
-            </button>
-          </div>
+          <AdminDialogFooter
+            onCancel={onClose}
+            confirmType="submit"
+            confirmLabel={mode === 'create' ? 'Thêm' : 'Lưu'}
+            confirmLoading={busy}
+            cancelDisabled={busy}
+            confirmDisabled={busy}
+          />
         </form>
       </div>
     </div>

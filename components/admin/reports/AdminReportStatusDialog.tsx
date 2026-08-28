@@ -1,38 +1,60 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import { useUpdateAdminReportStatus } from '@/hooks/useAdminReports';
 import {
-  REPORT_STATUSES,
+  getAllowedReportStatusTargets,
+  isAllowedReportStatusTransition,
   normalizeReportStatus,
   reportStatusLabelVi,
   type ReportStatus,
 } from '@/lib/constants/reportStatus';
 import { getAdminReportMutationError } from '@/utils/adminReportErrors';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-function createStatusSchema(currentStatus: string) {
+function createStatusSchema(currentStatus: string, allowedTargets: ReportStatus[]) {
   const normalizedCurrent = normalizeReportStatus(currentStatus);
+
+  const reasonSchema = z
+    .string()
+    .trim()
+    .min(10, 'Lý do tối thiểu 10 ký tự')
+    .max(500, 'Lý do tối đa 500 ký tự');
+
+  if (allowedTargets.length === 0) {
+    return z.object({
+      newStatus: z.literal(normalizedCurrent),
+      reason: reasonSchema,
+    });
+  }
+
+  const statusEnum = z.enum(allowedTargets as [ReportStatus, ...ReportStatus[]]);
 
   return z
     .object({
-      newStatus: z.enum(REPORT_STATUSES, { message: 'Vui lòng chọn trạng thái mới' }),
-      reason: z
-        .string()
-        .trim()
-        .min(10, 'Lý do tối thiểu 10 ký tự')
-        .max(500, 'Lý do tối đa 500 ký tự'),
+      newStatus: statusEnum,
+      reason: reasonSchema,
     })
     .refine(data => data.newStatus !== normalizedCurrent, {
       message: 'Trạng thái mới phải khác trạng thái hiện tại',
       path: ['newStatus'],
+    })
+    .superRefine((data, ctx) => {
+      if (!isAllowedReportStatusTransition(normalizedCurrent, data.newStatus)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Chuyển trạng thái không hợp lệ theo BR-REP-020',
+          path: ['newStatus'],
+        });
+      }
     });
 }
 
@@ -93,7 +115,16 @@ function StatusForm({
 }) {
   const updateStatus = useUpdateAdminReportStatus();
   const normalizedCurrent = normalizeReportStatus(String(currentStatus));
-  const schema = useMemo(() => createStatusSchema(currentStatus), [currentStatus]);
+  const allowedTargets = useMemo(
+    () => getAllowedReportStatusTargets(normalizedCurrent),
+    [normalizedCurrent]
+  );
+  const hasAllowedTargets = allowedTargets.length > 0;
+  const defaultNewStatus = allowedTargets[0] ?? normalizedCurrent;
+  const schema = useMemo(
+    () => createStatusSchema(currentStatus, allowedTargets),
+    [currentStatus, allowedTargets]
+  );
 
   const {
     register,
@@ -104,15 +135,15 @@ function StatusForm({
   } = useForm<StatusFormValues>({
     resolver: zodResolver(schema),
     ...REALTIME_FORM_OPTIONS,
-    defaultValues: { newStatus: normalizedCurrent, reason: '' },
+    defaultValues: { newStatus: defaultNewStatus, reason: '' },
   });
 
   useEffect(() => {
-    reset({ newStatus: normalizedCurrent, reason: '' });
-  }, [reportId, normalizedCurrent, reset]);
+    reset({ newStatus: defaultNewStatus, reason: '' });
+  }, [reportId, normalizedCurrent, defaultNewStatus, reset]);
 
   const close = () => {
-    reset({ newStatus: normalizedCurrent, reason: '' });
+    reset({ newStatus: defaultNewStatus, reason: '' });
     onClose();
   };
 
@@ -143,9 +174,16 @@ function StatusForm({
           <span className="font-medium text-foreground">
             {reportStatusLabelVi(normalizedCurrent)}
           </span>
-          . Cần chọn trạng thái khác và ghi lý do.
+          . Chỉ chọn trạng thái tiếp theo hợp lệ theo BR-REP-020 và ghi lý do.
         </p>
       </div>
+
+      {!hasAllowedTargets ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          Trạng thái hiện tại không có bước chuyển tiếp hợp lệ. Không thể đổi trạng thái qua hộp
+          thoại này.
+        </p>
+      ) : null}
 
       <div>
         <label htmlFor="admin-report-new-status" className="mb-1.5 block text-sm font-medium">
@@ -154,13 +192,12 @@ function StatusForm({
         <select
           id="admin-report-new-status"
           className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-          disabled={updateStatus.isPending}
+          disabled={updateStatus.isPending || !hasAllowedTargets}
           {...register('newStatus')}
         >
-          {REPORT_STATUSES.map(status => (
+          {allowedTargets.map(status => (
             <option key={status} value={status}>
               {reportStatusLabelVi(status)}
-              {status === normalizedCurrent ? ' (hiện tại)' : ''}
             </option>
           ))}
         </select>
@@ -183,27 +220,17 @@ function StatusForm({
           maxLength={500}
           showWordCount
           error={errors.reason?.message}
-          disabled={updateStatus.isPending}
+          disabled={updateStatus.isPending || !hasAllowedTargets}
         />
       </div>
 
-      <div className="flex justify-end gap-2 pt-1">
-        <button
-          type="button"
-          onClick={close}
-          className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-        >
-          Hủy
-        </button>
-        <button
-          type="submit"
-          disabled={updateStatus.isPending}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-60"
-        >
-          {updateStatus.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-          Xác nhận đổi
-        </button>
-      </div>
+      <AdminDialogFooter
+        onCancel={close}
+        confirmType="submit"
+        confirmLabel="Xác nhận đổi"
+        confirmLoading={updateStatus.isPending}
+        confirmDisabled={updateStatus.isPending || !hasAllowedTargets}
+      />
     </form>
   );
 }

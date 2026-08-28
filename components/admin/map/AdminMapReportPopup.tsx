@@ -44,7 +44,7 @@ export function AdminMapReportPopup({ report }: AdminMapReportPopupProps) {
             <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
               {report.title}
             </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               #{report.code}
               {report.status ? ` · ${reportStatusLabelVi(report.status)}` : null}
             </p>
@@ -65,13 +65,13 @@ export function AdminMapReportPopup({ report }: AdminMapReportPopupProps) {
         ) : null}
 
         <div className="flex items-center justify-between gap-2 pt-0.5">
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-800">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-800">
             <Users className="size-3.5" aria-hidden />
             {report.reporterCount} người báo
           </span>
           <Link
             href={`/admin/reports/${report.id}`}
-            className="text-[11px] font-semibold text-emerald-700 underline-offset-2 hover:underline"
+            className="text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline"
           >
             Chi tiết
           </Link>

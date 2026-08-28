@@ -26,7 +26,7 @@ export function OfficeLiveSearch({
       inputClassName="bg-white dark:bg-zinc-950"
       footer={
         matchHint ? (
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             <span className="font-medium text-foreground">{matchHint}</span>
           </p>
         ) : null

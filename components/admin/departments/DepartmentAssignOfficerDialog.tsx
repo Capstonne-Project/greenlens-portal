@@ -1,12 +1,12 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { DeoUserPicker } from '@/components/admin/departments/DeoUserPicker';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useAssignDepartmentOfficer } from '@/hooks/useDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
 import type { AdminUser } from '@/lib/api/models/adminUser';
 import { getDepartmentMutationError } from '@/utils/departmentErrors';
-import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -85,24 +85,14 @@ export function DepartmentAssignOfficerDialog({
             onSelect={setSelectedUser}
             inputId="department-assign-deo-search"
           />
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-            >
-              Hủy
-            </button>
-            <button
-              type="button"
-              disabled={assignOfficer.isPending || !selectedUser}
-              onClick={handleAssign}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-            >
-              {assignOfficer.isPending && <Loader2 className="size-4 animate-spin" />}
-              Gán DEO
-            </button>
-          </div>
+          <AdminDialogFooter
+            onCancel={handleClose}
+            onConfirm={handleAssign}
+            confirmLabel="Gán DEO"
+            confirmLoading={assignOfficer.isPending}
+            confirmDisabled={assignOfficer.isPending || !selectedUser}
+            className="pt-2"
+          />
         </div>
       )}
     </OfficeDialogShell>

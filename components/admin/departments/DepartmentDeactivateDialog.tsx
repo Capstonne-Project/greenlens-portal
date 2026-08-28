@@ -1,10 +1,10 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { useDeactivateDepartment } from '@/hooks/useDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
 import { getDepartmentMutationError } from '@/utils/departmentErrors';
-import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DepartmentDeactivateDialogProps {
@@ -48,27 +48,15 @@ export function DepartmentDeactivateDialog({
             <span className="font-semibold text-foreground">{department.name}</span>? Các văn phòng
             trực thuộc vẫn được giữ trong hệ thống.
           </p>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={deactivateMutation.isPending}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
-            >
-              Hủy
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={deactivateMutation.isPending}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60"
-            >
-              {deactivateMutation.isPending && (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              )}
-              Vô hiệu hóa
-            </button>
-          </div>
+          <AdminDialogFooter
+            onCancel={onClose}
+            onConfirm={onConfirm}
+            confirmLabel="Vô hiệu hóa"
+            confirmLoading={deactivateMutation.isPending}
+            cancelDisabled={deactivateMutation.isPending}
+            confirmDisabled={deactivateMutation.isPending}
+            confirmVariant="destructive"
+          />
         </div>
       )}
     </OfficeDialogShell>

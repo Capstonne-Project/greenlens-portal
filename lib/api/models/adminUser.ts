@@ -14,6 +14,7 @@ export interface AdminUser {
 export interface AdminUserDetail extends AdminUser {
   googleId: string | null;
   updatedAt: string | null;
+  isBanned: boolean;
 }
 
 export interface AdminRole {
