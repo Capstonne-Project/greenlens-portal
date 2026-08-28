@@ -8,14 +8,11 @@ import { useRouter } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronDown,
-  faChevronRight,
   faGear,
-  faLanguage,
   faRightFromBracket,
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuthStore } from '@/lib/store/authStore';
-import { useUiStore } from '@/lib/store/uiStore';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -56,16 +53,11 @@ export function MapSidebarUserProfile({
   const { setOpen, setHoverLocked } = useSidebar();
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
-  const locale = useUiStore(s => s.locale);
-  const setLocale = useUiStore(s => s.setLocale);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const languageRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLSpanElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [languageOpen, setLanguageOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-  const [languagePos, setLanguagePos] = useState({ top: 0, left: 0 });
   const [nameTruncated, setNameTruncated] = useState(false);
 
   const displayName = user?.name?.trim() || 'Người dùng';
@@ -100,20 +92,10 @@ export function MapSidebarUserProfile({
     setMenuPos({ top, left });
   }, []);
 
-  const updateLanguagePosition = useCallback(() => {
-    const languageRow = languageRef.current;
-    const menu = menuRef.current;
-    if (!languageRow || !menu) return;
-    const rowRect = languageRow.getBoundingClientRect();
-    const menuRect = menu.getBoundingClientRect();
-    setLanguagePos({ top: rowRect.top, left: menuRect.right + 4 });
-  }, []);
-
   /** All sidebar lock/unlock/collapse happens here — never sync setState inside effects. */
   const closeMenu = useCallback(() => {
     const over = isPointerOverDesktopSidebar();
     setMenuOpen(false);
-    setLanguageOpen(false);
     setHoverLocked(false);
     if (!over) setOpen(false);
   }, [setHoverLocked, setOpen]);
@@ -126,7 +108,6 @@ export function MapSidebarUserProfile({
     }
     setOpen(true);
     setHoverLocked(true);
-    setLanguageOpen(false);
     setMenuOpen(true);
   }, [setHoverLocked, setOpen]);
 
@@ -144,38 +125,24 @@ export function MapSidebarUserProfile({
     const started = performance.now();
     const tick = (now: number) => {
       updateMenuPosition();
-      if (languageOpen) updateLanguagePosition();
       if (now - started < 400) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [menuOpen, expanded, languageOpen, updateMenuPosition, updateLanguagePosition]);
+  }, [menuOpen, expanded, updateMenuPosition]);
 
   useEffect(() => {
     if (!menuOpen) return;
-    const onResize = () => {
-      updateMenuPosition();
-      if (languageOpen) updateLanguagePosition();
-    };
+    const onResize = () => updateMenuPosition();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [menuOpen, languageOpen, updateMenuPosition, updateLanguagePosition]);
-
-  useEffect(() => {
-    if (!languageOpen) return;
-    const id = requestAnimationFrame(() => updateLanguagePosition());
-    return () => cancelAnimationFrame(id);
-  }, [languageOpen, updateLanguagePosition]);
+  }, [menuOpen, updateMenuPosition]);
 
   useEffect(() => {
     if (!menuOpen) return;
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (
-        triggerRef.current?.contains(target) ||
-        menuRef.current?.contains(target) ||
-        languageRef.current?.contains(target)
-      ) {
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) {
         return;
       }
       closeMenu();
@@ -277,60 +244,6 @@ export function MapSidebarUserProfile({
               <FontAwesomeIcon icon={faUser} className="size-3.5 text-gray-500" />
               Tài khoản của tôi
             </Link>
-            <div ref={languageRef}>
-              <button
-                type="button"
-                className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100"
-                role="menuitem"
-                aria-expanded={languageOpen}
-                onClick={() => {
-                  if (!languageOpen) updateLanguagePosition();
-                  setLanguageOpen(o => !o);
-                }}
-              >
-                <span className="inline-flex items-center gap-2.5">
-                  <FontAwesomeIcon icon={faLanguage} className="size-3.5 text-gray-500" />
-                  Ngôn ngữ
-                </span>
-                <FontAwesomeIcon icon={faChevronRight} className="size-2.5 text-gray-400" />
-              </button>
-              {languageOpen ? (
-                <div
-                  className="fixed z-[201] min-w-34 rounded-lg border border-slate-900/8 bg-white p-1.5 shadow-[0_8px_24px_rgb(0_0_0/18%),0_0_0_1px_rgb(0_0_0/6%)]"
-                  role="menu"
-                  style={{ top: languagePos.top, left: languagePos.left }}
-                >
-                  <button
-                    type="button"
-                    className={cn(
-                      'block w-full cursor-pointer rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
-                      locale === 'vi' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
-                    )}
-                    role="menuitem"
-                    onClick={() => {
-                      setLocale('vi');
-                      closeMenu();
-                    }}
-                  >
-                    Tiếng Việt
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      'block w-full cursor-pointer rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-100',
-                      locale === 'en' && 'font-semibold text-emerald-600 hover:bg-emerald-50'
-                    )}
-                    role="menuitem"
-                    onClick={() => {
-                      setLocale('en');
-                      closeMenu();
-                    }}
-                  >
-                    English
-                  </button>
-                </div>
-              ) : null}
-            </div>
             <button
               type="button"
               className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 text-left text-[13px] font-medium text-red-600 hover:bg-red-50"
