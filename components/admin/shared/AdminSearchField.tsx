@@ -1,8 +1,14 @@
 'use client';
 
+import {
+  ADMIN_SEARCH_INPUT_CLASS,
+  ADMIN_TOOLBAR_LABEL,
+} from '@/components/admin/shared/adminUiTokens';
 import { ValidatedSearchInput } from '@/components/common/ValidatedField';
+import { Button } from '@/components/ui/button';
 import { ADMIN_SEARCH_DEBOUNCE_MS, useAdminSearchDraft } from '@/hooks/useAdminSearchDraft';
 import { SEARCH_INPUT_MAX_LENGTH } from '@/lib/validation/formDefaults';
+import { cn } from '@/lib/utils';
 import { Search, X } from 'lucide-react';
 import { useCallback, useEffect, useId, type ReactNode } from 'react';
 
@@ -59,9 +65,9 @@ export function AdminSearchField({
   }, [enableShortcut, inputId]);
 
   return (
-    <div className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
+    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
       {label ? (
-        <label htmlFor={inputId} className="text-xs font-medium text-muted-foreground">
+        <label htmlFor={inputId} className={ADMIN_TOOLBAR_LABEL}>
           {label}
         </label>
       ) : null}
@@ -87,20 +93,22 @@ export function AdminSearchField({
           showCounter={false}
           placeholder={placeholder}
           autoComplete="off"
-          className={`!h-10 rounded-lg pl-10 pr-9 ${inputClassName}`}
+          className={cn(ADMIN_SEARCH_INPUT_CLASS, inputClassName)}
         />
         {hasQuery ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onMouseDown={e => e.preventDefault()}
             onClick={clear}
-            className="absolute right-2 top-1/2 z-10 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+            className="absolute right-1 top-1/2 z-10 size-8 -translate-y-1/2 text-muted-foreground"
             aria-label="Xóa từ khóa"
           >
             <X className="size-3.5" />
-          </button>
+          </Button>
         ) : enableShortcut ? (
-          <kbd className="pointer-events-none absolute right-2 top-1/2 z-10 hidden shrink-0 -translate-y-1/2 rounded-md border border-border/80 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline">
+          <kbd className="pointer-events-none absolute right-2 top-1/2 z-10 hidden shrink-0 -translate-y-1/2 rounded-md border border-border/80 bg-muted/40 px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:inline">
             /
           </kbd>
         ) : null}
