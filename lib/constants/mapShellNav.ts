@@ -66,7 +66,8 @@ export type MapShellBrand = {
 };
 
 export type MapShellSystemNav = {
-  notifications: MapShellNavItem;
+  /** Omit for shells without in-app notifications (e.g. admin). */
+  notifications?: MapShellNavItem;
   settings: MapShellNavItem;
 };
 
@@ -279,7 +280,9 @@ export function getActiveNavId(pathname: string, config: MapShellNavConfig): str
     }
   }
 
-  const system = [config.systemNav.notifications, config.systemNav.settings];
+  const system = [config.systemNav.notifications, config.systemNav.settings].filter(
+    (item): item is MapShellNavItem => item != null
+  );
   const systemMatch = system.find(item => path === item.href || path.startsWith(`${item.href}/`));
   return systemMatch?.id ?? null;
 }

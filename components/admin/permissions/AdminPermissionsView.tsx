@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_TOOLBAR_CONTROL } from '@/components/admin/shared/adminUiTokens';
 import {
   ADMIN_TABLE_CLASS,
   ADMIN_TABLE_HEAD_CELL,
@@ -8,6 +9,8 @@ import {
   ADMIN_TABLE_SHELL,
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { useAdminPermissionsList } from '@/hooks/useAdminPermissions';
 import { cn } from '@/lib/utils';
 import { Loader2, RefreshCw, Shield } from 'lucide-react';
@@ -34,15 +37,17 @@ export function AdminPermissionsView() {
         <p className="text-sm text-muted-foreground">
           Ma trận quyền hệ thống — chỉ xem, không chỉnh sửa.
         </p>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => void refetch()}
           disabled={isFetching}
-          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+          className={cn(ADMIN_TOOLBAR_CONTROL, 'gap-2')}
         >
           <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} aria-hidden />
           Làm mới
-        </button>
+        </Button>
       </div>
 
       {isPending ? (
@@ -51,10 +56,7 @@ export function AdminPermissionsView() {
         </div>
       ) : isError ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
-          Không tải được danh sách quyền.{' '}
-          <button type="button" onClick={() => void refetch()} className="underline">
-            Thử lại
-          </button>
+          Không tải được danh sách quyền. <AdminRetryButton onClick={() => void refetch()} />
         </div>
       ) : grouped.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-20 text-muted-foreground">

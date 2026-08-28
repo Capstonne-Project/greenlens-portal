@@ -1,6 +1,7 @@
 'use client';
 
 import { WasteTagIcon } from '@/components/admin/waste-tags/WasteTagIcon';
+import { Button } from '@/components/ui/button';
 import { getWasteTagDisplay } from '@/lib/constants/adminWasteTags';
 import type { WasteTag } from '@/lib/api/models/wasteTag';
 import {
@@ -48,7 +49,12 @@ export function WasteTagGridCard({
           {inactive ? <span className="ml-auto font-medium text-zinc-500">Đã tắt</span> : null}
         </div>
 
-        <button type="button" onClick={onSelect} className="text-left">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onSelect}
+          className="h-auto w-full justify-start p-0 text-left hover:bg-transparent"
+        >
           <h3 className="text-[15px] font-bold leading-snug tracking-tight text-zinc-900">
             {tag.nameVi}
             {tag.nameEn ? (
@@ -60,28 +66,32 @@ export function WasteTagGridCard({
               {tag.description}
             </p>
           ) : null}
-          <p className="mt-2 text-[11px] font-medium tabular-nums text-zinc-500">
+          <p className="mt-2 text-xs font-medium tabular-nums text-zinc-500">
             {tag.reportCount.toLocaleString('vi-VN')} báo cáo
           </p>
-        </button>
+        </Button>
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
           <WasteTagIcon tag={tag} dimmed={inactive} size="sm" />
           <div className="flex shrink-0 items-center gap-1.5">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onEdit(tag)}
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100"
+              className="rounded-full"
               title="Sửa"
               aria-label={`Sửa ${tag.nameVi}`}
             >
               <Pencil className="size-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               disabled={toggleBusy || deactivateBlocked}
               onClick={() => onToggle(tag)}
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full"
               title={deactivateBlocked ? deactivateBlockedMessage : inactive ? 'Bật lại' : 'Tắt'}
               aria-label={
                 deactivateBlocked
@@ -92,7 +102,7 @@ export function WasteTagGridCard({
               }
             >
               {inactive ? <ArchiveRestore className="size-4" /> : <PowerOff className="size-4" />}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -12,7 +12,9 @@ import { OverviewAlertsCard } from '@/components/admin/overview/OverviewAlertsCa
 import { AdminOverviewSkeleton } from '@/components/admin/overview/AdminOverviewSkeleton';
 import { useAdminOverview } from '@/hooks/useAdminOverview';
 import { useAdminOverviewUiStore } from '@/lib/store/adminOverviewUiStore';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { ADMIN_META_TEXT } from '@/components/admin/shared/adminUiTokens';
+import { AlertTriangle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
@@ -70,14 +72,7 @@ export function AdminOverviewDashboard() {
             <p className="text-muted-foreground">
               {error instanceof Error ? error.message : 'Vui lòng thử lại sau.'}
             </p>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition hover:bg-muted"
-            >
-              <RefreshCw className="size-4" aria-hidden />
-              Thử lại
-            </button>
+            <AdminRetryButton onClick={() => refetch()} />
           </div>
         </div>
       </div>
@@ -131,7 +126,7 @@ export function AdminOverviewDashboard() {
         <article className="flex min-h-0 flex-col rounded-card border border-border bg-card p-3 shadow-sm md:col-span-2 lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2">
           <header className="mb-1.5 shrink-0">
             <h2 className="text-xs font-semibold text-foreground sm:text-sm">Bản đồ Việt Nam</h2>
-            <p className="text-[10px] text-muted-foreground">
+            <p className={ADMIN_META_TEXT}>
               Toàn quốc hình chữ S · click tỉnh để focus · phóng to che sidebar
             </p>
           </header>
@@ -153,7 +148,7 @@ export function AdminOverviewDashboard() {
             <h2 className="text-sm font-semibold text-foreground">
               Bản đồ Việt Nam — toàn màn hình
             </h2>
-            <p className="text-[11px] text-muted-foreground">
+            <p className={ADMIN_META_TEXT}>
               Esc hoặc Quay lại để thu nhỏ · click tỉnh để xem ranh giới
             </p>
           </div>

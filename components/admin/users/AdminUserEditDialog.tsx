@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_DIALOG_PRIMARY_BTN } from '@/components/admin/shared/adminUiTokens';
 import { ValidatedInput } from '@/components/common/ValidatedField';
 import { AdminUserDialogShell } from '@/components/admin/users/AdminUserDialogShell';
 import { Button } from '@/components/ui/button';
@@ -201,7 +202,7 @@ export function AdminUserEditDialog({ user, onClose }: AdminUserEditDialogProps)
             <Button
               type="submit"
               disabled={updateUser.isPending}
-              className="bg-emerald-700 text-white hover:bg-emerald-800"
+              className={ADMIN_DIALOG_PRIMARY_BTN}
             >
               {updateUser.isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
               Lưu thay đổi

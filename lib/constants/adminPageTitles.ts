@@ -1,46 +1,6 @@
-import { ADMIN_USERS_NAV } from '@/lib/constants/adminUsersNav';
-import { getProfilePageTitleByPath } from '@/lib/constants/profilePortal';
+import { getAdminPageMeta } from '@/lib/constants/adminPageMeta';
 
 /** Tiêu đề header admin theo pathname (tiếng Việt). */
 export function getAdminPageTitle(pathname: string): string {
-  const profileTitle = getProfilePageTitleByPath(pathname);
-  if (profileTitle) return profileTitle;
-
-  if (pathname === '/admin') return 'Tổng quan quản trị';
-  if (pathname === '/admin/offices' || pathname === '/admin/organization')
-    return 'Văn phòng địa phương';
-  if (pathname === '/admin/pollution-categories') return 'Danh mục ô nhiễm';
-  if (pathname === '/admin/waste-tags') return 'Thẻ rác thải';
-  if (pathname === '/admin/penalty-frameworks') return 'Khung xử phạt';
-  if (pathname === '/admin/audit-logs') return 'Nhật ký kiểm toán';
-  if (pathname.startsWith('/admin/audit-logs/')) return 'Chi tiết nhật ký';
-  if (pathname === '/admin/spam-suspects') return 'Tài khoản nghi spam';
-  if (pathname === '/admin/system-settings' || pathname.startsWith('/admin/system-settings/'))
-    return 'Cấu hình hệ thống';
-  if (pathname === '/admin/gamification-configs') return 'Cấu hình điểm thưởng';
-  if (pathname === '/admin/badges') return 'Huy hiệu thành tích';
-  if (pathname === '/admin/blocked-words') return 'Từ cấm';
-  if (pathname === '/admin/permissions') return 'Ma trận quyền';
-  if (pathname === '/admin/notification-templates') return 'Mẫu thông báo';
-  if (pathname === '/admin/settings' || pathname === '/admin/settings/account')
-    return 'Cài đặt tài khoản';
-  if (pathname === '/admin/settings/notifications') return 'Cài đặt thông báo';
-  if (pathname === '/admin/settings/privacy') return 'Quyền riêng tư';
-  if (pathname === '/admin/notifications' || pathname.startsWith('/admin/notifications/'))
-    return 'Thông báo';
-  if (pathname === '/admin/departments') return 'Sở TNMT · Cấp tỉnh';
-  if (pathname === '/admin/teams') return 'Quản lý đội môi trường';
-  if (pathname === '/admin/reports') return 'Quản lý báo cáo ô nhiễm';
-  if (pathname.startsWith('/admin/reports/')) return 'Chi tiết báo cáo';
-  if (pathname === '/admin/map' || pathname.startsWith('/admin/map/')) return 'Bản đồ quản trị';
-  if (pathname === '/admin/users') return 'Quản lý người dùng — Tổng quan';
-
-  const usersTab = ADMIN_USERS_NAV.find(
-    item => item.slug != null && (pathname === item.href || pathname.startsWith(`${item.href}/`))
-  );
-  if (usersTab) return `Quản lý người dùng — ${usersTab.label}`;
-
-  if (pathname.startsWith('/admin/users/')) return 'Quản lý người dùng';
-
-  return 'GreenLens Admin';
+  return getAdminPageMeta(pathname).title;
 }

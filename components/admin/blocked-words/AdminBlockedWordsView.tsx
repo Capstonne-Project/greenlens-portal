@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_TOOLBAR_CTA } from '@/components/admin/shared/adminUiTokens';
 import {
   ADMIN_TABLE_CLASS,
   ADMIN_TABLE_HEAD_CELL,
@@ -11,6 +12,8 @@ import {
   adminTableCellPad,
 } from '@/components/admin/shared/adminDataTableChrome';
 import { BlockedWordFormDialog } from '@/components/admin/blocked-words/BlockedWordFormDialog';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import { PaginationSimple } from '@/components/ui/pagination';
 import {
@@ -62,14 +65,15 @@ export function AdminBlockedWordsView() {
         <p className="text-sm text-muted-foreground">
           Danh sách từ cấm dùng để lọc bình luận và mô tả báo cáo.
         </p>
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
+          className={cn(ADMIN_TOOLBAR_CTA, 'gap-2')}
         >
           <Plus className="size-4" aria-hidden />
           Thêm từ
-        </button>
+        </Button>
       </div>
 
       <div className={ADMIN_TABLE_SHELL}>
@@ -104,10 +108,7 @@ export function AdminBlockedWordsView() {
               ) : isError ? (
                 <tr>
                   <td colSpan={3} className="h-32 text-center text-sm text-destructive">
-                    Không tải được danh sách.{' '}
-                    <button type="button" onClick={() => void refetch()} className="underline">
-                      Thử lại
-                    </button>
+                    Không tải được danh sách. <AdminRetryButton onClick={() => void refetch()} />
                   </td>
                 </tr>
               ) : items.length === 0 ? (
@@ -125,7 +126,7 @@ export function AdminBlockedWordsView() {
                     <td className={adminTableCellPad('middle')}>
                       <span
                         className={cn(
-                          'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          'rounded-full px-2 py-0.5 text-xs font-semibold',
                           item.isActive
                             ? 'bg-emerald-50 text-emerald-900'
                             : 'bg-muted text-muted-foreground'
@@ -136,22 +137,26 @@ export function AdminBlockedWordsView() {
                     </td>
                     <td className={cn(adminTableCellPad('last'), 'text-right')}>
                       <div className="flex justify-end gap-1.5">
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => setEditTarget(item)}
-                          className="inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium hover:bg-muted"
+                          className="h-auto gap-1 px-2 py-1.5 text-xs font-medium"
                         >
                           <Pencil className="size-3.5" aria-hidden />
                           Sửa
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => setDeleteTarget(item)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50"
+                          className="h-auto gap-1 border-red-200 px-2 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50"
                         >
                           <Trash2 className="size-3.5" aria-hidden />
                           Xóa
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -215,9 +220,10 @@ export function AdminBlockedWordsView() {
 
       {deleteTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
+          <Button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            variant="ghost"
+            className="absolute inset-0 h-auto w-full rounded-none bg-black/40 p-0 hover:bg-black/40"
             aria-label="Đóng"
             onClick={() => !deleteMutation.isPending && setDeleteTarget(null)}
           />
@@ -226,23 +232,23 @@ export function AdminBlockedWordsView() {
               Xóa từ <strong>{deleteTarget.word}</strong>?
             </p>
             <div className="mt-4 flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleteMutation.isPending}
-                className="rounded-lg border px-4 py-2 text-sm"
               >
                 Huỷ
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={confirmDelete}
                 disabled={deleteMutation.isPending}
-                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+                className="gap-2 bg-red-600 text-white hover:bg-red-700"
               >
                 {deleteMutation.isPending && <Loader2 className="size-4 animate-spin" />}
                 Xóa
-              </button>
+              </Button>
             </div>
           </div>
         </div>

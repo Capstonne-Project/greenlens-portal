@@ -32,7 +32,7 @@ export function NotificationTemplatePreview({
           <p className="text-xs font-medium text-muted-foreground">Thông báo trong app</p>
 
           <div className="rounded-lg border border-border bg-card p-2 shadow-sm">
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Push / thanh thông báo
             </p>
             <div className="flex gap-2 rounded-lg bg-muted/50 p-2">
@@ -40,9 +40,9 @@ export function NotificationTemplatePreview({
                 <Bell className="size-3.5" aria-hidden />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold text-emerald-800">GreenLens</p>
+                <p className="text-xs font-semibold text-emerald-800">GreenLens</p>
                 <p className="text-xs font-semibold leading-snug text-foreground">{previewTitle}</p>
-                <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                   {previewBody}
                 </p>
               </div>
@@ -50,7 +50,7 @@ export function NotificationTemplatePreview({
           </div>
 
           <div className="rounded-lg border border-border bg-card p-2 shadow-sm">
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Hộp thông báo trong app
             </p>
             <div className="flex gap-2 rounded-lg bg-muted/40 p-2">
@@ -63,7 +63,7 @@ export function NotificationTemplatePreview({
                   {' — '}
                   {previewBody}
                 </p>
-                <p className="mt-0.5 text-[10px] font-semibold text-emerald-700">Vừa xong</p>
+                <p className="mt-0.5 text-xs font-semibold text-emerald-700">Vừa xong</p>
               </div>
             </div>
           </div>
@@ -76,11 +76,9 @@ export function NotificationTemplatePreview({
           <div className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
             <div className="flex items-center gap-2 border-b bg-muted/30 px-2.5 py-1.5">
               <Mail className="size-3 shrink-0 text-muted-foreground" aria-hidden />
-              <span className="text-[10px] font-medium text-muted-foreground">
-                Hộp thư người nhận
-              </span>
+              <span className="text-xs font-medium text-muted-foreground">Hộp thư người nhận</span>
             </div>
-            <div className="space-y-0.5 border-b px-2.5 py-1.5 text-[11px] text-muted-foreground">
+            <div className="space-y-0.5 border-b px-2.5 py-1.5 text-xs text-muted-foreground">
               <p>
                 Từ: <span className="text-foreground">GreenLens &lt;thongbao@greenlens.vn&gt;</span>
               </p>

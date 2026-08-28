@@ -1,68 +1,162 @@
 'use client';
 
 import { SystemSettingFieldHeader } from '@/components/admin/system-settings/SystemSettingFieldHeader';
-import { ValidatedInput, ValidatedNumberInput } from '@/components/common/ValidatedField';
+
+import { AdminFormActions } from '@/components/admin/shared/AdminFormActions';
+
+import {
+  ADMIN_NUMBER_INPUT_CLASS,
+  ADMIN_SECTION_TITLE,
+  ADMIN_TEXT_INPUT_CLASS,
+} from '@/components/admin/shared/adminUiTokens';
+
+import { ValidatedInput } from '@/components/common/ValidatedField';
+
+import { Button } from '@/components/ui/button';
+
+import { Input } from '@/components/ui/input';
+
+import { Switch } from '@/components/ui/switch';
+
 import type { SystemSettingItem } from '@/lib/api/models/adminSystemSettings';
+
+import { cn } from '@/lib/utils';
+
 import {
   buildSystemSettingsItemsSignature,
-  getSystemSettingPlaceholder,
+  getSystemSettingDisplay,
   isBooleanValueType,
   isNumericValueType,
   systemSettingValueToFormValue,
 } from '@/utils/adminSystemSettingsUi';
-import { Loader2, RotateCcw, Save } from 'lucide-react';
+
+import { RotateCcw, Save, Undo2 } from 'lucide-react';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface SystemSettingsModuleFormProps {
   moduleLabel: string;
+
+  moduleDescription?: string | null;
+
   items: SystemSettingItem[];
+
   busy?: boolean;
+
   resetBusy?: boolean;
+
   onSave: (formValues: Record<string, string>) => void;
+
   onReset: () => void;
 }
 
-function SettingField({
+function NumericSettingControl({
   item,
+
   value,
+
   disabled,
+
   onChange,
 }: {
   item: SystemSettingItem;
+
   value: string;
+
   disabled?: boolean;
+
+  onChange: (next: string) => void;
+}) {
+  const parsed = value.trim() === '' ? NaN : Number(value);
+
+  const tooLow = item.minValue != null && !Number.isNaN(parsed) && parsed < item.minValue;
+
+  const tooHigh = item.maxValue != null && !Number.isNaN(parsed) && parsed > item.maxValue;
+
+  const invalid = tooLow || tooHigh;
+
+  const isInt = item.valueType.toLowerCase() === 'int';
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Input
+        id={`setting-${item.key}`}
+        type="number"
+        inputMode={isInt ? 'numeric' : 'decimal'}
+        step={isInt ? 1 : 'any'}
+        min={item.minValue ?? undefined}
+        max={item.maxValue ?? undefined}
+        value={value}
+        disabled={disabled}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `setting-${item.key}-error` : undefined}
+        onChange={e => onChange(e.target.value)}
+        onFocus={e => e.target.select()}
+        className={cn(
+          ADMIN_NUMBER_INPUT_CLASS,
+
+          invalid && 'border-destructive focus-visible:ring-destructive/30'
+        )}
+      />
+
+      {invalid ? (
+        <p id={`setting-${item.key}-error`} className="text-xs text-destructive" role="alert">
+          {tooLow && item.minValue != null
+            ? `Tối thiểu ${item.minValue}`
+            : tooHigh && item.maxValue != null
+              ? `Tối đa ${item.maxValue}`
+              : 'Giá trị không hợp lệ'}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function SettingControl({
+  item,
+
+  value,
+
+  disabled,
+
+  onChange,
+}: {
+  item: SystemSettingItem;
+
+  value: string;
+
+  disabled?: boolean;
+
   onChange: (next: string) => void;
 }) {
   if (isBooleanValueType(item.valueType)) {
     const checked = value === 'true';
+
     return (
-      <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2.5">
+        <Switch
+          id={`setting-${item.key}`}
           checked={checked}
           disabled={disabled}
-          onChange={e => onChange(e.target.checked ? 'true' : 'false')}
-          className="size-4 rounded border-border text-emerald-700 focus:ring-emerald-600"
+          onCheckedChange={next => onChange(next ? 'true' : 'false')}
+          className="data-[state=checked]:bg-emerald-700"
         />
-        <span>{checked ? 'Bật' : 'Tắt'}</span>
-      </label>
+
+        <span
+          className={cn(
+            'text-xs font-medium',
+            checked ? 'text-emerald-800' : 'text-muted-foreground'
+          )}
+        >
+          {checked ? 'Bật' : 'Tắt'}
+        </span>
+      </div>
     );
   }
 
-  const placeholder = getSystemSettingPlaceholder(item);
-
   if (isNumericValueType(item.valueType)) {
     return (
-      <ValidatedNumberInput
-        id={`setting-${item.key}`}
-        min={item.minValue ?? undefined}
-        max={item.maxValue ?? undefined}
-        value={value}
-        placeholder={placeholder}
-        showCounter={false}
-        disabled={disabled}
-        onChange={e => onChange(e.target.value)}
-      />
+      <NumericSettingControl item={item} value={value} disabled={disabled} onChange={onChange} />
     );
   }
 
@@ -70,10 +164,11 @@ function SettingField({
     <ValidatedInput
       id={`setting-${item.key}`}
       value={value}
-      placeholder={placeholder}
+      placeholder="—"
       maxLength={500}
       showCounter={false}
       disabled={disabled}
+      className={ADMIN_TEXT_INPUT_CLASS}
       onChange={e => onChange(e.target.value)}
     />
   );
@@ -81,103 +176,229 @@ function SettingField({
 
 export function SystemSettingsModuleForm({
   moduleLabel,
+
+  moduleDescription,
+
   items,
+
   busy,
+
   resetBusy,
+
   onSave,
+
   onReset,
 }: SystemSettingsModuleFormProps) {
   const itemsSignature = useMemo(() => buildSystemSettingsItemsSignature(items), [items]);
 
   const initialValues = useMemo(() => {
     const map: Record<string, string> = {};
+
     for (const item of items) {
       map[item.key] = systemSettingValueToFormValue(item);
     }
+
     return map;
   }, [itemsSignature, items]);
 
   const [formValues, setFormValues] = useState<Record<string, string>>(initialValues);
+
   const syncedSignatureRef = useRef(itemsSignature);
 
   useEffect(() => {
     if (syncedSignatureRef.current === itemsSignature) return;
+
     syncedSignatureRef.current = itemsSignature;
+
     setFormValues(initialValues);
   }, [itemsSignature, initialValues]);
 
-  const hasChanges = useMemo(
-    () => items.some(item => (formValues[item.key] ?? '') !== initialValues[item.key]),
+  const changedCount = useMemo(
+    () =>
+      items.filter(item => (formValues[item.key] ?? '') !== (initialValues[item.key] ?? '')).length,
+
     [formValues, initialValues, items]
+  );
+
+  const hasChanges = changedCount > 0;
+
+  const hasInvalidNumbers = useMemo(
+    () =>
+      items.some(item => {
+        if (!isNumericValueType(item.valueType)) return false;
+
+        const raw = (formValues[item.key] ?? '').trim();
+
+        if (raw === '') return true;
+
+        const parsed = Number(raw);
+
+        if (Number.isNaN(parsed)) return true;
+
+        if (item.minValue != null && parsed < item.minValue) return true;
+
+        if (item.maxValue != null && parsed > item.maxValue) return true;
+
+        return false;
+      }),
+
+    [formValues, items]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (hasInvalidNumbers) return;
+
     onSave(formValues);
+  };
+
+  const resetField = (item: SystemSettingItem) => {
+    setFormValues(prev => ({
+      ...prev,
+
+      [item.key]: initialValues[item.key] ?? '',
+    }));
+  };
+
+  const discardAll = () => {
+    setFormValues(initialValues);
   };
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-border/70 bg-white p-6 text-sm text-muted-foreground">
-        Module <span className="font-medium text-foreground">{moduleLabel}</span> chưa có thiết lập
-        nào.
+      <div className="py-16 text-center">
+        <p className="text-sm text-muted-foreground">
+          Nhóm <span className="font-medium text-foreground">{moduleLabel}</span> chưa có thiết lập
+          nào.
+        </p>
       </div>
     );
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-2xl border border-border/70 bg-white p-5 shadow-sm md:p-6"
-    >
-      <header className="mb-5 border-b border-border pb-4">
-        <h2 className="text-lg font-semibold text-foreground">{moduleLabel}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{items.length} thiết lập</p>
+    <form onSubmit={handleSubmit} className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <header className="mb-6">
+        <div className="min-w-0">
+          <h2 className={ADMIN_SECTION_TITLE}>{moduleLabel}</h2>
+
+          {moduleDescription ? (
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              {moduleDescription}
+            </p>
+          ) : null}
+
+          <p className="mt-2 text-xs text-muted-foreground">
+            {items.length} thiết lập
+            {hasChanges ? (
+              <span className="text-amber-700"> · {changedCount} thay đổi chưa lưu</span>
+            ) : null}
+          </p>
+        </div>
       </header>
 
-      <div className="space-y-5">
-        {items.map(item => (
-          <div
-            key={item.id || item.key}
-            className="grid gap-2 border-b border-border/60 pb-5 last:border-0 last:pb-0 md:grid-cols-[minmax(0,1fr)_minmax(0,220px)] md:items-start md:gap-6"
-          >
-            <SystemSettingFieldHeader item={item} />
-            <SettingField
-              item={item}
-              value={formValues[item.key] ?? ''}
-              disabled={busy || resetBusy || !item.isActive}
-              onChange={next =>
-                setFormValues(prev => ({
-                  ...prev,
-                  [item.key]: next,
-                }))
-              }
-            />
-          </div>
-        ))}
+      <div className="min-w-0 flex-1">
+        <ul className="divide-y divide-border/60">
+          {items.map(item => {
+            const isModified = (formValues[item.key] ?? '') !== (initialValues[item.key] ?? '');
+
+            const disabled = busy || resetBusy || !item.isActive;
+
+            return (
+              <li
+                key={item.id || item.key}
+                className={cn(
+                  'grid gap-4 py-5 first:pt-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-8',
+
+                  isModified &&
+                    'relative before:absolute before:inset-y-0 before:-left-3 before:w-0.5 before:bg-amber-500/70 md:before:-left-4',
+
+                  !item.isActive && 'opacity-50'
+                )}
+              >
+                <SystemSettingFieldHeader item={item} isModified={isModified} />
+
+                <div className="flex items-center gap-2 md:pt-0.5">
+                  <SettingControl
+                    item={item}
+                    value={formValues[item.key] ?? ''}
+                    disabled={disabled}
+                    onChange={next =>
+                      setFormValues(prev => ({
+                        ...prev,
+
+                        [item.key]: next,
+                      }))
+                    }
+                  />
+
+                  {isModified ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => resetField(item)}
+                      disabled={disabled}
+                      title="Hoàn tác"
+                      aria-label={`Hoàn tác ${getSystemSettingDisplay(item).label}`}
+                      className="size-8 shrink-0 text-muted-foreground"
+                    >
+                      <Undo2 className="size-3.5" aria-hidden />
+                    </Button>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={busy || resetBusy}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
-        >
-          {resetBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-          <RotateCcw className="size-4" aria-hidden />
-          Reset mặc định
-        </button>
-        <button
-          type="submit"
-          disabled={!hasChanges || busy || resetBusy}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
-        >
-          {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-          <Save className="size-4" aria-hidden />
-          Lưu thay đổi
-        </button>
-      </div>
+      {hasChanges ? (
+        <AdminFormActions
+          sticky
+          className="mt-8 animate-in fade-in slide-in-from-bottom-1 duration-200"
+          message={
+            <>
+              <span className="font-medium text-foreground">{changedCount}</span> thiết lập sẽ được
+              cập nhật
+            </>
+          }
+          actions={[
+            {
+              label: 'Hủy',
+
+              onClick: discardAll,
+
+              disabled: busy || resetBusy,
+
+              variant: 'ghost',
+            },
+
+            {
+              label: 'Khôi phục nhóm',
+
+              onClick: onReset,
+
+              disabled: busy || resetBusy,
+
+              loading: resetBusy,
+
+              icon: RotateCcw,
+
+              variant: 'outline',
+            },
+
+            {
+              label: 'Lưu thay đổi',
+              type: 'submit',
+              disabled: !hasChanges || busy || resetBusy || hasInvalidNumbers,
+              loading: busy,
+              icon: Save,
+              variant: 'default',
+            },
+          ]}
+        />
+      ) : null}
     </form>
   );
 }

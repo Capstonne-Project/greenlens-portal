@@ -1,3 +1,4 @@
+import { ADMIN_SUMMARY_LABEL, ADMIN_SUMMARY_VALUE } from '@/components/admin/shared/adminUiTokens';
 import { cn } from '@/lib/utils';
 import { Clock, EyeOff, Files, Inbox, type LucideIcon } from 'lucide-react';
 
@@ -103,11 +104,9 @@ export function AdminReportSummaryStrip({
               <Icon className={cn('size-4', item.iconClassName)} />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-medium text-muted-foreground">{item.label}</p>
-              <p className="text-xl font-bold tabular-nums leading-tight tracking-tight">
-                {item.value}
-              </p>
-              <p className="truncate text-[10px] text-muted-foreground/80">{item.hint}</p>
+              <p className={ADMIN_SUMMARY_LABEL}>{item.label}</p>
+              <p className={ADMIN_SUMMARY_VALUE}>{item.value}</p>
+              <p className="truncate text-xs text-muted-foreground/80">{item.hint}</p>
             </div>
           </article>
         );

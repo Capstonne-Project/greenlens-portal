@@ -8,10 +8,14 @@ import { DepartmentEditDialog } from '@/components/admin/departments/DepartmentE
 import { DepartmentLiveSearch } from '@/components/admin/departments/DepartmentLiveSearch';
 import { DepartmentsDataList } from '@/components/admin/departments/DepartmentsDataList';
 import { DepartmentsOverviewSidebar } from '@/components/admin/departments/DepartmentsOverviewSidebar';
+import { ADMIN_PAGINATION_BTN, ADMIN_TOOLBAR_CTA } from '@/components/admin/shared/adminUiTokens';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import { useDepartmentsList } from '@/hooks/useDepartments';
 import { ADMIN_DEPARTMENTS_PAGE_SIZE } from '@/lib/constants/adminDepartments';
 import type { DepartmentListItem } from '@/lib/api/models/department';
+import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
@@ -119,23 +123,26 @@ export function AdminDepartmentsView() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                   {STATUS_FILTERS.map(({ value, label }) => (
-                    <button
+                    <Button
                       key={value}
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() =>
                         setQuery({
                           status: value === 'active' ? null : value,
                           page: '1',
                         })
                       }
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition sm:text-sm ${
+                      className={cn(
+                        'rounded-lg px-3 py-1.5 text-xs font-medium sm:text-sm',
                         activeFilter === value
                           ? 'border-zinc-800 bg-zinc-800 text-white dark:border-zinc-200 dark:bg-zinc-100 dark:text-zinc-900'
                           : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800'
-                      }`}
+                      )}
                     >
                       {label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
 
@@ -146,14 +153,15 @@ export function AdminDepartmentsView() {
                     resultCount={searchQ.trim() ? items.length : undefined}
                     className="min-w-0 flex-1 sm:w-64 sm:flex-none"
                   />
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={() => setCreateOpen(true)}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3.5 text-sm font-medium text-white transition hover:bg-teal-800"
+                    className={cn(ADMIN_TOOLBAR_CTA, 'gap-1.5 rounded-xl')}
                   >
                     <Plus className="size-4" />
                     <span className="hidden sm:inline">Tạo mới</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -179,13 +187,9 @@ export function AdminDepartmentsView() {
                 <p className="text-sm text-destructive">
                   {(error as Error)?.message ?? 'Không tải được danh sách.'}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => void refetch()}
-                  className="mt-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
-                >
-                  Thử lại
-                </button>
+                <div className="mt-2">
+                  <AdminRetryButton onClick={() => void refetch()} />
+                </div>
               </div>
             )}
 
@@ -206,24 +210,28 @@ export function AdminDepartmentsView() {
                       Trang {pagination.page}/{pagination.totalPages}
                     </span>
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         disabled={!pagination.hasPrev}
                         onClick={() => setQuery({ page: String(page - 1) })}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium disabled:opacity-40"
+                        className={ADMIN_PAGINATION_BTN}
                       >
                         <ChevronLeft className="size-3.5" />
                         Trước
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         disabled={!pagination.hasNext}
                         onClick={() => setQuery({ page: String(page + 1) })}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium disabled:opacity-40"
+                        className={ADMIN_PAGINATION_BTN}
                       >
                         Sau
                         <ChevronRight className="size-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}

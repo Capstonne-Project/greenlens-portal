@@ -56,7 +56,9 @@ function resolveActiveNavId(pathname: string, config: MapShellNavConfig): string
     pushMatch(item.id, item.href, 1);
   }
 
-  pushMatch(config.systemNav.notifications.id, config.systemNav.notifications.href, 1);
+  if (config.systemNav.notifications) {
+    pushMatch(config.systemNav.notifications.id, config.systemNav.notifications.href, 1);
+  }
   pushMatch(config.systemNav.settings.id, config.systemNav.settings.href, 1);
 
   if (!cands.length) return null;
@@ -292,8 +294,10 @@ export function AppSidebar({
   const pathname = usePathname();
   const activeId = resolveActiveNavId(pathname, config);
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
-  const { notifications, settings } = config.systemNav;
+  const notifications = config.systemNav.notifications;
+  const { settings } = config.systemNav;
   const brandHomeHref = getBrandHomeHref(config);
+  const hasFooterNavAboveProfile = Boolean(notifications) || !isAuthenticated;
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
@@ -330,11 +334,13 @@ export function AppSidebar({
 
         {/* Nền mờ riêng để nav cuộn phía sau không "đè" lên footer, vẫn thấy lớp glass. */}
         <div className="sidebar-footer-glass relative z-10 flex shrink-0 flex-col gap-2 overflow-visible border-t border-slate-900/6 pt-2">
-          <NotificationNavButton
-            label={notifications.label}
-            icon={<NavIcon item={notifications} />}
-            active={activeId === notifications.id}
-          />
+          {notifications ? (
+            <NotificationNavButton
+              label={notifications.label}
+              icon={<NavIcon item={notifications} />}
+              active={activeId === notifications.id}
+            />
+          ) : null}
           {!isAuthenticated && (
             <SidebarLink
               link={{
@@ -347,7 +353,9 @@ export function AppSidebar({
           )}
           {isAuthenticated ? (
             <>
-              <Separator className="mx-2 my-1 bg-neutral-200 dark:bg-neutral-700" />
+              {hasFooterNavAboveProfile ? (
+                <Separator className="mx-2 my-1 bg-neutral-200 dark:bg-neutral-700" />
+              ) : null}
               <MapSidebarUserProfile
                 expanded={open}
                 profileHref={profileHref}
@@ -357,7 +365,7 @@ export function AppSidebar({
           ) : null}
         </div>
       </SidebarBody>
-      <NotificationDrawer />
+      {notifications ? <NotificationDrawer /> : null}
     </Sidebar>
   );
 }

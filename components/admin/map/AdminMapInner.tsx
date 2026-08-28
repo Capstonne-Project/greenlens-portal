@@ -203,7 +203,7 @@ export function AdminMapInner() {
           </Map>
 
           {reportsQuery.isFetching ? (
-            <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-border bg-card/95 px-3 py-1 text-[11px] font-medium text-emerald-800 shadow-sm backdrop-blur">
+            <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-border bg-card/95 px-3 py-1 text-xs font-medium text-emerald-800 shadow-sm backdrop-blur">
               Đang cập nhật ghim…
             </div>
           ) : null}

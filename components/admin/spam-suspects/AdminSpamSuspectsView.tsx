@@ -24,6 +24,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SpamSuspectSummaryStrip } from '@/components/admin/spam-suspects/SpamSuspectSummaryStrip';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import type { SpamSuspectsListParams, SpamSuspectsPagination } from '@/lib/api/models/spamSuspect';
 import {
   SPAM_SUSPECT_DEFAULTS,
@@ -189,14 +191,10 @@ export function AdminSpamSuspectsView() {
               }}
             />
           </div>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-          >
+          <Button type="button" variant="outline" onClick={resetFilters} className="h-10 gap-2">
             <RotateCcw className="size-4" aria-hidden />
             Mặc định
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -272,13 +270,9 @@ export function AdminSpamSuspectsView() {
                 <TableRow className={ADMIN_TABLE_ROW_BORDER}>
                   <TableCell colSpan={COLUMN_COUNT} className="h-40 px-6 py-4 text-center">
                     <p className="text-sm text-destructive">{errorMessage}</p>
-                    <button
-                      type="button"
-                      onClick={() => listQuery.refetch()}
-                      className="mt-2 text-sm font-medium text-sky-700 hover:underline"
-                    >
-                      Thử lại
-                    </button>
+                    <div className="mt-2">
+                      <AdminRetryButton onClick={() => listQuery.refetch()} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
@@ -306,7 +300,7 @@ export function AdminSpamSuspectsView() {
                       >
                         <p className="font-semibold text-foreground">{item.fullName}</p>
                         <p className="truncate text-xs text-muted-foreground">{item.email}</p>
-                        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
                           {item.userId}
                         </p>
                       </TableCell>
@@ -315,7 +309,7 @@ export function AdminSpamSuspectsView() {
                       >
                         <span
                           className={cn(
-                            'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                            'inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold',
                             suspectBanBadgeClass(item.isBanned)
                           )}
                         >
@@ -356,7 +350,7 @@ export function AdminSpamSuspectsView() {
                             {reasons.map(reason => (
                               <span
                                 key={`${item.userId}-${reason}`}
-                                className="inline-flex max-w-[220px] truncate rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-950"
+                                className="inline-flex max-w-[220px] truncate rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-950"
                                 title={reason}
                               >
                                 {reason}

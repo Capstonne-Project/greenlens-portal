@@ -15,6 +15,8 @@ export interface AdminUserDto {
 export interface AdminUserDetailDto extends AdminUserDto {
   googleId?: string | null;
   updatedAt?: string | null;
+  /** Trạng thái cấm — BE có thể bổ sung sau Swagger; mặc định false khi thiếu. */
+  isBanned?: boolean;
 }
 
 export interface AdminRoleDto {

@@ -1,6 +1,7 @@
 'use client';
 
 import { PollutionCategoryIcon } from '@/components/admin/pollution-categories/PollutionCategoryIcon';
+import { Button } from '@/components/ui/button';
 import { getPollutionCategoryDisplay } from '@/lib/constants/pollutionCategories';
 import type { PollutionCategory } from '@/lib/api/models/pollutionCategory';
 import {
@@ -86,7 +87,7 @@ export function PollutionCategoryCard({
 
         {/* Timeline */}
         <div className="mt-6">
-          <div className="mb-2 flex items-end justify-between gap-3 text-[11px] text-zinc-500">
+          <div className="mb-2 flex items-end justify-between gap-3 text-xs text-zinc-500">
             <span>Tạo {formatShortDate(category.createdAt)}</span>
             <span className="font-medium tabular-nums text-zinc-700">
               {category.reportCount.toLocaleString('vi-VN')} báo cáo
@@ -115,20 +116,24 @@ export function PollutionCategoryCard({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onEdit(category)}
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100"
+              className="rounded-full"
               title="Sửa"
               aria-label={`Sửa ${category.nameVi}`}
             >
               <Pencil className="size-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               disabled={archiveBusy || archiveBlocked}
               onClick={() => onArchiveToggle(category, !archived)}
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full"
               title={archiveBlocked ? archiveBlockedMessage : archived ? 'Kích hoạt' : 'Ngưng'}
               aria-label={
                 archiveBlocked
@@ -139,7 +144,7 @@ export function PollutionCategoryCard({
               }
             >
               {archived ? <ArchiveRestore className="size-4" /> : <CircleOff className="size-4" />}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

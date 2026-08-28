@@ -3,12 +3,12 @@
  * Page vertical scroll lives in AdminAppShell only (no nested flex-1 scrollports).
  */
 
+import { ADMIN_TABLE_HEAD } from '@/components/admin/shared/adminUiTokens';
 import { cn } from '@/lib/utils';
 
 export const ADMIN_TABLE_ROW_BORDER = 'border-b border-slate-200';
 
-export const ADMIN_TABLE_HEAD_CELL =
-  'h-auto border-0 bg-slate-100 text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-slate-500';
+export const ADMIN_TABLE_HEAD_CELL = ADMIN_TABLE_HEAD;
 
 /** Edge inset — first/last match so headers aren't flush to panel border. */
 export function adminTableCellPad(

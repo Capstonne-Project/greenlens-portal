@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
 
@@ -122,14 +123,16 @@ export function OfficeDialogShell({
           <h2 id={titleId} className="text-lg font-semibold tracking-tight sm:text-xl">
             {title}
           </h2>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted"
+            className="shrink-0 text-muted-foreground"
             aria-label="Đóng"
           >
             <X className="size-5" />
-          </button>
+          </Button>
         </header>
         <div
           data-dialog-scroll

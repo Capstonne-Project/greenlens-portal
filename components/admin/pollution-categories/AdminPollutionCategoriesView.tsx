@@ -1,5 +1,6 @@
 'use client';
 
+import { ADMIN_PAGINATION_BTN, ADMIN_TOOLBAR_CTA } from '@/components/admin/shared/adminUiTokens';
 import { PollutionCategoryArchiveDialog } from '@/components/admin/pollution-categories/PollutionCategoryArchiveDialog';
 import {
   PollutionCategoryFormDialog,
@@ -10,6 +11,8 @@ import {
   AdminFilterSearch,
   AdminFilterStatusToggle,
 } from '@/components/admin/shared/AdminFilterToolbar';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
+import { Button } from '@/components/ui/button';
 import { ADMIN_TABLE_PAGINATION_NAV } from '@/components/admin/shared/adminDataTableChrome';
 import {
   useAdminPollutionCategoriesList,
@@ -195,14 +198,15 @@ export function AdminPollutionCategoriesView() {
           />
         </div>
 
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800"
+          className={ADMIN_TOOLBAR_CTA}
         >
           <Plus className="size-4" />
           Thêm loại ô nhiễm
-        </button>
+        </Button>
       </section>
 
       {isPending && (
@@ -217,13 +221,9 @@ export function AdminPollutionCategoriesView() {
           <p className="text-sm text-destructive">
             {(error as Error)?.message ?? 'Không tải được danh mục.'}
           </p>
-          <button
-            type="button"
-            onClick={() => void listQuery.refetch()}
-            className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
-          >
-            Thử lại
-          </button>
+          <div className="mt-2">
+            <AdminRetryButton onClick={() => void listQuery.refetch()} />
+          </div>
         </div>
       )}
 
@@ -254,24 +254,28 @@ export function AdminPollutionCategoriesView() {
                 {pagination.totalItems.toLocaleString('vi-VN')} danh mục
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   disabled={!pagination.hasPrev}
                   onClick={() => setQuery({ page: String(Math.max(1, page - 1)) })}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+                  className={ADMIN_PAGINATION_BTN}
                 >
                   <ChevronLeft className="size-3.5" aria-hidden />
                   Trước
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   disabled={!pagination.hasNext}
                   onClick={() => setQuery({ page: String(page + 1) })}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
+                  className={ADMIN_PAGINATION_BTN}
                 >
                   Sau
                   <ChevronRight className="size-3.5" aria-hidden />
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}

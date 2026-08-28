@@ -1,6 +1,9 @@
 /**
  * Admin shell sidebar config — mirrors `AdminSidebarNav` routes/labels.
  * Reuses `MapShellNavConfig` shape for `AppSidebar`; does NOT use officer factory.
+ *
+ * Section labels (`sectionLabel`) render via `AppSidebar` / `NavSectionLabel` —
+ * cùng pattern với officer (`mapShellNav`) và company (`companyShellNav`).
  */
 
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
@@ -38,6 +41,11 @@ function item(
   return children?.length ? { id, label, href, icon, children } : { id, label, href, icon };
 }
 
+/** Gắn section label tĩnh lên item (render phía trên item trong AppSidebar). */
+function withSection(navItem: MapShellNavItem, sectionLabel: string): MapShellNavItem {
+  return { ...navItem, sectionLabel };
+}
+
 /** Sidebar Admin — route/label parity với AdminSidebarNav + ADMIN_USERS_NAV. */
 export function getAdminShellNavConfig(): MapShellNavConfig {
   const usersChildren = ADMIN_USERS_NAV.map(row => ({
@@ -47,24 +55,35 @@ export function getAdminShellNavConfig(): MapShellNavConfig {
   }));
 
   const mainNav: MapShellNavItem[] = [
-    // Tổng quan
-    item('dashboard', 'Tổng quan', '/admin', faGaugeHigh),
+    // ── Tổng quan ──────────────────────────────────────────────────────────
+    withSection(item('dashboard', 'Tổng quan', '/admin', faGaugeHigh), 'Tổng quan'),
     item('reports', 'Báo cáo ô nhiễm', '/admin/reports', faShield),
-    item('departments', 'Sở TNMT', '/admin/departments', faLandmark),
+    item('map', 'Bản đồ quản trị', '/admin/map', faEarthAmericas),
+
+    // ── Tổ chức ────────────────────────────────────────────────────────────
+    withSection(item('departments', 'Sở TNMT', '/admin/departments', faLandmark), 'Tổ chức'),
     item('offices', 'Văn phòng địa phương', '/admin/offices', faBuilding),
     item('teams', 'Đội môi trường', '/admin/teams', faUserGroup),
-    item('map', 'Bản đồ quản trị', '/admin/map', faEarthAmericas),
-    // Cộng đồng
-    item('pollution-categories', 'Danh mục ô nhiễm', '/admin/pollution-categories', faTags),
+
+    // ── Cộng đồng ──────────────────────────────────────────────────────────
+    withSection(
+      item('pollution-categories', 'Danh mục ô nhiễm', '/admin/pollution-categories', faTags),
+      'Cộng đồng'
+    ),
     item('waste-tags', 'Thẻ rác thải', '/admin/waste-tags', faRecycle),
     item('penalty-frameworks', 'Khung xử phạt', '/admin/penalty-frameworks', faGavel),
     item('gamification-configs', 'Cấu hình điểm thưởng', '/admin/gamification-configs', faTrophy),
     item('badges', 'Huy hiệu', '/admin/badges', faAward),
     item('blocked-words', 'Từ cấm', '/admin/blocked-words', faBan),
-    item('permissions', 'Ma trận quyền', '/admin/permissions', faShieldHalved),
-    // Người dùng (collapse + children từ ADMIN_USERS_NAV)
-    item('users', 'Người dùng', '/admin/users', faUsers, usersChildren),
-    // Hệ thống
+
+    // ── Người dùng ─────────────────────────────────────────────────────────
+    withSection(item('users', 'Người dùng', '/admin/users', faUsers, usersChildren), 'Người dùng'),
+
+    // ── Hệ thống ───────────────────────────────────────────────────────────
+    withSection(
+      item('permissions', 'Ma trận quyền', '/admin/permissions', faShieldHalved),
+      'Hệ thống'
+    ),
     item('notification-templates', 'Mẫu thông báo', '/admin/notification-templates', faBell),
     item('spam-suspects', 'Nghi spam', '/admin/spam-suspects', faShieldHalved),
     item('system-settings', 'Cấu hình hệ thống', '/admin/system-settings', faSliders),
@@ -78,12 +97,6 @@ export function getAdminShellNavConfig(): MapShellNavConfig {
     },
     mainNav,
     systemNav: {
-      notifications: {
-        id: 'notifications',
-        label: 'Thông báo',
-        href: '/admin/notifications',
-        animatedIcon: 'filled-bell',
-      },
       settings: {
         id: 'settings',
         label: 'Cài đặt',

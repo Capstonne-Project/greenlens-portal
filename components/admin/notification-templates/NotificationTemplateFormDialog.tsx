@@ -1,5 +1,7 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { NotificationTemplatePreview } from '@/components/admin/notification-templates/NotificationTemplatePreview';
 import { ValidatedInput, ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
@@ -147,15 +149,7 @@ export function NotificationTemplateFormDialog({
           <p className="text-xs text-muted-foreground">
             Không tải được chi tiết. Vui lòng thử lại sau.
           </p>
-          {onRetryDetail ? (
-            <button
-              type="button"
-              onClick={onRetryDetail}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              Thử lại
-            </button>
-          ) : null}
+          {onRetryDetail ? <AdminRetryButton onClick={onRetryDetail} /> : null}
         </div>
       ) : null}
 
@@ -308,22 +302,15 @@ export function NotificationTemplateFormDialog({
             ) : null}
           </div>
 
-          <footer className="sticky bottom-0 z-10 mt-4 flex justify-end gap-2 border-t border-border bg-card/95 pt-4 backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-60"
-            >
-              {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-              {mode === 'create' ? 'Tạo nháp' : 'Lưu'}
-            </button>
+          <footer className="sticky bottom-0 z-10 mt-4 border-t border-border bg-card/95 pt-4 backdrop-blur-sm">
+            <AdminDialogFooter
+              onCancel={onClose}
+              confirmType="submit"
+              confirmLabel={mode === 'create' ? 'Tạo nháp' : 'Lưu'}
+              confirmLoading={busy}
+              confirmDisabled={busy}
+              className="pt-0"
+            />
           </footer>
         </form>
       ) : null}

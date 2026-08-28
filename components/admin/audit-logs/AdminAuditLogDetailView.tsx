@@ -1,6 +1,7 @@
 'use client';
 
 import { AuditValuesDiff } from '@/components/admin/audit-logs/AuditValuesDiff';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { useAuditLogDetail } from '@/hooks/useAuditLogs';
 import { cn } from '@/lib/utils';
 import {
@@ -68,10 +69,7 @@ export function AdminAuditLogDetailView({ logId }: AdminAuditLogDetailViewProps)
         </Link>
 
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-6 text-sm text-destructive">
-          {message}{' '}
-          <button type="button" className="underline" onClick={() => void detailQuery.refetch()}>
-            Thử lại
-          </button>
+          {message} <AdminRetryButton onClick={() => void detailQuery.refetch()} />
         </div>
       </div>
     );

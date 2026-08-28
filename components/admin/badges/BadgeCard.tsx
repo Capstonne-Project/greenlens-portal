@@ -1,6 +1,7 @@
 'use client';
 
 import { BadgeIcon } from '@/components/admin/badges/BadgeIcon';
+import { Button } from '@/components/ui/button';
 import { getBadgeDisplay } from '@/lib/constants/adminBadges';
 import type { AdminBadge } from '@/lib/api/models/adminBadge';
 import { formatBadgeThresholdValue, resolveBadgeIconUrl } from '@/utils/adminBadgeUi';
@@ -53,7 +54,7 @@ function CriteriaChips({ badge }: { badge: AdminBadge }) {
       {chips.map(chip => (
         <span
           key={chip}
-          className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700"
+          className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700"
         >
           {chip}
         </span>
@@ -103,15 +104,17 @@ export function BadgeCard({
 
         <div className="mt-4 flex items-start gap-3">
           {iconUrl && onPreviewIcon ? (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onPreviewIcon(badge)}
-              className="shrink-0 rounded-full transition hover:ring-2 hover:ring-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+              className="size-auto shrink-0 rounded-full hover:ring-2 hover:ring-zinc-300 focus-visible:ring-emerald-600"
               title="Xem icon"
               aria-label={`Xem icon ${badge.nameVi}`}
             >
               <BadgeIcon badge={badge} dimmed={inactive} />
-            </button>
+            </Button>
           ) : (
             <BadgeIcon badge={badge} dimmed={inactive} />
           )}
@@ -131,44 +134,50 @@ export function BadgeCard({
         </div>
 
         <div className="mt-4 space-y-2">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Điều kiện</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Điều kiện</p>
           <CriteriaChips badge={badge} />
         </div>
 
-        <p className="mt-4 text-[11px] text-zinc-500">Tạo {formatShortDate(badge.createdAt)}</p>
+        <p className="mt-4 text-xs text-zinc-500">Tạo {formatShortDate(badge.createdAt)}</p>
 
         <div className="mt-4 flex items-center justify-end gap-1.5">
           {onEditThreshold ? (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               disabled={thresholdBusy}
               onClick={() => onEditThreshold(badge)}
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+              className="rounded-full"
               title="Sửa ngưỡng"
               aria-label={`Sửa ngưỡng ${badge.nameVi}`}
             >
               <Gauge className="size-4" />
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => onEdit(badge)}
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100"
+            className="rounded-full"
             title="Sửa"
             aria-label={`Sửa ${badge.nameVi}`}
           >
             <Pencil className="size-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             disabled={toggleBusy}
             onClick={() => onToggle(badge, !badge.isActive)}
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-white text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+            className="rounded-full"
             title={inactive ? 'Kích hoạt' : 'Vô hiệu hóa'}
             aria-label={inactive ? `Kích hoạt ${badge.nameVi}` : `Vô hiệu hóa ${badge.nameVi}`}
           >
             {inactive ? <ArchiveRestore className="size-4" /> : <CircleOff className="size-4" />}
-          </button>
+          </Button>
         </div>
       </div>
 

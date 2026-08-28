@@ -4,6 +4,7 @@ import { SystemSettingsConfirmDialog } from '@/components/admin/system-settings/
 import { SystemSettingsModuleForm } from '@/components/admin/system-settings/SystemSettingsModuleForm';
 import { SystemSettingsModuleSidebar } from '@/components/admin/system-settings/SystemSettingsModuleSidebar';
 import { SystemSettingsResetDialog } from '@/components/admin/system-settings/SystemSettingsResetDialog';
+import { AdminRetryButton } from '@/components/admin/shared/AdminRetryButton';
 import { GreenLensLookupSpinner } from '@/components/ui/greenlens-lookup-spinner';
 import {
   usePatchSystemSettings,
@@ -115,10 +116,11 @@ export function AdminSystemSettingsView({ moduleSlug }: AdminSystemSettingsViewP
       { module: apiModuleKey, cacheModule: moduleSlug },
       {
         onSuccess: () => {
-          toast.success('Đã reset module về mặc định.');
+          toast.success('Đã khôi phục nhóm cấu hình về mặc định.');
           setResetOpen(false);
         },
-        onError: err => toast.error(getSystemSettingsMutationError(err, 'Không thể reset module.')),
+        onError: err =>
+          toast.error(getSystemSettingsMutationError(err, 'Không thể khôi phục nhóm cấu hình.')),
       }
     );
   };
@@ -128,46 +130,44 @@ export function AdminSystemSettingsView({ moduleSlug }: AdminSystemSettingsViewP
   const error = settingsQuery.error ?? modulesQuery.error;
 
   return (
-    <div className="w-full min-w-0 space-y-6">
-      <header className="border-b border-border pb-6">
-        <p className="text-sm text-muted-foreground">
-          Cấu hình hệ thống theo từng nhóm — giới hạn gửi tin, hạn xử lý, vòng đời báo cáo và mẫu
-          thông báo. Thay đổi áp dụng ngay sau khi lưu.
-        </p>
-      </header>
-
+    <div className="w-full min-w-0 px-2 md:px-4">
       {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 py-24 text-sm text-slate-500">
           <GreenLensLookupSpinner className="size-8" />
           Đang tải cấu hình…
         </div>
       ) : isError ? (
-        <div className="py-16 text-center">
+        <div className="py-20 text-center">
           <p className="text-sm text-destructive">
             {(error as Error)?.message ?? 'Không tải được cấu hình hệ thống.'}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              void modulesQuery.refetch();
-              void settingsQuery.refetch();
-            }}
-            className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
-          >
-            Thử lại
-          </button>
+          <div className="mt-2">
+            <AdminRetryButton
+              onClick={() => {
+                void modulesQuery.refetch();
+                void settingsQuery.refetch();
+              }}
+            />
+          </div>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
+        <div className="flex min-h-0 flex-col gap-8 lg:flex-row lg:gap-0">
           <SystemSettingsModuleSidebar modules={modules} activeModule={moduleSlug} />
-          <SystemSettingsModuleForm
-            moduleLabel={moduleLabel}
-            items={visibleItems}
-            busy={patchMutation.isPending}
-            resetBusy={resetMutation.isPending}
-            onSave={handleSaveRequest}
-            onReset={() => setResetOpen(true)}
+          <div
+            className="hidden w-px shrink-0 self-stretch bg-slate-200/80 lg:mx-6 lg:block"
+            aria-hidden
           />
+          <div className="min-w-0 flex-1 lg:max-w-4xl lg:pl-2">
+            <SystemSettingsModuleForm
+              moduleLabel={moduleLabel}
+              moduleDescription={activeModuleMeta?.descriptionVi}
+              items={visibleItems}
+              busy={patchMutation.isPending}
+              resetBusy={resetMutation.isPending}
+              onSave={handleSaveRequest}
+              onReset={() => setResetOpen(true)}
+            />
+          </div>
         </div>
       )}
 

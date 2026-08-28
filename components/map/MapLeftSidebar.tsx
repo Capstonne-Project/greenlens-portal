@@ -237,7 +237,8 @@ export function MapLeftSidebar({ config }: MapLeftSidebarProps) {
     }
   };
 
-  const { notifications, settings } = config.systemNav;
+  const notifications = config.systemNav.notifications;
+  const { settings } = config.systemNav;
 
   return (
     <aside
@@ -311,11 +312,13 @@ export function MapLeftSidebar({ config }: MapLeftSidebarProps) {
 
       <div className="mt-auto w-full">
         <div className="w-full border-t border-white/[0.08] py-1">
-          <NavItem
-            item={notifications}
-            active={activeId === notifications.id}
-            expanded={expanded}
-          />
+          {notifications ? (
+            <NavItem
+              item={notifications}
+              active={activeId === notifications.id}
+              expanded={expanded}
+            />
+          ) : null}
           {isAuthenticated ? null : (
             <>
               <LoginNavItem expanded={expanded} />

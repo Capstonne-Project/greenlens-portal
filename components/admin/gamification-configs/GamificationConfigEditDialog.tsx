@@ -1,12 +1,12 @@
 'use client';
 
+import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import { ValidatedNumberInput, ValidatedTextarea } from '@/components/common/ValidatedField';
 import { OfficeDialogShell } from '@/components/admin/offices/OfficeDialogShell';
 import { REALTIME_FORM_OPTIONS } from '@/lib/validation/formDefaults';
 import type { GamificationConfig } from '@/lib/api/models/gamificationConfig';
 import { gamificationActionLabel } from '@/lib/constants/gamificationConfigs';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -76,9 +76,7 @@ export function GamificationConfigEditDialog({ open, config, busy, onClose, onSu
             <p className="mt-1 font-semibold text-foreground">
               {gamificationActionLabel(config.actionType)}
             </p>
-            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-              {config.actionType}
-            </p>
+            <p className="mt-0.5 font-mono text-xs text-muted-foreground">{config.actionType}</p>
           </div>
 
           <div>
@@ -128,23 +126,14 @@ export function GamificationConfigEditDialog({ open, config, busy, onClose, onSu
             </span>
           </label>
 
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-medium text-white hover:bg-emerald-900 disabled:opacity-60"
-            >
-              {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-              Lưu
-            </button>
-          </div>
+          <AdminDialogFooter
+            onCancel={onClose}
+            confirmType="submit"
+            confirmLabel="Lưu"
+            confirmLoading={busy}
+            confirmDisabled={busy}
+            cancelDisabled={busy}
+          />
         </form>
       ) : null}
     </OfficeDialogShell>
