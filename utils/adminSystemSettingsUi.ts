@@ -37,16 +37,9 @@ export function formatSystemSettingConstraints(item: SystemSettingItem): string 
 }
 
 export function getSystemSettingPlaceholder(item: SystemSettingItem): string {
-  if (isBooleanValueType(item.valueType)) return '';
-
+  if (isBooleanValueType(item.valueType) || isNumericValueType(item.valueType)) return '';
   const defaultValue = item.defaultValue?.trim();
-  if (!defaultValue) return '';
-
-  if (isNumericValueType(item.valueType) && item.minValue != null && item.maxValue != null) {
-    return `${defaultValue} (${item.minValue}–${item.maxValue})`;
-  }
-
-  return defaultValue;
+  return defaultValue || '';
 }
 
 export function filterVisibleSystemSettings(items: SystemSettingItem[]): SystemSettingItem[] {
@@ -119,16 +112,8 @@ export function getSystemSettingEffectiveValue(item: SystemSettingItem): string 
   return normalizeSettingScalar(item.defaultValue);
 }
 
-/** Chuyển value BE sang form — mặc định = ô trống + placeholder; custom = hiện số đã lưu. */
+/** Chuyển value BE sang form — luôn hiển thị giá trị đang áp dụng (kể cả mặc định). */
 export function systemSettingValueToFormValue(item: SystemSettingItem): string {
-  if (isBooleanValueType(item.valueType)) {
-    return getSystemSettingEffectiveValue(item);
-  }
-
-  if (isSystemSettingAtDefault(item)) {
-    return '';
-  }
-
   return getSystemSettingEffectiveValue(item);
 }
 
