@@ -36,6 +36,7 @@ export function mapAdminUserDetailDto(dto: AdminUserDetailDto): AdminUserDetail 
     ...mapAdminUserDto(dto),
     googleId: dto.googleId ?? null,
     updatedAt: dto.updatedAt ?? null,
+    isBanned: Boolean(dto.isBanned),
   };
 }
 
