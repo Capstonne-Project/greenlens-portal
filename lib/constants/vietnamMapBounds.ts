@@ -70,6 +70,12 @@ function parseMapDefaultCenter(): { lat: number; lng: number } {
   };
 }
 
+/** [[west, south], [east, north]] — maxBounds / fitBounds public map. */
+export const VIETNAM_MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [VIETNAM_MAP_BOUNDS.minLng, VIETNAM_MAP_BOUNDS.minLat],
+  [VIETNAM_MAP_BOUNDS.maxLng, VIETNAM_MAP_BOUNDS.maxLat],
+];
+
 /** Viewport admin overview — API map từ chối bbox quá rộng (422: zoom in). */
 export function getAdminOverviewMapBounds() {
   const { lat, lng } = parseMapDefaultCenter();

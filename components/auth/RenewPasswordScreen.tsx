@@ -1,7 +1,7 @@
 'use client';
 
 import { getChangePasswordErrorMessage, useChangePassword } from '@/hooks/useAuth';
-import { getDashboardPathByRole } from '@/lib/auth/mapUser';
+import { resolvePostLoginPath } from '@/lib/auth/postLoginRedirect';
 import { useAuthStore } from '@/lib/store/authStore';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, KeyRound, Leaf, Lock, ShieldCheck } from 'lucide-react';
@@ -10,6 +10,27 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
+function useAuthStoreHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const persistApi = useAuthStore.persist;
+    if (!persistApi) {
+      setHydrated(true);
+      return;
+    }
+
+    if (persistApi.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+
+    return persistApi.onFinishHydration(() => setHydrated(true));
+  }, []);
+
+  return hydrated;
+}
 
 const renewSchema = z
   .object({
@@ -51,10 +72,12 @@ function BrandMark() {
 
 export function RenewPasswordScreen() {
   const router = useRouter();
+  const hydrated = useAuthStoreHydrated();
   const user = useAuthStore(s => s.user);
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const mustChange = useAuthStore(s => s.user?.mustChangePassword);
   const changePassword = useChangePassword();
+  const [authChecked, setAuthChecked] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -73,15 +96,24 @@ export function RenewPasswordScreen() {
   });
 
   useEffect(() => {
+    if (!hydrated) return;
+
+    const timer = window.setTimeout(() => setAuthChecked(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+
     if (!isAuthenticated) {
       router.replace('/login');
       return;
     }
     // Only leave renew when flag is explicitly cleared (password already changed)
     if (mustChange === false) {
-      router.replace(getDashboardPathByRole(user?.role ?? 'company'));
+      router.replace(resolvePostLoginPath(user?.role ?? 'company'));
     }
-  }, [isAuthenticated, mustChange, router, user?.role]);
+  }, [authChecked, isAuthenticated, mustChange, router, user?.role]);
 
   const onSubmit = handleSubmit(values => {
     changePassword.mutate(

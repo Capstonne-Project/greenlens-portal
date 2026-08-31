@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -26,7 +27,9 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginFormCard({ className }: { className?: string }) {
   const [showPassword, setShowPassword] = useState(false);
-  const login = useLogin();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('from');
+  const login = useLogin({ redirectTo });
 
   const {
     register,
