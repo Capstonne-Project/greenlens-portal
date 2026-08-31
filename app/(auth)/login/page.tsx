@@ -1,5 +1,6 @@
 import { LoginScreen } from '@/components/auth/LoginScreen';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Đăng nhập',
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
-  return <LoginScreen />;
+  return (
+    <Suspense fallback={null}>
+      <LoginScreen />
+    </Suspense>
+  );
 }

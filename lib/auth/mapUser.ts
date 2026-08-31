@@ -1,3 +1,4 @@
+import { CITIZEN_HOME_PATH } from '@/lib/auth/citizenAccess';
 import { normalizeApiRole } from '@/lib/constants/systemRoles';
 import type { AuthUser } from '@/lib/store/authStore';
 
@@ -29,6 +30,6 @@ export function getDashboardPathByRole(role: AuthUser['role']): string {
     case 'cleanup':
       return '/cleanup';
     default:
-      return '/';
+      return CITIZEN_HOME_PATH;
   }
 }
