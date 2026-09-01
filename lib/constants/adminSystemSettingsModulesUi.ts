@@ -44,6 +44,7 @@ const MODULE_ICON_BY_KEY: Record<string, LucideIcon> = {
   retention: ScrollText,
   inspection: ClipboardCheck,
   workforce: Users,
+  gamification: Users,
 };
 
 function normalizeModuleKey(value: string): string {

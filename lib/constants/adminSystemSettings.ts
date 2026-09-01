@@ -2,7 +2,30 @@
 export const BADGE_THRESHOLD_MIN = 1;
 export const BADGE_THRESHOLD_MAX = 1_000_000;
 
-/** Module ẩn khỏi UI — đã có màn hình admin riêng (vd. Huy hiệu /admin/badges). */
+/** Keys đã gỡ khỏi BE catalog — lọc an toàn nếu cache/mock còn sót. */
+export const RETIRED_SYSTEM_SETTING_KEYS = [
+  'recurrence_lookback_days',
+  'max_image_size_bytes',
+  'max_drafts_per_user',
+  'draft_retention_days',
+  'flag_notify_threshold',
+  'sla_verify_breach_priority_boost',
+  'map_viewport_default_days',
+  'progress_update_interval_hours',
+  'captcha_after_failed_attempts',
+  'max_tasks_per_team',
+  'team_workload_warning_threshold',
+  'inspection_evidence_max_per_request',
+  'escalation_reason_min_length',
+] as const;
+
+export type RetiredSystemSettingKey = (typeof RETIRED_SYSTEM_SETTING_KEYS)[number];
+
+export function isRetiredSystemSettingKey(key: string): boolean {
+  return (RETIRED_SYSTEM_SETTING_KEYS as readonly string[]).includes(key);
+}
+
+/** Module ẩn sidebar — quản lý riêng (vd. Gamification → /admin/badges). */
 export const HIDDEN_SYSTEM_SETTING_MODULES = ['gamification'] as const;
 
 export type HiddenSystemSettingModule = (typeof HIDDEN_SYSTEM_SETTING_MODULES)[number];

@@ -7,6 +7,8 @@ import { AdminFormActions } from '@/components/admin/shared/AdminFormActions';
 import {
   ADMIN_NUMBER_INPUT_CLASS,
   ADMIN_SECTION_TITLE,
+  ADMIN_SETTING_CONTROL_COLUMN_CLASS,
+  ADMIN_SETTING_UNIT_SLOT_CLASS,
   ADMIN_TEXT_INPUT_CLASS,
 } from '@/components/admin/shared/adminUiTokens';
 
@@ -24,6 +26,7 @@ import { cn } from '@/lib/utils';
 
 import {
   buildSystemSettingsItemsSignature,
+  formatSystemSettingValidationError,
   getSystemSettingDisplay,
   isBooleanValueType,
   isNumericValueType,
@@ -78,33 +81,42 @@ function NumericSettingControl({
   const isInt = item.valueType.toLowerCase() === 'int';
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Input
-        id={`setting-${item.key}`}
-        type="number"
-        inputMode={isInt ? 'numeric' : 'decimal'}
-        step={isInt ? 1 : 'any'}
-        min={item.minValue ?? undefined}
-        max={item.maxValue ?? undefined}
-        value={value}
-        disabled={disabled}
-        aria-invalid={invalid || undefined}
-        aria-describedby={invalid ? `setting-${item.key}-error` : undefined}
-        onChange={e => onChange(e.target.value)}
-        onFocus={e => e.target.select()}
-        className={cn(
-          ADMIN_NUMBER_INPUT_CLASS,
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <Input
+          id={`setting-${item.key}`}
+          type="number"
+          inputMode={isInt ? 'numeric' : 'decimal'}
+          step={isInt ? 1 : 'any'}
+          min={item.minValue ?? undefined}
+          max={item.maxValue ?? undefined}
+          value={value}
+          disabled={disabled}
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? `setting-${item.key}-error` : undefined}
+          onChange={e => onChange(e.target.value)}
+          onFocus={e => e.target.select()}
+          className={cn(
+            ADMIN_NUMBER_INPUT_CLASS,
 
-          invalid && 'border-destructive focus-visible:ring-destructive/30'
-        )}
-      />
+            invalid && 'border-destructive focus-visible:ring-destructive/30'
+          )}
+        />
+
+        <span
+          className={cn(ADMIN_SETTING_UNIT_SLOT_CLASS, !item.unit && 'invisible')}
+          aria-hidden={!item.unit}
+        >
+          {item.unit ?? '\u00a0'}
+        </span>
+      </div>
 
       {invalid ? (
         <p id={`setting-${item.key}-error`} className="text-xs text-destructive" role="alert">
-          {tooLow && item.minValue != null
-            ? `Tối thiểu ${item.minValue}`
-            : tooHigh && item.maxValue != null
-              ? `Tối đa ${item.maxValue}`
+          {tooLow
+            ? formatSystemSettingValidationError(item, 'min')
+            : tooHigh
+              ? formatSystemSettingValidationError(item, 'max')
               : 'Giá trị không hợp lệ'}
         </p>
       ) : null}
@@ -318,34 +330,39 @@ export function SystemSettingsModuleForm({
               >
                 <SystemSettingFieldHeader item={item} isModified={isModified} />
 
-                <div className="flex items-center gap-2 md:pt-0.5">
-                  <SettingControl
-                    item={item}
-                    value={formValues[item.key] ?? ''}
-                    disabled={disabled}
-                    onChange={next =>
-                      setFormValues(prev => ({
-                        ...prev,
-
-                        [item.key]: next,
-                      }))
-                    }
-                  />
-
-                  {isModified ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => resetField(item)}
+                <div className="flex items-start gap-2 md:pt-0.5">
+                  <div className={ADMIN_SETTING_CONTROL_COLUMN_CLASS}>
+                    <SettingControl
+                      item={item}
+                      value={formValues[item.key] ?? ''}
                       disabled={disabled}
-                      title="Hoàn tác"
-                      aria-label={`Hoàn tác ${getSystemSettingDisplay(item).label}`}
-                      className="size-8 shrink-0 text-muted-foreground"
-                    >
-                      <Undo2 className="size-3.5" aria-hidden />
-                    </Button>
-                  ) : null}
+                      onChange={next =>
+                        setFormValues(prev => ({
+                          ...prev,
+
+                          [item.key]: next,
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => resetField(item)}
+                    disabled={disabled || !isModified}
+                    title="Hoàn tác"
+                    aria-label={`Hoàn tác ${getSystemSettingDisplay(item).label}`}
+                    aria-hidden={!isModified}
+                    tabIndex={isModified ? 0 : -1}
+                    className={cn(
+                      'size-8 shrink-0 text-muted-foreground',
+                      !isModified && 'pointer-events-none invisible'
+                    )}
+                  >
+                    <Undo2 className="size-3.5" aria-hidden />
+                  </Button>
                 </div>
               </li>
             );
@@ -375,7 +392,7 @@ export function SystemSettingsModuleForm({
             },
 
             {
-              label: 'Khôi phục nhóm',
+              label: 'Khôi phục mặc định',
 
               onClick: onReset,
 

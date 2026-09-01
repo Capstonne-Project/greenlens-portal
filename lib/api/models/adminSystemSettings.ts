@@ -13,9 +13,14 @@ export interface SystemSettingItem {
   id: string;
   module: string;
   key: string;
+  /** Nhãn hiển thị form — source of truth từ BE seeder. */
+  title: string;
+  /** Đơn vị suffix cạnh input; null = không hiện. */
+  unit: string | null;
   valueType: SystemSettingValueType;
   value: string;
   defaultValue: string;
+  /** Tooltip / helper — ngữ cảnh áp dụng + hành vi hệ thống. */
   description: string | null;
   minValue: number | null;
   maxValue: number | null;
