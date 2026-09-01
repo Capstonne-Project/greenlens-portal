@@ -7,6 +7,7 @@ import { AdminDialogFooter } from '@/components/admin/shared/AdminDialogFooter';
 import type { SystemSettingItem } from '@/lib/api/models/adminSystemSettings';
 
 import {
+  formatSystemSettingValueWithUnit,
   getSystemSettingDisplay,
   systemSettingFormValueToPatchValue,
   systemSettingValueToFormValue,
@@ -46,7 +47,7 @@ export function SystemSettingsConfirmDialog({
   return (
     <OfficeDialogShell
       open={open}
-      title="Xác nhận cập nhật cấu hình"
+      title="Xác nhận thay đổi cấu hình?"
       titleId="system-settings-confirm-title"
       onClose={onClose}
       size="wide"
@@ -76,24 +77,27 @@ export function SystemSettingsConfirmDialog({
                 {changedItems.map(item => {
                   const display = getSystemSettingDisplay(item);
 
-                  const before = systemSettingValueToFormValue(item) || '—';
+                  const before = formatSystemSettingValueWithUnit(
+                    systemSettingValueToFormValue(item) || '—',
+                    item.unit
+                  );
 
-                  const after =
-                    systemSettingFormValueToPatchValue(item, formValues[item.key] ?? '') || '—';
+                  const after = formatSystemSettingValueWithUnit(
+                    systemSettingFormValueToPatchValue(item, formValues[item.key] ?? '') || '—',
+                    item.unit
+                  );
 
                   return (
                     <tr key={item.key}>
                       <td className="py-2.5 pr-3 align-top">
                         <p className="font-medium text-foreground">{display.label}</p>
-
-                        <p className="font-mono text-xs text-muted-foreground">{display.key}</p>
                       </td>
 
-                      <td className="py-2.5 pr-3 align-top font-mono text-xs text-muted-foreground">
+                      <td className="py-2.5 pr-3 align-top text-xs text-muted-foreground">
                         {before}
                       </td>
 
-                      <td className="py-2.5 align-top font-mono text-xs font-semibold text-emerald-800">
+                      <td className="py-2.5 align-top text-xs font-semibold text-emerald-800">
                         {after}
                       </td>
                     </tr>
@@ -110,7 +114,7 @@ export function SystemSettingsConfirmDialog({
           cancelDisabled={busy}
           confirmDisabled={busy}
           confirmLoading={busy}
-          confirmLabel="Xác nhận lưu"
+          confirmLabel="Xác nhận áp dụng"
         />
       </div>
     </OfficeDialogShell>

@@ -1,8 +1,10 @@
+import { CITIZEN_HOME_PATH, isCitizenAllowedPath } from '@/lib/auth/citizenAccess';
 import {
   AUTH_COOKIE_ACCESS,
   AUTH_COOKIE_REFRESH,
   AUTH_COOKIE_MUST_CHANGE_PASSWORD,
 } from '@/lib/constants/authCookies';
+import { isPublicSurfacePath } from '@/lib/constants/publicRoutes';
 import { matchOfficerRouteAcl, OFFICER_ACL_FALLBACK_PATH } from '@/lib/constants/officerRoles';
 import { getDashboardPathByRole, mapApiRoleToAuth } from '@/lib/auth/mapUser';
 import type { AuthUser } from '@/lib/store/authStore';
@@ -78,28 +80,43 @@ async function getTokenRoleInfo(
   }
 }
 
+/** Logged-in citizens may only use the public map (+ renew-password when required). */
+async function redirectCitizenIfOutOfScope(
+  request: NextRequest,
+  pathname: string,
+  token: string | undefined
+): Promise<NextResponse | null> {
+  if (!token) return null;
+
+  if (mustChangePassword(request)) {
+    if (pathname === RENEW_PASSWORD_PATH || pathname.startsWith(`${RENEW_PASSWORD_PATH}/`)) {
+      return null;
+    }
+    // Public marketing surfaces stay reachable; renew-password enforced on staff/citizen app routes.
+    if (isPublicSurfacePath(pathname)) {
+      return null;
+    }
+    return NextResponse.redirect(new URL(RENEW_PASSWORD_PATH, request.url));
+  }
+
+  const { mapped } = await getTokenRoleInfo(token);
+  if (mapped !== 'citizen') return null;
+
+  if (isCitizenAllowedPath(pathname)) return null;
+
+  return NextResponse.redirect(new URL(CITIZEN_HOME_PATH, request.url));
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = getAccessToken(request);
 
+  const citizenRedirect = await redirectCitizenIfOutOfScope(request, pathname, token);
+  if (citizenRedirect) return citizenRedirect;
+
+  // Public home — always `HomeLanding`; never redirect away (marketing entry point).
   if (pathname === '/') {
-    if (!token) {
-      if (hasRefreshToken(request)) return NextResponse.next();
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    if (mustChangePassword(request)) {
-      return NextResponse.redirect(new URL(RENEW_PASSWORD_PATH, request.url));
-    }
-
-    const { mapped } = await getTokenRoleInfo(token);
-
-    if (mapped && mapped !== 'citizen') {
-      return NextResponse.redirect(new URL(getDashboardPathByRole(mapped), request.url));
-    }
-
-    if (!mapped && hasRefreshToken(request)) return NextResponse.next();
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.next();
   }
 
   const isRenewPassword =
@@ -120,7 +137,7 @@ export async function proxy(request: NextRequest) {
         }
       }
 
-      if (mapped && mapped !== 'citizen') {
+      if (mapped) {
         if (mustChangePassword(request)) {
           return NextResponse.redirect(new URL(RENEW_PASSWORD_PATH, request.url));
         }
@@ -133,13 +150,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Public share landing — Facebook OG crawler must not hit /login.
-  if (pathname === '/c' || pathname.startsWith('/c/')) {
-    return NextResponse.next();
-  }
-
-  // Public Privacy Policy — Meta App Live URL; no auth required.
-  if (pathname === '/privacy' || pathname.startsWith('/privacy/')) {
+  // Public marketing / community — guest + logged-in citizen; never redirect to /login.
+  if (isPublicSurfacePath(pathname)) {
     return NextResponse.next();
   }
 

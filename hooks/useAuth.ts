@@ -14,7 +14,7 @@ import type {
   ResetPasswordRequest,
 } from '@/lib/api/services/fetchAuth';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
-import { getDashboardPathByRole } from '@/lib/auth/mapUser';
+import { resolvePostLoginPath } from '@/lib/auth/postLoginRedirect';
 import {
   clearLegacyClientAuthCookies,
   setMustChangePasswordCookie,
@@ -29,10 +29,11 @@ export const authKeys = {
   session: () => [...authKeys.all, 'session'] as const,
 };
 
-export function useLogin() {
+export function useLogin(options?: { redirectTo?: string | null }) {
   const router = useRouter();
   const setAuth = useAuthStore(s => s.setAuth);
   const queryClient = useQueryClient();
+  const redirectTo = options?.redirectTo;
 
   return useMutation({
     mutationFn: async (input: Parameters<typeof loginWithEmailPassword>[0]) => {
@@ -58,7 +59,7 @@ export function useLogin() {
         router.push('/renew-password');
         return;
       }
-      router.push(getDashboardPathByRole(authUser.role));
+      router.push(resolvePostLoginPath(authUser.role, redirectTo));
     },
   });
 }
@@ -93,7 +94,7 @@ export function useChangePassword() {
     onSuccess: () => {
       setMustChangePasswordCookie(false);
       updateUser({ mustChangePassword: false });
-      router.push(getDashboardPathByRole(user?.role ?? 'company'));
+      router.push(resolvePostLoginPath(user?.role ?? 'company'));
     },
   });
 }

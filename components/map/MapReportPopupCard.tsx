@@ -8,6 +8,7 @@ export interface MapReportPopupCardData {
   status?: string;
   description?: string | null;
   imageUrl?: string | null;
+  afterImageUrl?: string | null;
   categoryIconUrl?: string | null;
   reporterCount?: number;
 }
@@ -16,22 +17,46 @@ interface MapReportPopupCardProps {
   report: MapReportPopupCardData;
 }
 
+function PopupPhoto({
+  src,
+  alt,
+  heightClass,
+  badge,
+}: {
+  src: string;
+  alt: string;
+  heightClass: string;
+  badge?: string;
+}) {
+  return (
+    <div className={`relative w-full bg-muted ${heightClass}`}>
+      <Image src={src} alt={alt} fill sizes="240px" className="object-cover" unoptimized />
+      {badge ? (
+        <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+          {badge}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 /** Card popup dùng chung cho report point — cả circle 2D (map mode) và pillar 3D (globe mode). */
 export function MapReportPopupCard({ report }: MapReportPopupCardProps) {
+  const hasAfter = Boolean(report.afterImageUrl);
+  const heroUrl = hasAfter ? report.afterImageUrl : report.imageUrl;
+  const beforeUrl = hasAfter ? report.imageUrl : null;
+
   return (
     <div className="w-[240px] overflow-hidden rounded-lg bg-card text-card-foreground shadow-sm">
-      {report.imageUrl ? (
-        <div className="relative h-24 w-full bg-muted">
-          <Image
-            src={report.imageUrl}
-            alt={report.title}
-            fill
-            sizes="240px"
-            className="object-cover"
-            unoptimized
-          />
-        </div>
+      {heroUrl ? (
+        <PopupPhoto
+          src={heroUrl}
+          alt={report.title}
+          heightClass="h-24"
+          badge={hasAfter ? 'Sau dọn' : undefined}
+        />
       ) : null}
+      {beforeUrl ? <PopupPhoto src={beforeUrl} alt="" heightClass="h-14" badge="Trước" /> : null}
 
       <div className="space-y-1.5 p-2.5">
         <div className="flex items-start gap-2">

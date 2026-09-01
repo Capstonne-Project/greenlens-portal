@@ -122,6 +122,73 @@ export const OPEN_REPORT_STATUSES: ReportStatus[] = [
 export const MODERATION_REPORT_STATUSES: ReportStatus[] = ['Submitted'];
 
 /**
+ * Public `/map` — đã Verified trở đi, không Submitted/Rejected/Duplicate/ClosedNoViolation.
+ * Guest không thấy jargon nội bộ: Dispatched/Assigned/… gộp nhãn “Đang xử lý”.
+ */
+export const PUBLIC_MAP_STATUSES = [
+  'Verified',
+  'Dispatched',
+  'Assigned',
+  'InProgress',
+  'Reopened',
+  'PenaltyIssued',
+  'Resolved',
+  'Closed',
+] as const satisfies readonly ReportStatus[];
+
+/** Còn ô nhiễm — mặc định map (OpenLitterMap `picked_up=false`). */
+export const PUBLIC_MAP_ACTIVE_STATUSES = [
+  'Verified',
+  'Dispatched',
+  'Assigned',
+  'InProgress',
+  'Reopened',
+  'PenaltyIssued',
+] as const satisfies readonly ReportStatus[];
+
+/** Đã dọn — after-photo (Resolved) hoặc citizen confirm (Closed). */
+export const PUBLIC_MAP_CLEANED_STATUSES = [
+  'Resolved',
+  'Closed',
+] as const satisfies readonly ReportStatus[];
+
+export type PublicMapPresence = 'active' | 'cleaned' | 'all';
+
+const PUBLIC_MAP_STATUS_SET = new Set<string>(PUBLIC_MAP_STATUSES);
+const PUBLIC_MAP_CLEANED_SET = new Set<string>(PUBLIC_MAP_CLEANED_STATUSES);
+
+export function isPublicMapStatus(status: ReportStatus | string): boolean {
+  return PUBLIC_MAP_STATUS_SET.has(normalizeReportStatus(String(status)));
+}
+
+export function isPublicMapCleanedStatus(status: ReportStatus | string): boolean {
+  return PUBLIC_MAP_CLEANED_SET.has(normalizeReportStatus(String(status)));
+}
+
+export function parsePublicMapPresence(raw: string | null | undefined): PublicMapPresence {
+  if (raw === 'cleaned' || raw === 'all') return raw;
+  return 'active';
+}
+
+export function statusesForPublicMapPresence(presence: PublicMapPresence): readonly ReportStatus[] {
+  if (presence === 'cleaned') return PUBLIC_MAP_CLEANED_STATUSES;
+  if (presence === 'all') return PUBLIC_MAP_STATUSES;
+  return PUBLIC_MAP_ACTIVE_STATUSES;
+}
+
+/** Nhãn guest — 4 trạng thái, không lộ Dispatched/Assigned/PenaltyIssued. */
+export function publicMapGuestStatusLabelVi(status: ReportStatus | string): string {
+  const normalized = normalizeReportStatus(String(status));
+  if (normalized === 'Verified') return 'Đã xác minh';
+  if (normalized === 'Resolved') return 'Đã dọn';
+  if (normalized === 'Closed') return 'Đã đóng';
+  if (isPublicMapStatus(normalized) && !isPublicMapCleanedStatus(normalized)) {
+    return 'Đang xử lý';
+  }
+  return REPORT_STATUS_LABEL_VI[normalized];
+}
+
+/**
  * BR-REP-020 — cạnh chuyển trạng thái hợp lệ (mở rộng Dispatched/Assigned/Reopened/PenaltyIssued).
  * Terminal: Rejected, Duplicate, ClosedNoViolation.
  */

@@ -91,6 +91,8 @@
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-anchor-flyout-in: anchor-flyout-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-anchor-flyout-out: anchor-flyout-out 0.2s cubic-bezier(0.4, 0, 0.6, 1) both;
+  /* Aceternity Background Ripple Effect */
+  --animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1 var(--delay, 0ms);
 }
 
 @keyframes accordion-down {
@@ -107,6 +109,18 @@
   }
   to {
     height: 0;
+  }
+}
+
+@keyframes cell-ripple {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.4;
   }
 }
 
@@ -302,6 +316,69 @@
   text-wrap: balance;
 }
 
+/**
+ * Public landing — glass panel over fixed atmosphere (light GreenLens).
+ * Use on cards / framed media so content floats above the shared canvas.
+ */
+@utility landing-glass {
+  border: 1px solid rgb(63 107 50 / 0.12);
+  background-color: rgb(255 255 255 / 0.78);
+  box-shadow:
+    0 1px 2px rgb(16 185 129 / 0.04),
+    0 12px 40px rgb(15 23 42 / 0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/** Content islands above interactive ripple grid — clicks/hover reach UI. */
+@utility landing-hit {
+  pointer-events: auto;
+}
+
+/**
+ * Shared landing column — header + sections share the same width.
+ * mx-auto only centers; width comes from max-w + px (not from mx itself).
+ * One step wider than previous max-w-6xl + px-4/sm:px-6.
+ */
+@utility landing-shell {
+  @apply mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-5;
+}
+
+/** Final CTA band — transparent; emerald glow overlays shared LandingAtmosphere. */
+.landing-cta-band {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-block: 1px solid rgb(16 185 129 / 0.08);
+  background-color: transparent;
+}
+
+.landing-cta-band::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 58% 78% at 50% 44%,
+    rgb(16 185 129 / 0.22) 0%,
+    rgb(16 185 129 / 0.1) 26%,
+    rgb(16 185 129 / 0.04) 44%,
+    transparent 68%
+  );
+}
+
+/** Chamfered CTA button — clipped top-left + bottom-right corners. */
+@utility landing-cta-chamfer {
+  clip-path: polygon(
+    0.875rem 0,
+    100% 0,
+    100% calc(100% - 0.875rem),
+    calc(100% - 0.875rem) 100%,
+    0 100%,
+    0 0.875rem
+  );
+}
+
 /* Full-viewport shell canvas — matches AppSidebar rail (`bg-app-canvas`) */
 @utility app-canvas {
   background-color: var(--color-app-canvas);
@@ -447,4 +524,42 @@
     stroke: currentColor;
     stroke-width: 32;
   }
+}
+
+/* ===== Public landing atmosphere — mostly white; mint only soft lower ===== */
+.landing-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 100%, rgb(16 185 129 / 0.05), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #ffffff 18%, #fafafa 55%, #f6faf7 100%);
+}
+
+/* Soft white wash under sticky header so bar + page feel continuous */
+.landing-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  height: min(11rem, 28vh);
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    rgb(255 255 255 / 0.92) 35%,
+    rgb(255 255 255 / 0) 100%
+  );
+}
+
+/* Fade cell grid gently near header — keep mid-page lines readable */
+.landing-atmosphere-ripple {
+  mask-image: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.55) 4rem, black 9rem);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.55) 4rem,
+    black 9rem
+  );
 }

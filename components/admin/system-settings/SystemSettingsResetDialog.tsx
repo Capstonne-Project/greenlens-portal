@@ -47,7 +47,7 @@ export function SystemSettingsResetDialog({
           cancelDisabled={busy}
           confirmDisabled={busy}
           confirmLoading={busy}
-          confirmLabel="Khôi phục nhóm"
+          confirmLabel="Khôi phục mặc định"
           confirmVariant="destructive"
         />
       </div>

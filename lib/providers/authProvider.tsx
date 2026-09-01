@@ -7,6 +7,7 @@ import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
 import { getUserFromAccessToken } from '@/lib/auth/userFromAccessToken';
 import {
   clearLegacyClientAuthCookies,
+  clearMustChangePasswordCookie,
   getLegacyAccessTokenFromCookie,
   getLegacyRefreshTokenFromCookie,
   getMustChangePasswordFromCookie,
@@ -87,8 +88,13 @@ async function syncAuthAfterHydration(
 
   // No memory token — silent refresh using HttpOnly refresh cookie
   const ok = await refreshSessionOnce();
-  if (!ok && (s.isAuthenticated || s.user)) {
-    logout();
+  if (!ok) {
+    if (s.isAuthenticated || s.user) {
+      logout();
+    } else if (getMustChangePasswordFromCookie()) {
+      // Orphan UX flag (no valid session) — do not trap public routes behind renew/login.
+      clearMustChangePasswordCookie();
+    }
   }
 }
 

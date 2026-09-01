@@ -1,39 +1,73 @@
 import type { SystemSettingItem, SystemSettingModule } from '@/lib/api/models/adminSystemSettings';
 import {
-  SYSTEM_SETTING_DISPLAY,
   inferSystemSettingDetail,
   inferSystemSettingLabel,
 } from '@/lib/constants/adminSystemSettingsDisplay';
 import {
   isHiddenSystemSettingKey,
   isHiddenSystemSettingModule,
+  isRetiredSystemSettingKey,
 } from '@/lib/constants/adminSystemSettings';
 
 export type SystemSettingDisplay = {
   label: string;
   detail: string;
   key: string;
+  unit: string | null;
 };
 
-/** Luôn dùng nhãn tiếng Việt — không hiển thị mô tả kỹ thuật từ API. */
-export function getSystemSettingDisplay(item: SystemSettingItem): SystemSettingDisplay {
-  const mapped = SYSTEM_SETTING_DISPLAY[item.key];
-  if (mapped) {
-    return { label: mapped.label, detail: mapped.detail, key: item.key };
-  }
+/** Label — ưu tiên `title` từ BE; fallback suy luận key khi dev/mock thiếu. */
+export function getSystemSettingLabel(item: SystemSettingItem): string {
+  const title = item.title?.trim();
+  if (title) return title;
+  return inferSystemSettingLabel(item.key);
+}
 
+/** Helper / tooltip — ưu tiên `description` từ BE. */
+export function getSystemSettingDetail(item: SystemSettingItem): string {
+  const description = item.description?.trim();
+  if (description) return description;
+  return inferSystemSettingDetail(item.key);
+}
+
+/** Hiển thị form + dialog — label/detail từ API, không hardcode catalog FE. */
+export function getSystemSettingDisplay(item: SystemSettingItem): SystemSettingDisplay {
   return {
-    label: inferSystemSettingLabel(item.key),
-    detail: inferSystemSettingDetail(item.key),
+    label: getSystemSettingLabel(item),
+    detail: getSystemSettingDetail(item),
     key: item.key,
+    unit: item.unit,
   };
+}
+
+export function formatSystemSettingValueWithUnit(value: string, unit: string | null): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === '—') return '—';
+  return unit ? `${trimmed} ${unit}` : trimmed;
 }
 
 export function formatSystemSettingConstraints(item: SystemSettingItem): string {
   if (item.minValue != null || item.maxValue != null) {
-    return `Cho phép: ${item.minValue ?? '—'} – ${item.maxValue ?? '—'}`;
+    const min = item.minValue ?? '—';
+    const max = item.maxValue ?? '∞';
+    const unitSuffix = item.unit ? ` ${item.unit}` : '';
+    return `Cho phép: ${min} – ${max}${unitSuffix}`;
   }
   return '';
+}
+
+export function formatSystemSettingValidationError(
+  item: SystemSettingItem,
+  kind: 'min' | 'max'
+): string {
+  const unitSuffix = item.unit ? ` ${item.unit}` : '';
+  if (kind === 'min' && item.minValue != null) {
+    return `Tối thiểu ${item.minValue}${unitSuffix}`;
+  }
+  if (kind === 'max' && item.maxValue != null) {
+    return `Tối đa ${item.maxValue}${unitSuffix}`;
+  }
+  return 'Giá trị không hợp lệ';
 }
 
 export function getSystemSettingPlaceholder(item: SystemSettingItem): string {
@@ -43,7 +77,9 @@ export function getSystemSettingPlaceholder(item: SystemSettingItem): string {
 }
 
 export function filterVisibleSystemSettings(items: SystemSettingItem[]): SystemSettingItem[] {
-  return items.filter(item => !isHiddenSystemSettingKey(item.key));
+  return items.filter(
+    item => !isHiddenSystemSettingKey(item.key) && !isRetiredSystemSettingKey(item.key)
+  );
 }
 
 export function filterVisibleSystemSettingModules(
@@ -70,7 +106,11 @@ export function resolveSystemSettingsModuleKey(
 }
 
 export function buildSystemSettingsItemsSignature(items: SystemSettingItem[]): string {
-  return items.map(item => `${item.key}\0${item.value}\0${item.defaultValue}`).join('\n');
+  return items
+    .map(
+      item => `${item.key}\0${item.title}\0${item.unit ?? ''}\0${item.value}\0${item.defaultValue}`
+    )
+    .join('\n');
 }
 
 export function isSystemSettingAtDefault(item: SystemSettingItem): boolean {

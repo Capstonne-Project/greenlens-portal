@@ -42,7 +42,7 @@ function forceLogout(): void {
   (window as Window & { __authToken?: string }).__authToken = undefined;
   window.dispatchEvent(new Event('auth:logout'));
   void clearAuthSessionViaApi().finally(() => {
-    window.location.href = '/login';
+    window.location.href = '/';
   });
 }
 
@@ -51,7 +51,8 @@ function shouldSkipRefreshRetry(url: string | undefined): boolean {
   return (
     url.includes('/v1/auth/login') ||
     url.includes('/v1/auth/refresh-token') ||
-    url.includes('/api/auth/refresh')
+    url.includes('/api/auth/refresh') ||
+    url.includes('/v1/public/')
   );
 }
 
