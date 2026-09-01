@@ -116,11 +116,13 @@ export function AdminSystemSettingsView({ moduleSlug }: AdminSystemSettingsViewP
       { module: apiModuleKey, cacheModule: moduleSlug },
       {
         onSuccess: () => {
-          toast.success('Đã khôi phục nhóm cấu hình về mặc định.');
+          toast.success('Đã khôi phục cấu hình về mặc định.');
           setResetOpen(false);
         },
         onError: err =>
-          toast.error(getSystemSettingsMutationError(err, 'Không thể khôi phục nhóm cấu hình.')),
+          toast.error(
+            getSystemSettingsMutationError(err, 'Không thể khôi phục mặc định cấu hình.')
+          ),
       }
     );
   };

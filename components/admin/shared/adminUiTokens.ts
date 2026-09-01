@@ -76,8 +76,15 @@ export const ADMIN_TOOLBAR_SELECT = cn(ADMIN_TOOLBAR_CONTROL, 'rounded-md');
 /** Numeric input in settings forms — align toolbar height. */
 export const ADMIN_NUMBER_INPUT_CLASS = cn(
   ADMIN_TOOLBAR_CONTROL,
-  'w-[5.5rem] text-right font-medium tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+  'w-[5.5rem] shrink-0 text-right font-medium tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 );
+
+/** Unit suffix slot — fixed width so numeric inputs align vertically. */
+export const ADMIN_SETTING_UNIT_SLOT_CLASS =
+  'inline-flex w-14 shrink-0 items-center text-sm text-muted-foreground';
+
+/** Control column width: input + unit slot + undo button. */
+export const ADMIN_SETTING_CONTROL_COLUMN_CLASS = 'w-[9.75rem] shrink-0';
 
 /** Full-width text input in inline settings rows. */
 export const ADMIN_TEXT_INPUT_CLASS = cn(ADMIN_TOOLBAR_CONTROL, 'min-w-[8rem] md:min-w-[10rem]');

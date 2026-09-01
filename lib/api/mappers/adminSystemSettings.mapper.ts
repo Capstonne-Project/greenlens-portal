@@ -50,10 +50,17 @@ function mapSettingScalar(value: unknown): string {
 
 export function mapSystemSettingItemDto(dto: SystemSettingItemDto): SystemSettingItem {
   const raw = dto as SystemSettingItemDto & Record<string, unknown>;
+  const key = mapSettingScalar(pickDtoScalar(raw, 'key', 'Key'));
+  const titleRaw = mapSettingScalar(pickDtoScalar(raw, 'title', 'Title'));
   return {
     id: String(pickDtoScalar(raw, 'id', 'Id') ?? ''),
     module: mapSettingScalar(pickDtoScalar(raw, 'module', 'Module')),
-    key: mapSettingScalar(pickDtoScalar(raw, 'key', 'Key')),
+    key,
+    title: titleRaw || key,
+    unit: (() => {
+      const text = mapSettingScalar(pickDtoScalar(raw, 'unit', 'Unit'));
+      return text || null;
+    })(),
     valueType: mapSettingScalar(pickDtoScalar(raw, 'valueType', 'ValueType')) || 'string',
     value: mapSettingScalar(pickDtoScalar(raw, 'value', 'Value')),
     defaultValue: mapSettingScalar(pickDtoScalar(raw, 'defaultValue', 'DefaultValue')),

@@ -9,6 +9,8 @@ export interface SystemSettingItemDto {
   id?: string;
   module?: string | null;
   key?: string | null;
+  title?: string | null;
+  unit?: string | null;
   valueType?: string | null;
   value?: string | null;
   defaultValue?: string | null;
