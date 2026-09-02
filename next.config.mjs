@@ -58,6 +58,11 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn.example.com', pathname: '/**' },
       {
         protocol: 'https',
+        hostname: 'media.greenlens.online',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'pub-d1de759d41364ae7890b5d1273065f8c.r2.dev',
         pathname: '/**',
       },
