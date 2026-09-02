@@ -1,15 +1,17 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { LandingAtmosphere } from '@/components/landing/LandingAtmosphere';
+import { LandingFinalCtaSection } from '@/components/landing/LandingFinalCtaSection';
 import { PublicSiteFooter } from '@/components/landing/PublicSiteFooter';
 import { PublicSiteHeader } from '@/components/landing/PublicSiteHeader';
-import { Button } from '@/components/ui/button';
+import { PublicSiteShell } from '@/components/landing/PublicSiteShell';
 import { APP_NAME } from '@/lib/constants/brand';
 
 export const metadata: Metadata = {
   title: 'Blog',
   description: `Tin và hướng dẫn từ ${APP_NAME} — báo cáo ô nhiễm, bản đồ công khai, cộng đồng.`,
 };
+
+const BLOG_INTRO =
+  'mx-auto flex max-w-3xl flex-col items-center gap-5 pb-10 text-center sm:gap-6 sm:pb-12';
 
 const POSTS = [
   {
@@ -34,46 +36,41 @@ const POSTS = [
 
 export default function BlogPage() {
   return (
-    <div className="relative flex min-h-dvh flex-col">
-      <LandingAtmosphere />
-      <div className="pointer-events-none relative z-10 flex min-h-dvh flex-col">
-        <PublicSiteHeader activePath="/blog" />
-        <main className="landing-hit landing-shell mx-auto w-full max-w-3xl flex-1 py-14">
-          <div className="space-y-3">
-            <p className="text-xs font-semibold tracking-[0.14em] text-emerald-700 uppercase">
-              Blog
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Hướng dẫn & cập nhật
-            </h1>
-            <p className="text-slate-600">
+    <PublicSiteShell>
+      <PublicSiteHeader activePath="/blog" tone="forest" />
+      <main className="flex-1">
+        <div className="landing-hit landing-shell py-14 sm:py-20">
+          <header className={BLOG_INTRO}>
+            <p className="landing-section-eyebrow">Blog</p>
+            <h1 className="landing-audiences__title">Hướng dẫn & cập nhật</h1>
+            <p className="landing-how-subtitle max-w-2xl text-pretty">
               Bản rút gọn cho đồ án — bài viết đầy đủ có thể bổ sung sau. Dùng làm mục nav giống cấu
               trúc product map hiện đại.
             </p>
-          </div>
+          </header>
 
-          <ul className="mt-10 space-y-4">
+          <ul className="mx-auto flex w-full max-w-3xl flex-col gap-5">
             {POSTS.map(post => (
-              <li key={post.slug}>
-                <article className="landing-glass rounded-2xl p-5">
-                  <h2 className="text-lg font-semibold text-slate-900">{post.title}</h2>
-                  <p className="mt-2 text-sm text-slate-600">{post.excerpt}</p>
-                  <p className="mt-3 text-xs text-slate-500">
+              <li key={post.slug} className="min-w-0">
+                <article className="landing-glass rounded-2xl px-6 py-5 sm:px-7 sm:py-6">
+                  <h2 className="text-lg font-semibold leading-snug text-pretty text-white">
+                    {post.title}
+                  </h2>
+                  <p className="mt-3 text-sm leading-relaxed text-pretty text-white">{post.excerpt}</p>
+                  <p className="mt-4 text-xs text-white/75">
                     Sắp có nội dung chi tiết · {post.slug}
                   </p>
                 </article>
               </li>
             ))}
           </ul>
-
-          <Button asChild className="mt-10 bg-emerald-600 text-white hover:bg-emerald-500">
-            <Link href="/map">Mở bản đồ</Link>
-          </Button>
-        </main>
-        <div className="landing-hit">
-          <PublicSiteFooter />
         </div>
+
+        <LandingFinalCtaSection />
+      </main>
+      <div className="landing-hit">
+        <PublicSiteFooter tone="forest" />
       </div>
-    </div>
+    </PublicSiteShell>
   );
 }

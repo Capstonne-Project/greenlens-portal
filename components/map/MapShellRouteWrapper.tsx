@@ -1,6 +1,11 @@
 'use client';
 
 import { MapShellLayout } from '@/components/map/MapShellLayout';
+import {
+  getAuthStoreHydratedServerSnapshot,
+  getAuthStoreHydratedSnapshot,
+  subscribeAuthStoreHydration,
+} from '@/lib/auth/authStoreHydration';
 import { getMapShellNavForRole, isMapShellRoute } from '@/lib/constants/mapShellNav';
 import { useAuthStore } from '@/lib/store/authStore';
 import { usePathname } from 'next/navigation';
@@ -16,29 +21,13 @@ function MapShellAuthSkeleton() {
   );
 }
 
-function subscribeAuthHydration(onStoreChange: () => void) {
-  const persistApi = useAuthStore.persist;
-  if (!persistApi) return () => {};
-  return persistApi.onFinishHydration(onStoreChange);
-}
-
-/** Client: đã rehydrate localStorage chưa. */
-function getAuthHydrationSnapshot() {
-  return useAuthStore.persist?.hasHydrated() ?? true;
-}
-
-/** SSR: luôn false — không đụng persist (tránh crash). */
-function getAuthHydrationServerSnapshot() {
-  return false;
-}
-
 export function MapShellRouteWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const systemRole = useAuthStore(s => s.user?.systemRole);
   const hasHydrated = useSyncExternalStore(
-    subscribeAuthHydration,
-    getAuthHydrationSnapshot,
-    getAuthHydrationServerSnapshot
+    subscribeAuthStoreHydration,
+    getAuthStoreHydratedSnapshot,
+    getAuthStoreHydratedServerSnapshot
   );
 
   if (!isMapShellRoute(pathname)) {

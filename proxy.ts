@@ -109,6 +109,12 @@ async function redirectCitizenIfOutOfScope(
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // API rewrite — never apply page routing / citizen redirects to backend proxy.
+  if (pathname.startsWith('/proxy-api/')) {
+    return NextResponse.next();
+  }
+
   const token = getAccessToken(request);
 
   const citizenRedirect = await redirectCitizenIfOutOfScope(request, pathname, token);
@@ -194,6 +200,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|images|fonts|icons|robots.txt|sitemap.xml).*)',
+    '/((?!api|proxy-api|_next/static|_next/image|favicon.ico|images|fonts|icons|robots.txt|sitemap.xml).*)',
   ],
 };

@@ -3,8 +3,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Download, Menu, X } from 'lucide-react';
+import { Download, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuthStoreHydrated } from '@/hooks/useAuthSession';
 import { APP_LOGO_MARK_SRC, APP_NAME } from '@/lib/constants/brand';
 import {
   ANDROID_APK_HREF,
@@ -12,14 +13,20 @@ import {
   PUBLIC_SITE_CTA,
   PUBLIC_SITE_NAV,
 } from '@/lib/constants/publicSite';
+import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
+import { PublicSiteHeaderUserMenu } from '@/components/landing/PublicSiteHeaderUserMenu';
 
 function isExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href);
 }
 
+export type PublicSiteChromeTone = 'light' | 'forest';
+
 interface PublicSiteHeaderProps {
   activePath?: string;
+  /** `forest` — cream/glass chrome over Sylva Living World (home only). */
+  tone?: PublicSiteChromeTone;
 }
 
 function PublicNavLink({
@@ -28,12 +35,14 @@ function PublicNavLink({
   active,
   onClick,
   compact = false,
+  forest = false,
 }: {
   href: string;
   label: string;
   active: boolean;
   onClick?: () => void;
   compact?: boolean;
+  forest?: boolean;
 }) {
   return (
     <Link
@@ -42,7 +51,13 @@ function PublicNavLink({
       className={cn(
         'group flex items-center px-3 text-sm font-medium transition-colors duration-200',
         compact ? 'py-2.5' : 'h-16',
-        active ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900'
+        forest
+          ? active
+            ? 'text-stone-50'
+            : 'text-stone-300/80 hover:text-stone-50'
+          : active
+            ? 'text-slate-900'
+            : 'text-slate-600 hover:text-slate-900'
       )}
       aria-current={active ? 'page' : undefined}
     >
@@ -51,7 +66,8 @@ function PublicNavLink({
         <span
           aria-hidden
           className={cn(
-            'absolute top-[calc(100%+0.375rem)] left-0 h-0.5 w-full rounded-full bg-emerald-500',
+            'absolute top-[calc(100%+0.375rem)] left-0 h-0.5 w-full rounded-full',
+            forest ? 'bg-lime-200/85' : 'bg-emerald-500',
             'origin-left scale-x-0 transition-transform duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none',
             'group-hover:scale-x-100 group-focus-visible:scale-x-100',
             active && 'scale-x-100'
@@ -62,7 +78,77 @@ function PublicNavLink({
   );
 }
 
-export function PublicSiteHeader({ activePath }: PublicSiteHeaderProps) {
+function PublicSiteHeaderAuthSkeleton({
+  forest,
+  compact = false,
+}: {
+  forest: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'size-9 shrink-0 rounded-full motion-safe:animate-pulse',
+        compact ? 'inline-flex' : 'hidden sm:inline-flex',
+        forest ? 'bg-white/10' : 'bg-slate-200'
+      )}
+      aria-hidden
+    />
+  );
+}
+
+function PublicSiteHeaderAuth({
+  forest,
+  compact = false,
+  activePath,
+  onNavigate,
+}: {
+  forest: boolean;
+  compact?: boolean;
+  activePath?: string;
+  onNavigate?: () => void;
+}) {
+  const hydrated = useAuthStoreHydrated();
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  const user = useAuthStore(s => s.user);
+
+  if (!hydrated) {
+    return <PublicSiteHeaderAuthSkeleton forest={forest} compact={compact} />;
+  }
+
+  if (isAuthenticated && user) {
+    return (
+      <PublicSiteHeaderUserMenu
+        user={user}
+        activePath={activePath}
+        forest={forest}
+        compact={compact}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
+  return (
+    <Button
+      asChild
+      size="sm"
+      variant="outline"
+      className={cn(
+        compact ? 'inline-flex' : 'hidden sm:inline-flex',
+        forest
+          ? 'border-white/14 bg-white/8 text-stone-50 hover:bg-white/12 hover:text-stone-50'
+          : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+      )}
+    >
+      <Link href={PUBLIC_SITE_CTA.login.href} onClick={onNavigate}>
+        {PUBLIC_SITE_CTA.login.label}
+      </Link>
+    </Button>
+  );
+}
+
+export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeaderProps) {
+  const forest = tone === 'forest';
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const apkExternal = isExternalHref(ANDROID_APK_HREF);
@@ -85,9 +171,13 @@ export function PublicSiteHeader({ activePath }: PublicSiteHeaderProps) {
       <header
         className={cn(
           'landing-hit fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter,border-color,box-shadow] duration-200',
-          scrolled
-            ? 'border-b border-black/[0.04] bg-white/75 shadow-[0_1px_1px_0_rgb(15_23_42/0.03)] backdrop-blur-xl supports-backdrop-filter:bg-white/70'
-            : 'border-b border-transparent bg-white/90 backdrop-blur-sm'
+          forest
+            ? scrolled
+              ? 'border-b border-white/8 bg-[#252820]/72 shadow-[0_1px_16px_0_rgb(0_0_0/0.12)] backdrop-blur-xl'
+              : 'border-b border-transparent bg-[#252820]/38 backdrop-blur-md'
+            : scrolled
+              ? 'border-b border-black/[0.04] bg-white/75 shadow-[0_1px_1px_0_rgb(15_23_42/0.03)] backdrop-blur-xl supports-backdrop-filter:bg-white/70'
+              : 'border-b border-transparent bg-white/90 backdrop-blur-sm'
         )}
       >
         <div className="landing-shell flex h-16 items-center gap-3 sm:gap-6">
@@ -105,7 +195,12 @@ export function PublicSiteHeader({ activePath }: PublicSiteHeaderProps) {
               priority
               className="size-12 object-contain"
             />
-            <span className="text-lg font-semibold tracking-tight text-emerald-800 sm:text-xl">
+            <span
+              className={cn(
+                'text-lg font-semibold tracking-tight sm:text-xl',
+                forest ? 'text-[rgb(230_245_220/0.92)]' : 'text-emerald-800'
+              )}
+            >
               {APP_NAME}
             </span>
           </Link>
@@ -116,39 +211,44 @@ export function PublicSiteHeader({ activePath }: PublicSiteHeaderProps) {
                 activePath === item.href || activePath?.startsWith(`${item.href}/`)
               );
               return (
-                <PublicNavLink key={item.id} href={item.href} label={item.label} active={active} />
+                <PublicNavLink
+                  key={item.id}
+                  href={item.href}
+                  label={item.label}
+                  active={active}
+                  forest={forest}
+                />
               );
             })}
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            <PublicSiteHeaderAuth forest={forest} activePath={activePath} />
             <Button
               asChild
               size="sm"
               variant="outline"
-              className="hidden border-slate-200 bg-white text-slate-800 hover:bg-slate-50 sm:inline-flex"
+              className={cn(
+                'hidden sm:inline-flex',
+                forest
+                  ? 'border-white/14 bg-white/8 text-stone-50 hover:bg-white/12 hover:text-stone-50'
+                  : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+              )}
             >
               <a {...apkProps}>
-                <Download className="size-3.5" aria-hidden />
                 {ANDROID_APK_LABEL}
+                <Download className="size-3.5" aria-hidden />
               </a>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="hidden bg-emerald-600 text-white hover:bg-emerald-500 sm:inline-flex"
-            >
-              <Link href={PUBLIC_SITE_CTA.openMap.href}>
-                {PUBLIC_SITE_CTA.openMap.label}
-                <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
             </Button>
 
             <Button
               type="button"
               size="icon"
               variant="ghost"
-              className="md:hidden"
+              className={cn(
+                'md:hidden',
+                forest && 'text-stone-100 hover:bg-white/10 hover:text-stone-50'
+              )}
               aria-expanded={open}
               aria-controls="public-mobile-nav"
               aria-label={open ? 'Đóng menu' : 'Mở menu'}
@@ -162,7 +262,10 @@ export function PublicSiteHeader({ activePath }: PublicSiteHeaderProps) {
         <div
           id="public-mobile-nav"
           className={cn(
-            'border-t border-black/[0.04] bg-white/95 backdrop-blur-md md:hidden',
+            'backdrop-blur-md md:hidden',
+            forest
+              ? 'border-t border-white/8 bg-[#252820]/88'
+              : 'border-t border-black/[0.04] bg-white/95',
             open ? 'block' : 'hidden'
           )}
         >
@@ -178,24 +281,28 @@ export function PublicSiteHeader({ activePath }: PublicSiteHeaderProps) {
                   label={item.label}
                   active={active}
                   compact
+                  forest={forest}
                   onClick={() => setOpen(false)}
                 />
               );
             })}
+            <PublicSiteHeaderAuth
+              forest={forest}
+              compact
+              activePath={activePath}
+              onNavigate={() => setOpen(false)}
+            />
             <a
               {...apkProps}
-              className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100"
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium',
+                forest ? 'text-stone-100 hover:bg-white/10' : 'text-slate-800 hover:bg-slate-100'
+              )}
               onClick={() => setOpen(false)}
             >
-              <Download className="size-3.5" aria-hidden />
               {ANDROID_APK_LABEL} (APK)
+              <Download className="size-3.5" aria-hidden />
             </a>
-            <Button asChild className="mt-1 bg-emerald-600 text-white hover:bg-emerald-500">
-              <Link href={PUBLIC_SITE_CTA.openMap.href} onClick={() => setOpen(false)}>
-                {PUBLIC_SITE_CTA.openMap.label}
-                <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
-            </Button>
           </nav>
         </div>
       </header>
