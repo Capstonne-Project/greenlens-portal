@@ -29,6 +29,17 @@ export const ANDROID_APK_HREF =
 
 export const ANDROID_APK_LABEL = 'Tải ứng dụng';
 
+/** Anchor props for the capstone APK — local download vs absolute URL. */
+export function getAndroidApkLinkProps(href: string = ANDROID_APK_HREF) {
+  const external = /^https?:\/\//i.test(href);
+  return {
+    href,
+    ...(external
+      ? { target: '_blank' as const, rel: 'noopener noreferrer' }
+      : { download: true as const }),
+  };
+}
+
 export type PublicSiteFooterLink = {
   id: string;
   label: string;

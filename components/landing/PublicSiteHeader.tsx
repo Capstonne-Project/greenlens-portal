@@ -4,10 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Download, Menu, X } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuthStoreHydrated } from '@/hooks/useAuthSession';
-import { getDashboardPathByRole } from '@/lib/auth/mapUser';
 import { APP_LOGO_MARK_SRC, APP_NAME } from '@/lib/constants/brand';
 import {
   ANDROID_APK_HREF,
@@ -17,21 +15,10 @@ import {
 } from '@/lib/constants/publicSite';
 import { useAuthStore } from '@/lib/store/authStore';
 import { cn } from '@/lib/utils';
+import { PublicSiteHeaderUserMenu } from '@/components/landing/PublicSiteHeaderUserMenu';
 
 function isExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href);
-}
-
-function initialsFromUser(name: string | undefined, email: string | undefined): string {
-  if (name?.trim()) {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return `${parts[0]?.[0] ?? ''}${parts[parts.length - 1]?.[0] ?? ''}`.toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-  }
-  if (email) return email.slice(0, 2).toUpperCase();
-  return 'GL';
 }
 
 export type PublicSiteChromeTone = 'light' | 'forest';
@@ -113,17 +100,17 @@ function PublicSiteHeaderAuthSkeleton({
 function PublicSiteHeaderAuth({
   forest,
   compact = false,
+  activePath,
   onNavigate,
 }: {
   forest: boolean;
   compact?: boolean;
+  activePath?: string;
   onNavigate?: () => void;
 }) {
   const hydrated = useAuthStoreHydrated();
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const user = useAuthStore(s => s.user);
-  const initials = initialsFromUser(user?.name, user?.email);
-  const profileHref = user ? getDashboardPathByRole(user.role) : PUBLIC_SITE_CTA.login.href;
 
   if (!hydrated) {
     return <PublicSiteHeaderAuthSkeleton forest={forest} compact={compact} />;
@@ -131,27 +118,13 @@ function PublicSiteHeaderAuth({
 
   if (isAuthenticated && user) {
     return (
-      <Link
-        href={profileHref}
-        onClick={onNavigate}
-        className={cn(
-          'rounded-full focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:outline-none',
-          compact ? 'inline-flex' : 'hidden sm:inline-flex'
-        )}
-        aria-label={`Tài khoản ${user.name}`}
-      >
-        <Avatar className="size-9 ring-2 ring-white/10">
-          {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-          <AvatarFallback
-            className={cn(
-              'text-xs font-semibold',
-              forest ? 'bg-emerald-900/80 text-lime-100' : 'bg-emerald-100 text-emerald-800'
-            )}
-          >
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-      </Link>
+      <PublicSiteHeaderUserMenu
+        user={user}
+        activePath={activePath}
+        forest={forest}
+        compact={compact}
+        onNavigate={onNavigate}
+      />
     );
   }
 
@@ -250,7 +223,7 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <PublicSiteHeaderAuth forest={forest} />
+            <PublicSiteHeaderAuth forest={forest} activePath={activePath} />
             <Button
               asChild
               size="sm"
@@ -263,8 +236,8 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
               )}
             >
               <a {...apkProps}>
-                <Download className="size-3.5" aria-hidden />
                 {ANDROID_APK_LABEL}
+                <Download className="size-3.5" aria-hidden />
               </a>
             </Button>
 
@@ -316,6 +289,7 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
             <PublicSiteHeaderAuth
               forest={forest}
               compact
+              activePath={activePath}
               onNavigate={() => setOpen(false)}
             />
             <a
@@ -326,8 +300,8 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
               )}
               onClick={() => setOpen(false)}
             >
-              <Download className="size-3.5" aria-hidden />
               {ANDROID_APK_LABEL} (APK)
+              <Download className="size-3.5" aria-hidden />
             </a>
           </nav>
         </div>

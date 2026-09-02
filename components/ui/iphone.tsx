@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useId, useRef, type HTMLAttributes } from 'react';
 
 const PHONE_WIDTH = 433;
@@ -39,6 +40,8 @@ export type IphoneProps = HTMLAttributes<HTMLDivElement> & {
   videoSrc?: string;
   alt?: string;
   frame?: keyof typeof FRAME_STYLES;
+  /** Eager-load the screen image (above-the-fold mockups). */
+  priority?: boolean;
 };
 
 /** Magic UI iPhone — With Image / With Video. Unique mask id per instance (required when multiple on page). */
@@ -49,6 +52,7 @@ export function Iphone({
   frame = 'default',
   className,
   style,
+  priority = false,
   ...props
 }: IphoneProps) {
   const maskId = useId().replace(/:/g, '');
@@ -124,7 +128,14 @@ export function Iphone({
             borderRadius: `${RADIUS_H}% / ${RADIUS_V}%`,
           }}
         >
-          <img src={src} alt={alt} className="block size-full object-cover object-top" />
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            sizes="(min-width: 1024px) 24rem, (min-width: 640px) 16rem, 12rem"
+            className="object-cover object-top"
+            priority={priority}
+          />
         </div>
       ) : null}
 

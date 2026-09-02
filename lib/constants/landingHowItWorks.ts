@@ -59,7 +59,7 @@ export const LANDING_HOW_IT_WORKS = {
       leftImageAlt: 'Chọn ảnh để AI phân tích trên GreenLens',
       sideImageSrc: '/images/landing/mobile-step-01-ai-scan.jpg',
       sideImageAlt: 'AI đang quét và phân tích ảnh hiện trường trên GreenLens',
-      cta: { label: 'Đăng nhập để gửi', href: '/login' },
+      cta: { label: 'Tải ứng dụng Android', href: ANDROID_APK_HREF },
     },
     {
       id: 'submit',

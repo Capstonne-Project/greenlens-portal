@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { LeaderboardPageContent } from '@/components/landing/LeaderboardPageContent';
-import { LandingAtmosphere } from '@/components/landing/LandingAtmosphere';
 import { PublicSiteFooter } from '@/components/landing/PublicSiteFooter';
 import { PublicSiteHeader } from '@/components/landing/PublicSiteHeader';
+import { PublicSiteShell } from '@/components/landing/PublicSiteShell';
 import { APP_NAME } from '@/lib/constants/brand';
 
 export const metadata: Metadata = {
@@ -12,17 +12,14 @@ export const metadata: Metadata = {
 
 export default function LeaderboardPage() {
   return (
-    <div className="relative flex min-h-dvh flex-col">
-      <LandingAtmosphere />
-      <div className="pointer-events-none relative z-10 flex min-h-dvh flex-col">
-        <PublicSiteHeader activePath="/leaderboard" />
-        <main className="flex-1">
-          <LeaderboardPageContent />
-        </main>
-        <div className="landing-hit">
-          <PublicSiteFooter />
-        </div>
+    <PublicSiteShell>
+      <PublicSiteHeader activePath="/leaderboard" tone="forest" />
+      <main className="flex-1">
+        <LeaderboardPageContent />
+      </main>
+      <div className="landing-hit">
+        <PublicSiteFooter tone="forest" />
       </div>
-    </div>
+    </PublicSiteShell>
   );
 }

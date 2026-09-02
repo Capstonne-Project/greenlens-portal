@@ -8,16 +8,27 @@ type LandingStepPhoneProps = {
   sideImageAlt?: string;
   leftImageSrc?: string;
   leftImageAlt?: string;
+  /** First visible step — eager image decode. */
+  priority?: boolean;
 };
 
-function WingPanel({ src, alt }: { src: string; alt: string }) {
+function WingPanel({
+  src,
+  alt,
+  priority = false,
+}: {
+  src: string;
+  alt: string;
+  priority?: boolean;
+}) {
   return (
     <Image
       src={src}
       alt={alt}
       fill
-      sizes="(min-width: 1024px) 260px, 200px"
+      sizes="(min-width: 1024px) 260px, (min-width: 640px) 180px, 140px"
       className="object-cover object-top"
+      priority={priority}
     />
   );
 }
@@ -30,6 +41,7 @@ export function LandingStepPhone({
   sideImageAlt,
   leftImageSrc,
   leftImageAlt,
+  priority = false,
 }: LandingStepPhoneProps) {
   const hasRightWing = Boolean(sideImageSrc);
   const hasLeftWing = Boolean(leftImageSrc);
@@ -37,8 +49,8 @@ export function LandingStepPhone({
 
   if (!hasShowcase) {
     return (
-      <figure className="landing-how-step-phone" aria-label={alt}>
-        <Iphone src={imageSrc} alt={alt} frame="black" />
+      <figure className="landing-how-step-phone" aria-label={alt} data-landing-step-phone>
+        <Iphone src={imageSrc} alt={alt} frame="black" priority={priority} />
       </figure>
     );
   }
@@ -62,7 +74,7 @@ export function LandingStepPhone({
           className="landing-how-step-showcase__wing landing-how-step-showcase__wing--left"
           aria-hidden
         >
-          <WingPanel src={leftImageSrc} alt={leftImageAlt ?? ''} />
+          <WingPanel src={leftImageSrc} alt={leftImageAlt ?? ''} priority={priority} />
         </div>
       ) : null}
 
@@ -71,12 +83,15 @@ export function LandingStepPhone({
           className="landing-how-step-showcase__wing landing-how-step-showcase__wing--right"
           aria-hidden
         >
-          <WingPanel src={sideImageSrc} alt={sideImageAlt ?? ''} />
+          <WingPanel src={sideImageSrc} alt={sideImageAlt ?? ''} priority={priority} />
         </div>
       ) : null}
 
-      <div className="landing-how-step-showcase__phone landing-how-step-phone">
-        <Iphone src={imageSrc} alt={alt} frame="black" />
+      <div
+        className="landing-how-step-showcase__phone landing-how-step-phone"
+        data-landing-step-phone
+      >
+        <Iphone src={imageSrc} alt={alt} frame="black" priority={priority} />
       </div>
 
       {!isDuo && hasRightWing && sideImageSrc ? (
@@ -84,7 +99,7 @@ export function LandingStepPhone({
           className="landing-how-step-showcase__wing landing-how-step-showcase__wing--right"
           aria-hidden
         >
-          <WingPanel src={sideImageSrc} alt={sideImageAlt ?? ''} />
+          <WingPanel src={sideImageSrc} alt={sideImageAlt ?? ''} priority={priority} />
         </div>
       ) : null}
     </figure>
