@@ -21,11 +21,14 @@ export const PUBLIC_SITE_CTA = {
 } as const;
 
 /**
- * APK capstone — đặt file tại `public/downloads/greenlens.apk`
- * hoặc ghi đè bằng `NEXT_PUBLIC_ANDROID_APK_URL`.
+ * APK mobile — Expo internal distribution (capstone build).
+ * Ghi đè bằng `NEXT_PUBLIC_ANDROID_APK_URL` hoặc file local `/downloads/greenlens.apk`.
  */
+export const ANDROID_APK_DEFAULT_URL =
+  'https://expo.dev/accounts/phuchau23/projects/green-lens-app/builds/547c929a-8c6d-4d5a-b864-d5f0b0a8611c';
+
 export const ANDROID_APK_HREF =
-  process.env.NEXT_PUBLIC_ANDROID_APK_URL?.trim() || '/downloads/greenlens.apk';
+  process.env.NEXT_PUBLIC_ANDROID_APK_URL?.trim() || ANDROID_APK_DEFAULT_URL;
 
 export const ANDROID_APK_LABEL = 'Tải ứng dụng';
 

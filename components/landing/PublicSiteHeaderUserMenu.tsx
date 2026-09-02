@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { LayoutDashboard, LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getDashboardPathByRole } from '@/lib/auth/mapUser';
+import { resolvePublicSiteLogoutPath } from '@/lib/auth/citizenAccess';
 import { PROFILE_ROUTES } from '@/lib/constants/profilePortal';
 import { PUBLIC_SITE_NAV } from '@/lib/constants/publicSite';
 import type { AuthUser } from '@/lib/store/authStore';
@@ -50,18 +51,112 @@ type PublicSiteHeaderUserMenuProps = {
   user: AuthUser;
   activePath?: string;
   forest?: boolean;
-  /** Mobile sheet — mở bằng click thay vì hover. */
+  /** Mobile sheet — avatar + đăng xuất phẳng, không dropdown. */
   compact?: boolean;
   onNavigate?: () => void;
 };
 
-export function PublicSiteHeaderUserMenu({
+function MobileSheetUserSection({
+  user,
+  forest,
+  onNavigate,
+}: {
+  user: AuthUser;
+  forest: boolean;
+  onNavigate?: () => void;
+}) {
+  const router = useRouter();
+  const logout = useAuthStore(s => s.logout);
+
+  const displayName = user.name?.trim() || 'Người dùng';
+  const initials = initialsFromUser(user.name, user.email);
+  const portalItem = getPortalNavItem(user);
+  const accountHref = getAccountHref(user.role);
+
+  const handleLogout = useCallback(() => {
+    onNavigate?.();
+    const target = resolvePublicSiteLogoutPath(user.role);
+    logout();
+    router.replace(target);
+    router.refresh();
+  }, [logout, onNavigate, router, user.role]);
+
+  const rowClass = cn(
+    'flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+    forest ? 'text-stone-100 hover:bg-white/10' : 'text-slate-800 hover:bg-slate-100'
+  );
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 items-center gap-3 px-3 py-2.5">
+        <Avatar className="size-9 shrink-0 ring-2 ring-white/10">
+          {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
+          <AvatarFallback
+            className={cn(
+              'text-xs font-semibold',
+              forest ? 'bg-emerald-900/80 text-lime-100' : 'bg-emerald-100 text-emerald-800'
+            )}
+          >
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              'truncate text-sm font-semibold',
+              forest ? 'text-stone-50' : 'text-slate-900'
+            )}
+          >
+            {displayName}
+          </p>
+          {user.email ? (
+            <p
+              className={cn(
+                'truncate text-xs',
+                forest ? 'text-stone-400' : 'text-slate-500'
+              )}
+            >
+              {user.email}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {portalItem ? (
+        <Link href={portalItem.href} className={rowClass} onClick={onNavigate}>
+          <LayoutDashboard className="size-4 shrink-0 opacity-70" aria-hidden />
+          {portalItem.label}
+        </Link>
+      ) : null}
+      {accountHref ? (
+        <Link href={accountHref} className={rowClass} onClick={onNavigate}>
+          <User className="size-4 shrink-0 opacity-70" aria-hidden />
+          Tài khoản của tôi
+        </Link>
+      ) : null}
+
+      <button
+        type="button"
+        className={cn(
+          rowClass,
+          'cursor-pointer border-none bg-transparent text-left',
+          forest ? 'text-red-300 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+        )}
+        onClick={handleLogout}
+      >
+        <LogOut className="size-4 shrink-0" aria-hidden />
+        Đăng xuất
+      </button>
+    </div>
+  );
+}
+
+function DesktopHoverUserMenu({
   user,
   activePath,
   forest = false,
-  compact = false,
   onNavigate,
-}: PublicSiteHeaderUserMenuProps) {
+}: Omit<PublicSiteHeaderUserMenuProps, 'compact'>) {
   const router = useRouter();
   const logout = useAuthStore(s => s.logout);
   const [open, setOpen] = useState(false);
@@ -98,28 +193,11 @@ export function PublicSiteHeaderUserMenu({
   const handleLogout = useCallback(() => {
     closeMenu();
     onNavigate?.();
+    const target = resolvePublicSiteLogoutPath(user.role);
     logout();
-    router.push('/login');
+    router.replace(target);
     router.refresh();
-  }, [closeMenu, logout, onNavigate, router]);
-
-  useEffect(() => {
-    if (!compact || !open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        closeMenu();
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeMenu();
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [compact, open, closeMenu]);
+  }, [closeMenu, logout, onNavigate, router, user.role]);
 
   useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
 
@@ -248,29 +326,18 @@ export function PublicSiteHeaderUserMenu({
   return (
     <div
       ref={rootRef}
-      className={cn('relative', compact ? 'inline-flex w-full' : 'hidden sm:inline-flex')}
-      onMouseEnter={compact ? undefined : openMenu}
-      onMouseLeave={compact ? undefined : scheduleClose}
+      className="relative hidden sm:inline-flex"
+      onMouseEnter={openMenu}
+      onMouseLeave={scheduleClose}
     >
       <button
         type="button"
-        className={cn(
-          'cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:outline-none',
-          compact
-            ? cn(
-                'flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
-                forest ? 'text-stone-50 hover:bg-white/10' : 'text-slate-800 hover:bg-slate-100'
-              )
-            : 'rounded-full'
-        )}
+        className="cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:outline-none"
         aria-label={`Menu tài khoản ${displayName}`}
         aria-expanded={open}
         aria-haspopup="menu"
-        onClick={() => {
-          if (compact) setOpen(v => !v);
-        }}
       >
-        <Avatar className={cn('size-9 shrink-0 ring-2 ring-white/10', compact && 'size-8')}>
+        <Avatar className="size-9 shrink-0 ring-2 ring-white/10">
           {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
           <AvatarFallback
             className={cn(
@@ -281,23 +348,38 @@ export function PublicSiteHeaderUserMenu({
             {initials}
           </AvatarFallback>
         </Avatar>
-        {compact ? (
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{displayName}</span>
-        ) : null}
       </button>
 
       {open ? (
         <div
-          className={cn(
-            'absolute z-50 pt-2',
-            compact ? 'top-full left-0 w-full min-w-[13.5rem]' : 'top-full right-0'
-          )}
-          onMouseEnter={compact ? undefined : openMenu}
-          onMouseLeave={compact ? undefined : scheduleClose}
+          className="absolute top-full right-0 z-50 pt-2"
+          onMouseEnter={openMenu}
+          onMouseLeave={scheduleClose}
         >
           {menuPanel}
         </div>
       ) : null}
     </div>
+  );
+}
+
+export function PublicSiteHeaderUserMenu({
+  user,
+  activePath,
+  forest = false,
+  compact = false,
+  onNavigate,
+}: PublicSiteHeaderUserMenuProps) {
+  if (compact) {
+    return <MobileSheetUserSection user={user} forest={forest} onNavigate={onNavigate} />;
+  }
+
+  return (
+    <DesktopHoverUserMenu
+      user={user}
+      activePath={activePath}
+      forest={forest}
+      onNavigate={onNavigate}
+    />
   );
 }

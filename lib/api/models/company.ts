@@ -85,15 +85,69 @@ export interface MyWardCompanyItem {
   contractNumber: string;
   contractType: CompanyContractType;
   status: CompanyStatus;
+  contractStartDate: string;
+  contractEndDate: string | null;
+  taxCode: string;
   phone: string;
   email: string;
   serviceAreaCount: number;
   staffCount: number;
+  activeReportCount: number;
+  createdAt: string;
 }
 
-export interface MyWardCompanies {
-  companies: MyWardCompanyItem[];
+export interface MyWardCompaniesListParams {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  contractType?: string;
+  search?: string;
+  sortBy?: string;
+  sortDesc?: boolean;
 }
+
+export const MY_WARD_COMPANIES_PAGE_SIZE = 10;
+
+export interface MyWardCompaniesList {
+  localOfficeId: string;
+  localOfficeName: string;
+  wardCode: string;
+  wardName: string;
+  items: MyWardCompanyItem[];
+  pagination: CompanyPagination;
+}
+
+/** GET /v1/companies/my-ward/{id} — chi tiết công ty trong phường của LEO. */
+export interface MyWardCompanyDetail {
+  id: string;
+  name: string;
+  contractNumber: string;
+  contractType: CompanyContractType;
+  status: CompanyStatus;
+  contractStartDate: string;
+  contractEndDate: string | null;
+  taxCode: string;
+  address: string;
+  phone: string;
+  email: string;
+  departmentId: string;
+  departmentName: string;
+  activatedAt: string | null;
+  localOfficeId: string;
+  localOfficeName: string;
+  wardCode: string;
+  wardName: string;
+  wardServiceArea: CompanyServiceArea | null;
+  allServiceAreas: CompanyServiceArea[];
+  staffCount: number;
+  teamCount: number;
+  activeReportCount: number;
+  completedReportCount: number;
+  createdAt: string;
+}
+
+/** @deprecated Dùng `MyWardCompaniesList`. */
+export type MyWardCompanies = MyWardCompaniesList;
 
 /** GET /v1/companies/{id}/service-areas */
 export interface CompanyServiceAreas {

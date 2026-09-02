@@ -63,22 +63,61 @@ export interface CompaniesListDataDto {
   pagination: CompanyPaginationDto;
 }
 
-/** GET /v1/companies/my-ward — item trong `companies[]`. */
+/** GET /v1/companies/my-ward — item trong `items[]`. */
 export interface MyWardCompanyItemDto {
   id: string;
   name: string;
   contractNumber: string;
   contractType: CompanyContractType;
   status: string;
+  contractStartDate: string;
+  contractEndDate: string | null;
+  taxCode: string;
   phone: string;
   email: string;
   serviceAreaCount: number;
   staffCount: number;
+  activeReportCount: number;
+  createdAt: string;
 }
 
 /** GET /v1/companies/my-ward — data envelope. */
-export interface MyWardCompaniesDataDto {
-  companies: MyWardCompanyItemDto[];
+export interface MyWardCompaniesListDataDto {
+  localOfficeId: string;
+  localOfficeName: string;
+  wardCode: string;
+  wardName: string;
+  items: MyWardCompanyItemDto[];
+  pagination: CompanyPaginationDto;
+}
+
+/** GET /v1/companies/my-ward/{id} — data */
+export interface MyWardCompanyDetailDto {
+  id: string;
+  name: string;
+  contractNumber: string;
+  contractType: CompanyContractType;
+  status: string;
+  contractStartDate: string;
+  contractEndDate: string | null;
+  taxCode: string;
+  address: string;
+  phone: string;
+  email: string;
+  departmentId: string;
+  departmentName: string;
+  activatedAt: string | null;
+  localOfficeId: string;
+  localOfficeName: string;
+  wardCode: string;
+  wardName: string;
+  wardServiceArea: CompanyServiceAreaDto | null;
+  allServiceAreas: CompanyServiceAreaDto[];
+  staffCount: number;
+  teamCount: number;
+  activeReportCount: number;
+  completedReportCount: number;
+  createdAt: string;
 }
 
 /** GET /v1/companies/{id}/service-areas — data */

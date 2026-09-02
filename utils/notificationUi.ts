@@ -168,6 +168,7 @@ export function officerNotificationHref(
     case 'CommunityCleanupCheckInReminder':
     case 'CommunityCleanupOpened':
     case 'CommunityCleanupLeaderAssigned':
+    case 'CommunityCleanupLeaderStarted':
       if (ref) return `/officer/community/${encodeURIComponent(ref)}`;
       return '/officer/community';
     case 'CleanupTaskAccepted':

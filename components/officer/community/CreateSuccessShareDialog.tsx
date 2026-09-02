@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FacebookIcon } from '@/components/ui/svgs/facebookIcon';
-import { Twitter } from '@/components/ui/svgs/twitter';
 import {
   communityCleanupKeys,
   useShareCommunityCleanupFacebookPage,
@@ -57,7 +56,7 @@ export interface CreateSuccessShareDialogProps {
   footerVariant?: 'done' | 'create';
   /** Chỉ dùng với `footerVariant="create"`. */
   onViewDetail?: () => void;
-  /** Gọi khi đăng Facebook Page thành công — parent đóng dialog / hiện SuccessDialog. */
+  /** Gọi sau khi đăng Facebook Page thành công (toast đã hiện trong dialog). */
   onFacebookShareSuccess?: () => void;
 }
 
@@ -237,7 +236,7 @@ export function CreateSuccessShareDialog({
                 {headline}
               </DialogTitle>
               <DialogDescription className="text-xs leading-relaxed text-muted-foreground">
-                Sao chép nội dung và chia sẻ lên Facebook hoặc Twitter.
+                Sao chép nội dung và đăng lên Facebook Page.
               </DialogDescription>
             </div>
           </div>
@@ -293,9 +292,9 @@ export function CreateSuccessShareDialog({
               Chia sẻ lên mạng xã hội
             </p>
             <p className="mt-0.5 text-center text-[11px] text-muted-foreground">
-              Chọn nền tảng để đăng chương trình dọn cộng đồng
+              Đăng chương trình dọn cộng đồng lên Facebook Page
             </p>
-            <div className="mt-3 flex items-start justify-center gap-6">
+            <div className="mt-3 flex items-start justify-center">
               <SharePlatformButton
                 label="Facebook"
                 disabled={!eventId.trim()}
@@ -305,16 +304,6 @@ export function CreateSuccessShareDialog({
               >
                 <FacebookIcon className="size-7" aria-hidden />
                 <span className="sr-only">Đăng lên Facebook Page</span>
-              </SharePlatformButton>
-              <SharePlatformButton
-                label="Twitter"
-                href={safeHttpUrl(share.twitterShareUrl)}
-                disabled={!share.twitterShareUrl.trim()}
-                onClick={() => copyCaptionForComposer(postBody)}
-                circleClassName="bg-[#E8F6FD] dark:bg-[#55ACEE]/15"
-              >
-                <Twitter className="size-5" aria-hidden />
-                <span className="sr-only">Chia sẻ Twitter</span>
               </SharePlatformButton>
             </div>
           </div>

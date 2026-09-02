@@ -15,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UsersGroupIcon from '@/components/ui/users-group-icon';
 import { MeetingPointMapPicker } from '@/components/officer/assign/MeetingPointMapPicker';
-import { SuccessDialog } from '@/components/common/SuccessDialog';
 import {
   CreateSuccessShareDialog,
   hasCommunityCleanupShare,
@@ -253,8 +252,6 @@ export function CreateCommunityCleanupDialog({
     startsAt: string;
     endsAt: string | null;
   } | null>(null);
-  const [fbPostSuccessOpen, setFbPostSuccessOpen] = useState(false);
-  const [fbPostEventId, setFbPostEventId] = useState<string | null>(null);
   const shareFlowRef = useRef(false);
 
   const resetForm = useCallback(() => {
@@ -289,6 +286,8 @@ export function CreateCommunityCleanupDialog({
     }
   }
 
+  const createDialogVisible = open && createdEvent == null;
+
   const {
     data: teamsPages,
     isPending: teamsLoading,
@@ -297,7 +296,7 @@ export function CreateCommunityCleanupDialog({
     fetchNextPage: fetchNextTeams,
   } = useTeamsInfiniteList(
     { pageSize: TEAMS_ASSIGN_PAGE_SIZE, teamType: 'Cleanup', isActive: true },
-    { enabled: open }
+    { enabled: createDialogVisible }
   );
 
   // Chỉ đội cộng đồng (LEO-managed, gắn LocalOffice) — loại đội công ty (officeName null)
@@ -393,7 +392,6 @@ export function CreateCommunityCleanupDialog({
 
       if (eventId && data && hasCommunityCleanupShare(data.share)) {
         shareFlowRef.current = true;
-        resetForm();
         setCreatedEvent({
           id: eventId,
           title: data.title,
@@ -424,11 +422,10 @@ export function CreateCommunityCleanupDialog({
   const selectedLeaderName = members.find(m => m.userId === leaderUserId)?.fullName;
 
   const finalizeCreateFlow = (options?: { navigateToDetail?: boolean; eventId?: string }) => {
-    const eventId = (options?.eventId ?? createdEvent?.id ?? fbPostEventId)?.trim() ?? '';
+    const eventId = (options?.eventId ?? createdEvent?.id)?.trim() ?? '';
     shareFlowRef.current = false;
+    resetForm();
     setCreatedEvent(null);
-    setFbPostSuccessOpen(false);
-    setFbPostEventId(null);
     if (eventId) onCreated?.(eventId);
     else onCreated?.('');
     onClose();
@@ -452,16 +449,12 @@ export function CreateCommunityCleanupDialog({
     if (eventId) {
       stashCommunityCleanupFacebookPostHighlight(eventId);
     }
-    shareFlowRef.current = true;
-    setCreatedEvent(null);
-    setFbPostEventId(eventId || null);
-    setFbPostSuccessOpen(true);
   };
 
   return (
     <>
       <Dialog
-        open={open && createdEvent == null && !fbPostSuccessOpen}
+        open={createDialogVisible}
         onOpenChange={nextOpen => {
           if (!nextOpen && !isSubmitting && !shareFlowRef.current) handleClose();
         }}
@@ -779,27 +772,6 @@ export function CreateCommunityCleanupDialog({
           onFacebookShareSuccess={handleFacebookShareSuccess}
         />
       ) : null}
-
-      <SuccessDialog
-        open={fbPostSuccessOpen}
-        onOpenChange={next => {
-          if (!next)
-            finalizeCreateFlow({ navigateToDetail: false, eventId: fbPostEventId ?? undefined });
-        }}
-        accent="emerald"
-        title="Đăng bài thành công"
-        description="Chương trình đã được đăng lên Facebook Page."
-        secondaryAction={{
-          label: 'Đóng',
-          onClick: () =>
-            finalizeCreateFlow({ navigateToDetail: false, eventId: fbPostEventId ?? undefined }),
-        }}
-        primaryAction={{
-          label: 'Xem chi tiết',
-          onClick: () =>
-            finalizeCreateFlow({ navigateToDetail: true, eventId: fbPostEventId ?? undefined }),
-        }}
-      />
     </>
   );
 }

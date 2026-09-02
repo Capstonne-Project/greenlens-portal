@@ -280,7 +280,7 @@ export function LeoAssignDialog({
     }
   );
 
-  const companies = myWardData?.companies ?? [];
+  const companies = myWardData?.items ?? [];
   const teams = useMemo(() => {
     const flat = teamsPages?.pages.flatMap(page => page.items) ?? [];
     if (!isReassign || !oldTeamId) return flat;
