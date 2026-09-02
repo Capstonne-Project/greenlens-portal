@@ -8,7 +8,10 @@ import {
 } from '@/components/3d-globe-demo';
 
 const Globe3D = dynamic(
-  () => import('@/components/ui/3d-globe').then(mod => ({ default: mod.Globe3D })),
+  () =>
+    import('@/lib/three/r3fClockCompat').then(() =>
+      import('@/components/ui/3d-globe').then(mod => ({ default: mod.Globe3D }))
+    ),
   {
     ssr: false,
     loading: () => <div className="size-full" aria-hidden />,

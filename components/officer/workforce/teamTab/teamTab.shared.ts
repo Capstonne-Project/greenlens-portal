@@ -174,6 +174,11 @@ export function teamTypeToStaffRole(teamType: string): OfficeStaffAssignRole | u
   return undefined;
 }
 
+/** Cleaner → Cleanup, Inspector → Inspection — dùng khi lọc danh sách đội theo vai trò tuyển dụng. */
+export function staffRoleToTeamType(role: OfficeStaffAssignRole): 'Cleanup' | 'Inspection' {
+  return role === 'Cleaner' ? 'Cleanup' : 'Inspection';
+}
+
 export type AddMemberTeamTarget = {
   id: string;
   name: string;

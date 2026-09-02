@@ -33,6 +33,7 @@ import {
 import { useCatalogPollutionCategories } from '@/hooks/usePollutionCategories';
 import type { ReportQueueItem } from '@/lib/api/models/reportQueue';
 import { cn } from '@/lib/utils';
+import { isAbortError } from '@/lib/utils/abortError';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Check,
@@ -1080,7 +1081,8 @@ export function AssignReportsTab({ Dialog, actionLabel: _actionLabel }: AssignRe
 
         deepLinkTargetPageRef.current = foundPage;
         setPage(foundPage);
-      } catch {
+      } catch (err) {
+        if (isAbortError(err)) return;
         if (!cancelled) locateStartedForRef.current = null;
       }
     })();

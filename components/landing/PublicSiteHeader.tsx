@@ -134,7 +134,7 @@ function PublicSiteHeaderAuth({
       size="sm"
       variant="outline"
       className={cn(
-        compact ? 'inline-flex' : 'hidden sm:inline-flex',
+        compact ? 'inline-flex h-10 w-full justify-center' : 'hidden sm:inline-flex',
         forest
           ? 'border-white/14 bg-white/8 text-stone-50 hover:bg-white/12 hover:text-stone-50'
           : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
@@ -246,7 +246,7 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
               size="icon"
               variant="ghost"
               className={cn(
-                'md:hidden',
+                'relative md:hidden',
                 forest && 'text-stone-100 hover:bg-white/10 hover:text-stone-50'
               )}
               aria-expanded={open}
@@ -254,7 +254,20 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
               aria-label={open ? 'Đóng menu' : 'Mở menu'}
               onClick={() => setOpen(v => !v)}
             >
-              {open ? <X className="size-5" /> : <Menu className="size-5" />}
+              <Menu
+                className={cn(
+                  'absolute size-5 transition-all duration-300 ease-out motion-reduce:transition-none',
+                  open ? 'rotate-90 scale-75 opacity-0' : 'rotate-0 scale-100 opacity-100'
+                )}
+                aria-hidden
+              />
+              <X
+                className={cn(
+                  'absolute size-5 transition-all duration-300 ease-out motion-reduce:transition-none',
+                  open ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-75 opacity-0'
+                )}
+                aria-hidden
+              />
             </Button>
           </div>
         </div>
@@ -262,14 +275,23 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
         <div
           id="public-mobile-nav"
           className={cn(
-            'backdrop-blur-md md:hidden',
-            forest
-              ? 'border-t border-white/8 bg-[#252820]/88'
-              : 'border-t border-black/[0.04] bg-white/95',
-            open ? 'block' : 'hidden'
+            'grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none md:hidden',
+            open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
           )}
+          aria-hidden={!open}
         >
-          <nav aria-label="Menu di động" className="landing-shell flex flex-col gap-1 py-3">
+          <div
+            className={cn(
+              'min-h-0 overflow-hidden backdrop-blur-md transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none motion-reduce:transform-none',
+              forest
+                ? 'border-t border-white/8 bg-[#252820]/88'
+                : 'border-t border-black/[0.04] bg-white/95',
+              open
+                ? 'translate-y-0 opacity-100'
+                : 'pointer-events-none -translate-y-1 opacity-0'
+            )}
+          >
+          <nav aria-label="Menu di động" className="landing-shell flex flex-col gap-1 py-3 pb-4">
             {PUBLIC_SITE_NAV.map(item => {
               const active = Boolean(
                 activePath === item.href || activePath?.startsWith(`${item.href}/`)
@@ -286,24 +308,62 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
                 />
               );
             })}
+
+            <div
+              className={cn(
+                'my-2 h-px',
+                forest ? 'bg-white/10' : 'bg-slate-200/80'
+              )}
+              aria-hidden
+            />
+
             <PublicSiteHeaderAuth
               forest={forest}
               compact
               activePath={activePath}
               onNavigate={() => setOpen(false)}
             />
+
+            <div
+              className={cn(
+                'mt-2 h-px',
+                forest ? 'bg-white/10' : 'bg-slate-200/80'
+              )}
+              aria-hidden
+            />
+
             <a
               {...apkProps}
               className={cn(
-                'inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium',
-                forest ? 'text-stone-100 hover:bg-white/10' : 'text-slate-800 hover:bg-slate-100'
+                'mt-2 flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors',
+                forest
+                  ? 'border-emerald-400/25 bg-emerald-500/10 text-stone-50 hover:bg-emerald-500/15'
+                  : 'border-emerald-200 bg-emerald-50/80 text-emerald-950 hover:bg-emerald-50'
               )}
               onClick={() => setOpen(false)}
             >
-              {ANDROID_APK_LABEL} (APK)
-              <Download className="size-3.5" aria-hidden />
+              <span
+                className={cn(
+                  'flex size-10 shrink-0 items-center justify-center rounded-full',
+                  forest ? 'bg-emerald-500/20 text-lime-100' : 'bg-emerald-600 text-white'
+                )}
+              >
+                <Download className="size-4" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{ANDROID_APK_LABEL}</span>
+                <span
+                  className={cn(
+                    'mt-0.5 block text-xs',
+                    forest ? 'text-stone-400' : 'text-emerald-800/70'
+                  )}
+                >
+                  Android APK · Expo build
+                </span>
+              </span>
             </a>
           </nav>
+          </div>
         </div>
       </header>
 

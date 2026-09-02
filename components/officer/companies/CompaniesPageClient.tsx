@@ -71,15 +71,15 @@ function tableCellPad(colKey: ColumnKey, layer: 'head' | 'body' = 'body') {
 const ROW_BORDER = 'border-b border-slate-200';
 
 const COLUMN_DEFS: { key: ColumnKey; label: string; className?: string }[] = [
-  { key: 'contractNumber', label: 'No.', className: 'w-[8%]' },
-  { key: 'name', label: 'Company', className: 'w-[22%]' },
-  { key: 'contractType', label: 'Type', className: 'w-[9%]' },
-  { key: 'taxCode', label: 'Tax Code', className: 'w-[9%]' },
+  { key: 'contractNumber', label: 'Số HĐ', className: 'w-[8%]' },
+  { key: 'name', label: 'Doanh nghiệp', className: 'w-[22%]' },
+  { key: 'contractType', label: 'Loại HĐ', className: 'w-[9%]' },
+  { key: 'taxCode', label: 'MST', className: 'w-[9%]' },
   { key: 'email', label: 'Email', className: 'w-[11%]' },
-  { key: 'phone', label: 'Phone', className: 'w-[10%]' },
-  { key: 'serviceAreaCount', label: 'Areas', className: 'w-[7%]' },
-  { key: 'staffCount', label: 'Staff', className: 'w-[5%]' },
-  { key: 'status', label: 'Status', className: 'w-[12%]' },
+  { key: 'phone', label: 'Điện thoại', className: 'w-[10%]' },
+  { key: 'serviceAreaCount', label: 'Địa bàn', className: 'w-[7%]' },
+  { key: 'staffCount', label: 'Nhân sự', className: 'w-[5%]' },
+  { key: 'status', label: 'Trạng thái', className: 'w-[12%]' },
   { key: 'actions', label: '', className: 'w-[7%]' },
 ];
 

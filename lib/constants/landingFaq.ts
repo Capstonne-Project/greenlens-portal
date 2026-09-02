@@ -32,7 +32,7 @@ export const LANDING_FAQ = {
       id: 'android-apk',
       question: 'Tải ứng dụng ở đâu?',
       answer:
-        'Đồ án cung cấp file APK đã build (không lên CH Play). Dùng nút “Tải ứng dụng” trên trang này. Cài đặt có thể cần cho phép nguồn không xác định trên Android.',
+        'Đồ án cung cấp bản cài Android qua Expo (không lên CH Play). Dùng nút “Tải ứng dụng” trên trang này để mở trang tải APK. Cài đặt có thể cần cho phép nguồn không xác định trên Android.',
     },
   ],
 } as const satisfies {

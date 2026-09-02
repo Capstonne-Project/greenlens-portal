@@ -87,7 +87,7 @@ export function useLeoOverview(
         },
         {
           queryKey: leoOverviewKeys.companies(),
-          queryFn: () => fetchMyWardCompanies(),
+          queryFn: () => fetchMyWardCompanies({ page: 1, pageSize: 1 }),
           select: (envelope: Awaited<ReturnType<typeof fetchMyWardCompanies>>) => envelope.data,
           staleTime: DASHBOARD_STALE_MS,
           enabled: enableOrg,
@@ -122,7 +122,7 @@ export function useLeoOverview(
     const view = aggregateLeoDashboard(
       reportsQuery.data,
       {
-        companyCount: companiesQuery.data?.companies.length ?? 0,
+        companyCount: companiesQuery.data?.pagination.totalItems ?? 0,
         teamCount: teamsQuery.data?.pagination.totalItems ?? 0,
         officerCount: staffQuery.data?.pagination.totalItems ?? 0,
       },

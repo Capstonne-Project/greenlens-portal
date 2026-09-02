@@ -44,6 +44,7 @@ import type { InspectionOfficerQueueParams } from '@/lib/api/models/inspectionRe
 import type { ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type { ViolationRecurrenceCandidatesParams } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
+import { isAbortError } from '@/lib/utils/abortError';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
 import { reportKeys } from '@/hooks/useReport';
 import {
@@ -286,16 +287,22 @@ export async function locateReportInQueuePage(
 ): Promise<number | null> {
   const pageSize = params.pageSize ?? 10;
 
-  const fetchPage = (page: number) => {
-    const pageParams = { ...params, page, pageSize };
-    return queryClient.fetchQuery({
-      queryKey: officerKeys.queueList(pageParams),
-      queryFn: () => fetchReportQueue(pageParams),
-      staleTime: LIST_STALE_MS,
-    });
+  const fetchPage = async (page: number) => {
+    try {
+      const pageParams = { ...params, page, pageSize };
+      return await queryClient.fetchQuery({
+        queryKey: officerKeys.queueList(pageParams),
+        queryFn: () => fetchReportQueue(pageParams),
+        staleTime: LIST_STALE_MS,
+      });
+    } catch (error) {
+      if (isAbortError(error)) return null;
+      throw error;
+    }
   };
 
   const firstEnv = await fetchPage(1);
+  if (!firstEnv) return null;
   const first = firstEnv.data;
   if (!first) return null;
   if (first.items.some(item => item.id === reportId)) return 1;
@@ -308,7 +315,9 @@ export async function locateReportInQueuePage(
     );
     const results = await Promise.all(pages.map(page => fetchPage(page)));
     for (let i = 0; i < results.length; i++) {
-      const items = results[i]?.data?.items;
+      const env = results[i];
+      if (!env) continue;
+      const items = env.data?.items;
       if (items?.some(item => item.id === reportId)) return pages[i] ?? null;
     }
   }

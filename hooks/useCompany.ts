@@ -25,6 +25,7 @@ import {
   fetchMyCompanyContractHistory,
   fetchMyCompanyKpi,
   fetchMyWardCompanies,
+  fetchMyWardCompanyDetail,
   removeCompanyTeamMember,
   suspendCompany,
   updateCompanyTeam,
@@ -58,6 +59,7 @@ import type {
   MyCompanyContractHistory,
   MyCompanyKpi,
   MyCompanyKpiParams,
+  MyWardCompaniesListParams,
   CompanyTeamDetail,
   RemoveCompanyTeamMemberInput,
   RenewCompanyContractInput,
@@ -85,7 +87,10 @@ import { useMemo } from 'react';
 const officerCompanyKeys = {
   all: ['officer', 'companies'] as const,
   list: (params: CompaniesListParams) => [...officerCompanyKeys.all, 'list', params] as const,
-  myWard: () => [...officerCompanyKeys.all, 'my-ward'] as const,
+  myWardList: (params: MyWardCompaniesListParams) =>
+    [...officerCompanyKeys.all, 'my-ward', 'list', params] as const,
+  myWardDetail: (companyId: string) =>
+    [...officerCompanyKeys.all, 'my-ward', 'detail', companyId] as const,
   detail: (companyId: string) => [...officerCompanyKeys.all, 'detail', companyId] as const,
   serviceAreas: (companyId: string) =>
     [...officerCompanyKeys.all, 'service-areas', companyId] as const,
@@ -105,15 +110,38 @@ export function useCompaniesList(params: CompaniesListParams) {
   });
 }
 
-/** GET /v1/companies/my-ward — công ty phục vụ phường/xã của LEO đang đăng nhập. */
-export function useMyWardCompanies(options?: { enabled?: boolean }) {
+/** GET /v1/companies/my-ward — danh sách công ty phục vụ phường/xã (LEO). */
+export function useMyWardCompaniesList(
+  params: MyWardCompaniesListParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
-    queryKey: officerCompanyKeys.myWard(),
-    queryFn: () => fetchMyWardCompanies(),
+    queryKey: officerCompanyKeys.myWardList(params),
+    queryFn: () => fetchMyWardCompanies(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
+    placeholderData: keepPreviousData,
     enabled: options?.enabled ?? true,
   });
+}
+
+/** GET /v1/companies/my-ward/{id} — chi tiết công ty trong phường (LEO). */
+export function useMyWardCompanyDetail(companyId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: officerCompanyKeys.myWardDetail(companyId ?? ''),
+    queryFn: () => fetchMyWardCompanyDetail(companyId!),
+    select: envelope => envelope.data,
+    staleTime: LIST_STALE_MS,
+    enabled: Boolean(companyId) && enabled,
+  });
+}
+
+/** Dropdown phân công — chỉ công ty Active trong phường. */
+export function useMyWardCompanies(options?: { enabled?: boolean }) {
+  return useMyWardCompaniesList(
+    { page: 1, pageSize: 100, status: 'Active' },
+    { enabled: options?.enabled ?? true }
+  );
 }
 
 export function useCompanyDetail(companyId: string | null, enabled = true) {

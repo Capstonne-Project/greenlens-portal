@@ -5,7 +5,8 @@ import type {
   CompanyServiceAreaDto,
   CompanyServiceAreasDataDto,
   CreateCompanyDataDto,
-  MyWardCompaniesDataDto,
+  MyWardCompaniesListDataDto,
+  MyWardCompanyDetailDto,
   MyWardCompanyItemDto,
 } from '@/lib/api/dto/company.dto';
 import type {
@@ -15,7 +16,8 @@ import type {
   CompanyServiceArea,
   CompanyServiceAreas,
   CreatedCompany,
-  MyWardCompanies,
+  MyWardCompaniesList,
+  MyWardCompanyDetail,
   MyWardCompanyItem,
 } from '@/lib/api/models/company';
 
@@ -71,16 +73,68 @@ export function mapMyWardCompanyItemDto(dto: MyWardCompanyItemDto): MyWardCompan
     contractNumber: dto.contractNumber,
     contractType: dto.contractType,
     status: dto.status,
+    contractStartDate: dto.contractStartDate,
+    contractEndDate: dto.contractEndDate,
+    taxCode: dto.taxCode,
     phone: dto.phone,
     email: dto.email,
     serviceAreaCount: dto.serviceAreaCount,
     staffCount: dto.staffCount,
+    activeReportCount: dto.activeReportCount,
+    createdAt: dto.createdAt,
   };
 }
 
-export function mapMyWardCompaniesDataDto(dto: MyWardCompaniesDataDto): MyWardCompanies {
+export function mapMyWardCompaniesListDataDto(dto: MyWardCompaniesListDataDto): MyWardCompaniesList {
   return {
-    companies: (dto.companies ?? []).map(mapMyWardCompanyItemDto),
+    localOfficeId: dto.localOfficeId,
+    localOfficeName: dto.localOfficeName,
+    wardCode: dto.wardCode,
+    wardName: dto.wardName,
+    items: (dto.items ?? []).map(mapMyWardCompanyItemDto),
+    pagination: {
+      page: dto.pagination.page,
+      pageSize: dto.pagination.pageSize,
+      totalItems: dto.pagination.totalItems,
+      totalPages: dto.pagination.totalPages,
+      hasNext: dto.pagination.hasNext,
+      hasPrev: dto.pagination.hasPrev,
+    },
+  };
+}
+
+/** @deprecated Dùng `mapMyWardCompaniesListDataDto`. */
+export function mapMyWardCompaniesDataDto(dto: MyWardCompaniesListDataDto): MyWardCompaniesList {
+  return mapMyWardCompaniesListDataDto(dto);
+}
+
+export function mapMyWardCompanyDetailDto(dto: MyWardCompanyDetailDto): MyWardCompanyDetail {
+  return {
+    id: dto.id,
+    name: dto.name,
+    contractNumber: dto.contractNumber,
+    contractType: dto.contractType,
+    status: dto.status,
+    contractStartDate: dto.contractStartDate,
+    contractEndDate: dto.contractEndDate,
+    taxCode: dto.taxCode,
+    address: dto.address,
+    phone: dto.phone,
+    email: dto.email,
+    departmentId: dto.departmentId,
+    departmentName: dto.departmentName,
+    activatedAt: dto.activatedAt,
+    localOfficeId: dto.localOfficeId,
+    localOfficeName: dto.localOfficeName,
+    wardCode: dto.wardCode,
+    wardName: dto.wardName,
+    wardServiceArea: dto.wardServiceArea ? mapCompanyServiceAreaDto(dto.wardServiceArea) : null,
+    allServiceAreas: (dto.allServiceAreas ?? []).map(mapCompanyServiceAreaDto),
+    staffCount: dto.staffCount,
+    teamCount: dto.teamCount,
+    activeReportCount: dto.activeReportCount,
+    completedReportCount: dto.completedReportCount,
+    createdAt: dto.createdAt,
   };
 }
 

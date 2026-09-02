@@ -25,8 +25,8 @@ export function isRetiredSystemSettingKey(key: string): boolean {
   return (RETIRED_SYSTEM_SETTING_KEYS as readonly string[]).includes(key);
 }
 
-/** Module ẩn sidebar — quản lý riêng (vd. Gamification → /admin/badges). */
-export const HIDDEN_SYSTEM_SETTING_MODULES = ['gamification'] as const;
+/** Module ẩn sidebar — quản lý riêng hoặc chưa bật trên admin (vd. Gamification → /admin/badges). */
+export const HIDDEN_SYSTEM_SETTING_MODULES = ['gamification', 'comments'] as const;
 
 export type HiddenSystemSettingModule = (typeof HIDDEN_SYSTEM_SETTING_MODULES)[number];
 
