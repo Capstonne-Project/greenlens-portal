@@ -344,13 +344,25 @@
   @apply mx-auto w-full max-w-7xl px-3 sm:px-4 lg:px-5;
 }
 
-/** Final CTA band — transparent; emerald glow overlays shared LandingAtmosphere. */
+/** Final CTA band — transparent; glow overlays shared landing canvas. */
 .landing-cta-band {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-block: 1px solid rgb(16 185 129 / 0.08);
   background-color: transparent;
+  padding-block: 4rem;
+}
+
+@media (min-width: 640px) {
+  .landing-cta-band {
+    padding-block: 5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-cta-band {
+    padding-block: 6rem;
+  }
 }
 
 .landing-cta-band::before {
@@ -365,6 +377,1249 @@
     rgb(16 185 129 / 0.04) 44%,
     transparent 68%
   );
+}
+
+.landing-cta-band::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 58%, transparent 18%, rgb(244 240 230 / 0.03) 19%, transparent 20%),
+    radial-gradient(circle at 50% 58%, transparent 34%, rgb(244 240 230 / 0.025) 35%, transparent 36%),
+    radial-gradient(circle at 50% 58%, transparent 50%, rgb(244 240 230 / 0.02) 51%, transparent 52%);
+}
+
+.landing-cta-band__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-inline: 1rem;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .landing-cta-band__inner {
+    padding-inline: 1.5rem;
+  }
+}
+
+.landing-cta-band__title {
+  margin: 0;
+  max-width: 22ch;
+  font-size: clamp(1.75rem, 4.5vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--gl-text);
+}
+
+.landing-cta-band__lead {
+  margin: 1rem 0 0;
+  max-width: 34ch;
+  font-size: clamp(1rem, 2.2vw, 1.125rem);
+  line-height: 1.55;
+  color: var(--gl-text-muted);
+}
+
+/** ARGOS band CTA — solid accent, balanced text/padding ratio (reference “Open the map”). */
+.landing-cta-band__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding: 1rem 2.625rem;
+  font-family: inherit;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.2s ease;
+}
+
+.landing-cta-band__button.landing-cta-primary {
+  background-image: none !important;
+  background-color: var(--gl-accent) !important;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1) inset,
+    0 0 32px rgb(74 222 128 / 0.28);
+}
+
+.landing-cta-band__button.landing-cta-primary:hover {
+  background-image: none !important;
+  background-color: var(--gl-accent-bright) !important;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.14) inset,
+    0 0 40px rgb(74 222 128 / 0.36);
+}
+
+.landing-cta-band__button:focus-visible {
+  outline: 2px solid rgb(134 239 172 / 0.45);
+  outline-offset: 3px;
+}
+
+.landing-cta-band__arrow {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.landing-cta-band__footnote {
+  margin: 1.25rem 0 0;
+  font-family: ui-monospace, ui-sans-serif, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gl-text-dim);
+}
+
+@media (min-width: 640px) {
+  .landing-cta-band__button {
+    margin-top: 2.25rem;
+    padding: 1.125rem 3.375rem;
+    font-size: 1.25rem;
+  }
+
+  .landing-cta-band__arrow {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .landing-cta-band__footnote {
+    margin-top: 1.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+.landing-sylva .landing-cta-band::before {
+  background: radial-gradient(
+    ellipse 58% 78% at 50% 44%,
+    rgb(244 240 230 / 0.08) 0%,
+    rgb(74 77 68 / 0.28) 32%,
+    transparent 68%
+  );
+}
+
+/**
+ * Sylva landing — ARGOS-inspired palette (soft grid + radial glow) in GreenLens greens.
+ * Cyan → mint/lime; harsh glow → gentle bloom.
+ */
+.landing-sylva {
+  --gl-text: rgb(244 240 230);
+  --gl-text-muted: rgb(214 220 208 / 0.62);
+  --gl-text-dim: rgb(190 200 180 / 0.42);
+  --gl-accent: rgb(134 239 172);
+  --gl-accent-bright: rgb(187 247 208);
+  --gl-accent-soft: rgb(110 231 183 / 0.55);
+  --gl-accent-glow: rgb(74 222 128 / 0.22);
+  --gl-kicker-live: rgb(230 245 220 / 0.9);
+  --gl-kicker-meta: rgb(134 239 172 / 0.38);
+  --gl-tick: rgb(134 239 172 / 0.26);
+  --gl-cta-from: rgb(163 230 53);
+  --gl-cta-mid: rgb(110 231 183);
+  --gl-cta-to: rgb(52 211 153);
+  --gl-cta-text: rgb(18 38 28);
+}
+
+/** Soft grid + radial bloom over Sylva canvas (between bg and content). */
+.landing-sylva::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 72% 58% at 48% 38%, rgb(74 222 128 / 0.07) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 45% at 72% 52%, rgb(134 239 172 / 0.04) 0%, transparent 62%),
+    linear-gradient(rgb(190 242 100 / 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(190 242 100 / 0.022) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    3.25rem 3.25rem,
+    3.25rem 3.25rem;
+}
+
+.landing-sylva .landing-glass {
+  border: 1px solid rgb(244 240 230 / 0.1);
+  background-color: rgb(24 28 24 / 0.42);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.1),
+    0 12px 40px rgb(0 0 0 / 0.14);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.landing-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gl-accent-soft);
+}
+
+.landing-hero-body {
+  color: var(--gl-text-muted);
+  line-height: 1.65;
+}
+
+.landing-hero-body-em {
+  color: var(--gl-text);
+  font-weight: 500;
+}
+
+.landing-hero-footnote {
+  color: var(--gl-text-dim);
+}
+
+/** ARGOS-style gradient CTA — bright accent fill, dark text. */
+a.landing-cta-primary,
+button.landing-cta-primary {
+  color: var(--gl-cta-text) !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    128deg,
+    var(--gl-cta-from) 0%,
+    var(--gl-cta-mid) 52%,
+    var(--gl-cta-to) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.08) inset,
+    0 0 28px var(--gl-accent-glow);
+}
+
+a.landing-cta-primary:hover,
+button.landing-cta-primary:hover {
+  color: var(--gl-cta-text) !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    128deg,
+    rgb(190 242 100) 0%,
+    rgb(134 239 172) 52%,
+    rgb(74 222 128) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.12) inset,
+    0 0 36px rgb(74 222 128 / 0.32);
+}
+
+a.landing-cta-primary:active,
+button.landing-cta-primary:active {
+  transform: translateY(1px);
+}
+
+/** Hero / band CTA — ARGOS "Open the map": large label + generous padding. */
+.landing-cta-hero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  min-width: 16rem;
+  padding-block: 1.125rem;
+  padding-inline: 2.75rem;
+  font-family: ui-monospace, ui-sans-serif, monospace;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.045em;
+}
+
+.landing-cta-hero .landing-cta-arrow {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .landing-cta-hero {
+    min-width: 19.5rem;
+    padding-block: 1.3125rem;
+    padding-inline: 3.75rem;
+    font-size: 1.1875rem;
+    letter-spacing: 0.04em;
+  }
+
+  .landing-cta-hero .landing-cta-arrow {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+/** Page-wide soft typography on Sylva landing. */
+.landing-sylva main h2,
+.landing-sylva main h3,
+.landing-sylva main dt {
+  color: var(--gl-text);
+}
+
+.landing-sylva main .text-stone-200\/85,
+.landing-sylva main .text-stone-300\/90 {
+  color: var(--gl-text-muted);
+}
+
+.landing-sylva main .text-stone-400 {
+  color: var(--gl-text-dim);
+}
+
+.landing-sylva main .text-stone-100 {
+  color: rgb(230 235 225 / 0.78);
+}
+
+.landing-sylva main .text-lime-200,
+.landing-sylva main .text-lime-100 {
+  color: var(--gl-accent-soft);
+}
+
+/**
+ * Sylva Living World — full-viewport canvas behind HomeLanding.
+ * Library iframe sets pointer-events:auto; force none so landing-hit islands stay clickable.
+ */
+.landing-sylva-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background-color: #4a4d44;
+  pointer-events: none;
+}
+
+.landing-sylva-canvas.shader-frame {
+  width: 100%;
+  height: 100%;
+}
+
+.landing-sylva-canvas .threeui-background,
+.landing-sylva-canvas .sylva-living-world-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
+.landing-sylva-canvas,
+.landing-sylva-canvas .threeui-background,
+.landing-sylva-canvas iframe {
+  pointer-events: none !important;
+}
+
+/** Hero copy | globe — ARGOS 50/50; globe square matches copy height on lg+. */
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding-block: 3.5rem;
+}
+
+.landing-hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/** Hero headline — ARGOS-style line breaks; accent line with tech glow. */
+.landing-hero-title {
+  margin: 0;
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.landing-hero-title-line {
+  display: block;
+  color: var(--gl-text);
+}
+
+.landing-hero-title-accent {
+  display: block;
+  position: relative;
+  width: fit-content;
+  background-image: linear-gradient(
+    128deg,
+    var(--gl-accent-bright) 0%,
+    var(--gl-accent) 46%,
+    rgb(94 234 168) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 6px rgb(134 239 172 / 0.32))
+    drop-shadow(0 0 18px rgb(74 222 128 / 0.16));
+}
+
+.landing-hero-title-accent::before {
+  content: '';
+  position: absolute;
+  inset: -0.35rem -0.75rem -0.2rem;
+  z-index: -1;
+  border-radius: 0.35rem;
+  background: radial-gradient(
+    ellipse 85% 120% at 50% 55%,
+    rgb(74 222 128 / 0.12) 0%,
+    rgb(34 197 94 / 0.04) 42%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-hero-title-accent {
+    animation: landing-title-accent-glow 5.5s ease-in-out infinite;
+  }
+}
+
+@keyframes landing-title-accent-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 5px rgb(134 239 172 / 0.26))
+      drop-shadow(0 0 14px rgb(74 222 128 / 0.12));
+  }
+  50% {
+    filter: drop-shadow(0 0 9px rgb(134 239 172 / 0.4))
+      drop-shadow(0 0 22px rgb(74 222 128 / 0.2));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-title-accent {
+    animation: none;
+    filter: drop-shadow(0 0 5px rgb(134 239 172 / 0.28));
+  }
+}
+
+.landing-hero-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+  font-family: ui-monospace, ui-sans-serif, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.landing-hero-kicker-dot {
+  position: relative;
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background-color: var(--gl-accent);
+  box-shadow: 0 0 5px rgb(134 239 172 / 0.35);
+}
+
+.landing-hero-kicker-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--gl-accent);
+  animation: landing-kicker-pulse 2.6s ease-in-out infinite;
+}
+
+.landing-hero-kicker-live {
+  color: var(--gl-kicker-live);
+}
+
+.landing-hero-kicker-sep {
+  color: rgb(134 239 172 / 0.2);
+  letter-spacing: 0.08em;
+}
+
+.landing-hero-kicker-meta {
+  color: var(--gl-kicker-meta);
+}
+
+@keyframes landing-kicker-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-kicker-dot::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.landing-hero-globe {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+}
+
+/** ARGOS-style framed globe panel — height matches copy on lg+; brackets on globe frame. */
+.landing-hero-globe-panel {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.landing-hero-globe-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 58%,
+    rgb(74 222 128 / 0.05) 0%,
+    transparent 68%
+  );
+}
+
+.landing-hero-globe-kicker {
+  position: absolute;
+  top: 0.3rem;
+  left: calc(var(--landing-globe-tick) + 0.35rem);
+  z-index: 3;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-family: ui-monospace, ui-sans-serif, monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.landing-hero-globe-kicker-live {
+  color: var(--gl-kicker-live);
+}
+
+.landing-hero-globe-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+/** Hero GlobeCollection — transparent over Sylva; square with corner brackets. */
+.landing-globe-frame {
+  --landing-globe-tick: 1.15rem;
+  --landing-globe-tick-color: var(--gl-tick);
+  position: relative;
+  width: min(100%, 18.5rem);
+  aspect-ratio: 1;
+  min-height: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+.landing-globe-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 0 0 /
+      var(--landing-globe-tick) 1px no-repeat,
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 0 0 / 1px
+      var(--landing-globe-tick) no-repeat,
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 100% 0 /
+      var(--landing-globe-tick) 1px no-repeat,
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 100% 0 / 1px
+      var(--landing-globe-tick) no-repeat,
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 0 100% /
+      var(--landing-globe-tick) 1px no-repeat,
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 0 100% / 1px
+      var(--landing-globe-tick) no-repeat,
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 100% 100% /
+      var(--landing-globe-tick) 1px no-repeat,
+    linear-gradient(var(--landing-globe-tick-color), var(--landing-globe-tick-color)) 100% 100% /
+      1px var(--landing-globe-tick) no-repeat;
+}
+
+@media (min-width: 640px) {
+  .landing-hero {
+    padding-block: 5rem;
+  }
+
+  .landing-globe-frame {
+    width: min(100%, 22rem);
+  }
+
+  .landing-hero-globe-kicker {
+    top: 0.35rem;
+    left: calc(var(--landing-globe-tick) + 0.4rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 2.5rem 3rem;
+    padding-block: 7rem;
+  }
+
+  .landing-hero-copy {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .landing-hero-globe {
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .landing-hero-globe-panel {
+    height: 100%;
+    container-type: size;
+  }
+
+  .landing-hero-globe-stage {
+    flex: 1 1 0%;
+    height: 100%;
+    container-type: size;
+  }
+
+  .landing-globe-frame {
+    width: min(100cqi, 100cqb);
+    height: min(100cqi, 100cqb);
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: unset;
+  }
+
+  .landing-hero-globe-kicker {
+    top: 0.4rem;
+    left: calc(var(--landing-globe-tick) + 0.45rem);
+    font-size: 0.6875rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .landing-globe-frame {
+    --landing-globe-tick: 1.35rem;
+  }
+
+  .landing-hero-globe-kicker {
+    top: 0.45rem;
+    left: calc(var(--landing-globe-tick) + 0.5rem);
+  }
+}
+
+@supports not (container-type: size) {
+  @media (min-width: 1024px) {
+    .landing-globe-frame {
+      width: min(100%, 28rem);
+      height: auto;
+      aspect-ratio: 1;
+    }
+  }
+}
+
+.landing-globe-frame .threeui-background,
+.landing-globe-frame .energy-orb {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.landing-globe-frame canvas {
+  background: transparent !important;
+  mix-blend-mode: screen;
+  opacity: 0.92;
+}
+
+/** How it works — Mapbox alternating rows + Argos forest chrome. */
+.landing-how {
+  padding-block: 4rem;
+}
+
+@media (min-width: 640px) {
+  .landing-how {
+    padding-block: 5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-how {
+    padding-block: 6rem;
+  }
+}
+
+.landing-how-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding-bottom: 3rem;
+}
+
+.landing-how-intro .landing-section-label {
+  color: var(--gl-accent);
+}
+
+.landing-how-title {
+  margin: 0;
+  max-width: none;
+  font-size: clamp(1.5rem, 4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--gl-text);
+  white-space: nowrap;
+}
+
+.landing-how-subtitle {
+  margin: 0 auto;
+  max-width: 40rem;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: rgb(244 240 230 / 0.9);
+  text-wrap: balance;
+}
+
+.landing-how-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4.5rem;
+}
+
+@media (min-width: 1024px) {
+  .landing-how-steps {
+    gap: 6rem;
+  }
+}
+
+.landing-how-step {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .landing-how-step {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3rem 4rem;
+  }
+
+  .landing-how-step--reverse .landing-how-step-copy {
+    order: 2;
+  }
+
+  .landing-how-step--reverse .landing-how-step-media {
+    order: 1;
+  }
+}
+
+.landing-how-step-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.landing-how-step-index {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-family: ui-monospace, ui-sans-serif, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gl-kicker-live);
+}
+
+.landing-how-step-title {
+  margin: 0;
+  font-size: clamp(1.625rem, 3.2vw, 2.375rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--gl-text);
+  text-wrap: balance;
+}
+
+.landing-how-step-body {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: rgb(244 240 230 / 0.9);
+}
+
+.landing-how-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-how-step-list-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgb(244 240 230 / 0.95);
+}
+
+.landing-how-step-list-item svg {
+  margin-top: 0.15rem;
+  color: var(--gl-accent);
+}
+
+.landing-how-step-cta {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: ui-monospace, ui-sans-serif, monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--gl-accent);
+  transition: color 0.2s ease;
+}
+
+.landing-how-step-cta:hover {
+  color: var(--gl-accent-bright);
+}
+
+.landing-how-step-media {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 0.5rem;
+}
+
+@media (min-width: 1024px) {
+  .landing-how-step-media {
+    padding: 1.5rem 0;
+  }
+}
+
+.landing-how-step-media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    rgb(74 222 128 / 0.08) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/** Magic UI iPhone mockup — size controlled by wrapper width. */
+.landing-how-step-phone {
+  position: relative;
+  width: 100%;
+  max-width: 17.5rem;
+  margin-inline: auto;
+}
+
+/* Box-shadow only — never CSS filter on phone/SVG (breaks video through screen mask). */
+.landing-how-step-phone::after {
+  content: '';
+  position: absolute;
+  inset: 8% 6%;
+  z-index: 0;
+  border-radius: 2.5rem;
+  box-shadow: 0 28px 48px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.landing-how-step-phone > div {
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .landing-how-step-phone {
+    max-width: 19.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-how-step-phone {
+    max-width: 24rem;
+  }
+}
+
+/** Mapbox-style phone + floating wing panel. */
+.landing-how-step-showcase {
+  position: relative;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.landing-how-step-showcase__wing {
+  position: absolute;
+  z-index: 1;
+  aspect-ratio: 9 / 19.5;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(12 14 12);
+  box-shadow:
+    0 28px 56px rgb(0 0 0 / 0.55),
+    0 0 0 1px rgb(255 255 255 / 0.04) inset;
+}
+
+/* Step 01 — Mapbox duo: iPhone left, screen panel tucked behind on the right */
+.landing-how-step-showcase--duo {
+  --duo-phone-w: 9.5rem;
+  --duo-wing-w: 8rem;
+  --duo-overlap: 2.7rem;
+  --duo-wing-shift: 2.5rem;
+  width: calc(var(--duo-phone-w) + var(--duo-wing-w) - var(--duo-overlap) + var(--duo-wing-shift));
+  max-width: none;
+  min-height: calc(var(--duo-phone-w) * 19.5 / 9);
+}
+
+.landing-how-step-showcase--duo .landing-how-step-showcase__phone {
+  position: relative;
+  z-index: 2;
+  width: var(--duo-phone-w);
+  max-width: var(--duo-phone-w);
+  margin: 0;
+}
+
+.landing-how-step-showcase--duo .landing-how-step-showcase__wing--right {
+  left: calc(var(--duo-phone-w) - var(--duo-overlap) + var(--duo-wing-shift, 0));
+  right: auto;
+  top: 7%;
+  width: var(--duo-wing-w);
+  transform: none;
+}
+
+/* Step 02 — center phone, left + right wings (Mapbox triple) */
+.landing-how-step-showcase--triple {
+  max-width: 36rem;
+  min-height: 22rem;
+}
+
+.landing-how-step-showcase--triple .landing-how-step-showcase__phone {
+  position: relative;
+  z-index: 2;
+  width: 48%;
+  max-width: 19.5rem;
+  margin-inline: auto;
+}
+
+.landing-how-step-showcase--triple .landing-how-step-showcase__wing {
+  width: 40%;
+}
+
+.landing-how-step-showcase--triple .landing-how-step-showcase__wing--left {
+  left: 0;
+  top: 14%;
+  transform: translateX(-6%) scale(0.94);
+}
+
+.landing-how-step-showcase--triple .landing-how-step-showcase__wing--right {
+  right: 0;
+  top: 6%;
+  transform: translateX(6%) scale(0.94);
+}
+
+@media (min-width: 640px) {
+  .landing-how-step-showcase {
+    max-width: 30rem;
+    min-height: 20rem;
+  }
+
+  .landing-how-step-showcase--duo {
+    --duo-phone-w: 16rem;
+    --duo-wing-w: 13.5rem;
+    --duo-overlap: 4.25rem;
+    --duo-wing-shift: 3rem;
+  }
+
+  .landing-how-step-showcase--duo .landing-how-step-showcase__wing--right {
+    top: 6%;
+    border-radius: 1.5rem;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing--right {
+    right: 0;
+    top: 4%;
+    width: 42%;
+    border-radius: 1.5rem;
+    transform: translateX(4%) scale(1);
+  }
+
+  .landing-how-step-showcase--triple {
+    max-width: 78rem;
+    min-height: 38rem;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__phone {
+    max-width: 32rem;
+    width: 50%;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing {
+    width: 42%;
+    border-radius: 1.5rem;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing--left {
+    top: 12%;
+    transform: translateX(-4%) scale(1);
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing--right {
+    top: 4%;
+    transform: translateX(4%) scale(1);
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-how-step-showcase {
+    max-width: 36rem;
+    min-height: 24rem;
+  }
+
+  .landing-how-step-showcase--duo {
+    --duo-phone-w: 18rem;
+    --duo-wing-w: 15rem;
+    --duo-overlap: 4.75rem;
+    --duo-wing-shift: 3.5rem;
+  }
+
+  .landing-how-step-showcase--duo .landing-how-step-showcase__wing--right {
+    top: 5%;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing--right {
+    top: 2%;
+    width: 40%;
+    transform: translateX(2%) scale(1);
+  }
+
+  .landing-how-step-showcase--triple {
+    max-width: 86rem;
+    min-height: 42rem;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__phone {
+    max-width: 34rem;
+    width: 48%;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing {
+    width: 40%;
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing--left {
+    top: 10%;
+    transform: translateX(-2%) scale(1);
+  }
+
+  .landing-how-step-showcase--triple .landing-how-step-showcase__wing--right {
+    top: 2%;
+    transform: translateX(2%) scale(1);
+  }
+}
+
+/** Landing FAQ — ARGOS-style accordion grid (plus → smooth answer reveal). */
+.landing-faq {
+  padding-block: 4rem;
+}
+
+@media (min-width: 640px) {
+  .landing-faq {
+    padding-block: 5rem;
+  }
+}
+
+.landing-faq__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 2.5rem;
+  text-align: center;
+}
+
+.landing-faq__eyebrow {
+  margin: 0;
+  font-family: ui-monospace, ui-sans-serif, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gl-accent);
+}
+
+.landing-faq__title {
+  margin: 0;
+  max-width: 20ch;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--gl-text);
+}
+
+.landing-faq__grid {
+  display: grid;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .landing-faq__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+.landing-faq-card {
+  align-self: start;
+  width: 100%;
+  border: 1px solid rgb(244 240 230 / 0.1);
+  border-radius: 0.75rem;
+  background: rgb(18 22 18 / 0.55);
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.landing-faq-card:hover {
+  border-color: rgb(244 240 230 / 0.16);
+}
+
+.landing-faq-card--open {
+  border-color: rgb(134 239 172 / 0.22);
+  background: rgb(22 28 22 / 0.72);
+  box-shadow: 0 0 0 1px rgb(134 239 172 / 0.06) inset;
+}
+
+.landing-faq-card__heading {
+  margin: 0;
+}
+
+.landing-faq-card__trigger {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1.125rem 1.25rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.landing-faq-card__trigger:focus-visible {
+  outline: 2px solid rgb(134 239 172 / 0.45);
+  outline-offset: 2px;
+  border-radius: 0.75rem;
+}
+
+.landing-faq-card__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.125rem;
+  color: var(--gl-accent);
+  transition: transform 0.22s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.landing-faq-card--open .landing-faq-card__icon {
+  transform: rotate(45deg);
+}
+
+.landing-faq-card__question {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--gl-text);
+}
+
+@media (min-width: 640px) {
+  .landing-faq-card__question {
+    font-size: 1rem;
+  }
+}
+
+.landing-faq-card__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.26s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.landing-faq-card__panel[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+
+.landing-faq-card__panel-inner {
+  overflow: hidden;
+}
+
+.landing-faq-card__answer {
+  margin: 0;
+  padding: 0 1.25rem 1.125rem 2.75rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: rgb(214 220 208 / 0.88);
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.landing-faq-card__panel[data-open='true'] .landing-faq-card__answer {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-faq-card__icon,
+  .landing-faq-card__panel,
+  .landing-faq-card__answer {
+    transition-duration: 0.01ms;
+  }
+
+  .landing-faq-card--open .landing-faq-card__icon {
+    transform: none;
+  }
 }
 
 /** Chamfered CTA button — clipped top-left + bottom-right corners. */
