@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { PublicMapPageClient } from '@/components/map/public/PublicMapPageClient';
+import { CitizenMapPageClient } from '@/components/map/citizen/CitizenMapPageClient';
 
 export const metadata: Metadata = {
   title: 'Bản đồ ô nhiễm toàn quốc',
   description:
-    'Bản đồ công khai các báo cáo ô nhiễm đã xác minh tại Việt Nam. Xem điểm còn ô nhiễm và điểm đã dọn, kèm ảnh sau xử lý.',
+    'Bản đồ công khai các báo cáo ô nhiễm tại Việt Nam — chọn tỉnh/thành để xem mức độ theo phường/xã và các điểm rác thải cụ thể.',
   robots: { index: true, follow: true },
 };
 
@@ -16,7 +16,7 @@ function PublicMapFallback() {
 export default function PublicMapPage() {
   return (
     <Suspense fallback={<PublicMapFallback />}>
-      <PublicMapPageClient />
+      <CitizenMapPageClient />
     </Suspense>
   );
 }
