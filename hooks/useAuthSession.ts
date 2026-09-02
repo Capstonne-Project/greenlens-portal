@@ -18,7 +18,22 @@
 
 'use client';
 
+import { useSyncExternalStore } from 'react';
 import { useAuthStore } from '@/lib/store/authStore';
+import {
+  getAuthStoreHydratedServerSnapshot,
+  getAuthStoreHydratedSnapshot,
+  subscribeAuthStoreHydration,
+} from '@/lib/auth/authStoreHydration';
+
+/** True after Zustand `auth-storage` rehydrates from localStorage. */
+export function useAuthStoreHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeAuthStoreHydration,
+    getAuthStoreHydratedSnapshot,
+    getAuthStoreHydratedServerSnapshot
+  );
+}
 
 /** True when memory holds an access JWT (L1 can send Bearer). */
 export function useHasAccessToken(): boolean {
