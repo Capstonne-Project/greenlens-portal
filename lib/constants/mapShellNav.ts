@@ -165,6 +165,12 @@ const NAV_ITEMS = {
     href: '/officer/companies',
     icon: Building2,
   },
+  myCompanies: {
+    id: 'my-companies',
+    label: 'Doanh nghiệp',
+    href: '/officer/my-companies',
+    icon: Building2,
+  },
   reports: {
     id: 'reports',
     label: 'Báo cáo',
@@ -239,7 +245,8 @@ export function getMapShellNavForRole(
       NAV_ITEMS.recurrence,
       withSection(NAV_ITEMS.reports, 'Tra cứu'),
       withSection(NAV_ITEMS.community, 'Cộng đồng'),
-      withSection(NAV_ITEMS.workforce, 'Quản lý')
+      withSection(NAV_ITEMS.workforce, 'Quản lý'),
+      NAV_ITEMS.myCompanies
     );
   } else {
     mainNav.push(NAV_ITEMS.map, NAV_ITEMS.overview);

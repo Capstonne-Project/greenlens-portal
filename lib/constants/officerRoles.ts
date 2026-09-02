@@ -27,6 +27,7 @@ export const OFFICER_ROUTE_ACL: ReadonlyArray<{
   { prefix: '/officer/tracking', roles: ['LEO'] },
   { prefix: '/officer/reopen', roles: ['LEO'] },
   { prefix: '/officer/workforce', roles: ['LEO'] },
+  { prefix: '/officer/my-companies', roles: ['LEO'] },
   { prefix: '/officer/companies', roles: ['DEO'] },
   /** Tra cứu báo cáo — DEO (Sở) + LEO (phường). */
   { prefix: '/officer/reports', roles: ['DEO', 'LEO'] },

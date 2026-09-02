@@ -1,4 +1,5 @@
 "use client";
+import '@/lib/three/r3fClockCompat';
 import React, { useRef, useMemo, useState, useCallback, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Html, useTexture } from "@react-three/drei";

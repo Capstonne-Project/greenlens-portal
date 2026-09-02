@@ -620,6 +620,7 @@ export function MembersTab() {
         open={recruitOpen}
         onClose={() => setRecruitOpen(false)}
         onRecruited={() => setMemberPage(1)}
+        initialTargetRole={roleFilter === 'all' ? undefined : roleFilter}
       />
 
       <ReleaseStaffConfirmDialog

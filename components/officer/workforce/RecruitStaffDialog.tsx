@@ -1,6 +1,6 @@
 'use client';
 
-import { getInitials, TYPE_LABEL } from '@/components/officer/workforce/teamTab/teamTab.shared';
+import { getInitials, staffRoleToTeamType, TYPE_LABEL } from '@/components/officer/workforce/teamTab/teamTab.shared';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -74,7 +74,7 @@ const recruitStaffSchema = z.object({
 
 type RecruitStaffFormValues = z.infer<typeof recruitStaffSchema>;
 
-const RECRUIT_TEAM_LIST_PARAMS = { page: 1, pageSize: 10 } as const;
+const RECRUIT_TEAM_LIST_PAGE_SIZE = 10;
 
 const EMAIL_LOOKUP_SCHEMA = z.string().trim().email();
 
@@ -200,14 +200,17 @@ interface RecruitStaffDialogProps {
   open: boolean;
   onClose: () => void;
   onRecruited?: () => void;
+  /** Pre-select vai trò khi mở từ filter MembersTab. */
+  initialTargetRole?: RecruitStaffTargetRole;
 }
 
-export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffDialogProps) {
+export function RecruitStaffDialog({
+  open,
+  onClose,
+  onRecruited,
+  initialTargetRole,
+}: RecruitStaffDialogProps) {
   const recruitMutation = useRecruitOfficeStaff();
-  const { data: teamsData, isPending: teamsLoading } = useTeamsList(RECRUIT_TEAM_LIST_PARAMS, {
-    enabled: open,
-  });
-  const teams = teamsData?.items ?? [];
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [lookupPicked, setLookupPicked] = useState(false);
@@ -229,6 +232,21 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
       isLeader: false,
     },
   });
+
+  const targetRole = watch('targetRole');
+  const teamListParams = useMemo(
+    () => ({
+      page: 1,
+      pageSize: RECRUIT_TEAM_LIST_PAGE_SIZE,
+      teamType: staffRoleToTeamType(targetRole),
+    }),
+    [targetRole]
+  );
+
+  const { data: teamsData, isPending: teamsLoading } = useTeamsList(teamListParams, {
+    enabled: open,
+  });
+  const teams = teamsData?.items ?? [];
 
   const emailRegister = register('email');
   const emailValue = watch('email');
@@ -269,6 +287,8 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
     !showLookupSpinner &&
     (lookupQuery.isSuccess || lookupQuery.isError);
 
+  const presetTargetRole = initialTargetRole ?? null;
+
   useEffect(() => {
     if (!open) {
       reset({
@@ -283,10 +303,29 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
   }, [open, reset]);
 
   useEffect(() => {
+    if (!open || !presetTargetRole) return;
+
+    reset({
+      email: '',
+      targetRole: presetTargetRole,
+      teamId: '',
+      isLeader: false,
+    });
+    setEmailFocused(false);
+    setLookupPicked(false);
+  }, [open, presetTargetRole, reset]);
+
+  useEffect(() => {
     if (teamHasLeader || !hasTeam) {
       setValue('isLeader', false);
     }
   }, [teamHasLeader, hasTeam, setValue]);
+
+  const handleTargetRoleChange = (value: RecruitStaffTargetRole) => {
+    setValue('targetRole', value, { shouldValidate: true, shouldDirty: true });
+    setValue('teamId', '');
+    setValue('isLeader', false);
+  };
 
   const handlePickLookup = (user: OfficeStaffLookupResult) => {
     setLookupPicked(true);
@@ -424,7 +463,10 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
                   name="targetRole"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={value => handleTargetRoleChange(value as RecruitStaffTargetRole)}
+                    >
                       <SelectTrigger id="recruit-target-role">
                         <SelectValue placeholder="Chọn vai trò" />
                       </SelectTrigger>
@@ -447,7 +489,9 @@ export function RecruitStaffDialog({ open, onClose, onRecruited }: RecruitStaffD
               <Field>
                 <Label htmlFor="recruit-team-id">Đội xử lý</Label>
                 <FieldDescription>
-                  Có thể tuyển vào văn phòng mà chưa gán đội (Tùy chọn)
+                  Chỉ hiển thị đội{' '}
+                  {targetRole === 'Cleaner' ? 'dọn dẹp' : 'thanh tra'} tương ứng vai trò đã chọn. Có
+                  thể tuyển vào văn phòng mà chưa gán đội (Tùy chọn).
                 </FieldDescription>
                 <Controller
                   name="teamId"

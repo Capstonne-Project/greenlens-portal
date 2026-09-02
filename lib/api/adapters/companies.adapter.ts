@@ -4,7 +4,8 @@ import type {
   CompanyServiceAreasDataDto,
   CreateCompanyBodyDto,
   CreateCompanyDataDto,
-  MyWardCompaniesDataDto,
+  MyWardCompaniesListDataDto,
+  MyWardCompanyDetailDto,
   RenewCompanyContractBodyDto,
   RenewCompanyContractDataDto,
   SuspendCompanyBodyDto,
@@ -15,7 +16,8 @@ import {
   mapCompanyDetailDto,
   mapCompanyServiceAreasDataDto,
   mapCreateCompanyDataDto,
-  mapMyWardCompaniesDataDto,
+  mapMyWardCompaniesListDataDto,
+  mapMyWardCompanyDetailDto,
 } from '@/lib/api/mappers/company.mapper';
 import type {
   CompaniesList,
@@ -29,7 +31,9 @@ import type {
   RenewCompanyContractResult,
   SuspendCompanyInput,
   UpdateCompanyServiceAreasInput,
-  MyWardCompanies,
+  MyWardCompaniesList,
+  MyWardCompaniesListParams,
+  MyWardCompanyDetail,
 } from '@/lib/api/models/company';
 import apiService from '@/lib/api/core';
 import { mapApiEnvelope, type ApiEnvelope } from '@/lib/api/types/envelope';
@@ -58,10 +62,39 @@ export async function adaptCompaniesList(
   return mapApiEnvelope(res.data, mapCompaniesListDataDto);
 }
 
-/** GET /v1/companies/my-ward — [LEO] công ty phục vụ phường/xã của LEO (không params). */
-export async function adaptMyWardCompanies(): Promise<ApiEnvelope<MyWardCompanies>> {
-  const res = await apiService.get<ApiEnvelope<MyWardCompaniesDataDto>>('/v1/companies/my-ward');
-  return mapApiEnvelope(res.data, mapMyWardCompaniesDataDto);
+function buildMyWardCompaniesQuery(
+  params?: MyWardCompaniesListParams
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {};
+  if (params?.page != null) query.page = params.page;
+  if (params?.pageSize != null) query.pageSize = params.pageSize;
+  if (params?.search?.trim()) query.search = params.search.trim();
+  if (params?.status?.trim()) query.status = params.status.trim();
+  if (params?.contractType?.trim()) query.contractType = params.contractType.trim();
+  if (params?.sortBy?.trim()) query.sortBy = params.sortBy.trim();
+  if (params?.sortDesc !== undefined) query.sortDesc = params.sortDesc;
+  return query;
+}
+
+/** GET /v1/companies/my-ward — [LEO] công ty phục vụ phường/xã của LEO. */
+export async function adaptMyWardCompaniesList(
+  params?: MyWardCompaniesListParams
+): Promise<ApiEnvelope<MyWardCompaniesList>> {
+  const res = await apiService.get<ApiEnvelope<MyWardCompaniesListDataDto>>(
+    '/v1/companies/my-ward',
+    buildMyWardCompaniesQuery(params)
+  );
+  return mapApiEnvelope(res.data, mapMyWardCompaniesListDataDto);
+}
+
+/** GET /v1/companies/my-ward/{id} — [LEO] chi tiết công ty trong phường của LEO. */
+export async function adaptMyWardCompanyDetail(
+  companyId: string
+): Promise<ApiEnvelope<MyWardCompanyDetail>> {
+  const res = await apiService.get<ApiEnvelope<MyWardCompanyDetailDto>>(
+    `/v1/companies/my-ward/${encodeURIComponent(companyId)}`
+  );
+  return mapApiEnvelope(res.data, mapMyWardCompanyDetailDto);
 }
 
 function buildCreateCompanyBody(body: CreateCompanyInput): CreateCompanyBodyDto {

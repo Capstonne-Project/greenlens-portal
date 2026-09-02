@@ -1,4 +1,5 @@
 "use client";
+import '@/lib/three/r3fClockCompat';
 import { Globe3D, GlobeMarker } from "@/components/ui/3d-globe";
 
 export const globeDemoMarkers: GlobeMarker[] = [

@@ -15,6 +15,7 @@ import { Loader2, MapPin, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { SEARCH_DEBOUNCE_MS, useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { getMapStyle } from '@/lib/map/mapStyle';
+import { isAbortError } from '@/lib/utils/abortError';
 import { cn } from '@/lib/utils';
 
 interface NominatimResult {
@@ -25,14 +26,19 @@ interface NominatimResult {
 }
 
 async function searchAddress(query: string, signal: AbortSignal): Promise<NominatimResult[]> {
-  const url = new URL('https://nominatim.openstreetmap.org/search');
-  url.searchParams.set('format', 'json');
-  url.searchParams.set('q', query);
-  url.searchParams.set('limit', '5');
-  url.searchParams.set('countrycodes', 'vn');
-  const res = await fetch(url.toString(), { signal, headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error('SEARCH_FAILED');
-  return (await res.json()) as NominatimResult[];
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('format', 'json');
+    url.searchParams.set('q', query);
+    url.searchParams.set('limit', '5');
+    url.searchParams.set('countrycodes', 'vn');
+    const res = await fetch(url.toString(), { signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error('SEARCH_FAILED');
+    return (await res.json()) as NominatimResult[];
+  } catch (error) {
+    if (isAbortError(error)) return [];
+    throw error;
+  }
 }
 
 export interface MeetingPointMapPickerProps {
@@ -163,6 +169,10 @@ export function MeetingPointMapPicker({
           attributionControl={false}
           style={{ width: '100%', height: '100%' }}
           onClick={handleMapClick}
+          onError={event => {
+            const err = event.error;
+            if (isAbortError(err) || isAbortError(String(err))) return;
+          }}
         >
           <NavigationControl position="top-right" showCompass={false} />
           <Marker

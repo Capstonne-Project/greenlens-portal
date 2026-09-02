@@ -41,6 +41,7 @@ export type NotificationType =
   | 'StaffInvitationDeclined'
   | 'CommunityCleanupOpened'
   | 'CommunityCleanupLeaderAssigned'
+  | 'CommunityCleanupLeaderStarted'
   | 'CommunityCleanupStarted'
   | 'CommunityCleanupProgressUpdated'
   | 'CommunityCleanupVerificationSubmitted'

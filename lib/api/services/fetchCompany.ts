@@ -30,7 +30,8 @@ import {
   adaptCreateCompany,
   adaptDeleteCompany,
   adaptFetchCompanyServiceAreas,
-  adaptMyWardCompanies,
+  adaptMyWardCompaniesList,
+  adaptMyWardCompanyDetail,
   adaptReactivateCompany,
   adaptRenewCompanyContract,
   adaptSuspendCompany,
@@ -69,7 +70,9 @@ import type {
   MyCompanyContractHistory,
   MyCompanyKpi,
   MyCompanyKpiParams,
-  MyWardCompanies,
+  MyWardCompaniesList,
+  MyWardCompaniesListParams,
+  MyWardCompanyDetail,
   RenewCompanyContractInput,
   RenewCompanyContractResult,
   SuspendCompanyInput,
@@ -134,8 +137,11 @@ export type {
   MyCompanyContractHistory,
   MyCompanyKpi,
   MyCompanyKpiParams,
-  MyWardCompanies,
+  MyWardCompaniesList,
+  MyWardCompaniesListParams,
+  MyWardCompanyDetail,
   MyWardCompanyItem,
+  MY_WARD_COMPANIES_PAGE_SIZE,
   RenewCompanyContractInput,
   RenewCompanyContractResult,
   SuspendCompanyInput,
@@ -152,8 +158,17 @@ export async function fetchCompanies(
 }
 
 /** GET /v1/companies/my-ward — [LEO] công ty phục vụ phường/xã của LEO. */
-export async function fetchMyWardCompanies(): Promise<ApiEnvelope<MyWardCompanies>> {
-  return adaptMyWardCompanies();
+export async function fetchMyWardCompanies(
+  params?: MyWardCompaniesListParams
+): Promise<ApiEnvelope<MyWardCompaniesList>> {
+  return adaptMyWardCompaniesList(params);
+}
+
+/** GET /v1/companies/my-ward/{id} — [LEO] chi tiết công ty trong phường của LEO. */
+export async function fetchMyWardCompanyDetail(
+  companyId: string
+): Promise<ApiEnvelope<MyWardCompanyDetail>> {
+  return adaptMyWardCompanyDetail(companyId);
 }
 
 /** POST /v1/companies — tạo công ty DVMT + tài khoản CM. */
@@ -396,6 +411,7 @@ export async function reassignCompanyTeam(
 const companyApi = {
   fetchCompanies,
   fetchMyWardCompanies,
+  fetchMyWardCompanyDetail,
   fetchCompanyDetail,
   createCompany,
   deleteCompany,

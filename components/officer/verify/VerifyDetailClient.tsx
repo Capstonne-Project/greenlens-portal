@@ -2012,23 +2012,42 @@ export function VerifyDetailClient({
                   Được báo cáo bởi {detail.reporterName?.trim() || 'Ẩn danh'}
                 </CardTitle>
                 <CardDescription className="mt-1.5 text-sm leading-normal sm:text-base">
-                  <span className="inline-flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-1">
-                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-red-500" aria-hidden />
-                    <span className="min-w-0 wrap-break-word">{detail.address}</span>
-                    <span
-                      className="mt-1.5 hidden size-1 shrink-0 rounded-full bg-foreground sm:inline-block"
-                      aria-hidden
-                    />
-                    <time className="w-full tabular-nums sm:w-auto" dateTime={detail.createdAt}>
-                      {new Date(detail.createdAt).toLocaleString('vi-VN', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </time>
-                  </span>
+                  <div className="flex min-w-0 items-start gap-1.5">
+                    {detail.address?.trim() ? (
+                      <>
+                        <span
+                          className="inline-flex h-5 shrink-0 items-center sm:h-6"
+                          aria-hidden
+                        >
+                          <MapPin className="size-3.5 text-red-500" />
+                        </span>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p className="m-0 leading-5 text-pretty wrap-break-word sm:leading-6">
+                            {detail.address}
+                          </p>
+                          <time className="block tabular-nums" dateTime={detail.createdAt}>
+                            {new Date(detail.createdAt).toLocaleString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </time>
+                        </div>
+                      </>
+                    ) : (
+                      <time className="tabular-nums" dateTime={detail.createdAt}>
+                        {new Date(detail.createdAt).toLocaleString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </time>
+                    )}
+                  </div>
                 </CardDescription>
               </div>
 

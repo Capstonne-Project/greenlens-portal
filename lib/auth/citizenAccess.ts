@@ -3,9 +3,21 @@
  */
 
 import { isPublicSurfacePath } from '@/lib/constants/publicRoutes';
+import type { AuthUser } from '@/lib/store/authStore';
 
 /** Default landing after citizen login. */
 export const CITIZEN_HOME_PATH = '/map';
+
+/** Marketing home (`HomeLanding`) — citizen logout from public site chrome. */
+export const CITIZEN_LANDING_PATH = '/';
+
+/**
+ * Post-logout target from `components/landing` header.
+ * Citizens stay on marketing home — `/login` would bounce to `/map` while cookies refresh.
+ */
+export function resolvePublicSiteLogoutPath(role: AuthUser['role']): string {
+  return role === 'citizen' ? CITIZEN_LANDING_PATH : '/login';
+}
 
 const CITIZEN_EXTRA_PREFIXES = ['/renew-password'] as const;
 
