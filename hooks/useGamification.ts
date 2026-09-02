@@ -1,11 +1,10 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import type { LockGamificationInput } from '@/lib/api/models/gamification';
 import {
   fetchLeaderboard,
   lockGamificationUser,
-  type LeaderboardPeriod,
   type LeaderboardQueryParams,
 } from '@/lib/api/services/fetchGamification';
 import { LEADERBOARD_TOP_DEFAULT } from '@/lib/constants/leaderboard';
@@ -26,9 +25,12 @@ export function useLeaderboard(params?: LeaderboardQueryParams) {
 
   return useQuery({
     queryKey: gamificationKeys.leaderboard(queryParams),
-    queryFn: () => fetchLeaderboard(queryParams),
+    queryFn: async () => {
+      const res = await fetchLeaderboard(queryParams);
+      return res.data;
+    },
     staleTime: 10 * 60 * 1000,
-    select: res => res.data,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -38,5 +40,3 @@ export function useLockGamificationUser() {
       lockGamificationUser(userId, body),
   });
 }
-
-export type { LeaderboardPeriod };

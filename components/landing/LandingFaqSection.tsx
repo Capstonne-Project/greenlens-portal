@@ -68,7 +68,7 @@ export function LandingFaqSection() {
   return (
     <section className="landing-faq" aria-labelledby="landing-faq-title">
       <div className="landing-hit landing-shell landing-faq__intro">
-        <p className="landing-faq__eyebrow">{eyebrow}</p>
+        <p className="landing-section-eyebrow">{eyebrow}</p>
         <h2 id="landing-faq-title" className="landing-faq__title">
           {title}
         </h2>

@@ -1,10 +1,45 @@
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { LandingHowItWorksConnectors } from '@/components/landing/LandingHowItWorksConnectors';
 import { LandingStepPhone } from '@/components/landing/LandingStepPhone';
-import { LANDING_HOW_IT_WORKS, LANDING_HOW_IT_WORKS_STEPS } from '@/lib/constants/landingHowItWorks';
+import {
+  LANDING_HOW_IT_WORKS,
+  LANDING_HOW_IT_WORKS_STEPS,
+} from '@/lib/constants/landingHowItWorks';
+import { ANDROID_APK_HREF, getAndroidApkLinkProps } from '@/lib/constants/publicSite';
+
+function isApkHref(href: string): boolean {
+  return href === ANDROID_APK_HREF || href.endsWith('.apk');
+}
+
+function StepCta({ href, label }: { href: string; label: string }) {
+  const className = 'landing-how-step-cta group';
+  const icon = (
+    <ArrowRight
+      className="size-4 transition-transform duration-300 group-hover:translate-x-0.5"
+      aria-hidden
+    />
+  );
+
+  if (isApkHref(href)) {
+    return (
+      <a {...getAndroidApkLinkProps(href)} className={className}>
+        {label}
+        {icon}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={className}>
+      {label}
+      {icon}
+    </Link>
+  );
+}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="landing-section-label">{children}</p>;
+  return <p className="landing-section-eyebrow">{children}</p>;
 }
 
 export function LandingHowItWorksSection() {
@@ -21,6 +56,7 @@ export function LandingHowItWorksSection() {
       </div>
 
       <div className="landing-hit landing-shell landing-how-steps">
+        <LandingHowItWorksConnectors />
         {LANDING_HOW_IT_WORKS_STEPS.map((step, index) => {
           const reverse = index % 2 === 1;
           return (
@@ -43,15 +79,7 @@ export function LandingHowItWorksSection() {
                     </li>
                   ))}
                 </ul>
-                {step.cta ? (
-                  <Link href={step.cta.href} className="landing-how-step-cta group">
-                    {step.cta.label}
-                    <ArrowRight
-                      className="size-4 transition-transform duration-300 group-hover:translate-x-0.5"
-                      aria-hidden
-                    />
-                  </Link>
-                ) : null}
+                {step.cta ? <StepCta href={step.cta.href} label={step.cta.label} /> : null}
               </div>
 
               <div className="landing-how-step-media">
@@ -62,6 +90,7 @@ export function LandingHowItWorksSection() {
                   sideImageAlt={step.sideImageAlt}
                   leftImageSrc={step.leftImageSrc}
                   leftImageAlt={step.leftImageAlt}
+                  priority={index === 0}
                 />
               </div>
             </article>

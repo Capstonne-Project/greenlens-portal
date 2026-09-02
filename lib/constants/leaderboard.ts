@@ -1,4 +1,4 @@
-import type { LeaderboardPeriod } from '@/lib/api/services/fetchGamification';
+import type { LeaderboardPeriod } from '@/lib/api/models/gamification';
 
 export const LEADERBOARD_PERIOD_OPTIONS: { id: LeaderboardPeriod; label: string }[] = [
   { id: 'AllTime', label: 'Mọi thời gian' },
@@ -7,4 +7,4 @@ export const LEADERBOARD_PERIOD_OPTIONS: { id: LeaderboardPeriod; label: string 
   { id: 'Yearly', label: 'Năm nay' },
 ];
 
-export const LEADERBOARD_TOP_DEFAULT = 20;
+export const LEADERBOARD_TOP_DEFAULT = 10;
