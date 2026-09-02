@@ -1983,6 +1983,57 @@ button.landing-cta-primary:active {
     border-top-color: hsl(var(--card));
   }
 
+  /*
+    Citizen map report popup — 2 lớp bọc của MapLibre (.maplibregl-popup + .maplibregl-popup-content)
+    phải khớp CHÍNH XÁC bo góc/kích thước với card con (CitizenReportPreviewCard rounded-2xl), và
+    `overflow: hidden` trên wrapper phải KHÔNG che shadow của card — nếu để shadow trên chính card
+    con, wrapper `overflow: hidden` sẽ cắt cụt shadow ngay tại mép card, tạo cảm giác "2 lớp xếp
+    chồng" thay vì 1 khối bo tròn liền mạch có bóng đổ mềm mại xung quanh. Vì vậy: card con KHÔNG
+    tự có shadow, shadow đặt ở wrapper (nằm ngoài `overflow: hidden`, không tự cắt chính nó).
+  */
+  .citizen-map-report-popup {
+    background: transparent;
+    filter: drop-shadow(0 8px 24px rgb(0 0 0 / 18%));
+  }
+
+  .citizen-map-report-popup .maplibregl-popup-content {
+    padding: 0;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .citizen-map-report-popup .maplibregl-popup-tip {
+    display: none;
+  }
+
+  .citizen-map-report-popup .maplibregl-popup-close-button {
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 90%);
+    color: #475569;
+    font-size: 1rem;
+    line-height: 1;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 15%);
+  }
+
+  .citizen-map-report-popup .maplibregl-popup-close-button:hover {
+    background: #ffffff;
+    color: #0f172a;
+  }
+
+  /* Nút đóng mặc định của DialogContent nổi trên ảnh hero (nền tối được thêm cạnh nó) — icon X cần trắng để lộ rõ. */
+  .citizen-report-dialog > button[type='button'] svg {
+    color: #ffffff;
+  }
+
   .map-pin-icon--outline svg path {
     fill: transparent;
     stroke: currentColor;
