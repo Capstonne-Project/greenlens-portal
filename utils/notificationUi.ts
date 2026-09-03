@@ -162,6 +162,7 @@ export function officerNotificationHref(
       return '/officer/workforce?tab=members';
     case 'CommunityCleanupStarted':
     case 'CommunityCleanupProgressUpdated':
+    case 'CommunityCleanupBeforeImagesUploaded':
     case 'CommunityCleanupVerificationSubmitted':
     case 'CommunityCleanupVerificationRejected':
     case 'CommunityCleanupVerified':
