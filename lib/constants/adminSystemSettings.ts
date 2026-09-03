@@ -46,10 +46,37 @@ export const HIDDEN_SYSTEM_SETTING_KEYS = [
   'vietnam_max_latitude',
   'vietnam_min_longitude',
   'vietnam_max_longitude',
+  /** Báo cáo — số ảnh tối đa mỗi báo cáo khi tải lên (BR cố định 1–5). */
+  'max_images_per_report',
+  /** Dọn cộng đồng — số ảnh trước dọn tối đa. */
+  'community_before_images_max',
 ] as const;
 
 export type HiddenSystemSettingKey = (typeof HIDDEN_SYSTEM_SETTING_KEYS)[number];
 
 export function isHiddenSystemSettingKey(key: string): boolean {
   return (HIDDEN_SYSTEM_SETTING_KEYS as readonly string[]).includes(key);
+}
+
+/**
+ * Title BE (tiếng Việt) — ẩn khi key seed lệch tên giữa môi trường.
+ * Khớp exact trim với `SystemSettingItem.title` từ API.
+ */
+export const HIDDEN_SYSTEM_SETTING_TITLES = [
+  'Số ảnh tối đa mỗi báo cáo khi tải lên',
+  'Số ảnh trước dọn tối đa',
+] as const;
+
+export function isHiddenSystemSettingTitle(title: string | null | undefined): boolean {
+  const normalized = title?.trim();
+  if (!normalized) return false;
+  return (HIDDEN_SYSTEM_SETTING_TITLES as readonly string[]).includes(normalized);
+}
+
+/** Ẩn khỏi form admin theo key hoặc title BE. */
+export function isHiddenSystemSettingItem(item: {
+  key: string;
+  title?: string | null;
+}): boolean {
+  return isHiddenSystemSettingKey(item.key) || isHiddenSystemSettingTitle(item.title);
 }

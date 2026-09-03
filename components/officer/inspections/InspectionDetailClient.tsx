@@ -23,7 +23,6 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
-import { AssignInspectionTeamDialog } from '@/components/officer/recurrence/AssignInspectionTeamDialog';
 import { RecordPaymentDialog } from '@/components/officer/recurrence/RecordPaymentDialog';
 import {
   ClickableReportImage,
@@ -285,10 +284,6 @@ function formatDuration(seconds: number | null | undefined): string {
   const m = Math.floor(seconds / 60);
   const s = Math.round(seconds % 60);
   return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
-}
-
-function canManageInspectionTeam(status: string): boolean {
-  return status === 'Draft' || status === 'InProgress';
 }
 
 function hasAssignedTeam(assignedTeamId: string | null | undefined): boolean {
@@ -952,11 +947,19 @@ type ProgressStep = {
 
 function buildProgressSteps(d: InspectionDetail): ProgressStep[] {
   const arrivalCoords = resolveFieldMapCoords(d);
+  /**
+   * Tên hiển thị trên timeline Tiếp nhận / Hiện trường.
+   * Swagger GET /v1/inspections/{id} chỉ contract `issuedByInspectorName` (người ban hành phạt)
+   * + optional `acceptedByUserName` nếu BE gửi thêm. Ưu tiên người tiếp nhận khi có.
+   */
+  const inspectorDisplayName =
+    d.acceptedByUserName?.trim() || d.issuedByInspectorName?.trim() || null;
+
   const teamCard = hasAssignedTeam(d.assignedTeamId)
     ? {
         teamId: d.assignedTeamId?.trim() || 'team',
         teamName: d.assignedTeamName?.trim() || 'Đội thanh tra',
-        inspectorName: d.issuedByInspectorName?.trim() || null,
+        inspectorName: inspectorDisplayName,
       }
     : null;
 
@@ -1005,7 +1008,7 @@ function buildProgressSteps(d: InspectionDetail): ProgressStep[] {
       done: Boolean(d.arrivalConfirmedAt),
       arrivalScene: d.arrivalConfirmedAt
         ? {
-            inspectorName: d.issuedByInspectorName?.trim() || null,
+            inspectorName: inspectorDisplayName,
             note: d.arrivalNote?.trim() || null,
             coords: arrivalCoords
               ? { latitude: arrivalCoords.latitude, longitude: arrivalCoords.longitude }
@@ -1269,7 +1272,7 @@ function InvestigationTimeline({
               ) : !step.done &&
                 (step.key === 'accepted' || step.key === 'arrival' || step.key === 'field') ? (
                 <p className="mt-1.5 text-sm text-slate-400">
-                  Chờ Đội thanh tra cập nhật trên Mobile.
+                  Chờ Đội thanh tra cập nhật.
                 </p>
               ) : null}
             </div>
@@ -1466,17 +1469,10 @@ function CapstoneMinutesDisclaimer() {
   );
 }
 
-function InspectionDetailHeader({
-  data,
-  onAssignClick,
-}: {
-  data: InspectionDetail;
-  onAssignClick: (mode: 'assign' | 'change') => void;
-}) {
+function InspectionDetailHeader({ data }: { data: InspectionDetail }) {
   const pathname = usePathname();
   const slaOverdue = inspectionSlaIsOverdue(data.status, data.slaInspectionDueAt);
   const teamAssigned = hasAssignedTeam(data.assignedTeamId);
-  const canTeamAction = canManageInspectionTeam(data.status);
   const teamLabel = data.assignedTeamName?.trim() || 'Đã gán đội';
 
   const reportHref = data.reportId
@@ -1556,27 +1552,14 @@ function InspectionDetailHeader({
             </MetaRow>
 
             <MetaRow icon={Users} label="Đội phụ trách">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5">
-                <p
-                  className={cn(
-                    'text-sm',
-                    teamAssigned ? 'text-foreground' : 'text-muted-foreground'
-                  )}
-                >
-                  {teamAssigned ? teamLabel : 'Chưa phân công'}
-                </p>
-                {canTeamAction ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 shrink-0 px-2.5 text-xs font-medium"
-                    onClick={() => onAssignClick(teamAssigned ? 'change' : 'assign')}
-                  >
-                    {teamAssigned ? 'Đổi đội' : 'Gán đội'}
-                  </Button>
-                ) : null}
-              </div>
+              <p
+                className={cn(
+                  'text-sm',
+                  teamAssigned ? 'text-foreground' : 'text-muted-foreground'
+                )}
+              >
+                {teamAssigned ? teamLabel : 'Chưa phân công'}
+              </p>
             </MetaRow>
           </div>
         </div>
@@ -1669,14 +1652,7 @@ export function InspectionDetailClient() {
     inspectionId,
     reportId: data?.reportId,
   });
-  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
-  const [teamDialogMode, setTeamDialogMode] = useState<'assign' | 'change'>('assign');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-
-  const openTeamDialog = (mode: 'assign' | 'change') => {
-    setTeamDialogMode(mode);
-    setTeamDialogOpen(true);
-  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-16 pt-2 sm:pb-20">
@@ -1744,7 +1720,7 @@ export function InspectionDetailClient() {
             </TabsList>
 
             <TabsContent value="overview" className="mt-0 space-y-6 focus-visible:ring-0">
-              <InspectionDetailHeader data={data} onAssignClick={openTeamDialog} />
+              <InspectionDetailHeader data={data} />
               <InspectionDetailBody
                 key={data.id}
                 data={data}
@@ -1759,13 +1735,6 @@ export function InspectionDetailClient() {
               <PaymentHistoryPanel inspectionId={data.id} />
             </TabsContent>
 
-            <AssignInspectionTeamDialog
-              open={teamDialogOpen}
-              onOpenChange={setTeamDialogOpen}
-              inspectionId={data.id}
-              mode={teamDialogMode}
-              currentTeamId={data.assignedTeamId}
-            />
             <RecordPaymentDialog
               open={paymentDialogOpen}
               onOpenChange={setPaymentDialogOpen}

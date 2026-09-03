@@ -17,6 +17,7 @@ import type {
 } from '@/lib/api/models/team';
 import type { OfficeStaffList, OfficeStaffListParams } from '@/lib/api/models/office';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import { useCanFetchProtected, useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import {
   useInfiniteQuery,
   useMutation,
@@ -68,12 +69,13 @@ const DETAIL_STALE_MS = 3 * 60 * 1000;
 export const TEAMS_ASSIGN_PAGE_SIZE = 10;
 
 export function useTeamsList(params: TeamsListParams, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: teamKeys.list(params),
     queryFn: () => fetchTeams(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -82,6 +84,7 @@ export function useTeamsInfiniteList(
   params: Omit<TeamsListParams, 'page'>,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useInfiniteQuery({
     queryKey: teamKeys.infiniteList(params),
     queryFn: async ({ pageParam }) => {
@@ -92,29 +95,31 @@ export function useTeamsInfiniteList(
     getNextPageParam: lastPage =>
       lastPage.pagination.hasNext ? lastPage.pagination.page + 1 : undefined,
     staleTime: LIST_STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 export function useTeamDetail(id: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id));
   return useQuery({
     queryKey: teamKeys.detail(id ?? ''),
     queryFn: () => fetchTeamDetail(id!),
     select: envelope => envelope.data,
-    enabled: Boolean(id),
+    enabled: canFetch,
     staleTime: DETAIL_STALE_MS,
   });
 }
 
 /** Chi tiết nhiều đội — thứ tự kết quả khớp `teamIds` (MembersTab, v.v.). */
 export function useTeamDetails(teamIds: string[]) {
+  const canFetch = useCanFetchProtected();
   return useQueries({
     queries: teamIds.map(id => ({
       queryKey: teamKeys.detail(id),
       queryFn: () => fetchTeamDetail(id),
       select: (envelope: ApiEnvelope<TeamDetail>) => envelope.data,
       staleTime: DETAIL_STALE_MS,
-      enabled: Boolean(id),
+      enabled: canFetch && Boolean(id),
     })),
   });
 }

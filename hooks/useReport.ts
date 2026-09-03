@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchReportDetail, fetchReportProgress } from '@/lib/api/services/fetchReport';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { useQuery } from '@tanstack/react-query';
 
 /** Query keys — report detail + progress (LEO tracking). */
@@ -15,20 +16,22 @@ const PROGRESS_STALE_MS = 3 * 60 * 1000;
 
 /** GET /v1/reports/{id} — chi tiết báo cáo (lat/lng, media gốc, …). */
 export function useReportDetail(id: string, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled((options?.enabled ?? Boolean(id)) && Boolean(id));
   return useQuery({
     queryKey: reportKeys.detail(id),
     queryFn: () => fetchReportDetail(id),
     staleTime: DETAIL_STALE_MS,
-    enabled: options?.enabled ?? Boolean(id),
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/reports/{id}/progress — tiến trình xử lý báo cáo [LEO]. */
 export function useReportProgress(id: string, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled((options?.enabled ?? Boolean(id)) && Boolean(id));
   return useQuery({
     queryKey: reportKeys.progress(id),
     queryFn: () => fetchReportProgress(id),
     staleTime: PROGRESS_STALE_MS,
-    enabled: options?.enabled ?? Boolean(id),
+    enabled: canFetch,
   });
 }

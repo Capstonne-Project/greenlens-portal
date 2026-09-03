@@ -15,6 +15,7 @@ import type {
 } from '@/lib/api/models/notification';
 import { NOTIFICATION_PAGE_SIZE } from '@/lib/api/models/notification';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const notificationKeys = {
@@ -41,12 +42,13 @@ export function useNotificationsList(params: NotificationsListParams, options?: 
     isRead: params.isRead,
   };
 
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: notificationKeys.list(normalized),
     queryFn: () => fetchNotifications(normalized),
     select: (envelope: ApiEnvelope<NotificationsList>) => envelope.data,
     staleTime: STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -56,22 +58,24 @@ export function useNotificationsList(params: NotificationsListParams, options?: 
  */
 export function useNotificationsPreview(pageSize = 8, options?: ListQueryOptions) {
   const size = pageSize > 0 ? pageSize : NOTIFICATION_PAGE_SIZE;
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: notificationKeys.preview(size),
     queryFn: () => fetchNotifications({ page: 1, pageSize: size }),
     select: (envelope: ApiEnvelope<NotificationsList>) => envelope.data,
     staleTime: STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 export function useNotificationPreferences(options?: ListQueryOptions) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: notificationKeys.preferences(),
     queryFn: () => fetchNotificationPreferences(),
     select: (envelope: ApiEnvelope<NotificationPreferences>) => envelope.data,
     staleTime: 3 * 60 * 1000,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
