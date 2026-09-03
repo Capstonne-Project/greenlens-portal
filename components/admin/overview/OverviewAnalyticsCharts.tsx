@@ -591,6 +591,32 @@ export function OverviewPerformanceBars({
 
 const TREND_CREATED_COLOR = '#6366f1';
 const TREND_RESOLVED_COLOR = '#10b981';
+/** Min SVG width; each day gets ~48px so MM-DD labels don't overlap. */
+const TREND_MIN_CHART_WIDTH = 360;
+const TREND_POINT_WIDTH = 48;
+
+function trendChartWidth(pointCount: number): number {
+  if (pointCount <= 1) return TREND_MIN_CHART_WIDTH;
+  return Math.max(TREND_MIN_CHART_WIDTH, pointCount * TREND_POINT_WIDTH);
+}
+
+/** Thin x-axis labels when many points share a narrow viewport. */
+function pickTrendLabelIndices(pointCount: number, chartWidth: number): Set<number> {
+  const minLabelPx = 44;
+  const maxLabels = Math.max(2, Math.floor((chartWidth - 40) / minLabelPx));
+  if (pointCount <= maxLabels) {
+    return new Set(Array.from({ length: pointCount }, (_, i) => i));
+  }
+  const indices = new Set<number>([0, pointCount - 1]);
+  const innerSlots = maxLabels - 2;
+  if (innerSlots > 0) {
+    const step = (pointCount - 1) / (innerSlots + 1);
+    for (let i = 1; i <= innerSlots; i++) {
+      indices.add(Math.round(i * step));
+    }
+  }
+  return indices;
+}
 
 type TrendRow = {
   date: string;
@@ -649,13 +675,14 @@ export function OverviewReportTrend({
   const totalResolved = rows.reduce((sum, row) => sum + row.resolved, 0);
   const total = totalCreated + totalResolved;
 
-  const width = 360;
+  const chartWidth = trendChartWidth(rows.length);
   const height = 136;
-  const pad = { top: 8, right: 10, bottom: 24, left: 30 };
-  const chartW = width - pad.left - pad.right;
+  const pad = { top: 8, right: 10, bottom: 28, left: 30 };
+  const chartW = chartWidth - pad.left - pad.right;
   const chartH = height - pad.top - pad.bottom;
   const maxValue = Math.max(1, ...rows.flatMap(row => [row.created, row.resolved]));
   const baselineY = pad.top + chartH;
+  const labelIndices = pickTrendLabelIndices(rows.length, chartWidth);
 
   const xAt = (index: number) => {
     if (rows.length <= 1) return pad.left + chartW / 2;
@@ -694,11 +721,12 @@ export function OverviewReportTrend({
             </span>
           </div>
 
-          <div className="h-[120px] shrink-0 overflow-hidden">
+          <div className="shrink-0 overflow-x-auto" style={{ height }}>
             <svg
-              viewBox={`0 0 ${width} ${height}`}
-              className="h-full w-full"
-              preserveAspectRatio="xMidYMid meet"
+              viewBox={`0 0 ${chartWidth} ${height}`}
+              width={chartWidth}
+              height={height}
+              className="block max-w-none"
               role="img"
               aria-label="Biểu đồ đường xu hướng báo cáo"
             >
@@ -710,17 +738,28 @@ export function OverviewReportTrend({
 
               {[0, 0.5, 1].map(step => {
                 const y = pad.top + chartH * (1 - step);
+                const tickValue = Math.round(step * maxValue);
                 return (
-                  <line
-                    key={step}
-                    x1={pad.left}
-                    y1={y}
-                    x2={width - pad.right}
-                    y2={y}
-                    stroke="currentColor"
-                    strokeOpacity={0.1}
-                    strokeDasharray={step === 0 ? undefined : '4 4'}
-                  />
+                  <g key={step}>
+                    <line
+                      x1={pad.left}
+                      y1={y}
+                      x2={chartWidth - pad.right}
+                      y2={y}
+                      stroke="currentColor"
+                      strokeOpacity={0.1}
+                      strokeDasharray={step === 0 ? undefined : '4 4'}
+                    />
+                    <text
+                      x={pad.left - 6}
+                      y={y + 3}
+                      textAnchor="end"
+                      fill="currentColor"
+                      className="text-[10px] tabular-nums opacity-60"
+                    >
+                      {tickValue}
+                    </text>
+                  </g>
                 );
               })}
 
@@ -780,14 +819,17 @@ export function OverviewReportTrend({
                   >
                     <title>{`${row.label}: ${formatOverviewNumber(row.resolved)} giải quyết`}</title>
                   </circle>
-                  <text
-                    x={xAt(index)}
-                    y={height - 6}
-                    textAnchor="middle"
-                    className="fill-muted-foreground text-xs tabular-nums"
-                  >
-                    {row.label}
-                  </text>
+                  {labelIndices.has(index) ? (
+                    <text
+                      x={xAt(index)}
+                      y={height - 8}
+                      textAnchor="middle"
+                      fill="currentColor"
+                      className="text-[10px] tabular-nums opacity-60"
+                    >
+                      {row.label}
+                    </text>
+                  ) : null}
                 </g>
               ))}
             </svg>
