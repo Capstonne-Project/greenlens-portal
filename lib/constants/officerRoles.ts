@@ -10,7 +10,7 @@ export const OFFICER_ROLE_LABEL_VI: Record<OfficerApiRole, string> = {
   LEO: 'Cán bộ phường (LEO)',
 };
 
-/** Default home khi sai sub-role ACL (proxy redirect). */
+/** Legacy client fallback khi sub-route ACL deny (proxy redirect → `/login`). */
 export const OFFICER_ACL_FALLBACK_PATH = '/officer/map';
 
 /**
@@ -89,7 +89,7 @@ export function canAccessVerifyQueue(systemRole: UserRole | string | undefined):
 /**
  * UX ACL cho `/officer/*`.
  * - `allow`: role được vào (hoặc path shared / chưa liệt kê)
- * - `deny`: path có rule và role không khớp → proxy redirect
+ * - `deny`: path có rule và role không khớp → proxy redirect `/login`
  * - `skip`: chưa parse được DEO/LEO (để silent-refresh / token lạ qua, BE vẫn enforce)
  */
 export function matchOfficerRouteAcl(
