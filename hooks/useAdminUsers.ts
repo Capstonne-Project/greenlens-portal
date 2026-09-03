@@ -23,6 +23,7 @@ import type {
 } from '@/lib/api/models/adminUser';
 import { adminUsersCountsUseAllSource } from '@/lib/config/adminUsers';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const adminUsersKeys = {
@@ -45,16 +46,19 @@ function pickTotal(envelope: ApiEnvelope<AdminUsersList>): number {
 
 /** Danh sách người dùng (phân trang / lọc). */
 export function useAdminUsersList(params: AdminUsersListParams) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: adminUsersKeys.list(params),
     queryFn: () => fetchAdminUsers(params),
     select: (envelope: ApiEnvelope<AdminUsersList>) => envelope.data,
     staleTime: LIST_STALE_MS,
+    enabled: canFetch,
   });
 }
 
 /** Tổng số bản ghi (pageSize=1) — dùng badge sidebar. */
 export function useAdminUsersTotal(role?: string) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: adminUsersKeys.count(role),
     queryFn: () =>
@@ -65,19 +69,22 @@ export function useAdminUsersTotal(role?: string) {
       }),
     select: pickTotal,
     staleTime: COUNT_STALE_MS,
+    enabled: canFetch,
   });
 }
 
 /** Nhiều tổng theo vai trò — một lần gọi useQueries (hoặc 1× `/users/all` khi strategy=all). */
 export function useAdminUsersTotalsByRole(roles: (string | undefined)[]) {
   const useAllSource = adminUsersCountsUseAllSource();
+  const canFetchAllSource = useProtectedQueryEnabled(useAllSource);
+  const canFetchPaged = useProtectedQueryEnabled(!useAllSource);
 
   const allSource = useQuery({
     queryKey: adminUsersKeys.allSource(),
     queryFn: () => fetchAdminAllUsers(),
     select: (envelope: ApiEnvelope<AdminUser[]>) => envelope.data,
     staleTime: COUNT_STALE_MS,
-    enabled: useAllSource,
+    enabled: canFetchAllSource,
   });
 
   const pagedCounts = useQueries({
@@ -91,7 +98,7 @@ export function useAdminUsersTotalsByRole(roles: (string | undefined)[]) {
         }),
       select: pickTotal,
       staleTime: COUNT_STALE_MS,
-      enabled: !useAllSource,
+      enabled: canFetchPaged,
     })),
   });
 
@@ -122,22 +129,25 @@ function useInvalidateAdminUsers() {
 
 /** Chi tiết người dùng admin. */
 export function useAdminUserDetail(id: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id));
   return useQuery({
     queryKey: adminUsersKeys.detail(id ?? ''),
     queryFn: () => fetchAdminUserDetail(id!),
     select: (envelope: ApiEnvelope<AdminUserDetail>) => envelope.data,
-    enabled: Boolean(id),
+    enabled: canFetch,
     staleTime: DETAIL_STALE_MS,
   });
 }
 
 /** Danh sách role hệ thống (ít đổi). */
 export function useAdminRoles() {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: adminUsersKeys.roles(),
     queryFn: () => fetchAdminRoles(),
     select: (envelope: ApiEnvelope<AdminRole[]>) => envelope.data,
     staleTime: ROLES_STALE_MS,
+    enabled: canFetch,
   });
 }
 

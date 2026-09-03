@@ -16,6 +16,7 @@ import type {
   RecruitOfficeStaffInput,
 } from '@/lib/api/models/office';
 import { teamKeys } from '@/hooks/useTeams';
+import { useCanFetchProtected, useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const leoOfficesKeys = {
@@ -83,13 +84,14 @@ type LeoLookupReportsParams = Omit<LeoMyReportsParams, 'status'> & {
  * Trả về `LeoMyReportsData` (kèm `localOfficeName`, `wardName`, `assignments[]`).
  */
 export function useLeoMyReports(params: LeoMyReportsParams, options?: { enabled?: boolean }) {
+  const canFetch = useCanFetchProtected();
   return useQuery({
     queryKey: leoOfficesKeys.reportsList(params),
     queryFn: () => fetchLeoMyReports(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: (options?.enabled ?? true) && canFetch,
   });
 }
 
@@ -174,13 +176,14 @@ export function useLeoLookupReports(
  * GET /v1/offices/my/staff — danh sách Cleaner/Inspector trong LocalOffice.
  */
 export function useOfficeStaffList(params: OfficeStaffListParams, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: leoOfficesKeys.staffList(params),
     queryFn: () => fetchOfficeStaff(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -190,13 +193,14 @@ export function useOfficeStaffList(params: OfficeStaffListParams, options?: { en
  */
 export function useOfficeStaffLookup(email: string, options?: { enabled?: boolean }) {
   const trimmed = email.trim();
+  const canFetch = useProtectedQueryEnabled((options?.enabled ?? true) && Boolean(trimmed));
   return useQuery({
     queryKey: leoOfficesKeys.staffLookup(trimmed.toLowerCase()),
     queryFn: () => lookupOfficeStaff(trimmed),
     select: envelope => envelope.data,
     staleTime: LOOKUP_STALE_MS,
     retry: false,
-    enabled: (options?.enabled ?? true) && Boolean(trimmed),
+    enabled: canFetch,
   });
 }
 
@@ -205,12 +209,13 @@ export function useOfficeStaffLookup(email: string, options?: { enabled?: boolea
  * 404 `OFFICE_NOT_FOUND` (LEO chưa được gán office) không retry — coi như "chưa có boundary".
  */
 export function useLeoWardBoundary(options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: leoOfficesKeys.wardBoundary(),
     queryFn: () => fetchLeoWardBoundary(),
     select: envelope => envelope.data,
     staleTime: 30 * 60 * 1000,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
     retry: (failureCount, error) => {
       if (extractApiErrorCode(error) === 'OFFICE_NOT_FOUND') return false;
       return failureCount < 1;

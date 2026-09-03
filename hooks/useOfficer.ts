@@ -45,6 +45,7 @@ import type { ReportQueueParams } from '@/lib/api/models/reportQueue';
 import type { ViolationRecurrenceCandidatesParams } from '@/lib/api/models/violationRecurrenceCandidate';
 import type { ReportQueueStatus } from '@/lib/constants/reportStatus';
 import { isAbortError } from '@/lib/utils/abortError';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
 import { reportKeys } from '@/hooks/useReport';
 import {
@@ -175,35 +176,38 @@ type LookupReportQueueParams = Omit<ReportQueueParams, 'status'> & {
 
 /** Chi tiết một báo cáo — không fetch khi id rỗng. */
 export function useReportDetail(id: string) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id));
   return useQuery({
     queryKey: officerKeys.detail(id),
     queryFn: () => fetchReportDetail(id),
     staleTime: 3 * 60 * 1000,
-    enabled: Boolean(id),
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/reports/queue — hàng đợi báo cáo [LEO/DEO]. */
 export function useReportQueue(params: ReportQueueParams, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: officerKeys.queueList(params),
     queryFn: () => fetchReportQueue(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/reports/reopen-requests — [LEO/DEO] danh sách yêu cầu mở lại báo cáo. */
 export function useReopenRequests(params: ReopenRequestsParams, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: officerKeys.reopenRequestsList(params),
     queryFn: () => fetchReopenRequests(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -215,13 +219,14 @@ export function useDuplicateCandidates(
   params: DuplicateCandidatesParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: officerKeys.duplicateCandidatesList(params),
     queryFn: () => fetchDuplicateCandidates(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -230,11 +235,12 @@ export function useDuplicateCandidates(
  * `id` = báo cáo nghi trùng; kết quả gồm `report` + `primaryReport` (gốc).
  */
 export function useDuplicateCandidateDetail(reportId: string, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled((options?.enabled ?? true) && Boolean(reportId));
   return useQuery({
     queryKey: officerKeys.duplicateCandidateDetail(reportId),
     queryFn: () => fetchDuplicateCandidateDetail(reportId),
     staleTime: LIST_STALE_MS,
-    enabled: (options?.enabled ?? true) && Boolean(reportId),
+    enabled: canFetch,
   });
 }
 
@@ -246,13 +252,14 @@ export function useViolationRecurrenceCandidates(
   params: ViolationRecurrenceCandidatesParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: officerKeys.violationRecurrenceCandidatesList(params),
     queryFn: () => fetchViolationRecurrenceCandidates(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -264,13 +271,14 @@ export function useInspectionOfficerQueue(
   params: InspectionOfficerQueueParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: officerKeys.inspectionOfficerQueueList(params),
     queryFn: () => fetchInspectionOfficerQueue(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -531,11 +539,12 @@ export function useViolationRecurrenceComparison(
   reportId: string,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled((options?.enabled ?? true) && Boolean(reportId));
   return useQuery({
     queryKey: officerKeys.violationRecurrenceComparison(reportId),
     queryFn: () => fetchViolationRecurrenceComparison(reportId),
     staleTime: LIST_STALE_MS,
-    enabled: (options?.enabled ?? true) && Boolean(reportId),
+    enabled: canFetch,
   });
 }
 
@@ -561,10 +570,11 @@ export function useDismissViolationRecurrence() {
  * `enabled` = false cho đến khi user expand row (tránh N+1 lúc load list).
  */
 export function useReportInspections(reportId: string, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(reportId) && enabled);
   return useQuery({
     queryKey: officerKeys.reportInspections(reportId),
     queryFn: () => fetchReportInspections(reportId),
-    enabled: Boolean(reportId) && enabled,
+    enabled: canFetch,
     staleTime: LIST_STALE_MS,
   });
 }
@@ -573,10 +583,11 @@ export function useReportInspections(reportId: string, enabled = true) {
  * GET /v1/inspections/{id} — [InspectionLEO] chi tiết hồ sơ xử phạt.
  */
 export function useInspectionDetail(id: string, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id) && enabled);
   return useQuery({
     queryKey: officerKeys.inspectionDetail(id),
     queryFn: () => fetchInspectionDetail(id),
-    enabled: Boolean(id) && enabled,
+    enabled: canFetch,
     staleTime: INSPECTION_DETAIL_STALE_MS,
   });
 }
@@ -585,10 +596,11 @@ export function useInspectionDetail(id: string, enabled = true) {
  * GET /v1/inspections/{id}/payments — [Inspector/LEO] lịch sử nộp phạt (BR-INS-020).
  */
 export function useInspectionPayments(id: string, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id) && enabled);
   return useQuery({
     queryKey: officerKeys.inspectionPayments(id),
     queryFn: () => fetchInspectionPayments(id),
-    enabled: Boolean(id) && enabled,
+    enabled: canFetch,
     staleTime: LIST_STALE_MS,
   });
 }

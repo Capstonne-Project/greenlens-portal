@@ -4,6 +4,10 @@ import { refreshSessionOnce } from '@/lib/api/core';
 import type { AuthSessionEventDetail } from '@/lib/api/core';
 import { persistAuthSession } from '@/lib/api/authSessionClient';
 import { buildAuthUserFromApi } from '@/lib/auth/buildAuthUser';
+import {
+  markSessionRestoreComplete,
+  markSessionRestorePending,
+} from '@/lib/auth/sessionRestoreGate';
 import { getUserFromAccessToken } from '@/lib/auth/userFromAccessToken';
 import {
   clearLegacyClientAuthCookies,
@@ -102,24 +106,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { token, logout, setAuth } = useAuthStore();
   const queryClient = useQueryClient();
 
+  // Bootstrap once per mount tree — do not re-run on setAuth identity churn.
   useEffect(() => {
     const persistApi = useAuthStore.persist;
+    let cancelled = false;
+    let started = false;
+
+    markSessionRestorePending();
 
     const run = () => {
-      void syncAuthAfterHydration(setAuth, logout).then(() => {
-        const s = useAuthStore.getState();
-        if (s.token && s.user) {
-          const merged = withMustChangeFromCookie(s.user);
-          if (merged.mustChangePassword !== s.user.mustChangePassword) {
-            setAuth(s.token, merged);
+      if (cancelled || started) return;
+      started = true;
+
+      void syncAuthAfterHydration(setAuth, logout)
+        .then(() => {
+          if (cancelled) return;
+          const s = useAuthStore.getState();
+          if (s.token && s.user) {
+            const merged = withMustChangeFromCookie(s.user);
+            if (merged.mustChangePassword !== s.user.mustChangePassword) {
+              setAuth(s.token, merged);
+            }
           }
-        }
-      });
+        })
+        .finally(() => {
+          markSessionRestoreComplete();
+        });
     };
 
     if (!persistApi) {
       run();
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     const unsub = persistApi.onFinishHydration(run);
@@ -128,8 +147,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       run();
     }
 
-    return unsub;
-  }, [setAuth, logout]);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+    // Intentionally once: silent refresh + hydrate must not re-fire on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap single-flight
+  }, []);
 
   useEffect(() => {
     if (token) {
