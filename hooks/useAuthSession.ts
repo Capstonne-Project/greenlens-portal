@@ -10,9 +10,11 @@
  *    `AuthProvider` runs silent refresh / legacy cookie migrate after hydration.
  * 4. Hard reload: `isAuthenticated` can be `true` while `token` is still `null`
  *    until that restore finishes. Queries gated on `isAuthenticated` alone will
- *    hit L1 without Bearer → 401 flash, then interceptor refresh → 200.
- * 5. Rule: use `useCanFetchProtected()` (or `useHasAccessToken()`) for `enabled`
- *    on protected REST/SignalR — not `isAuthenticated` alone.
+ *    hit L1 without Bearer → historically 401 flash, then interceptor refresh → 200.
+ * 5. L1 now awaits `sessionRestoreGate` before sending protected calls without a
+ *    token (see `lib/auth/sessionRestoreGate.ts`) — eliminates the 401 round-trip.
+ * 6. Rule: still prefer `useCanFetchProtected()` for `enabled` on protected
+ *    REST/SignalR so RQ does not start until memory JWT exists.
  * ────────────────────────────────────────────────────────────────────────────
  */
 
@@ -25,6 +27,11 @@ import {
   getAuthStoreHydratedSnapshot,
   subscribeAuthStoreHydration,
 } from '@/lib/auth/authStoreHydration';
+import {
+  getSessionRestoreServerSnapshot,
+  isSessionRestoreComplete,
+  subscribeSessionRestore,
+} from '@/lib/auth/sessionRestoreGate';
 
 /** True after Zustand `auth-storage` rehydrates from localStorage. */
 export function useAuthStoreHydrated(): boolean {
@@ -35,6 +42,15 @@ export function useAuthStoreHydrated(): boolean {
   );
 }
 
+/** True after AuthProvider finished hydrate + optional silent refresh. */
+export function useSessionRestoreReady(): boolean {
+  return useSyncExternalStore(
+    subscribeSessionRestore,
+    isSessionRestoreComplete,
+    getSessionRestoreServerSnapshot
+  );
+}
+
 /** True when memory holds an access JWT (L1 can send Bearer). */
 export function useHasAccessToken(): boolean {
   return Boolean(useAuthStore(s => s.token));
@@ -42,8 +58,18 @@ export function useHasAccessToken(): boolean {
 
 /**
  * React Query `enabled` / realtime subscribe gate for protected endpoints.
- * Alias of `useHasAccessToken` — name documents intent at call sites.
+ * Requires session bootstrap done AND memory JWT present.
  */
 export function useCanFetchProtected(): boolean {
-  return useHasAccessToken();
+  const sessionReady = useSessionRestoreReady();
+  const hasToken = useHasAccessToken();
+  return sessionReady && hasToken;
+}
+
+/**
+ * Compose call-site `enabled` with the protected session gate.
+ * Use at every protected `useQuery` so RQ does not start work before Bearer exists.
+ */
+export function useProtectedQueryEnabled(enabled = true): boolean {
+  return useCanFetchProtected() && enabled;
 }

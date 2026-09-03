@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/services/fetchNotificationTemplate';
 import type { TestNotificationTemplateInput } from '@/lib/api/models/gamification';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const notificationTemplateKeys = {
@@ -27,21 +28,24 @@ export const notificationTemplateKeys = {
 const LIST_STALE_MS = 3 * 60 * 1000;
 
 export function useNotificationTemplatesList(params: NotificationTemplatesListParams) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: notificationTemplateKeys.list(params),
     queryFn: () => fetchNotificationTemplates(params),
     select: (envelope: ApiEnvelope<NotificationTemplatesList>) => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
+    enabled: canFetch,
   });
 }
 
 export function useNotificationTemplateDetail(id: string | null, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id) && enabled);
   return useQuery({
     queryKey: notificationTemplateKeys.detail(id ?? ''),
     queryFn: () => fetchNotificationTemplateDetail(id!),
     select: envelope => envelope.data,
-    enabled: Boolean(id) && enabled,
+    enabled: canFetch,
     staleTime: LIST_STALE_MS,
   });
 }

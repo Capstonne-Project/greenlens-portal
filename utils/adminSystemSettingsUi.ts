@@ -4,7 +4,7 @@ import {
   inferSystemSettingLabel,
 } from '@/lib/constants/adminSystemSettingsDisplay';
 import {
-  isHiddenSystemSettingKey,
+  isHiddenSystemSettingItem,
   isHiddenSystemSettingModule,
   isRetiredSystemSettingKey,
 } from '@/lib/constants/adminSystemSettings';
@@ -77,9 +77,7 @@ export function getSystemSettingPlaceholder(item: SystemSettingItem): string {
 }
 
 export function filterVisibleSystemSettings(items: SystemSettingItem[]): SystemSettingItem[] {
-  return items.filter(
-    item => !isHiddenSystemSettingKey(item.key) && !isRetiredSystemSettingKey(item.key)
-  );
+  return items.filter(item => !isHiddenSystemSettingItem(item) && !isRetiredSystemSettingKey(item.key));
 }
 
 export function filterVisibleSystemSettingModules(

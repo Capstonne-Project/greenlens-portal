@@ -108,6 +108,11 @@ export interface InspectionChecklistEvidenceDto {
 /**
  * GET /v1/inspections/{id} — [InspectionLEO] chi tiết hồ sơ xử phạt (Swagger data).
  * Amounts / level thường null khi Draft — không tin mock Swagger `0`.
+ *
+ * Contract tên người:
+ * - `createdByOfficerName` — cán bộ lập hồ sơ
+ * - `issuedByInspectorName` — người ban hành phạt (có thể null trước PenaltyIssued)
+ * - `acceptedByUserId` — id người tiếp nhận (Swagger không có tên kèm theo)
  */
 export interface InspectionDetailDto {
   id: string;
@@ -138,7 +143,12 @@ export interface InspectionDetailDto {
   payments?: InspectionPaymentDto[] | null;
   acceptedAt?: string | null;
   acceptedByUserId?: string | null;
+  /**
+   * Không có trong Swagger schema chính thức (chỉ `acceptedByUserId`).
+   * Giữ optional — một số môi trường BE vẫn trả tên người tiếp nhận.
+   */
   acceptedByUserName?: string | null;
+  /** Alias có thể gặp ngoài Swagger — mapper gộp vào `acceptedByUserName`. */
   acceptedByName?: string | null;
   arrivalConfirmedAt?: string | null;
   arrivalLatitude?: number | null;

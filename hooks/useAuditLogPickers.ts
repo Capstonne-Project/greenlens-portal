@@ -7,6 +7,7 @@ import { fetchCompanies, fetchCompanyDetail } from '@/lib/api/services/fetchComp
 import { fetchAdminWasteTags } from '@/lib/api/services/fetchWasteTag';
 import { fetchNotificationTemplates } from '@/lib/api/services/fetchNotificationTemplate';
 import { useDebouncedValue, SEARCH_DEBOUNCE_MS } from '@/hooks/useDebouncedValue';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { useQuery } from '@tanstack/react-query';
 
 export const auditLogPickerKeys = {
@@ -32,6 +33,7 @@ export function useAuditUserSearch(
   enabled: boolean
 ) {
   const debounced = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: auditLogPickerKeys.users(debounced, roleFilter),
     queryFn: () =>
@@ -42,12 +44,13 @@ export function useAuditUserSearch(
         ...(roleFilter ? { role: roleFilter } : {}),
       }),
     select: envelope => envelope.data.items,
-    enabled,
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
 
 export function useAuditUserLabel(userId: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(userId));
   return useQuery({
     queryKey: auditLogPickerKeys.userLabel(userId ?? ''),
     queryFn: () => fetchAdminUserDetail(userId!),
@@ -55,7 +58,7 @@ export function useAuditUserLabel(userId: string | null) {
       const u = envelope.data;
       return { id: u.id, label: u.fullName || u.email, sublabel: u.email };
     },
-    enabled: Boolean(userId),
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
@@ -63,6 +66,7 @@ export function useAuditUserLabel(userId: string | null) {
 /** Tìm báo cáo theo mã / địa chỉ. */
 export function useAuditReportSearch(search: string, enabled: boolean) {
   const debounced = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: auditLogPickerKeys.reports(debounced),
     queryFn: () =>
@@ -72,12 +76,13 @@ export function useAuditReportSearch(search: string, enabled: boolean) {
         ...(debounced.trim() ? { search: debounced.trim() } : {}),
       }),
     select: envelope => envelope.data.items,
-    enabled,
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
 
 export function useAuditReportLabel(reportId: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(reportId));
   return useQuery({
     queryKey: auditLogPickerKeys.reportLabel(reportId ?? ''),
     queryFn: () => fetchAdminReportDetail(reportId!),
@@ -85,7 +90,7 @@ export function useAuditReportLabel(reportId: string | null) {
       const r = envelope.data;
       return { id: r.id, label: r.code, sublabel: r.address };
     },
-    enabled: Boolean(reportId),
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
@@ -93,6 +98,7 @@ export function useAuditReportLabel(reportId: string | null) {
 /** Tìm công ty DVMT. */
 export function useAuditCompanySearch(search: string, enabled: boolean) {
   const debounced = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: auditLogPickerKeys.companies(debounced),
     queryFn: () =>
@@ -102,12 +108,13 @@ export function useAuditCompanySearch(search: string, enabled: boolean) {
         ...(debounced.trim() ? { search: debounced.trim() } : {}),
       }),
     select: envelope => envelope.data.items,
-    enabled,
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
 
 export function useAuditCompanyLabel(companyId: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(companyId));
   return useQuery({
     queryKey: auditLogPickerKeys.companyLabel(companyId ?? ''),
     queryFn: () => fetchCompanyDetail(companyId!),
@@ -115,13 +122,14 @@ export function useAuditCompanyLabel(companyId: string | null) {
       const c = envelope.data;
       return { id: c.id, label: c.name, sublabel: c.contractNumber };
     },
-    enabled: Boolean(companyId),
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
 
 export function useAuditPollutionCategorySearch(search: string, enabled: boolean) {
   const debounced = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: auditLogPickerKeys.pollutionCategories(debounced),
     queryFn: () =>
@@ -131,13 +139,14 @@ export function useAuditPollutionCategorySearch(search: string, enabled: boolean
         ...(debounced.trim() ? { search: debounced.trim() } : {}),
       }),
     select: envelope => envelope.data.items,
-    enabled,
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
 
 export function useAuditWasteTagSearch(search: string, enabled: boolean) {
   const debounced = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: auditLogPickerKeys.wasteTags(),
     queryFn: () => fetchAdminWasteTags(),
@@ -154,13 +163,14 @@ export function useAuditWasteTagSearch(search: string, enabled: boolean) {
         )
         .slice(0, 30);
     },
-    enabled,
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }
 
 export function useAuditNotificationTemplateSearch(search: string, enabled: boolean) {
   const debounced = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: auditLogPickerKeys.notificationTemplates(),
     queryFn: () => fetchNotificationTemplates({ page: 1, pageSize: 50 }),
@@ -172,7 +182,7 @@ export function useAuditNotificationTemplateSearch(search: string, enabled: bool
         .filter(t => t.templateKey.toLowerCase().includes(q) || t.titleVi.toLowerCase().includes(q))
         .slice(0, 30);
     },
-    enabled,
+    enabled: canFetch,
     staleTime: PICKER_STALE_MS,
   });
 }

@@ -2,6 +2,7 @@
 
 import { officerKeys } from '@/hooks/useOfficer';
 import { leoOfficesKeys } from '@/hooks/useLeoOffices';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import {
   cancelCommunityCleanup,
   createCommunityCleanup,
@@ -58,11 +59,14 @@ export function useCreateCommunityCleanup() {
 
 /** GET /v1/reports/{reportId}/community-cleanup — chương trình active của report (data null nếu chưa có). */
 export function useReportCommunityCleanup(reportId: string, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(
+    (options?.enabled ?? Boolean(reportId)) && Boolean(reportId)
+  );
   return useQuery({
     queryKey: communityCleanupKeys.byReport(reportId),
     queryFn: async () => (await getReportCommunityCleanup(reportId)).data,
     staleTime: DETAIL_STALE_MS,
-    enabled: options?.enabled ?? Boolean(reportId),
+    enabled: canFetch,
   });
 }
 
@@ -71,31 +75,36 @@ export function useOfficeCommunityQueue(
   params?: CommunityCleanupOfficeQueueParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: communityCleanupKeys.queue(params),
     queryFn: async () => (await getOfficeCommunityQueue(params)).data,
     staleTime: QUEUE_STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/community-cleanups/office-queue/stats — [LEO] thống kê hàng đợi theo office. */
 export function useOfficeCommunityQueueStats(options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: communityCleanupKeys.queueStats(),
     queryFn: async () => (await getOfficeCommunityQueueStats()).data,
     staleTime: QUEUE_STATS_STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/community-cleanups/{eventId} — chi tiết chương trình. */
 export function useCommunityCleanupDetail(eventId: string, options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(
+    (options?.enabled ?? Boolean(eventId)) && Boolean(eventId)
+  );
   return useQuery({
     queryKey: communityCleanupKeys.detail(eventId),
     queryFn: async () => (await getCommunityCleanupDetail(eventId)).data,
     staleTime: DETAIL_STALE_MS,
-    enabled: options?.enabled ?? Boolean(eventId),
+    enabled: canFetch,
   });
 }
 
@@ -116,11 +125,14 @@ export function useCommunityCleanupParticipants(
   params?: { page?: number; pageSize?: number },
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(
+    (options?.enabled ?? Boolean(eventId)) && Boolean(eventId)
+  );
   return useQuery({
     queryKey: communityCleanupKeys.participants(eventId, params?.page),
     queryFn: async () => (await getCommunityCleanupParticipants(eventId, params)).data,
     staleTime: PARTICIPANTS_STALE_MS,
-    enabled: options?.enabled ?? Boolean(eventId),
+    enabled: canFetch,
   });
 }
 

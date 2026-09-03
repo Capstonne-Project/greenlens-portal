@@ -70,6 +70,7 @@ import type {
 } from '@/lib/api/models/company';
 import { assignmentListMissingThumbnailIds } from '@/lib/api/mappers/companyAssignment.mapper';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { pickAssignmentDetailMediaUrl } from '@/utils/reportThumbnail';
 import {
   keepPreviousData,
@@ -101,12 +102,14 @@ const officerCompanyKeys = {
 const LIST_STALE_MS = 3 * 60 * 1000;
 
 export function useCompaniesList(params: CompaniesListParams) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: officerCompanyKeys.list(params),
     queryFn: () => fetchCompanies(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
+    enabled: canFetch,
   });
 }
 
@@ -115,24 +118,26 @@ export function useMyWardCompaniesList(
   params: MyWardCompaniesListParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: officerCompanyKeys.myWardList(params),
     queryFn: () => fetchMyWardCompanies(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/companies/my-ward/{id} — chi tiết công ty trong phường (LEO). */
 export function useMyWardCompanyDetail(companyId: string | null, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(companyId) && enabled);
   return useQuery({
     queryKey: officerCompanyKeys.myWardDetail(companyId ?? ''),
     queryFn: () => fetchMyWardCompanyDetail(companyId!),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
-    enabled: Boolean(companyId) && enabled,
+    enabled: canFetch,
   });
 }
 
@@ -145,12 +150,13 @@ export function useMyWardCompanies(options?: { enabled?: boolean }) {
 }
 
 export function useCompanyDetail(companyId: string | null, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(companyId) && enabled);
   return useQuery({
     queryKey: officerCompanyKeys.detail(companyId ?? ''),
     queryFn: () => fetchCompanyDetail(companyId!),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
-    enabled: Boolean(companyId) && enabled,
+    enabled: canFetch,
   });
 }
 
@@ -215,22 +221,24 @@ export function useRenewCompanyContract() {
 
 /** GET /v1/companies/{id}/contract-history — lịch sử kỳ hợp đồng (lazy khi drawer mở). */
 export function useCompanyContractHistory(companyId: string | null, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(companyId) && enabled);
   return useQuery({
     queryKey: officerCompanyKeys.contractHistory(companyId ?? ''),
     queryFn: () => fetchCompanyContractHistory(companyId!),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
-    enabled: Boolean(companyId) && enabled,
+    enabled: canFetch,
   });
 }
 
 export function useCompanyServiceAreas(companyId: string | null, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(Boolean(companyId) && enabled);
   return useQuery({
     queryKey: officerCompanyKeys.serviceAreas(companyId ?? ''),
     queryFn: () => fetchCompanyServiceAreas(companyId!),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
-    enabled: Boolean(companyId) && enabled,
+    enabled: canFetch,
   });
 }
 
@@ -285,11 +293,13 @@ export const companyKeys = {
 const STALE_MS = 3 * 60 * 1000;
 
 export function useMyCompany() {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: companyKeys.profile(),
     queryFn: () => fetchMyCompany(),
     select: (envelope: ApiEnvelope<MyCompany>) => envelope.data,
     staleTime: STALE_MS,
+    enabled: canFetch,
   });
 }
 
@@ -297,12 +307,13 @@ export function useCompanyStaffList(
   params: CompanyStaffListParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: companyKeys.staff(params),
     queryFn: () => fetchCompanyStaff(params),
     select: (envelope: ApiEnvelope<CompanyStaffList>) => envelope.data,
     staleTime: STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
@@ -310,17 +321,19 @@ export function useCompanyTeamsList(
   params: CompanyTeamsListParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: companyKeys.teams(params),
     queryFn: () => fetchCompanyTeams(params),
     select: (envelope: ApiEnvelope<CompanyTeamsList>) => envelope.data,
     staleTime: STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 /** Dropdown team active — dùng khi tạo staff / phân công báo cáo. */
 export function useCompanyTeamOptions(options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   const query = useQuery({
     queryKey: companyKeys.teamOptions(),
     queryFn: () => fetchCompanyTeams({ page: 1, pageSize: 100, isActive: true }),
@@ -331,7 +344,7 @@ export function useCompanyTeamOptions(options?: { enabled?: boolean }) {
         memberCount: t.memberCount,
       })),
     staleTime: STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 
   return {
@@ -342,6 +355,7 @@ export function useCompanyTeamOptions(options?: { enabled?: boolean }) {
 
 /** Tất cả đội công ty (active + inactive) — gán staff / phân công báo cáo. */
 export function useCompanyAllTeamOptions(options?: { enabled?: boolean }) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   const query = useQuery({
     queryKey: [...companyKeys.all, 'teams', 'all-options'] as const,
     queryFn: () => fetchCompanyTeams({ page: 1, pageSize: 100 }),
@@ -353,7 +367,7 @@ export function useCompanyAllTeamOptions(options?: { enabled?: boolean }) {
         memberCount: t.memberCount,
       })),
     staleTime: STALE_MS,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 
   return {
@@ -385,6 +399,7 @@ function decrementQueueCountEnvelope(
 
 /** Overview header queue CTA count (kept when sidebar badges removed). */
 export function useCompanyQueueCount() {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: companyKeys.queueCount(),
     queryFn: () => fetchCompanyQueue({ page: 1, pageSize: 1 }),
@@ -392,39 +407,47 @@ export function useCompanyQueueCount() {
     staleTime: 60 * 1000,
     /** Poll fallback when SignalR off — Overview CTA vẫn cập nhật sau LEO dispatch. */
     refetchInterval: 60 * 1000,
+    enabled: canFetch,
   });
 }
 
 export function useCompanyQueue(params: CompanyQueueParams) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: companyKeys.queue(params),
     queryFn: () => fetchCompanyQueue(params),
     select: (envelope: ApiEnvelope<CompanyQueueList>) => envelope.data,
     staleTime: 60 * 1000,
+    enabled: canFetch,
   });
 }
 
 export function useCompanyAssignments(params: CompanyAssignmentsParams) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: companyKeys.assignments(params),
     queryFn: () => fetchCompanyAssignments(params),
     select: (envelope: ApiEnvelope<CompanyAssignmentsList>) => envelope.data,
     staleTime: 60 * 1000,
+    enabled: canFetch,
   });
 }
 
 /** Recent assignments for company overview dashboard (list + widget fallbacks). */
 export function useCompanyDashboardAssignments() {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: companyKeys.assignmentsDashboard(),
     queryFn: () => fetchCompanyAssignments({ page: 1, pageSize: 12 }),
     select: (envelope: ApiEnvelope<CompanyAssignmentsList>) => envelope.data,
     staleTime: 60 * 1000,
+    enabled: canFetch,
   });
 }
 
 export function useCompanyAssignmentDetail(reportId: string | null) {
   const queryClient = useQueryClient();
+  const canFetch = useProtectedQueryEnabled(Boolean(reportId));
 
   return useQuery({
     queryKey: companyKeys.assignmentDetail(reportId ?? ''),
@@ -432,7 +455,7 @@ export function useCompanyAssignmentDetail(reportId: string | null) {
       const envelope = await fetchCompanyAssignmentDetail(reportId!);
       return mergeAssignmentDetailWithListImages(envelope.data, queryClient, reportId ?? '');
     },
-    enabled: Boolean(reportId),
+    enabled: canFetch,
     staleTime: 60 * 1000,
   });
 }
@@ -440,6 +463,7 @@ export function useCompanyAssignmentDetail(reportId: string | null) {
 /** GET /v1/reports/company-reports/{reportId} — chi tiết hàng đợi phân công. */
 export function useCompanyReportDetail(reportId: string | null) {
   const queryClient = useQueryClient();
+  const canFetch = useProtectedQueryEnabled(Boolean(reportId));
 
   return useQuery({
     queryKey: companyKeys.reportDetail(reportId ?? ''),
@@ -447,7 +471,7 @@ export function useCompanyReportDetail(reportId: string | null) {
       const envelope = await fetchCompanyReportDetail(reportId!);
       return mergeAssignmentDetailWithListImages(envelope.data, queryClient, reportId ?? '');
     },
-    enabled: Boolean(reportId),
+    enabled: canFetch,
     staleTime: 60 * 1000,
   });
 }
@@ -491,13 +515,14 @@ async function resolveAssignmentRowThumbnail(reportId: string): Promise<string |
 /** Bổ sung ảnh hàng khi list API chưa trả thumbnailUrl. */
 export function useCompanyAssignmentThumbnails(items: CompanyAssignmentListItem[] | undefined) {
   const reportIds = useMemo(() => assignmentListMissingThumbnailIds(items ?? []), [items]);
+  const canFetch = useProtectedQueryEnabled();
 
   const queries = useQueries({
     queries: reportIds.map(reportId => ({
       queryKey: companyKeys.assignmentThumbnail(reportId),
       queryFn: () => resolveAssignmentRowThumbnail(reportId),
       staleTime: 10 * 60 * 1000,
-      enabled: Boolean(reportId),
+      enabled: canFetch && Boolean(reportId),
     })),
   });
 
@@ -605,31 +630,36 @@ export function useUpdateCompanyTeam() {
 
 /** GET /v1/teams/company-teams/{id} — chi tiết đội công ty. */
 export function useCompanyTeamDetail(id: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id));
   return useQuery({
     queryKey: companyKeys.teamDetail(id ?? ''),
     queryFn: () => fetchCompanyTeamDetail(id!),
     select: (envelope: ApiEnvelope<CompanyTeamDetail>) => envelope.data,
-    enabled: Boolean(id),
+    enabled: canFetch,
     staleTime: STALE_MS,
   });
 }
 
 export function useMyCompanyContractHistory() {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: companyKeys.contractHistory(),
     queryFn: () => fetchMyCompanyContractHistory(),
     select: (envelope: ApiEnvelope<MyCompanyContractHistory>) => envelope.data,
     staleTime: STALE_MS,
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/companies/my/kpi — KPI công ty CM theo kỳ. */
 export function useMyCompanyKpi(params: MyCompanyKpiParams = {}) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: companyKeys.kpi(params),
     queryFn: () => fetchMyCompanyKpi(params),
     select: (envelope: ApiEnvelope<MyCompanyKpi>) => envelope.data,
     staleTime: 60 * 1000,
+    enabled: canFetch,
   });
 }
 

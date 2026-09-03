@@ -17,6 +17,7 @@ import type {
 } from '@/lib/api/models/adminReport';
 import type { ApiEnvelope } from '@/lib/api/types/envelope';
 import { markAdminReportHidden, markAdminReportVisible } from '@/lib/storage/adminHiddenReports';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const adminReportKeys = {
@@ -35,31 +36,35 @@ export function useAdminReportsList(
   params: AdminReportsListParams,
   options?: { enabled?: boolean }
 ) {
+  const canFetch = useProtectedQueryEnabled(options?.enabled ?? true);
   return useQuery({
     queryKey: adminReportKeys.list(params),
     queryFn: () => fetchAdminReports(params),
     select: (envelope: ApiEnvelope<AdminReportsList>) => envelope.data,
     staleTime: LIST_STALE_MS,
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
+    enabled: canFetch,
   });
 }
 
 export function useAdminReportsTotal() {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: adminReportKeys.count(),
     queryFn: () => fetchAdminReports({ page: 1, pageSize: 1 }),
     select: (envelope: ApiEnvelope<AdminReportsList>) => envelope.data.pagination.totalItems,
     staleTime: LIST_STALE_MS,
+    enabled: canFetch,
   });
 }
 
 export function useAdminReportDetail(id: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id));
   return useQuery({
     queryKey: adminReportKeys.detail(id ?? ''),
     queryFn: () => fetchAdminReportDetail(id!),
     select: envelope => envelope.data,
-    enabled: Boolean(id),
+    enabled: canFetch,
     staleTime: DETAIL_STALE_MS,
     /** Giữ bản đã cache khi refetch lỗi (vd. BE 404 sau hide). */
     placeholderData: keepPreviousData,

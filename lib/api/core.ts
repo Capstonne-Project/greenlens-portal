@@ -1,4 +1,8 @@
 import { clearAuthSessionViaApi, refreshAuthSessionViaApi } from '@/lib/api/authSessionClient';
+import {
+  isSessionRestoreComplete,
+  waitForSessionRestore,
+} from '@/lib/auth/sessionRestoreGate';
 import axios, { AxiosProgressEvent, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 /** Re-export of axios.isAxiosError so layers L2–L6 can type-guard errors
@@ -19,16 +23,36 @@ const axiosInstance = axios.create({
   timeout: 15000,
 });
 
-// Request interceptor — resolve base URL per request + Bearer from in-memory token only.
-// Hard-reload rule: call sites must `enabled: useCanFetchProtected()` until token is restored
-// (see hooks/useAuthSession.ts). Cookie alone is not Bearer.
-axiosInstance.interceptors.request.use(config => {
+function shouldSkipSessionWait(url: string | undefined): boolean {
+  if (!url) return false;
+  return (
+    url.includes('/v1/auth/login') ||
+    url.includes('/v1/auth/register') ||
+    url.includes('/v1/auth/refresh-token') ||
+    url.includes('/api/auth/refresh') ||
+    url.includes('/api/auth/session') ||
+    url.includes('/api/auth/logout') ||
+    url.includes('/v1/public/')
+  );
+}
+
+// Request interceptor — wait for AuthProvider bootstrap on hard reload, then Bearer.
+// Without this, RQ fires while token is still null → 401 → interceptor refresh → 200.
+axiosInstance.interceptors.request.use(async config => {
   config.baseURL = getApiBaseUrl();
-  if (typeof window !== 'undefined') {
-    const token = (window as Window & { __authToken?: string }).__authToken;
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+  if (typeof window === 'undefined') return config;
+
+  const url = typeof config.url === 'string' ? config.url : undefined;
+  if (!shouldSkipSessionWait(url) && !isSessionRestoreComplete()) {
+    const existing = (window as Window & { __authToken?: string }).__authToken;
+    if (!existing) {
+      await waitForSessionRestore();
     }
+  }
+
+  const token = (window as Window & { __authToken?: string }).__authToken;
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
 });
@@ -47,13 +71,7 @@ function forceLogout(): void {
 }
 
 function shouldSkipRefreshRetry(url: string | undefined): boolean {
-  if (!url) return false;
-  return (
-    url.includes('/v1/auth/login') ||
-    url.includes('/v1/auth/refresh-token') ||
-    url.includes('/api/auth/refresh') ||
-    url.includes('/v1/public/')
-  );
+  return shouldSkipSessionWait(url);
 }
 
 /** Silent refresh via `/api/auth/refresh` (HttpOnly refresh cookie on server). */

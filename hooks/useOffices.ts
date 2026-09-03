@@ -26,6 +26,7 @@ import type {
   UpdateOfficeInput,
 } from '@/lib/api/models/office';
 import { useMemo } from 'react';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const ASSIGNED_OFFICERS_PAGE_SIZE = 500;
@@ -43,12 +44,13 @@ const LIST_STALE_MS = 3 * 60 * 1000;
 const CATALOG_STALE_MS = 10 * 60 * 1000;
 
 export function useOfficesList(params: OfficesListParams, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: officeKeys.list(params),
     queryFn: () => fetchOffices(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
-    enabled,
+    enabled: canFetch,
   });
 }
 
@@ -94,11 +96,12 @@ export function useUnassignedLeoUsers(search: string, enabled: boolean) {
 }
 
 export function useOfficeDetail(officeId: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(officeId));
   return useQuery({
     queryKey: officeKeys.detail(officeId ?? ''),
     queryFn: () => fetchOfficeDetail(officeId!),
     select: envelope => envelope.data,
-    enabled: Boolean(officeId),
+    enabled: canFetch,
     staleTime: LIST_STALE_MS,
   });
 }
@@ -123,11 +126,12 @@ export function useWards(provinceCode: string | null) {
 }
 
 export function useOfficeUserSearch(params: AdminUsersListParams, enabled: boolean) {
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: officeKeys.userSearch(params),
     queryFn: () => fetchAdminUsers(params),
     select: envelope => envelope.data,
-    enabled,
+    enabled: canFetch,
     staleTime: 60 * 1000,
   });
 }

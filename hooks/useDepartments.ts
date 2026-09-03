@@ -14,6 +14,7 @@ import { fetchAdminUsers } from '@/lib/api/services/fetchAdmin';
 import { fetchProvinces } from '@/lib/api/services/fetchLocationCatalog';
 import type { AdminUsersListParams } from '@/lib/api/models/adminUser';
 import { useMemo } from 'react';
+import { useProtectedQueryEnabled } from '@/hooks/useAuthSession';
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -71,26 +72,30 @@ export async function ensureMyOfficesData(
 }
 
 export function useDepartmentsList(params: DepartmentsListParams) {
+  const canFetch = useProtectedQueryEnabled();
   return useQuery({
     queryKey: departmentKeys.list(params),
     queryFn: () => fetchDepartments(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
+    enabled: canFetch,
   });
 }
 
 export function useMyOffices(params: MyOfficesParams, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: departmentKeys.myOffices(params),
     queryFn: () => fetchMyOffices(params),
     select: envelope => envelope.data,
     staleTime: LIST_STALE_MS,
-    enabled,
+    enabled: canFetch,
   });
 }
 
 /** GET /v1/departments/my/reports — danh sách báo cáo Sở (DEO). */
 export function useDeoMyReports(params: DeoMyReportsParams, enabled = true) {
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: departmentKeys.deoMyReports(params),
     queryFn: () => fetchDeoMyReports(params),
@@ -98,13 +103,14 @@ export function useDeoMyReports(params: DeoMyReportsParams, enabled = true) {
     staleTime: LIST_STALE_MS,
     /** Giữ data filter trước khi đổi status/severity — khớp useReportQueue (Verify). */
     placeholderData: keepPreviousData,
-    enabled,
+    enabled: canFetch,
   });
 }
 
 /** Dropdown phường/xã — chỉ `search` + pagination (pageSize 20), infinite scroll. */
 export function useMyOfficesInfinite(search: string, enabled: boolean) {
   const normalizedSearch = search.trim();
+  const canFetch = useProtectedQueryEnabled(enabled);
 
   return useInfiniteQuery({
     queryKey: departmentKeys.myOfficesInfinite(normalizedSearch),
@@ -119,17 +125,18 @@ export function useMyOfficesInfinite(search: string, enabled: boolean) {
     initialPageParam: 1,
     getNextPageParam: lastPage =>
       lastPage.pagination.hasNext ? lastPage.pagination.page + 1 : undefined,
-    enabled,
+    enabled: canFetch,
     staleTime: LIST_STALE_MS,
   });
 }
 
 export function useDepartmentDetail(id: string | null) {
+  const canFetch = useProtectedQueryEnabled(Boolean(id));
   return useQuery({
     queryKey: departmentKeys.detail(id ?? ''),
     queryFn: () => fetchDepartmentDetail(id!),
     select: envelope => envelope.data,
-    enabled: Boolean(id),
+    enabled: canFetch,
     staleTime: LIST_STALE_MS,
   });
 }
@@ -197,11 +204,12 @@ export function useDeoUsers(search: string, enabled: boolean) {
     [search]
   );
 
+  const canFetch = useProtectedQueryEnabled(enabled);
   return useQuery({
     queryKey: departmentKeys.deoSearch(params),
     queryFn: () => fetchAdminUsers(params),
     select: envelope => envelope.data.items,
-    enabled,
+    enabled: canFetch,
     staleTime: 60 * 1000,
   });
 }
