@@ -41,6 +41,9 @@ const QUEUE_STATS_STALE_MS = 3 * 60 * 1000;
 const DETAIL_STALE_MS = 60 * 1000;
 const PARTICIPANTS_STALE_MS = 3 * 60 * 1000;
 
+/** Poll danh sách participant trên màn detail LEO — badge check-in cập nhật không cần reload. */
+export const COMMUNITY_CLEANUP_PARTICIPANTS_POLL_MS = 2_000;
+
 /** POST /v1/reports/{reportId}/community-cleanups — [LEO] mở chương trình dọn cộng đồng. */
 export function useCreateCommunityCleanup() {
   const queryClient = useQueryClient();
@@ -123,7 +126,11 @@ export function usePublicCommunityCleanup(eventId: string, options?: { enabled?:
 export function useCommunityCleanupParticipants(
   eventId: string,
   params?: { page?: number; pageSize?: number },
-  options?: { enabled?: boolean }
+  options?: {
+    enabled?: boolean;
+    /** Poll interval (ms). `false` tắt polling. */
+    refetchInterval?: number | false;
+  }
 ) {
   const canFetch = useProtectedQueryEnabled(
     (options?.enabled ?? Boolean(eventId)) && Boolean(eventId)
@@ -133,6 +140,8 @@ export function useCommunityCleanupParticipants(
     queryFn: async () => (await getCommunityCleanupParticipants(eventId, params)).data,
     staleTime: PARTICIPANTS_STALE_MS,
     enabled: canFetch,
+    refetchInterval: options?.refetchInterval ?? false,
+    refetchIntervalInBackground: false,
   });
 }
 

@@ -6,6 +6,8 @@ import { ADMIN_RAIL_SECTION_LABEL } from '@/components/admin/shared/adminUiToken
 
 import { getSystemSettingsModuleIcon } from '@/lib/constants/adminSystemSettingsModulesUi';
 
+import { filterVisibleSystemSettingModules } from '@/utils/adminSystemSettingsUi';
+
 import { Input } from '@/components/ui/input';
 
 import { cn } from '@/lib/utils';
@@ -29,12 +31,14 @@ export function SystemSettingsModuleSidebar({
 }: SystemSettingsModuleSidebarProps) {
   const [query, setQuery] = useState('');
 
+  const visibleModules = useMemo(() => filterVisibleSystemSettingModules(modules), [modules]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    if (!q) return modules;
+    if (!q) return visibleModules;
 
-    return modules.filter(mod => {
+    return visibleModules.filter(mod => {
       const label = (mod.displayNameVi || mod.module).toLowerCase();
 
       const desc = (mod.descriptionVi ?? '').toLowerCase();
@@ -43,9 +47,9 @@ export function SystemSettingsModuleSidebar({
 
       return label.includes(q) || desc.includes(q) || slug.includes(q);
     });
-  }, [modules, query]);
+  }, [visibleModules, query]);
 
-  if (modules.length === 0) {
+  if (visibleModules.length === 0) {
     return (
       <aside className="py-2 text-sm text-muted-foreground lg:w-[220px] lg:shrink-0">
         Chưa có nhóm cấu hình.
