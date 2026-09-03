@@ -44,6 +44,7 @@ export type NotificationType =
   | 'CommunityCleanupLeaderStarted'
   | 'CommunityCleanupStarted'
   | 'CommunityCleanupProgressUpdated'
+  | 'CommunityCleanupBeforeImagesUploaded'
   | 'CommunityCleanupVerificationSubmitted'
   | 'CommunityCleanupVerificationRejected'
   | 'CommunityCleanupVerified'
