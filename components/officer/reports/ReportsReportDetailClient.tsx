@@ -7,9 +7,17 @@ import {
   type ReportPreviewHandler,
   type ReportPreviewImage,
 } from '@/components/officer/shared/ReportImagePreview';
+import { WasteTagBadge } from '@/components/common/WasteTagSelectChip';
 import { ReassignTeamDialog } from '@/components/officer/tracking/ReassignTeamDialog';
 import { AnimatedTooltip } from '@/components/ui/animated-tooltip';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useReportDetail } from '@/hooks/useReport';
 import type {
@@ -17,6 +25,7 @@ import type {
   ReportDetail,
   ReportMedia,
   ReportStatus,
+  ReportWasteTag,
 } from '@/lib/api/models/report';
 import type {
   ReportProgress,
@@ -31,8 +40,11 @@ import {
   AlignLeft,
   ArrowLeft,
   CalendarDays,
+  Camera,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   CircleDot,
   Copy,
@@ -44,6 +56,7 @@ import {
   Pencil,
   RefreshCw,
   RotateCcw,
+  Tags,
   Users,
   XCircle,
   type LucideIcon,
@@ -1477,22 +1490,242 @@ function ActivityTimeline({ items }: { items: ReportProgressStatusHistory[] }) {
   );
 }
 
+const CAROUSEL_EASE = [0.22, 1, 0.36, 1] as const;
+const CAROUSEL_DURATION = 0.42;
+
+/**
+ * Carousel media gửi báo cáo — prev/next + counter `n / total`
+ * + nút “Xem tất cả ảnh” (dialog lưới, pattern Verify/Assign).
+ */
+function SubmissionMediaCarousel({
+  images,
+  address,
+  onPreview,
+}: {
+  images: ReportProgressImage[];
+  address: string;
+  onPreview: ReportPreviewHandler;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
+  const [showAll, setShowAll] = useState(false);
+
+  /** Reset slide khi danh sách media đổi — adjust state lúc render, không dùng effect. */
+  const imagesKey = images.map(img => img.id || img.url).join('|');
+  const [prevImagesKey, setPrevImagesKey] = useState(imagesKey);
+  if (imagesKey !== prevImagesKey) {
+    setPrevImagesKey(imagesKey);
+    setActiveIndex(0);
+    setDirection(0);
+  }
+
+  if (images.length === 0) {
+    return (
+      <div className="relative flex aspect-video max-h-64 w-full items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground">
+        <div className="space-y-2 text-center text-sm">
+          <ImageIcon className="mx-auto size-8 opacity-40" aria-hidden />
+          <p>Không có hình ảnh gửi báo cáo</p>
+        </div>
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(activeIndex, images.length - 1);
+  const featured = images[safeIndex]!;
+  const hasPrev = safeIndex > 0;
+  const hasNext = safeIndex < images.length - 1;
+  const total = images.length;
+
+  const goTo = (next: number) => {
+    if (next === safeIndex || next < 0 || next >= total) return;
+    setDirection(next > safeIndex ? 1 : -1);
+    setActiveIndex(next);
+  };
+
+  const openLightbox = () => {
+    onPreview({
+      url: featured.url,
+      label: `Ảnh gửi báo cáo ${safeIndex + 1}`,
+      uploadedAt: featured.uploadedAt || undefined,
+    });
+  };
+
+  return (
+    <>
+      <div className="relative aspect-video max-h-64 w-full overflow-hidden rounded-xl bg-slate-200 sm:max-h-72">
+        <AnimatePresence initial={false} custom={direction}>
+          <motion.div
+            key={featured.url}
+            custom={direction}
+            variants={{
+              enter: (dir: number) => ({ x: dir >= 0 ? '28%' : '-28%', opacity: 0 }),
+              center: { x: 0, opacity: 1 },
+              exit: (dir: number) => ({ x: dir >= 0 ? '-28%' : '28%', opacity: 0 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: CAROUSEL_DURATION, ease: CAROUSEL_EASE }}
+            className="absolute inset-0"
+          >
+            <div className="pointer-events-none absolute -inset-[18%]" aria-hidden>
+              <Image
+                src={featured.url}
+                alt=""
+                fill
+                unoptimized
+                className="scale-110 object-cover blur-3xl"
+                sizes="(max-width: 1024px) 100vw, 58rem"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={openLightbox}
+              className="absolute inset-0 z-10 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/50"
+              aria-label={`Phóng to ảnh gửi báo cáo ${safeIndex + 1}`}
+            >
+              <Image
+                src={featured.url}
+                alt={`Ảnh gửi báo cáo ${safeIndex + 1}`}
+                fill
+                unoptimized
+                priority={safeIndex === 0}
+                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 58rem"
+              />
+            </button>
+          </motion.div>
+        </AnimatePresence>
+
+        {hasPrev ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute left-2 top-1/2 z-20 size-8 -translate-y-1/2 rounded-md bg-white/95 text-slate-700 shadow-md hover:bg-white sm:size-9"
+            onClick={e => {
+              e.stopPropagation();
+              goTo(safeIndex - 1);
+            }}
+            aria-label="Ảnh trước"
+          >
+            <ChevronLeft className="size-4 sm:size-5" />
+          </Button>
+        ) : null}
+
+        {hasNext ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className="absolute right-2 top-1/2 z-20 size-8 -translate-y-1/2 rounded-md bg-white/95 text-slate-700 shadow-md hover:bg-white sm:size-9"
+            onClick={e => {
+              e.stopPropagation();
+              goTo(safeIndex + 1);
+            }}
+            aria-label="Ảnh sau"
+          >
+            <ChevronRight className="size-4 sm:size-5" />
+          </Button>
+        ) : null}
+
+        {total > 1 ? (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              setShowAll(true);
+            }}
+            className="absolute bottom-2 right-2 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-md ring-1 ring-black/5 transition hover:bg-slate-50"
+          >
+            <Camera className="size-3.5 shrink-0" aria-hidden />
+            Xem tất cả ảnh ({total} ảnh)
+          </button>
+        ) : null}
+
+        <span className="pointer-events-none absolute right-2 top-2 z-20 rounded bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
+          {safeIndex + 1} / {total}
+        </span>
+      </div>
+
+      <Dialog open={showAll} onOpenChange={setShowAll}>
+        <DialogContent className="flex h-[92vh] max-w-[min(96vw,1200px)] flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <DialogDescription className="sr-only">
+            Hộp thoại xem tất cả hình ảnh gửi báo cáo theo dạng lưới.
+          </DialogDescription>
+          <DialogHeader className="shrink-0 space-y-0 border-b px-12 py-4 text-center">
+            <DialogTitle className="truncate text-center text-sm font-semibold tracking-tight text-foreground md:text-base">
+              {address?.trim() || 'Hình ảnh gửi báo cáo'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="shrink-0 border-b px-4 pt-2 md:px-6">
+            <div className="inline-flex items-center gap-1.5 border-b-2 border-foreground pb-2 text-sm font-medium text-foreground">
+              <Camera className="size-4" aria-hidden />
+              Hình ảnh
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {images.map((img, i) => (
+                <ClickableReportImage
+                  key={img.id || `${img.url}-${i}`}
+                  url={img.url}
+                  label={`Ảnh gửi báo cáo ${i + 1}`}
+                  uploadedAt={img.uploadedAt || undefined}
+                  onPreview={image => {
+                    setShowAll(false);
+                    onPreview(image);
+                  }}
+                  showTimestamp={false}
+                  unoptimized
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="aspect-4/3 w-full rounded-lg"
+                />
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function ReportInfoCard({
   data,
   assignments,
+  reporterName,
+  wasteTags,
+  onPreview,
 }: {
   data: ReportProgress;
   assignments: ReportProgressAssignment[];
+  reporterName: string | null;
+  wasteTags: ReportWasteTag[];
+  onPreview: ReportPreviewHandler;
 }) {
   const mapLat = data.latitude;
   const mapLng = data.longitude;
   const hasCoords = hasProgressCoords(mapLat, mapLng);
   const googleMapsUrl = hasCoords ? `https://www.google.com/maps?q=${mapLat},${mapLng}` : null;
-  const heroUrl =
-    data.media.submissionImages[0]?.url ??
-    data.media.beforeImages[0]?.url ??
-    data.media.afterImages[0]?.url ??
-    null;
+
+  /** Ảnh gửi báo cáo; fallback before/after nếu submission trống. */
+  const galleryImages = useMemo(() => {
+    if (data.media.submissionImages.length > 0) return data.media.submissionImages;
+    if (data.media.beforeImages.length > 0) return data.media.beforeImages;
+    return data.media.afterImages;
+  }, [data.media]);
+
+  const visibleWasteTags = useMemo(() => {
+    return [...wasteTags]
+      .filter(tag => tag.tagId && tag.nameVi?.trim())
+      .sort((a, b) => {
+        const byLen = b.nameVi.trim().length - a.nameVi.trim().length;
+        if (byLen !== 0) return byLen;
+        return a.nameVi.trim().localeCompare(b.nameVi.trim(), 'vi');
+      });
+  }, [wasteTags]);
 
   const statusBadge =
     REPORT_STATUS_BADGE_CLASSES[data.status] ?? 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200/80';
@@ -1504,6 +1737,8 @@ function ReportInfoCard({
   const assignedCompanyName =
     data.assignedCompany?.companyName?.trim() || data.assignment?.companyName?.trim() || '';
   const assignedByName = data.assignment?.assignedByName?.trim() || '';
+  const categoryLabel = data.categoryName?.trim() || 'Báo cáo môi trường';
+  const reporterLabel = reporterName?.trim() || 'Ẩn danh';
 
   const teamTooltipItems = useMemo(() => {
     return assignments
@@ -1519,27 +1754,15 @@ function ReportInfoCard({
 
   return (
     <div className="flex flex-col">
-      {/* Hero — chỉ ảnh, không overlay code/ward */}
-      <div className="relative aspect-video max-h-52 w-full overflow-hidden rounded-xl bg-muted">
-        {heroUrl ? (
-          <Image
-            src={heroUrl}
-            alt={data.categoryName || 'Báo cáo'}
-            fill
-            sizes="(max-width: 1024px) 100vw, 58rem"
-            className="object-cover"
-            unoptimized
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center text-muted-foreground">
-            <ImageIcon className="size-8 opacity-40" aria-hidden />
-          </div>
-        )}
-      </div>
+      <SubmissionMediaCarousel
+        images={galleryImages}
+        address={data.address}
+        onPreview={onPreview}
+      />
 
       <div className="pt-5">
         <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
-          {data.categoryName || 'Báo cáo môi trường'}
+          Báo cáo bởi {reporterLabel}
         </h1>
 
         <div className="mt-5 space-y-4">
@@ -1555,7 +1778,11 @@ function ReportInfoCard({
             </span>
           </MetaRow>
 
-          {/* Địa chỉ — ngay sau trạng thái: định vị hiện trường trước hạn / đội */}
+          <MetaRow icon={Tags} label="Loại ô nhiễm">
+            <p className="text-sm font-semibold leading-5 text-foreground">{categoryLabel}</p>
+          </MetaRow>
+
+          {/* Địa chỉ — ngay sau loại ô nhiễm: định vị hiện trường trước hạn / đội */}
           <MetaRow icon={MapPin} label="Địa chỉ">
             {data.address?.trim() ? (
               <p className="text-sm leading-5 text-foreground whitespace-pre-wrap break-words">
@@ -1565,6 +1792,16 @@ function ReportInfoCard({
               <p className="text-sm leading-5 text-muted-foreground">Chưa có địa chỉ</p>
             )}
           </MetaRow>
+
+          {visibleWasteTags.length > 0 ? (
+            <MetaRow icon={Tags} label="Thẻ rác" align="start">
+              <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label="Thẻ rác thải">
+                {visibleWasteTags.map(tag => (
+                  <WasteTagBadge key={tag.tagId} tag={tag} />
+                ))}
+              </div>
+            </MetaRow>
+          ) : null}
 
           <MetaRow icon={CalendarDays} label="Hạn xử lý">
             <div className="min-w-0">
@@ -1594,6 +1831,12 @@ function ReportInfoCard({
             </div>
           </MetaRow>
 
+          {data.description?.trim() ? (
+            <MetaRow icon={AlignLeft} label="Mô tả" align="start">
+              <ExpandableDescription text={data.description} />
+            </MetaRow>
+          ) : null}
+
           <MetaRow icon={Users} label="Đội phụ trách">
             {teamTooltipItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">Chưa phân công</p>
@@ -1601,12 +1844,6 @@ function ReportInfoCard({
               <AnimatedTooltip items={teamTooltipItems} avatarClassName="size-8" />
             )}
           </MetaRow>
-
-          {data.description?.trim() ? (
-            <MetaRow icon={AlignLeft} label="Mô tả" align="start">
-              <ExpandableDescription text={data.description} />
-            </MetaRow>
-          ) : null}
         </div>
       </div>
 
@@ -1931,7 +2168,13 @@ function DetailShell({ detail, onBack }: { detail: ReportDetail; onBack: () => v
             onWheel={() => setActivePane('left')}
             className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-2 lg:pb-8 lg:scrollbar-hide"
           >
-            <ReportInfoCard data={data} assignments={assignments} />
+            <ReportInfoCard
+              data={data}
+              assignments={assignments}
+              reporterName={detail.reporterName}
+              wasteTags={detail.wasteTags ?? []}
+              onPreview={handlePreview}
+            />
           </aside>
 
           <div className="hidden bg-border lg:block" aria-hidden />

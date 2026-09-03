@@ -224,22 +224,13 @@ export function PublicSiteHeader({ activePath, tone = 'light' }: PublicSiteHeade
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <PublicSiteHeaderAuth forest={forest} activePath={activePath} />
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              className={cn(
-                'hidden sm:inline-flex',
-                forest
-                  ? 'border-white/14 bg-white/8 text-stone-50 hover:bg-white/12 hover:text-stone-50'
-                  : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
-              )}
+            <a
+              {...apkProps}
+              className="landing-cta-chamfer landing-cta-primary inline-flex h-9 items-center gap-1.5 px-3.5 text-sm font-semibold transition-[background,box-shadow,transform] duration-300 focus-visible:ring-2 focus-visible:ring-lime-200/30 focus-visible:outline-none"
             >
-              <a {...apkProps}>
-                {ANDROID_APK_LABEL}
-                <Download className="size-3.5" aria-hidden />
-              </a>
-            </Button>
+              <Download className="size-3.5" aria-hidden />
+              {ANDROID_APK_LABEL}
+            </a>
 
             <Button
               type="button"
