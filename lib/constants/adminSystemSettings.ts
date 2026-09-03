@@ -37,18 +37,37 @@ export const HIDDEN_SYSTEM_SETTING_MODULES = [
   'officer',
   /** Validation — chưa cần trên admin. */
   'validation',
+  /** AI — cấu hình AI, chưa cần trên admin. */
+  'ai',
 ] as const;
 
 export type HiddenSystemSettingModule = (typeof HIDDEN_SYSTEM_SETTING_MODULES)[number];
 
+/**
+ * displayNameVi từ GET /system-settings/modules — khớp khi slug BE lệch giữa môi trường.
+ */
+export const HIDDEN_SYSTEM_SETTING_MODULE_LABELS = [
+  'Bản đồ công khai',
+  'AI',
+] as const;
+
+export type HiddenSystemSettingModuleLabel = (typeof HIDDEN_SYSTEM_SETTING_MODULE_LABELS)[number];
+
 export function isHiddenSystemSettingModule(mod: {
   module: string;
   routeSlug?: string | null;
+  displayNameVi?: string | null;
 }): boolean {
   const hidden = HIDDEN_SYSTEM_SETTING_MODULES as readonly string[];
   const moduleKey = mod.module.trim().toLowerCase();
   const slugKey = mod.routeSlug?.trim().toLowerCase();
-  return hidden.includes(moduleKey) || (slugKey != null && hidden.includes(slugKey));
+  if (hidden.includes(moduleKey) || (slugKey != null && hidden.includes(slugKey))) {
+    return true;
+  }
+
+  const label = mod.displayNameVi?.trim();
+  if (!label) return false;
+  return (HIDDEN_SYSTEM_SETTING_MODULE_LABELS as readonly string[]).includes(label);
 }
 
 /** Keys tạm ẩn khỏi UI admin — BE vẫn giữ seed, chưa cần chỉnh tay. */
