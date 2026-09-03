@@ -26,7 +26,18 @@ export function isRetiredSystemSettingKey(key: string): boolean {
 }
 
 /** Module ẩn sidebar — quản lý riêng hoặc chưa bật trên admin (vd. Gamification → /admin/badges). */
-export const HIDDEN_SYSTEM_SETTING_MODULES = ['gamification', 'comments'] as const;
+export const HIDDEN_SYSTEM_SETTING_MODULES = [
+  'gamification',
+  'comments',
+  /** Bản đồ công khai — cấu hình map public, chưa cần trên admin. */
+  'public-map',
+  'publicmap',
+  /** Cán bộ — quản lý officer qua module riêng. */
+  'officers',
+  'officer',
+  /** Validation — chưa cần trên admin. */
+  'validation',
+] as const;
 
 export type HiddenSystemSettingModule = (typeof HIDDEN_SYSTEM_SETTING_MODULES)[number];
 

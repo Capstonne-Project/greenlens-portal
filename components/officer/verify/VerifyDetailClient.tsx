@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Field } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -79,7 +78,6 @@ import {
   AlertTriangle,
   AlignLeft,
   ArrowLeft,
-  Calendar,
   Camera,
   CheckCircle2,
   ClipboardList,
@@ -93,7 +91,10 @@ import {
   RefreshCw,
   RotateCcw,
   Shield,
+  ShieldCheck,
   Tag,
+  TimerOff,
+  Clock,
   TrendingUp,
   Users,
   XCircle,
@@ -443,104 +444,79 @@ function WasteTagPicker({
   );
 }
 
-// ── SLA countdown ─────────────────────────────────────────────────────────────
+// ── SLA status (icon panel) ───────────────────────────────────────────────────
 
 type SlaLevel = 'safe' | 'warn' | 'critical' | 'overdue';
 
 interface SlaTokenSet {
-  bar: string;
   badge: string;
   badgeLabel: string;
-  countdownBg: string;
-  countdownText: string;
-  countdownLabel: string;
+  iconRing: string;
+  panelBg: string;
+  iconText: string;
   verifyBtn: string;
   bannerText: string | null;
 }
 
 const SLA_TOKENS: Record<SlaLevel, SlaTokenSet> = {
   safe: {
-    bar: 'bg-emerald-500',
     badge: 'bg-emerald-100 text-emerald-700',
     badgeLabel: 'Trong hạn',
-    countdownBg: 'bg-emerald-50 border-emerald-200',
-    countdownText: 'text-emerald-700',
-    countdownLabel: 'Thời gian còn lại',
+    iconRing: 'border-emerald-200 bg-white/70',
+    panelBg: 'bg-emerald-50 border-emerald-200',
+    iconText: 'text-emerald-600',
     verifyBtn: 'bg-emerald-600 hover:bg-emerald-500',
     bannerText: null,
   },
   warn: {
-    bar: 'bg-amber-500',
     badge: 'bg-amber-100 text-amber-700',
     badgeLabel: 'Cần chú ý',
-    countdownBg: 'bg-amber-50 border-amber-200',
-    countdownText: 'text-amber-700',
-    countdownLabel: 'Thời gian còn lại',
+    iconRing: 'border-amber-200 bg-white/70',
+    panelBg: 'bg-amber-50 border-amber-200',
+    iconText: 'text-amber-600',
     verifyBtn: 'bg-orange-500 hover:bg-orange-400',
     bannerText: null,
   },
   critical: {
-    bar: 'bg-red-500',
     badge: 'bg-red-100 text-red-700',
     badgeLabel: 'Sắp hết hạn',
-    countdownBg: 'bg-red-50 border-red-200',
-    countdownText: 'text-red-700',
-    countdownLabel: 'Thời gian còn lại',
+    iconRing: 'border-red-200 bg-white/70',
+    panelBg: 'bg-red-50 border-red-200',
+    iconText: 'text-red-600',
     verifyBtn: 'bg-red-600 hover:bg-red-500',
     bannerText: 'Sắp hết hạn xác minh — cần xử lý ngay',
   },
   overdue: {
-    bar: 'bg-red-700',
     badge: 'bg-red-700 text-white',
     badgeLabel: 'Quá hạn',
-    countdownBg: 'bg-red-100 border-red-300',
-    countdownText: 'text-red-700',
-    countdownLabel: 'Báo cáo này cần xử xác minh ngay',
+    iconRing: 'border-red-300 bg-white/80',
+    panelBg: 'bg-red-100 border-red-300',
+    iconText: 'text-red-700',
     verifyBtn: 'bg-red-700 hover:bg-red-600',
     bannerText: null,
   },
 };
 
-/**
- * useSlaCountdown — single 1Hz tick, derive everything else from `now`.
- * Tick stops when component unmounts (clearInterval cleanup).
- */
-function useSlaCountdown(createdAt: string, slaDueAt: string | null) {
-  const startMs = useMemo(() => new Date(createdAt).getTime(), [createdAt]);
-  const endMs = useMemo(
-    () => (slaDueAt ? new Date(slaDueAt).getTime() : startMs),
-    [slaDueAt, startMs]
-  );
-  const hasSla = Boolean(slaDueAt);
+function deriveSlaLevel(createdAt: string, slaDueAt: string | null): SlaLevel {
+  const startMs = new Date(createdAt).getTime();
+  const endMs = slaDueAt ? new Date(slaDueAt).getTime() : startMs;
   const totalMs = Math.max(1, endMs - startMs);
-
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
+  const now = Date.now();
   const isOverdue = now >= endMs;
   const elapsedMs = Math.min(totalMs, Math.max(0, now - startMs));
-  const remainingMs = Math.max(0, endMs - now);
   const percentElapsed = Math.min(100, (elapsedMs / totalMs) * 100);
 
-  let level: SlaLevel;
-  if (isOverdue) level = 'overdue';
-  else if (percentElapsed >= 75) level = 'critical';
-  else if (percentElapsed >= 50) level = 'warn';
-  else level = 'safe';
-
-  return { isOverdue, remainingMs, percentElapsed, level, totalMs, hasSla };
+  if (isOverdue) return 'overdue';
+  if (percentElapsed >= 75) return 'critical';
+  if (percentElapsed >= 50) return 'warn';
+  return 'safe';
 }
 
-function formatHMS(ms: number): string {
-  const total = Math.floor(ms / 1000);
-  const h = String(Math.floor(total / 3600)).padStart(2, '0');
-  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
-  const s = String(total % 60).padStart(2, '0');
-  return `${h}:${m}:${s}`;
+function SlaStatusIcon({ level, className }: { level: SlaLevel; className?: string }) {
+  if (level === 'overdue') return <TimerOff className={className} aria-hidden />;
+  if (level === 'critical') return <AlertTriangle className={className} aria-hidden />;
+  if (level === 'warn') return <Clock className={className} aria-hidden />;
+  return <ShieldCheck className={className} aria-hidden />;
 }
 
 function formatDateTime(iso: string): string {
@@ -548,15 +524,6 @@ function formatDateTime(iso: string): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatShort(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -1271,17 +1238,12 @@ function SlaActionCard({
   isPossibleDuplicate?: boolean;
   isSuspectedViolationRecurrence?: boolean;
 }) {
-  const { isOverdue, remainingMs, percentElapsed, level, totalMs, hasSla } = useSlaCountdown(
-    detail.createdAt,
-    detail.slaVerifyDueAt
+  const level = useMemo(
+    () => deriveSlaLevel(detail.createdAt, detail.slaVerifyDueAt),
+    [detail.createdAt, detail.slaVerifyDueAt]
   );
+  const hasSla = Boolean(detail.slaVerifyDueAt);
   const tokens = SLA_TOKENS[level];
-
-  const totalHours = Math.round(totalMs / 3600000);
-  const startShort = formatShort(detail.createdAt);
-  const endShort = detail.slaVerifyDueAt ? formatShort(detail.slaVerifyDueAt) : '—';
-  const startFull = formatDateTime(detail.createdAt);
-  const endFull = detail.slaVerifyDueAt ? formatDateTime(detail.slaVerifyDueAt) : 'Chưa có';
 
   return (
     <Card className="overflow-hidden p-0">
@@ -1315,57 +1277,28 @@ function SlaActionCard({
         </CardTitle>
       </CardHeader>
 
-      <CardContent>
-        <div className={cn('mb-3 rounded-lg border px-4 py-5 text-center', tokens.countdownBg)}>
-          <p
-            className={cn('text-3xl font-bold tabular-nums tracking-wider', tokens.countdownText)}
-            aria-live="polite"
+      <CardContent className="pb-5">
+        <div
+          className={cn(
+            'flex min-h-[220px] flex-col items-center justify-center rounded-lg border px-4 py-10',
+            tokens.panelBg
+          )}
+        >
+          <div
+            className={cn(
+              'flex size-24 items-center justify-center rounded-full border-2 shadow-sm',
+              tokens.iconRing
+            )}
           >
-            {hasSla ? (isOverdue ? 'QUÁ HẠN' : formatHMS(remainingMs)) : '—'}
-          </p>
-          <p className={cn('mt-1 text-xs', tokens.countdownText)}>{tokens.countdownLabel}</p>
+            <SlaStatusIcon level={level} className={cn('size-12 stroke-[1.5]', tokens.iconText)} />
+          </div>
+          <Badge variant="outline" className={cn('mt-5 border-0 px-3 py-1 font-semibold', tokens.badge)}>
+            {tokens.badgeLabel}
+          </Badge>
+          {!hasSla ? (
+            <p className="mt-2 text-xs text-muted-foreground">Chưa có hạn xác minh</p>
+          ) : null}
         </div>
-
-        <Progress value={percentElapsed} indicatorClassName={tokens.bar} className="mb-1" />
-        <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{startShort}</span>
-          <span className={cn('font-medium', tokens.countdownText)}>
-            {Math.round(percentElapsed)}% đã qua
-          </span>
-          <span>{endShort}</span>
-        </div>
-
-        <Card className="mb-5 border-border bg-muted/30 shadow-none">
-          <CardContent className="space-y-2 p-3 text-sm">
-            <Field orientation="horizontal" className="items-start justify-between gap-2">
-              <Label className="flex min-w-0 items-center gap-2 font-normal text-muted-foreground">
-                <Calendar className="size-3.5 shrink-0" />
-                Báo cáo lúc
-              </Label>
-              <span className="min-w-0 text-right font-medium wrap-break-word text-foreground">
-                {startFull}
-              </span>
-            </Field>
-            <Field orientation="horizontal" className="items-start justify-between gap-2">
-              <Label className="flex min-w-0 items-center gap-2 font-normal text-muted-foreground">
-                <Calendar className="size-3.5 shrink-0" />
-                Hạn chót
-              </Label>
-              <span className="min-w-0 text-right font-medium wrap-break-word text-foreground">
-                {endFull}
-              </span>
-            </Field>
-            <Field orientation="horizontal" className="items-start justify-between gap-2">
-              <Label className="flex min-w-0 items-center gap-2 font-normal text-muted-foreground">
-                <Hourglass className="size-3.5 shrink-0" />
-                Tổng thời gian
-              </Label>
-              <span className="min-w-0 text-right font-medium text-foreground">
-                {totalHours} giờ
-              </span>
-            </Field>
-          </CardContent>
-        </Card>
       </CardContent>
 
       <CardFooter>
