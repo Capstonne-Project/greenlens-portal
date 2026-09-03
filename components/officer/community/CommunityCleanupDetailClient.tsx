@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
+  COMMUNITY_CLEANUP_PARTICIPANTS_POLL_MS,
   useCommunityCleanupDetail,
   useCommunityCleanupParticipants,
   useRejectCommunityVerification,
@@ -287,8 +288,17 @@ const PARTICIPANT_STATUS_DOT: Record<CommunityCleanupParticipant['status'], stri
   NoShow: 'bg-red-500',
 };
 
-/** Dòng người tham gia gọn cho thẻ sticky hẹp — bỏ mốc check-in, chỉ giữ trạng thái. */
+const PARTICIPANT_STATUS_BADGE: Record<CommunityCleanupParticipant['status'], string> = {
+  Joined: 'bg-sky-50 text-sky-700 ring-sky-200/80',
+  CheckedIn: 'bg-emerald-50 text-emerald-700 ring-emerald-200/80',
+  Withdrawn: 'bg-slate-100 text-slate-600 ring-slate-200/80',
+  NoShow: 'bg-red-50 text-red-700 ring-red-200/80',
+};
+
+/** Dòng người tham gia gọn — Leader badge; Member badge theo trạng thái (tiếng Việt). */
 function CompactParticipantRow({ participant }: { participant: CommunityCleanupParticipant }) {
+  const isMember = participant.role === 'Member';
+
   return (
     <li className="flex items-center gap-2.5 py-2 first:pt-0 last:pb-0">
       <Avatar className="size-7 shrink-0">
@@ -302,16 +312,28 @@ function CompactParticipantRow({ participant }: { participant: CommunityCleanupP
           <p className="truncate text-[13px] font-medium text-foreground">{participant.fullName}</p>
           {participant.role === 'Leader' ? (
             <span className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
-              Leader
+              Trưởng nhóm
+            </span>
+          ) : null}
+          {isMember ? (
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ring-1',
+                PARTICIPANT_STATUS_BADGE[participant.status]
+              )}
+            >
+              {PARTICIPANT_STATUS_LABEL[participant.status]}
             </span>
           ) : null}
         </div>
       </div>
-      <span
-        className={cn('size-1.5 shrink-0 rounded-full', PARTICIPANT_STATUS_DOT[participant.status])}
-        title={PARTICIPANT_STATUS_LABEL[participant.status]}
-        aria-label={PARTICIPANT_STATUS_LABEL[participant.status]}
-      />
+      {!isMember ? (
+        <span
+          className={cn('size-1.5 shrink-0 rounded-full', PARTICIPANT_STATUS_DOT[participant.status])}
+          title={PARTICIPANT_STATUS_LABEL[participant.status]}
+          aria-label={PARTICIPANT_STATUS_LABEL[participant.status]}
+        />
+      ) : null}
     </li>
   );
 }
@@ -780,9 +802,18 @@ function DetailShell({
     setHighlightFacebookPost(true);
   };
 
+  /** Chỉ poll participants khi chương trình còn hoạt động — badge status Member cập nhật ~2s. */
+  const shouldPollParticipants =
+    detail.status === 'OpenForJoin' ||
+    detail.status === 'JoinClosed' ||
+    detail.status === 'InProgress';
+
   const { data: participants, isPending: isParticipantsPending } = useCommunityCleanupParticipants(
     eventId,
-    { page: 1, pageSize: 50 }
+    { page: 1, pageSize: 50 },
+    {
+      refetchInterval: shouldPollParticipants ? COMMUNITY_CLEANUP_PARTICIPANTS_POLL_MS : false,
+    }
   );
 
   const verifyMutation = useVerifyCommunityCleanup();
